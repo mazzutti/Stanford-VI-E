@@ -1,0 +1,9 @@
+numpy
+matplotlib
+scipy
+Pillow
+scikit-image
+pygeostat
+tqdm
+numba
+llvmlite
