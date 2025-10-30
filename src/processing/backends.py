@@ -4,6 +4,9 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
+import logging
+from src.utils.facades import LazyObjectProxy
+
 from src.processing._backend_base import BackendError, ResamplerBackend, BackendResult
 from src.processing.resample_plan import ResamplePlan
 from src.processing.backend_manager import (
@@ -15,6 +18,7 @@ from src.processing.backend_manager import (
     is_backend_verbose as manager_is_backend_verbose,
 )
 
+
 try:
     from src.processing.interpolator import BatchedInterpolator
 except Exception:  # pragma: no cover - optional import
@@ -22,8 +26,6 @@ except Exception:  # pragma: no cover - optional import
 
 
 _REGISTRY: Dict[str, ResamplerBackend] = {}
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -64,22 +66,19 @@ class BackendsRegistry:
         return manager_is_backend_verbose()
 
 
-# Module-level lazy proxy for BackendsRegistry
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy using shared LazyObjectProxy
 backends_registry = LazyObjectProxy(lambda: BackendsRegistry())
-__all__.extend(["BackendsRegistry", "backends_registry"])
 
 
 def get_backends_registry(config: dict | None = None):
+    return _impl_get_backends_registry(config)
+
+
+# canonical single entrypoint for get_backends_registry (keeps compatibility)
+def _impl_get_backends_registry(config: dict | None = None):
     if config is None:
         return backends_registry
     return BackendsRegistry()
-
-
-__all__.append("get_backends_registry")
 
 
 # The module now exposes the canonical BackendsRegistry facade and its
@@ -148,7 +147,7 @@ class BatchedInterpolatorBackend:
 
         out = bi.interpolate(twt_padded, depth_padded_flat)
         # BatchedInterpolator returns shape (nt, ntr) -> reshape to (ni,nj,nt)
-        ni, nj, nz = plan.ni, plan.nj, plan.nz
+        ni, nj = plan.ni, plan.nj
         nt = plan.nt
         out_arr = out.reshape(nt, ni, nj).transpose(1, 2, 0)
         return BackendResult(array=out_arr, dt=plan.dt)

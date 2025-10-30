@@ -1,9 +1,9 @@
 """ResamplePlan
 
-Small helper to precompute time axes, TWT arrays, padded axes and block layout
-for resampling operations. This centralizes the decision logic used by the
-resampler (uniform TWT detection, blocks, padded arrays) so callers don't
-duplicate the same code.
+Helpers to precompute time axes, two-way time (TWT) arrays, padded axes and
+block layout for resampling operations. This centralizes the decision logic
+used by resamplers (uniform TWT detection, blocks, padded arrays) to avoid
+duplication across callers.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, List, Union
 
 # Alias for clarity
-IndexTuple = Tuple[int, int, int]
 
 import numpy as np
 import logging
@@ -20,6 +19,8 @@ import logging
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
+
+IndexTuple = Tuple[int, int, int]
 
 
 @dataclass

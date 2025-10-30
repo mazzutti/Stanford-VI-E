@@ -19,6 +19,7 @@ from src.modeling import modeling as modeling_utils
 from src.io.disk_cache import DiskCache
 import hashlib
 from src.utils.quantity import Quantity
+from src.utils.facades import LazyObjectProxy
 import logging
 
 logger = logging.getLogger(__name__)
@@ -172,9 +173,6 @@ class RockPhysicsModel:
         return out
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Create a convenient module-level default model lazily (preserve assignability)
 def _create_placeholder_rock_physics_model() -> RockPhysicsModel:
     # Build a minimal placeholder RockPhysicsModel similar to the previous
@@ -226,6 +224,29 @@ class RockPhysicsModelProxy(LazyObjectProxy[RockPhysicsModel]):
 
 
 rock_physics_model = RockPhysicsModelProxy(_create_placeholder_rock_physics_model)
+
+
+def get_rock_physics_model(
+    instance: RockPhysicsModel | None = None,
+) -> "RockPhysicsModel":
+    """Return provided RockPhysicsModel or the module-level lazy singleton.
+
+    This routes through the canonical implementation `_impl_get_rock_physics_model`
+    so callers and tests can inject instances or use the lazy module-level
+    proxy consistently.
+    """
+    return _impl_get_rock_physics_model(instance)
+
+
+def _impl_get_rock_physics_model(
+    instance: RockPhysicsModel | None = None,
+) -> RockPhysicsModel:
+    """Canonical implementation for obtaining the module RockPhysicsModel.
+
+    Returns the provided instance when not None, otherwise returns the
+    module-level `rock_physics_model` lazy proxy.
+    """
+    return instance if instance is not None else rock_physics_model
 
 
 def _impl_compute_ai(self: RockPhysicsModel) -> np.ndarray:

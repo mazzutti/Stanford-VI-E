@@ -1,4 +1,4 @@
-"""Processing utilities package (migrated from src.utils).
+"""Processing utilities package.
 
 Contains process/pipeline helpers and multi-angle processing utilities.
 """

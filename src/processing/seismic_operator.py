@@ -14,6 +14,7 @@ from scipy.signal import fftconvolve
 
 from src.signal.wavelets import ricker_wavelet
 from src.utils.quantity import Quantity
+from src.utils.facades import LazyObjectProxy
 import logging
 
 __all__ = ["SeismicOperator"]
@@ -124,7 +125,6 @@ class SeismicOperator:
 
 
 # Module-level singleton for convenience (placed after class definition)
-from src.utils.facades import LazyObjectProxy
 
 
 # Module-level lazy proxy using shared LazyObjectProxy
@@ -138,7 +138,7 @@ def impedance_to_seismogram_depth(
     dt_equiv_vp: float = 2500.0,
     mode: str = "same",
 ):
-    return seismic_operator.impedance_to_seismogram_depth(
+    return _impl_impedance_to_seismogram_depth(
         impedance, grid_dz, f_peak=f_peak, dt_equiv_vp=dt_equiv_vp, mode=mode
     )
 
@@ -146,7 +146,7 @@ def impedance_to_seismogram_depth(
 def convolve_reflectivity_with_wavelet(
     reflectivity_cube: np.ndarray, wavelet: np.ndarray, mode: str = "same"
 ) -> np.ndarray:
-    return seismic_operator.convolve_reflectivity_with_wavelet(
+    return _impl_convolve_reflectivity_with_wavelet(
         reflectivity_cube, wavelet, mode=mode
     )
 
@@ -162,7 +162,43 @@ __all__.extend(
 
 def get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator":
     """Return the provided SeismicOperator or the module-level lazy singleton."""
-    return op if op is not None else seismic_operator
+    return _impl_get_seismic_operator(op)
 
 
 __all__.append("get_seismic_operator")
+
+
+def _impl_impedance_to_seismogram_depth(
+    impedance: np.ndarray,
+    grid_dz: float,
+    f_peak: float = 30.0,
+    dt_equiv_vp: float = 2500.0,
+    mode: str = "same",
+) -> np.ndarray:
+    """Canonical implementation: delegate to SeismicOperator static method.
+
+    Keep heavy imports and logic inside the class method; this thin canonical
+    wrapper provides a single callable implementation that tests and other
+    modules can reference.
+    """
+    return SeismicOperator.impedance_to_seismogram_depth(
+        impedance, grid_dz, f_peak=f_peak, dt_equiv_vp=dt_equiv_vp, mode=mode
+    )
+
+
+def _impl_convolve_reflectivity_with_wavelet(
+    reflectivity_cube: np.ndarray, wavelet: np.ndarray, mode: str = "same"
+) -> np.ndarray:
+    """Canonical implementation: delegate to SeismicOperator static method."""
+    return SeismicOperator.convolve_reflectivity_with_wavelet(
+        reflectivity_cube, wavelet, mode=mode
+    )
+
+
+def _impl_get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator":
+    """Canonical implementation for obtaining a SeismicOperator instance.
+
+    Maintains DI-friendly behaviour: return provided instance or the
+    module-level lazy proxy.
+    """
+    return op if op is not None else seismic_operator

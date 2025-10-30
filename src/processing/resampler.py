@@ -1,6 +1,6 @@
-"""Depth <-> Time resampling helpers.
+"""Depth <-> Time resampling utilities.
 
-Provides a small, testable Resampler that centralizes depth/time conversions
+Provides a testable Resampler that centralizes depth/time conversions
 using a `GridSpec` object.
 """
 
@@ -16,11 +16,20 @@ from src.processing.resample_plan import ResamplePlan
 from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
 import logging
 import os
+from src.utils.facades import LazyObjectProxy
+
+from src.processing._backend_base import BackendResult, BackendError
+
+from src.io.grid import GridSpec
+from src.utils.units import UnitRegistry
+from src.utils.quantity import Quantity
 
 __all__ = ["DepthTimeResampler", "set_backend_verbose", "is_backend_verbose"]
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+# Module-level lazy proxies are defined later in this file
 
 
 # Enable extra backend debug logging if the environment flag is set.
@@ -44,6 +53,16 @@ def set_backend_verbose(on: bool) -> None:
     When enabled the module logger is set to DEBUG and additional plan
     metadata is emitted when a backend is selected.
     """
+    return _impl_set_backend_verbose(on)
+
+
+def _impl_set_backend_verbose(on: bool) -> None:
+    """Canonical implementation for toggling backend verbose logging.
+
+    Keep import-time side-effects and global changes inside the `_impl_*`
+    implementation so top-level imports remain side-effect free where
+    possible and tests can override behavior easily.
+    """
     global _BACKEND_VERBOSE
     _BACKEND_VERBOSE = bool(on)
     logger = logging.getLogger(__name__)
@@ -58,14 +77,11 @@ def set_backend_verbose(on: bool) -> None:
 
 def is_backend_verbose() -> bool:
     """Return whether backend verbose logging is enabled for this module."""
+    return _impl_is_backend_verbose()
+
+
+def _impl_is_backend_verbose() -> bool:
     return bool(_BACKEND_VERBOSE)
-
-
-from src.processing._backend_base import BackendResult, BackendError
-
-from src.io.grid import GridSpec
-from src.utils.units import UnitRegistry
-from src.utils.quantity import Quantity
 
 
 @dataclass
@@ -205,7 +221,7 @@ class DepthTimeResampler:
             )
             try:
                 out_backend = backend.depth_to_time(data_arr, vp_arr, plan=plan)
-            except Exception as exc:  # log and re-raise
+            except Exception:
                 logger.exception(
                     "Depth->Time: backend '%s' raised an exception",
                     getattr(backend, "name", repr(backend)),
@@ -213,13 +229,12 @@ class DepthTimeResampler:
                 raise
             # Enforce strict BackendResult return type from backends
             if not isinstance(out_backend, BackendResult):
+                backend_name = getattr(backend, "name", repr(backend))
                 logger.error(
                     "Depth->Time: backend '%s' returned non-BackendResult",
-                    getattr(backend, "name", repr(backend)),
+                    backend_name,
                 )
-                raise BackendError(
-                    f"backend {getattr(backend, 'name', repr(backend))} returned non-BackendResult"
-                )
+                raise BackendError(f"backend {backend_name} returned non-BackendResult")
             out = out_backend.array
             dt = out_backend.dt if out_backend.dt is not None else plan.dt
             if data_was_quantity:
@@ -462,13 +477,12 @@ class DepthTimeResampler:
                 )
                 raise
             if not isinstance(out_backend, BackendResult):
+                backend_name = getattr(backend, "name", repr(backend))
                 logger.error(
                     "Time->Depth: backend '%s' returned non-BackendResult",
-                    getattr(backend, "name", repr(backend)),
+                    backend_name,
                 )
-                raise BackendError(
-                    f"backend {getattr(backend, 'name', repr(backend))} returned non-BackendResult"
-                )
+                raise BackendError(f"backend {backend_name} returned non-BackendResult")
             out = out_backend.array
             if seis_was_quantity:
                 return Quantity(out, seismogram_time.unit)
@@ -478,7 +492,6 @@ class DepthTimeResampler:
         if plan.uniform_twt:
             # common twt positions for depth samples
             twt_common = twt_arr[0, 0, :]
-            ntr = ni * nj
             seis_flat = seis_arr.transpose(2, 0, 1).reshape(nt, -1)
             interp = BatchedInterpolator(time_axis=twt_common, kind="linear")
             # if seis is integer/categorical, prefer nearest
@@ -494,9 +507,10 @@ class DepthTimeResampler:
                 for j in range(nj):
                     twt_trace = twt_arr[i, j, :]
 
-                    # Directly sample the time-domain seismogram at the TWT corresponding
-                    # to each depth sample. Use np.interp which expects xp increasing
-                    # (time_axis) and fp of same length (seismogram samples).
+                    # Directly sample the time-domain seismogram at the TWT
+                    # corresponding to each depth sample. Use np.interp which
+                    # expects xp increasing (time_axis) and fp of same length
+                    # (seismogram samples).
                     out[i, j, :] = np.interp(
                         twt_trace, time_axis, seis_arr[i, j, :], left=0.0, right=0.0
                     )
@@ -547,9 +561,6 @@ class DepthTimeResampler:
         # Vectorized / batched interpolation across traces via BatchedInterpolator.
         # Flatten spatial dims so we interpolate all traces with a single
         # blocked/interpolated call which is much faster than nested Python loops.
-        nt_src = data_time.shape[2]
-        ntr = ni * nj
-        # depth_padded_flat equivalent: rows are source-time samples, cols are traces
         src_flat = data_time.transpose(2, 0, 1).reshape(nt_src, -1)
 
         interp = BatchedInterpolator(time_axis=target_time_axis, kind=kind)
@@ -711,20 +722,14 @@ class ResamplerFactory:
 
 
 # Module-level singleton factory for callers to obtain resamplers
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton factory for callers to obtain resamplers
 resampler_factory = LazyObjectProxy(lambda: ResamplerFactory())
 
 __all__.extend(["ResamplerFactory", "resampler_factory"])
 
 
-# We prefer callers use the ResamplerFactory facade or the ResamplerService
-# module-level lazy proxies. The thin top-level delegate wrappers were
-# retained for backward compatibility but are removed here to reduce
-# duplicated surface area. Callers should use `resampler_factory` or
-# `get_resampler_service()` instead.
+# Callers should use the `ResamplerFactory` facade or the `ResamplerService`
+# module-level proxy. The top-level delegate wrappers remain for convenience
+# and backward compatibility.
 __all__.extend(
     [
         "ResamplerFactory",
@@ -799,51 +804,6 @@ class ResamplerService:
         )
 
 
-# Module-level lazy service proxy for convenience and DI in tests
-resampler_service = LazyObjectProxy(lambda: ResamplerService())
-
-
-def get_resampler_service(instance: ResamplerService | None = None) -> ResamplerService:
-    """Return provided ResamplerService instance or the module-level singleton."""
-    return instance if instance is not None else resampler_service
-
-
-def get_resampler_factory(instance: ResamplerFactory | None = None) -> ResamplerFactory:
-    """Return provided ResamplerFactory instance or the module-level singleton."""
-    return instance if instance is not None else resampler_factory
-
-    def depth_to_time_from_twt(
-        self,
-        grid_spec: GridSpec,
-        data_depth,
-        twt_irregular,
-        time_axis,
-        is_categorical: bool = False,
-        progress_every: Optional[int] = 30,
-        prefix: str = "",
-        plan: ResamplePlan | None = None,
-    ):
-        return resampler_factory.get_resampler(grid_spec).depth_to_time_from_twt(
-            data_depth,
-            twt_irregular,
-            time_axis,
-            is_categorical=is_categorical,
-            progress_every=progress_every,
-            prefix=prefix,
-            plan=plan,
-        )
-
-    def compute_twt_for_trace(
-        self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
-    ):
-        return resampler_factory.get_resampler(grid_spec).compute_twt_for_trace(
-            vp_trace
-        )
-
-
-from src.utils.facades import LazyObjectProxy
-
-
 # Use the generic LazyObjectProxy to reduce local boilerplate
 resampler_service: ResamplerService = LazyObjectProxy(lambda: ResamplerService())
 
@@ -851,24 +811,24 @@ resampler_service: ResamplerService = LazyObjectProxy(lambda: ResamplerService()
 def get_resampler_service(
     service: ResamplerService | None = None,
 ) -> "ResamplerService":
-    """Return the provided ResamplerService or the module-level lazy singleton.
-
-    This mirrors the common get_* pattern used across the codebase and makes
-    dependency injection in tests and clients straightforward.
-    """
-    return service if service is not None else resampler_service
+    return _impl_get_resampler_service(service)
 
 
 __all__.extend(["ResamplerService", "resampler_service", "get_resampler_service"])
 
 
 def get_resampler_factory(config: dict | None = None):
-    """Return the module-level `resampler_factory` when `config` is None.
+    return _impl_get_resampler_factory(config)
 
-    If `config` is provided, return a fresh `ResamplerFactory` instance.
-    This mirrors the repo-wide `get_*` pattern to make dependency injection
-    and testing easier.
-    """
+
+# Canonical _impl_* entrypoints
+def _impl_get_resampler_service(
+    service: ResamplerService | None = None,
+) -> ResamplerService:
+    return service if service is not None else resampler_service
+
+
+def _impl_get_resampler_factory(config: dict | None = None):
     if config is None:
         return resampler_factory
     return ResamplerFactory()

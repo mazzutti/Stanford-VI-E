@@ -1,10 +1,11 @@
-"""Multi-angle EI helpers (migrated from src.utils.multiangle)
+"""Multi-angle EI helpers.
 
 Provides helpers to compute statistics, create weighted stacks and package results.
 """
 
 # typing not required at runtime in this helper module
 import numpy as np
+from src.utils.facades import LazyObjectProxy
 import time
 import os
 import hashlib
@@ -21,8 +22,8 @@ __all__ = []
 class MultiAngleEI:
     """Object-oriented facade for multi-angle EI helpers.
 
-    This thin facade delegates to the existing module-level functions so
-    callers can migrate to an OOP API without changing behaviour.
+    This thin facade delegates to module-level implementations so callers
+    may use an OOP-style API while preserving behaviour.
     """
 
     def compute_angle_statistics_and_correlation(
@@ -69,19 +70,26 @@ class MultiAngleEI:
         return _impl_compute_and_save_multiangle_ei_from_vm(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton for gradual migration (lazy proxy)
+# Module-level singleton (lazy proxy)
 ei_processor = LazyObjectProxy(lambda: MultiAngleEI())
 
 
 def get_ei_processor(instance: MultiAngleEI | None = None) -> "MultiAngleEI":
     """Return provided MultiAngleEI or the module-level lazy singleton."""
-    return instance if instance is not None else ei_processor
+    return _impl_get_ei_processor(instance)
 
 
 __all__.append("get_ei_processor")
+
+
+def _impl_get_ei_processor(instance: MultiAngleEI | None = None) -> MultiAngleEI:
+    """Canonical implementation for obtaining a MultiAngleEI instance.
+
+    Returns the provided instance when not None, otherwise returns the
+    module-level `ei_processor` lazy proxy. Kept as a single `_impl_*`
+    entrypoint to make testing and dependency-injection easier.
+    """
+    return instance if instance is not None else ei_processor
 
 
 def _impl_compute_angle_statistics_and_correlation(
@@ -314,7 +322,8 @@ def _impl_compute_and_save_multiangle_ei(
         or analyze_facies_correlation_depth is None
     ):
         raise ValueError(
-            "Please pass compute_ei_multiangle, create_optimal_ei_stack and analyze_facies_correlation_depth functions"
+            "Please pass compute_ei_multiangle, create_optimal_ei_stack "
+            "and analyze_facies_correlation_depth functions"
         )
 
     from src.utils import formatting as formatting_utils

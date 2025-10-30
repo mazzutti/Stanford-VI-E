@@ -1,8 +1,8 @@
 """Simple BackendManager to centralize backend registration and selection.
 
 This is intentionally small and backwards-compatible with the existing
-`backends` module API. It provides an instance that can be used for DI
-later when migrating to a service-oriented design.
+`backends` module API. It provides an instance that can be used for
+dependency injection when needed.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from src.processing._backend_base import ResamplerBackend
 from src.processing.resample_plan import ResamplePlan
 from src.processing.metrics import global_metrics, PlanFingerprint
 from typing import Tuple
+from src.utils.facades import LazyObjectProxy
 
 
 @dataclass
@@ -70,7 +71,8 @@ class BackendManager:
                 print(f"BackendManager: selecting backend '{name}' for plan")
             return backend
 
-        # score candidates using selection_count (higher better) and runtime (lower better)
+        # Score candidates using selection_count (higher better) and runtime
+        # (lower better).
         fingerprint = PlanFingerprint.from_plan(plan)
 
         def score(item: Tuple[str, ResamplerBackend]) -> float:
@@ -78,7 +80,8 @@ class BackendManager:
             sel = metrics.get_selection_count(name)
             rt = metrics.get_runtime(name, fingerprint)
             # higher selection increases score, lower runtime increases score
-            # we invert runtime into a score component; add small epsilon to avoid div-by-zero
+            # we invert runtime into a score component; add small epsilon
+            # to avoid div-by-zero
             eps = 1e-6
             runtime_score = 1.0 / (rt + eps)
             return sel * 0.7 + runtime_score * 0.3
@@ -98,34 +101,57 @@ class BackendManager:
         return self._verbose
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # module-level singleton for ease-of-use (lazy proxy)
 _manager: BackendManager = LazyObjectProxy(lambda: BackendManager())
 
 
 def get_backend_manager() -> BackendManager:
+    return _impl_get_backend_manager()
+
+
+def _impl_get_backend_manager() -> BackendManager:
+    """Canonical implementation returning the module-level BackendManager proxy."""
     return _manager
 
 
 def register_backend(name: str, backend: ResamplerBackend) -> None:
-    _manager.register(name, backend)
+    return _impl_register_backend(name, backend)
 
 
 def list_backends() -> List[str]:
-    return _manager.list_backends()
+    return _impl_list_backends()
 
 
 def get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
-    return _manager.get_best(plan)
+    return _impl_get_best_backend(plan)
 
 
 def set_backend_verbose(on: bool) -> None:
-    _manager.set_verbose(on)
+    return _impl_set_backend_verbose(on)
 
 
 def is_backend_verbose() -> bool:
+    return _impl_is_backend_verbose()
+
+
+# Canonical _impl_* entrypoints
+def _impl_register_backend(name: str, backend: ResamplerBackend) -> None:
+    _manager.register(name, backend)
+
+
+def _impl_list_backends() -> List[str]:
+    return _manager.list_backends()
+
+
+def _impl_get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
+    return _manager.get_best(plan)
+
+
+def _impl_set_backend_verbose(on: bool) -> None:
+    _manager.set_verbose(on)
+
+
+def _impl_is_backend_verbose() -> bool:
     return _manager.is_verbose()
 
 

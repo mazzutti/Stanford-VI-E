@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from typing import Tuple
 from numpy.typing import ArrayLike
+from src.utils.facades import LazyObjectProxy
 
 __all__ = ["align_cubes"]
 
@@ -31,9 +32,6 @@ class Aligner:
         return align_cubes(cube_a, cube_b)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy using shared LazyObjectProxy
 aligner = LazyObjectProxy(lambda: Aligner())
 __all__.extend(["Aligner", "aligner"])
@@ -43,6 +41,10 @@ def get_aligner(config: dict | None = None):
     """Return the module-level `aligner` proxy when `config` is None,
     otherwise return a new `Aligner` instance.
     """
+    return _impl_get_aligner(config)
+
+
+def _impl_get_aligner(config: dict | None = None):
     if config is None:
         return aligner
     return Aligner()

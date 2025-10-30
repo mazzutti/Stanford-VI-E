@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 import hashlib
 
+from src.utils.facades import LazyObjectProxy
+from src.processing.resample_plan import ResamplePlan
+
 
 @dataclass(frozen=True)
 class PlanFingerprint:
@@ -23,7 +26,7 @@ class PlanFingerprint:
     vp_hash: str
 
     @classmethod
-    def from_plan(cls, plan) -> "PlanFingerprint":
+    def from_plan(cls, plan: ResamplePlan) -> "PlanFingerprint":
         # plan is expected to have ni,nj,nz,nt,dt,uniform_twt and vp_arr
         # compute a short hash from vp_arr sample
         arr = plan.vp_arr
@@ -76,9 +79,6 @@ class BackendMetrics:
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Export a module-level proxy instance and keep the old function name for
 # compatibility. Callers that prefer direct access can import `global_metrics`.
 global_metrics = LazyObjectProxy(lambda: BackendMetrics())
@@ -120,6 +120,12 @@ def get_metrics_collector(
     dependency injection). Otherwise the module-level lazy
     `metrics_collector` is returned.
     """
+    return _impl_get_metrics_collector(collector)
+
+
+def _impl_get_metrics_collector(
+    collector: MetricsCollector | None = None,
+) -> "MetricsCollector":
     return collector if collector is not None else metrics_collector
 
 
@@ -131,6 +137,10 @@ def get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
 
     Provides a single helper consistent with the rest of the codebase.
     """
+    return _impl_get_global_metrics(inst)
+
+
+def _impl_get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
     return inst if inst is not None else global_metrics
 
 

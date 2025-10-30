@@ -1,11 +1,11 @@
 """ResamplePlanCache
 
-Small LRU cache for ResamplePlan instances keyed by the velocity array
-content and grid/time parameters. This avoids recomputing the same plan
-when the same vp cube is reused across multiple resampling calls.
+A small LRU cache for ResamplePlan instances keyed by the velocity array
+content and grid/time parameters. Avoids recomputing the same plan when the
+same vp cube is reused across multiple resampling calls.
 
-The cache keeps a bounded number of entries and evicts the least-recently
-used plan when over capacity.
+The cache stores a bounded number of entries and evicts least-recently-used
+plans when over capacity.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from typing import Optional
 import numpy as np
 import os
 import logging
+from src.utils.facades import LazyObjectProxy
 
 from src.processing.resample_plan import ResamplePlan
 from src.io.grid import GridSpec
@@ -117,17 +118,15 @@ class ResamplePlanCache:
 
 __all__ = ["ResamplePlanCache"]
 
-# Module-level default cache (singleton) created at import time. Consumers may
-# override by calling `set_resample_plan_cache(...)`.
-_DEFAULT_CACHE: Optional[ResamplePlanCache]
+# Module-level default cache (singleton). Consumers may override it by
+# calling `set_resample_plan_cache(...)` prior to first use.
+_DEFAULT_CACHE: Optional[ResamplePlanCache] = None
 
-# Allow configuring cache size via environment variable for easy tuning.
+# Allow configuring cache size via environment variable for tuning.
 try:
     _default_size = int(os.environ.get("RESAMPLE_PLAN_CACHE_SIZE", "16"))
 except Exception:
     _default_size = 16
-
-_DEFAULT_CACHE = None
 
 
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
@@ -135,6 +134,10 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     if necessary. If a different maxsize is required, call this with
     the desired maxsize before other modules import the cache.
     """
+    return _impl_get_resample_plan_cache(maxsize)
+
+
+def _impl_get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     global _DEFAULT_CACHE
     if _DEFAULT_CACHE is None:
         _DEFAULT_CACHE = ResamplePlanCache(maxsize=maxsize)
@@ -143,15 +146,15 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
 
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""
+    return _impl_set_resample_plan_cache(cache)
+
+
+def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     global _DEFAULT_CACHE
     _DEFAULT_CACHE = cache
 
 
 __all__.extend(["get_resample_plan_cache", "set_resample_plan_cache"])
-
-
-# Convenience alias for OOP-style access
-from src.utils.facades import LazyObjectProxy
 
 
 # Convenience alias for OOP-style access backed by the shared cache
@@ -167,8 +170,7 @@ def get_plan(
     block_size: int = 65536,
 ) -> ResamplePlan:
     """Convenience wrapper delegating to the module resample plan cache."""
-    cache = get_resample_plan_cache()
-    return cache.get_plan(
+    return _impl_get_plan(
         grid_spec,
         vp_arr,
         target_dt=target_dt,
@@ -179,6 +181,28 @@ def get_plan(
 
 def set_cache(cache: ResamplePlanCache) -> None:
     """Alias to set_resample_plan_cache for caller convenience."""
+    return _impl_set_resample_plan_cache(cache)
+
+
+# Canonical _impl_* entrypoints
+def _impl_get_plan(
+    grid_spec: GridSpec,
+    vp_arr: np.ndarray,
+    target_dt: Optional[float] = None,
+    target_nt: Optional[int] = None,
+    block_size: int = 65536,
+) -> ResamplePlan:
+    cache = get_resample_plan_cache()
+    return cache.get_plan(
+        grid_spec,
+        vp_arr,
+        target_dt=target_dt,
+        target_nt=target_nt,
+        block_size=block_size,
+    )
+
+
+def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     set_resample_plan_cache(cache)
 
 

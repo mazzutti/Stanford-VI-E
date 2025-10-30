@@ -1,14 +1,14 @@
-"""Process and regenerate helpers (migrated from src.utils.process)
+"""Process and regeneration helpers.
 
-This module contains helpers for running external commands, managing caches,
-and running regeneration pipelines. It intentionally keeps local imports to
-avoid circular dependencies.
+Helpers for running external commands, managing caches, and running
+regeneration pipelines. Local imports are used to avoid circular
+dependencies.
 """
 
 from pathlib import Path
-import subprocess
 import logging
 from typing import List, Optional
+from src.utils.facades import LazyObjectProxy
 
 __all__ = []
 
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 class ProcessManager:
     """Object-oriented facade for process-related utilities.
 
-    Provides the same API surface as the module-level helpers but scoped
-    to an instance for easier testing and injection.
+    Provides an API surface scoped to an instance for easier testing and
+    injection.
     """
 
     def __init__(self, logger: Optional[logging.Logger] = None):
@@ -53,9 +53,6 @@ class ProcessManager:
 
 
 # Module-level default instance for convenience (lazy)
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy using shared LazyObjectProxy
 process_manager = LazyObjectProxy(lambda: ProcessManager())
 
@@ -85,41 +82,8 @@ def clear_cache(
     # heuristics implemented in `src.io.cleanup.cleanup_old_cache`. This keeps
     # the logic for what counts as "old cache" in one place. If patterns are
     # provided, keep the existing behavior (pattern-based deletions).
-    cache_dir = cache_dir or Path(".cache")
-    if patterns is None:
-        try:
-
-            from src.io.cache import cache_for_dir
-
-            removed_count, _ = cache_for_dir(str(cache_dir)).cleanup_old_cache(
-                dry_run=False
-            )
-            return removed_count
-        except Exception:
-            # Fallback to naive behavior if the centralized cleanup isn't
-            # available for some reason (e.g., during early bootstrap).
-            patterns = ["*"]
-
-    if not cache_dir.exists():
-        cache_dir.mkdir()
-
-    removed_count = 0
-    for pattern in patterns:
-        for filepath in cache_dir.glob(pattern):
-            try:
-                size = filepath.stat().st_size / (1024 * 1024)
-                logger.info("%s  Removing: %s (%.1f MB)", prefix, filepath.name, size)
-                filepath.unlink()
-                removed_count += 1
-            except Exception as e:
-                logger.warning("%s  Failed to remove %s: %s", prefix, filepath, e)
-
-    # use module logger
-    if removed_count > 0:
-        logger.info("%sRemoved %d files from %s", prefix, removed_count, cache_dir)
-    else:
-        logger.info("%sNo matching cache files to remove in %s", prefix, cache_dir)
-    return removed_count
+    # Delegate to canonical implementation kept under _impl_clear_cache.
+    return _impl_clear_cache(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
 
 
 def _impl_clear_cache(
@@ -127,32 +91,106 @@ def _impl_clear_cache(
     cache_dir: Optional[Path] = None,
     prefix: str = "",
 ) -> int:
-    return clear_cache(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
+    """Canonical implementation for clearing cache files.
+
+    - If `patterns` is provided, perform simple glob-based removals under
+      `cache_dir` (or the default cache directory).
+    - If no patterns are provided, delegate to the shared `CacheManager`
+      cleanup/main entrypoint which implements the repository-wide cleanup
+      heuristics.
+    Returns the number of removed files (int).
+    """
+    try:
+        from src.io.cache import cache_for_dir
+    except Exception:
+        logger.warning("%sCache utilities are unavailable", prefix)
+        return 0
+
+    # Normalize cache_dir to a string that cache_for_dir understands
+    cache_dir_str = str(cache_dir) if cache_dir is not None else None
+    cm = cache_for_dir(cache_dir_str)
+
+    # If explicit patterns are supplied, perform a simple pattern-based cleanup
+    if patterns:
+        removed = 0
+        import os
+        from pathlib import Path
+
+        target_dir = cache_dir_str or getattr(cm, "cache_dir", ".cache")
+        p = Path(target_dir)
+        if not p.exists():
+            return 0
+
+        for pat in patterns:
+            try:
+                for fn in p.glob(pat):
+                    try:
+                        os.remove(fn)
+                        removed += 1
+                    except Exception as e:
+                        logger.warning("%sError removing %s: %s", prefix, fn, e)
+            except Exception:
+                logger.warning("%sPattern %s evaluation failed", prefix, pat)
+
+        logger.info("%sRemoved %d files from %s", prefix, removed, str(p))
+        return removed
+
+    # Otherwise delegate to CacheManager.main which returns (removed_count, size_mb)
+    try:
+        removed, _size_mb = cm.main(dry_run=False, verbose=False)
+        return int(removed)
+    except Exception as e:
+        logger.warning("%sCache cleanup failed: %s", prefix, e)
+        return 0
 
 
 def open_file(
     filepath: str, description: Optional[str] = None, prefix: str = ""
 ) -> bool:
-    path = Path(filepath)
-    # use module logger
-    if not path.exists():
-        logger.warning("%sNot found: %s", prefix, filepath)
-        return False
-    if description:
-        logger.info("%sOpening: %s", prefix, description)
-    try:
-        subprocess.run(["open", str(path)], check=True)
-        return True
-    except Exception as e:
-        logger.error("%sFailed to open %s: %s", prefix, filepath, e)
-
-        return False
+    return _impl_open_file(filepath=filepath, description=description, prefix=prefix)
 
 
 def _impl_open_file(
     filepath: str, description: Optional[str] = None, prefix: str = ""
 ) -> bool:
-    return open_file(filepath=filepath, description=description, prefix=prefix)
+    """Open `filepath` in a platform-friendly way.
+
+    Prefer a pure-Python approach (`webbrowser.open`) and fall back to
+    platform shell openers (`open`, `xdg-open`) if necessary.
+    Returns True if an attempt to open the file was made, False otherwise.
+    """
+    from pathlib import Path
+
+    p = Path(filepath)
+    if not p.exists():
+        logger.error("%sMissing file: %s", prefix, filepath)
+        return False
+
+    # Try webbrowser which is cross-platform for file:// URLs
+    try:
+        import webbrowser
+
+        webbrowser.open(f"file://{p.resolve()}")
+        return True
+    except Exception:
+        pass
+
+    # Fallback to platform-specific opener
+    try:
+        import shutil
+        import subprocess
+
+        if shutil.which("open"):
+            subprocess.run(["open", str(p)], check=False)
+            return True
+        if shutil.which("xdg-open"):
+            subprocess.run(["xdg-open", str(p)], check=False)
+            return True
+    except Exception:
+        pass
+
+    logger.warning("%sCould not open file: %s", prefix, filepath)
+    return False
 
 
 def summarize_cache_files(
