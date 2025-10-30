@@ -50,27 +50,9 @@ from src.utils.facades import LazyObjectProxy
 seismogram_analyzer = LazyObjectProxy(lambda: SeismogramAnalyzer())
 
 
-def run_command(cmd, description, prefix: str = ""):
-    return seismogram_analyzer.run_command(cmd, description, prefix=prefix)
-
-
-def clear_cache(patterns=None, prefix: str = ""):
-    return seismogram_analyzer.clear_cache(patterns=patterns, prefix=prefix)
-
-
-def check_file_exists(filepath, description):
-    return seismogram_analyzer.check_file_exists(filepath, description)
-
-
-def open_file(filepath, description, prefix: str = ""):
-    return seismogram_analyzer.open_file(filepath, description, prefix=prefix)
-
-
-def main(*args, **kwargs):
-    return seismogram_analyzer.main(*args, **kwargs)
-
-
-__all__.extend(["SeismogramAnalyzer", "seismogram_analyzer"])
+# Prefer the OO facade and module-level lazy proxy. Callers should use
+# `seismogram_analyzer` or request an instance via `get_seismogram_analyzer()`.
+__all__.extend(["SeismogramAnalyzer", "seismogram_analyzer", "get_seismogram_analyzer"])
 
 
 def get_seismogram_analyzer(
@@ -78,9 +60,6 @@ def get_seismogram_analyzer(
 ) -> "SeismogramAnalyzer":
     """Return provided SeismogramAnalyzer or module-level lazy singleton."""
     return instance if instance is not None else seismogram_analyzer
-
-
-__all__.append("get_seismogram_analyzer")
 
 
 def _impl_run_command(cmd, description, prefix: str = ""):
