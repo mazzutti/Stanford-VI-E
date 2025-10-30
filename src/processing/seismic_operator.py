@@ -168,14 +168,4 @@ def get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator"
 __all__.append("get_seismic_operator")
 
 
-def get_seismic_operator_proxy(
-    instance: SeismicOperator | None = None,
-) -> SeismicOperator:
-    """Alias to `get_seismic_operator` that follows the proxy getter naming convention.
 
-    Returns the module-level `seismic_operator` if no instance is provided.
-    """
-    return instance if instance is not None else get_seismic_operator()
-
-
-__all__.append("get_seismic_operator_proxy")

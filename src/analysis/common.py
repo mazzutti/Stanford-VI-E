@@ -106,13 +106,4 @@ def get_analysis_common(instance: AnalysisCommon | None = None) -> "AnalysisComm
 __all__.append("get_analysis_common")
 
 
-def get_analysis_helpers_proxy(instance: dict | None = None) -> dict:
-    """Return the provided helpers dict or the module-level lazy proxy dict.
 
-    This helper mirrors the repo-wide `get_*` pattern for module-level
-    proxies and makes dependency injection in tests straightforward.
-    """
-    return instance if instance is not None else ANALYSIS_HELPERS
-
-
-__all__.append("get_analysis_helpers_proxy")

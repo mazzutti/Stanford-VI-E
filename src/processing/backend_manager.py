@@ -154,4 +154,4 @@ def get_backend_manager_proxy(instance: BackendManager | None = None) -> Backend
     return instance if instance is not None else get_backend_manager()
 
 
-__all__.append("get_backend_manager_proxy")
+
