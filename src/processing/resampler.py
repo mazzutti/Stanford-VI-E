@@ -720,104 +720,19 @@ resampler_factory = LazyObjectProxy(lambda: ResamplerFactory())
 __all__.extend(["ResamplerFactory", "resampler_factory"])
 
 
-# Backward-compatible top-level wrappers delegating to the ResamplerFactory
-def get_resampler(grid_spec: GridSpec) -> DepthTimeResampler:
-    """Return a DepthTimeResampler for the given GridSpec (convenience)."""
-    return resampler_factory.get_resampler(grid_spec)
-
-
-def compute_one_way_time(
-    grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
-) -> np.ndarray:
-    return get_resampler(grid_spec).compute_one_way_time(vp_trace)
-
-
-def compute_one_way_times(
-    grid_spec: GridSpec, vp_arr: np.ndarray | Quantity
-) -> np.ndarray:
-    return get_resampler(grid_spec).compute_one_way_times(vp_arr)
-
-
-def depth_to_time_cube(
-    grid_spec: GridSpec,
-    data_depth: np.ndarray | Quantity,
-    vp_depth: np.ndarray | Quantity,
-    target_dt: Optional[float] = None,
-    target_nt: Optional[int] = None,
-    plan: ResamplePlan | None = None,
-) -> tuple:
-    return get_resampler(grid_spec).depth_to_time_cube(
-        data_depth, vp_depth, target_dt=target_dt, target_nt=target_nt, plan=plan
-    )
-
-
-def time_to_depth_cube(
-    grid_spec: GridSpec,
-    seismogram_time: np.ndarray | Quantity,
-    vp_depth: np.ndarray | Quantity,
-    plan: ResamplePlan | None = None,
-) -> np.ndarray | Quantity:
-    return get_resampler(grid_spec).time_to_depth_cube(
-        seismogram_time, vp_depth, plan=plan
-    )
-
-
-def resample_time_cube(
-    grid_spec: GridSpec,
-    data_time: np.ndarray,
-    src_time_axis: np.ndarray,
-    target_time_axis: np.ndarray,
-    kind: str = "linear",
-    progress_every: Optional[int] = 30,
-    prefix: str = "",
-) -> np.ndarray:
-    return get_resampler(grid_spec).resample_time_cube(
-        data_time,
-        src_time_axis,
-        target_time_axis,
-        kind=kind,
-        progress_every=progress_every,
-        prefix=prefix,
-    )
-
-
-def depth_to_time_from_twt(
-    grid_spec: GridSpec,
-    data_depth: np.ndarray,
-    twt_irregular: np.ndarray,
-    time_axis: np.ndarray,
-    is_categorical: bool = False,
-    progress_every: Optional[int] = 30,
-    prefix: str = "",
-    plan: ResamplePlan | None = None,
-) -> np.ndarray:
-    return get_resampler(grid_spec).depth_to_time_from_twt(
-        data_depth,
-        twt_irregular,
-        time_axis,
-        is_categorical=is_categorical,
-        progress_every=progress_every,
-        prefix=prefix,
-        plan=plan,
-    )
-
-
-def compute_twt_for_trace(grid_spec: GridSpec, vp_trace: np.ndarray | Quantity):
-    return get_resampler(grid_spec).compute_twt_for_trace(vp_trace)
-
-
-__all__.extend(
-    [
-        "get_resampler",
-        "compute_one_way_time",
-        "compute_one_way_times",
-        "depth_to_time_cube",
-        "time_to_depth_cube",
-        "resample_time_cube",
-        "depth_to_time_from_twt",
-        "compute_twt_for_trace",
-    ]
-)
+# We prefer callers use the ResamplerFactory facade or the ResamplerService
+# module-level lazy proxies. The thin top-level delegate wrappers were
+# retained for backward compatibility but are removed here to reduce
+# duplicated surface area. Callers should use `resampler_factory` or
+# `get_resampler_service()` instead.
+__all__.extend([
+    "ResamplerFactory",
+    "resampler_factory",
+    "ResamplerService",
+    "resampler_service",
+    "get_resampler_service",
+    "get_resampler_factory",
+])
 
 
 # --- Simplified OO facade -------------------------------------------------
@@ -828,15 +743,19 @@ class ResamplerService:
     """
 
     def get_resampler(self, grid_spec: GridSpec) -> DepthTimeResampler:
-        return get_resampler(grid_spec)
+        return resampler_factory.get_resampler(grid_spec)
 
     def compute_one_way_time(
         self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
     ):
-        return compute_one_way_time(grid_spec, vp_trace)
+        return resampler_factory.get_resampler(grid_spec).compute_one_way_time(
+            vp_trace
+        )
 
     def compute_one_way_times(self, grid_spec: GridSpec, vp_arr: np.ndarray | Quantity):
-        return compute_one_way_times(grid_spec, vp_arr)
+        return resampler_factory.get_resampler(grid_spec).compute_one_way_times(
+            vp_arr
+        )
 
     def depth_to_time_cube(
         self,
@@ -847,13 +766,8 @@ class ResamplerService:
         target_nt=None,
         plan: ResamplePlan | None = None,
     ):
-        return depth_to_time_cube(
-            grid_spec,
-            data_depth,
-            vp_depth,
-            target_dt=target_dt,
-            target_nt=target_nt,
-            plan=plan,
+        return resampler_factory.get_resampler(grid_spec).depth_to_time_cube(
+            data_depth, vp_depth, target_dt=target_dt, target_nt=target_nt, plan=plan
         )
 
     def time_to_depth_cube(
@@ -863,7 +777,9 @@ class ResamplerService:
         vp_depth,
         plan: ResamplePlan | None = None,
     ):
-        return time_to_depth_cube(grid_spec, seismogram_time, vp_depth, plan=plan)
+        return resampler_factory.get_resampler(grid_spec).time_to_depth_cube(
+            seismogram_time, vp_depth, plan=plan
+        )
 
     def resample_time_cube(
         self,
@@ -875,8 +791,7 @@ class ResamplerService:
         progress_every: Optional[int] = 30,
         prefix: str = "",
     ):
-        return resample_time_cube(
-            grid_spec,
+        return resampler_factory.get_resampler(grid_spec).resample_time_cube(
             data_time,
             src_time_axis,
             target_time_axis,
@@ -896,8 +811,7 @@ class ResamplerService:
         prefix: str = "",
         plan: ResamplePlan | None = None,
     ):
-        return depth_to_time_from_twt(
-            grid_spec,
+        return resampler_factory.get_resampler(grid_spec).depth_to_time_from_twt(
             data_depth,
             twt_irregular,
             time_axis,
@@ -910,7 +824,9 @@ class ResamplerService:
     def compute_twt_for_trace(
         self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
     ):
-        return compute_twt_for_trace(grid_spec, vp_trace)
+        return resampler_factory.get_resampler(grid_spec).compute_twt_for_trace(
+            vp_trace
+        )
 
 
 from src.utils.facades import LazyObjectProxy
