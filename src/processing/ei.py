@@ -237,7 +237,7 @@ def _impl_compute_ei_gradient_and_summary(
     if weights is None:
         weights = np.ones(len(angles_array)) / len(angles_array)
 
-    ei_stack = assemble_weighted_stack(ei_volumes, weights, verbose=verbose)
+    ei_stack = _impl_assemble_weighted_stack(ei_volumes, weights, verbose=verbose)
     ei_near = ei_volumes[0]
     ei_far = ei_volumes[-1]
     ei_gradient = ei_far - ei_near
@@ -250,7 +250,7 @@ def _impl_compute_ei_gradient_and_summary(
         except Exception:
             pass
 
-    results = package_ei_results(
+    results = _impl_package_ei_results(
         ei_volumes, angles_array, ei_stack, ei_gradient, weights=weights
     )
     return {"ei_stack": ei_stack, "ei_gradient": ei_gradient, "results": results}
@@ -369,7 +369,7 @@ def _impl_compute_and_save_multiangle_ei(
 
     logger.info("\nAnalyzing facies correlation for each angle...")
 
-    angle_stats_result = compute_angle_statistics_and_correlation(ei_results)
+    angle_stats_result = _impl_compute_angle_statistics_and_correlation(ei_results)
     angle_statistics = angle_stats_result.get("angle_statistics", [])
     _ = angle_stats_result.get("correlation_matrix")
 
@@ -390,7 +390,7 @@ def _impl_compute_and_save_multiangle_ei(
         except Exception:
             logger.info("  %s°: stats available", angle)
 
-    results = package_ei_results(
+    results = _impl_package_ei_results(
         ei_volumes=ei_volumes_list,
         angles_array=angles_array,
         ei_stack=ei_optimal,
@@ -452,89 +452,7 @@ def _impl_compute_and_save_multiangle_ei_from_vm(
     )
 
 
-# Backwards-compatible thin wrappers that delegate to the lazy proxy
-def compute_angle_statistics_and_correlation(
-    ei_results: Dict[str, Any],
-) -> Dict[str, Any]:
-    return ei_processor.compute_angle_statistics_and_correlation(ei_results)
 
-
-def assemble_weighted_stack(
-    ei_volumes: Sequence[ArrayLike], weights, verbose: bool = True
-) -> np.ndarray:
-    return ei_processor.assemble_weighted_stack(ei_volumes, weights, verbose=verbose)
-
-
-def create_weighted_stack_and_report(ei_volumes, weights):
-    return ei_processor.create_weighted_stack_and_report(ei_volumes, weights)
-
-
-def compute_ei_weights(ei_volumes, angles, method="variance"):
-    return ei_processor.compute_ei_weights(ei_volumes, angles, method=method)
-
-
-def finalize_weighted_stack(ei_volumes, weights):
-    return ei_processor.finalize_weighted_stack(ei_volumes, weights)
-
-
-def package_ei_results(
-    ei_volumes,
-    angles_array,
-    ei_stack,
-    ei_gradient,
-    weights=None,
-    formula: str = "Connolly (1999)",
-    extra_config: Optional[Dict[str, Any]] = None,
-):
-    return ei_processor.package_ei_results(
-        ei_volumes,
-        angles_array,
-        ei_stack,
-        ei_gradient,
-        weights=weights,
-        formula=formula,
-        extra_config=extra_config,
-    )
-
-
-def compute_ei_gradient_and_summary(
-    ei_volumes, angles_array, weights=None, verbose=True
-):
-    return ei_processor.compute_ei_gradient_and_summary(
-        ei_volumes, angles_array, weights=weights, verbose=verbose
-    )
-
-
-def compare_ei_angles(ei_results, facies_depth, slice_inline=75):
-    return ei_processor.compare_ei_angles(
-        ei_results, facies_depth, slice_inline=slice_inline
-    )
-
-
-def analyze_facies_correlation_depth(ei_volume, facies):
-    return ei_processor.analyze_facies_correlation_depth(ei_volume, facies)
-
-
-def compute_and_save_multiangle_ei(*args, **kwargs):
-    return ei_processor.compute_and_save_multiangle_ei(*args, **kwargs)
-
-
-def compute_and_save_multiangle_ei_from_vm(*args, **kwargs):
-    return ei_processor.compute_and_save_multiangle_ei_from_vm(*args, **kwargs)
-
-
-__all__ = [
-    "compute_angle_statistics_and_correlation",
-    "assemble_weighted_stack",
-    "create_weighted_stack_and_report",
-    "compute_ei_weights",
-    "finalize_weighted_stack",
-    "package_ei_results",
-    "compute_ei_gradient_and_summary",
-    "compare_ei_angles",
-    "analyze_facies_correlation_depth",
-    "compute_and_save_multiangle_ei",
-    "compute_and_save_multiangle_ei_from_vm",
-]
-
-__all__.extend(["MultiAngleEI", "ei_processor"])
+# Prefer the OO facade and the module-level lazy proxy. Callers should use
+# `ei_processor` or obtain a configured instance via `get_ei_processor()`.
+__all__ = ["MultiAngleEI", "ei_processor", "get_ei_processor"]
