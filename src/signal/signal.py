@@ -1,8 +1,14 @@
-"""Signal-processing helpers (migrated to src.signal)"""
+"""Signal-processing helpers.
+
+Utilities for common seismic signal-processing tasks (wavelet application,
+reflectivity, seismogram generation).
+"""
 
 from typing import Optional
 import numpy as np
 import logging
+
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +24,7 @@ __all__ = [
 class SeismicProcessor:
     """Object-oriented utility for seismic processing tasks.
 
-    Contains methods to compute reflectivity and apply wavelets. The class
-    is thin — it mainly groups related functions and holds configuration
-    defaults where useful.
+    Groups related functions and holds configuration defaults where useful.
     """
 
     def __init__(self, logger_name: str = __name__):
@@ -109,13 +113,18 @@ class SeismicProcessor:
 
 
 # Backwards-compatible top-level wrapper functions
-from src.utils.facades import LazyObjectProxy
 
-# Module-level lazy singleton processor for gradual migration
+# Module-level lazy singleton processor
 seismic_processor: SeismicProcessor = LazyObjectProxy(lambda: SeismicProcessor())
 
 
 def get_seismic_processor(instance: SeismicProcessor | None = None) -> SeismicProcessor:
+    return _impl_get_seismic_processor(instance)
+
+
+def _impl_get_seismic_processor(
+    instance: SeismicProcessor | None = None,
+) -> SeismicProcessor:
     return instance if instance is not None else seismic_processor
 
 
@@ -129,7 +138,7 @@ def apply_wavelet_to_cube(
     progress_every: Optional[int] = 30,
     prefix: str = "",
 ) -> np.ndarray:
-    return _default_processor.apply_wavelet_to_cube(
+    return _impl_apply_wavelet_to_cube(
         refl_cube, wavelet, mode=mode, progress_every=progress_every, prefix=prefix
     )
 
@@ -137,7 +146,7 @@ def apply_wavelet_to_cube(
 def impedance_to_seismogram(
     impedance, dt, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
 ):
-    return _default_processor.impedance_to_seismogram(
+    return _impl_impedance_to_seismogram(
         impedance, dt, f_peak=f_peak, progress_every=progress_every, prefix=prefix
     )
 
@@ -145,6 +154,39 @@ def impedance_to_seismogram(
 def impedance_to_seismogram_depth(
     impedance, dz, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
 ):
+    return _impl_impedance_to_seismogram_depth(
+        impedance, dz, f_peak=f_peak, progress_every=progress_every, prefix=prefix
+    )
+
+
+def _impl_apply_wavelet_to_cube(
+    refl_cube: np.ndarray,
+    wavelet: np.ndarray,
+    mode: str = "same",
+    progress_every: Optional[int] = 30,
+    prefix: str = "",
+) -> np.ndarray:
+    """Canonical implementation delegating to the default SeismicProcessor.
+
+    This provides a single implementation point that callers and tests can
+    reference without depending on module-level mutable defaults.
+    """
+    return _default_processor.apply_wavelet_to_cube(
+        refl_cube, wavelet, mode=mode, progress_every=progress_every, prefix=prefix
+    )
+
+
+def _impl_impedance_to_seismogram(
+    impedance, dt, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
+) -> np.ndarray:
+    return _default_processor.impedance_to_seismogram(
+        impedance, dt, f_peak=f_peak, progress_every=progress_every, prefix=prefix
+    )
+
+
+def _impl_impedance_to_seismogram_depth(
+    impedance, dz, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
+) -> np.ndarray:
     return _default_processor.impedance_to_seismogram_depth(
         impedance, dz, f_peak=f_peak, progress_every=progress_every, prefix=prefix
     )

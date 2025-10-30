@@ -14,6 +14,8 @@ from numpy.typing import ArrayLike
 import numpy as np
 import logging
 
+from src.utils.facades import LazyObjectProxy
+
 
 def _nanmax_abs(a: np.ndarray) -> float:
     try:
@@ -166,10 +168,7 @@ __all__ = ["UnitRegistry"]
 logger = logging.getLogger(__name__)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level lazy registry for gradual migration
+# Module-level lazy registry
 unit_registry: UnitRegistry = LazyObjectProxy(lambda: UnitRegistry())
 
 

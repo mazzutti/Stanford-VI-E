@@ -1,7 +1,7 @@
 """Small feature-flag helper used for staged rollouts.
 
-This module provides a minimal, environment-driven feature-flag helper
-intended for temporary rollout control during the facade migration.
+toggle from CI or developer machines. Remove this module after the
+This module provides a minimal, environment-driven feature-flag helper.
 
 Usage:
     from src.utils.flags import use_flag
@@ -11,14 +11,14 @@ Usage:
         ...
 
 Flags are intentionally simple (env-var driven) so they are easy to
-toggle from CI or developer machines. Remove this module after the
-rollout is complete.
+toggle from CI or developer machines.
 """
 
 from __future__ import annotations
 
 import os
 from typing import Any
+from src.utils.facades import LazyObjectProxy
 
 
 __all__ = ["use_flag", "get_flag_value"]
@@ -48,9 +48,6 @@ def use_flag(name: str, default: bool = False) -> bool:
 def get_flag_value(name: str, default: str | None = None) -> str | None:
     """Return the raw flag value from the environment or the default."""
     return os.environ.get(name, default)
-
-
-from src.utils.facades import LazyObjectProxy
 
 
 class Flags:

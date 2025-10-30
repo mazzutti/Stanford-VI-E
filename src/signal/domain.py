@@ -1,9 +1,7 @@
-"""Domain conversion helpers moved to the signal package.
+"""Domain conversion helpers.
 
-This module contains helpers to convert depth-domain property cubes into
-irregular two-way time (TWT) cubes and to resample properties onto a regular
-time grid. These helpers provide canonical, well-documented routines for
-domain conversion and resampling.
+Helpers to convert depth-domain property cubes into irregular two-way time
+(TWT) cubes and to resample properties onto a regular time grid.
 """
 
 import os
@@ -24,9 +22,9 @@ import logging
 from src.io.grid import GridSpec
 
 from src.utils.quantity import Quantity
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
-
 
 __all__ = [
     "convert_depth_to_twt",
@@ -38,10 +36,10 @@ __all__ = [
 class DepthTimeConverter:
     """Encapsulates depth-to-time conversion and property resampling.
 
-    This class is primarily a thin facade around the existing resampler
-    infrastructure but groups the two related operations under a single
-    object. It keeps the same semantics as the previous helpers while
-    offering an instance to hold configuration/state in future.
+    This class is a thin facade around the resampler infrastructure and
+    groups depth-to-time conversion and resampling operations under a
+    single object. It keeps the same semantics as the previous helpers
+    while offering an instance to hold configuration/state.
     """
 
     def __init__(self, grid_spec: GridSpec):
@@ -51,9 +49,7 @@ class DepthTimeConverter:
         logger.info("Converting from depth to two-way time using DepthTimeResampler...")
 
         # Use the canonical DepthTimeResampler which already handles Quantity.
-        from src.processing.resampler import resampler_factory
-
-        resampler = resampler_factory.get_resampler(grid_spec=self.grid_spec)
+        # resampler not required here; ResamplePlan is computed below via cache
 
         input_was_quantity = isinstance(vp_depth, Quantity)
         vp_arr = vp_depth.array if input_was_quantity else np.asarray(vp_depth)
@@ -141,7 +137,8 @@ class DepthTimeConverter:
                     resampled_properties[key] = out
             return resampled_properties, time_axis
 
-        # Fallback: CPU implementation using centralized helper that accepts twt_irregular
+        # Fallback: CPU implementation using centralized helper that accepts
+        # twt_irregular
         logger.info("Resampling properties onto regular time grid (CPU fallback)")
         from src.processing.resampler import resampler_factory
 
@@ -171,19 +168,38 @@ class DepthTimeConverter:
 
 # Backwards-compatible wrapper helpers
 def convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
-    converter = DepthTimeConverter(grid_spec)
-    return converter.convert_depth_to_twt(vp_depth)
+    return _impl_convert_depth_to_twt(vp_depth, grid_spec)
 
 
 def resample_properties_to_time(properties_depth, twt_irregular, grid_spec: GridSpec):
-    converter = DepthTimeConverter(grid_spec)
+    return _impl_resample_properties_to_time(properties_depth, twt_irregular, grid_spec)
+
+
+def _impl_convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
+    """Canonical implementation for convert_depth_to_twt.
+
+    This function centralizes the conversion entrypoint for easier testing
+    and to provide a canonical callable. It preserves the original
+    behavior.
+    """
+    # Prefer the get_* helper which returns either a provided instance or
+    # the module-level lazy proxy when grid_spec is None.
+    converter = get_depth_time_converter(grid_spec=grid_spec)
+    return converter.convert_depth_to_twt(vp_depth)
+
+
+def _impl_resample_properties_to_time(
+    properties_depth, twt_irregular, grid_spec: GridSpec
+):
+    """Canonical implementation for resample_properties_to_time.
+
+    Delegates to DepthTimeConverter while preserving Quantity handling.
+    """
+    converter = get_depth_time_converter(grid_spec=grid_spec)
     return converter.resample_properties_to_time(properties_depth, twt_irregular)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level lazy converter for gradual migration
+# Module-level lazy converter
 depth_time_converter = LazyObjectProxy(lambda gs: DepthTimeConverter(gs))
 
 
@@ -196,6 +212,12 @@ def get_depth_time_converter(
     DepthTimeConverter is created for the provided `grid_spec` or the
     module-level lazy proxy is returned when `grid_spec` is None.
     """
+    return _impl_get_depth_time_converter(grid_spec=grid_spec, instance=instance)
+
+
+def _impl_get_depth_time_converter(
+    grid_spec: GridSpec | None = None, instance: DepthTimeConverter | None = None
+) -> DepthTimeConverter:
     if instance is not None:
         return instance
     if grid_spec is not None:

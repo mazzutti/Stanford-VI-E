@@ -1,8 +1,7 @@
-"""Reflectivity helpers moved into `src.signal`.
+"""Reflectivity helpers.
 
-Canonical implementation for reflectivity and Zoeppritz routines. Kept in
-`src.signal` because these are signal/math helpers used by modeling and
-analysis pipelines.
+Canonical implementation for reflectivity and Zoeppritz routines. These
+signal/math helpers are used by modeling and analysis pipelines.
 """
 
 import numpy as np
@@ -11,29 +10,31 @@ from src.utils.quantity import Quantity
 import os
 import logging
 
+from src.utils.facades import LazyObjectProxy
+
+from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
+
 __all__ = [
-    "reflectivity_from_ai",
-    "solve_zoeppritz",
     "ReflectivityCalculator",
     "ZoeppritzSolver",
     "reflectivity_calc",
     "zoeppritz_solver",
+    "get_reflectivity_calc",
+    "get_zoeppritz_solver",
+    "configure_reflectivity",
 ]
 
 # Module logger
 logger = logging.getLogger(__name__)
 
 # Try to import numba; if not present we keep falling back to pure-NumPy code.
-from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
-from src.utils.facades import LazyObjectProxy
 
 
 class ReflectivityCalculator:
     """Calculate reflectivity-related quantities.
 
-    This class encapsulates the previous procedural helper
-    `reflectivity_from_ai`. It accepts Quantity or ndarray inputs and
-    returns a `Quantity` when possible for semantic consistency.
+    Encapsulates reflectivity routines and accepts Quantity or ndarray
+    inputs, returning a `Quantity` when possible for semantic consistency.
     """
 
     def __init__(self, pad_width=((0, 0), (0, 0), (1, 0))):
@@ -45,10 +46,12 @@ class ReflectivityCalculator:
         """Calculate normal-incidence reflectivity from an AI cube.
 
         Args:
-            ai_time (np.ndarray|Quantity): 3D acoustic impedance cube in the time domain.
+            ai_time (np.ndarray | Quantity): 3D acoustic impedance cube
+                in the time domain.
 
         Returns:
-            np.ndarray|Quantity: 3D reflectivity cube (wrapped in Quantity when available).
+            np.ndarray | Quantity: 3D reflectivity cube; returned as a
+                Quantity when available.
         """
         if isinstance(ai_time, Quantity):
             ai = ai_time.array
@@ -103,8 +106,8 @@ class ZoeppritzSolver:
     ) -> np.ndarray:
         """Solve for P-P reflection coefficients.
 
-        Args are the same as the legacy function. Returns complex128 array
-        shaped like the inputs.
+        Args are the same as the prior function. Returns complex128 array
+            shaped like the inputs.
         """
         if self.use_numba:
             spatial_shape = vp1.shape
@@ -314,7 +317,8 @@ if _NUMBA_AVAILABLE:
 
 # Note: prefer `reflectivity_calc.reflectivity_from_ai(...)` and
 # `zoeppritz_solver.solve(...)` singletons. Function-level compatibility
-# wrappers were removed to simplify the public API.
+# wrappers were removed to simplify the public API. Use the
+# `get_*` helpers or the proxies directly.
 
 
 # Module-level singletons for reuse across the package
@@ -336,6 +340,18 @@ def configure_reflectivity(
     performance without constructing new objects.
     """
     global reflectivity_calc, zoeppritz_solver
+    return _impl_configure_reflectivity(use_numba=use_numba, cpu_batch=cpu_batch)
+
+
+def _impl_configure_reflectivity(
+    use_numba: bool | None = None, cpu_batch: int | None = None
+) -> None:
+    """Canonical implementation for configuring module-level reflectivity singletons.
+
+    This keeps configuration logic in a single implementation function that
+    can be invoked by both the top-level helper and tests.
+    """
+    global reflectivity_calc, zoeppritz_solver
     if use_numba is not None:
         # Update zoeppritz solver preference
         zoeppritz_solver.use_numba = bool(use_numba) and _NUMBA_AVAILABLE
@@ -353,6 +369,16 @@ def get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator
     This follows the repository convention of providing `get_*` helpers for
     module-level lazy singletons to simplify testing and dependency injection.
     """
+    return _impl_get_reflectivity_calc(config)
+
+
+def _impl_get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator":
+    """Canonical getter for the module-level reflectivity_calc proxy.
+
+    When `config` is None the lazy proxy is returned; when a dict is
+    provided a new instance is returned to allow tests to inject configured
+    instances via the same API surface.
+    """
     if config is None:
         return reflectivity_calc
     return ReflectivityCalculator()
@@ -362,9 +388,17 @@ def get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
     """Return the module-level zoeppritz_solver proxy when `config` is None,
     otherwise return a new ZoeppritzSolver instance with optional config.
     """
+    return _impl_get_zoeppritz_solver(config)
+
+
+def _impl_get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
+    """Canonical getter for the module-level zoeppritz_solver proxy.
+
+    Returns the lazy singleton when `config` is None. If a config dict is
+    provided the dict is used to construct a configured ZoeppritzSolver.
+    """
     if config is None:
         return zoeppritz_solver
-    # accept explicit config keys if provided
     use_numba = None
     cpu_batch = None
     if isinstance(config, dict):
@@ -374,11 +408,5 @@ def get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
 
 
 # Backwards-compatible thin wrappers (function-level compatibility)
-def reflectivity_from_ai(ai_time):
-    """Compatibility wrapper delegating to the ReflectivityCalculator singleton."""
-    return reflectivity_calc.reflectivity_from_ai(ai_time)
-
-
-def solve_zoeppritz(vp1, vs1, rho1, vp2, vs2, rho2, theta1_deg: float):
-    """Compatibility wrapper delegating to the ZoeppritzSolver singleton."""
-    return zoeppritz_solver.solve(vp1, vs1, rho1, vp2, vs2, rho2, theta1_deg)
+# Thin procedural wrappers removed: callers should use the
+# `reflectivity_calc` / `zoeppritz_solver` proxies or the get_* helpers.
