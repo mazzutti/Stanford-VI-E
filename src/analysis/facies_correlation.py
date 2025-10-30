@@ -7,10 +7,14 @@ This script performs statistical analysis to measure:
 4. Facies discrimination capability
 
 Usage:
-    python -m src.analyze_facies_correlation                        # Default: depth domain, multi-angle EI
-    python -m src.analyze_facies_correlation --no-multiangle        # Use single-angle EI seismogram
-    python -m src.analyze_facies_correlation --domain time          # Time domain (implies --no-multiangle)
-    python -m src.analyze_facies_correlation --domain depth         # Explicit depth domain with multi-angle
+    python -m src.analyze_facies_correlation
+        # Default: depth domain, multi-angle EI
+    python -m src.analyze_facies_correlation --no-multiangle
+        # Use single-angle EI seismogram
+    python -m src.analyze_facies_correlation --domain time
+        # Time domain (implies --no-multiangle)
+    python -m src.analyze_facies_correlation --domain depth
+        # Explicit depth domain with multi-angle
 """
 
 import numpy as np
@@ -23,8 +27,10 @@ from scipy.ndimage import sobel, gaussian_filter
 from scipy.stats import pearsonr, spearmanr
 from src.io import data_loader
 from src.io.grid import GridSpec
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
+
 
 # Suppress matplotlib font warnings
 logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
@@ -87,9 +93,6 @@ class FaciesCorrelationAnalyzer:
         )
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level singleton (lazy proxy)
 facies_correlation_analyzer = LazyObjectProxy(lambda: FaciesCorrelationAnalyzer())
 
@@ -101,15 +104,27 @@ def get_facies_correlation_analyzer(
     instance: FaciesCorrelationAnalyzer | None = None,
 ) -> "FaciesCorrelationAnalyzer":
     """Return provided FaciesCorrelationAnalyzer or module-level lazy singleton."""
-    return instance if instance is not None else facies_correlation_analyzer
+    return _impl_get_facies_correlation_analyzer(instance)
 
 
 __all__.append("get_facies_correlation_analyzer")
 
 
-# The previous `convert_depth_to_time` thin wrapper was removed in favor of
-# calling `DepthTimeResampler` directly. Callers should construct a resampler
-# and use `depth_to_time_cube` so there's a single canonical implementation.
+def _impl_get_facies_correlation_analyzer(
+    instance: FaciesCorrelationAnalyzer | None = None,
+) -> FaciesCorrelationAnalyzer:
+    """Canonical implementation for obtaining the FaciesCorrelationAnalyzer.
+
+    Returns the provided instance when not None, otherwise returns the
+    module-level `facies_correlation_analyzer` lazy proxy. Using a single
+    `_impl_*` entrypoint simplifies dependency injection and testing.
+    """
+    return instance if instance is not None else facies_correlation_analyzer
+
+
+# Prefer using `DepthTimeResampler` directly for depth/time conversions.
+# Callers can construct a resampler and use `depth_to_time_cube` for a
+# single canonical implementation.
 
 
 def convert_time_to_depth(seismogram_time, vp_depth, grid_spec: GridSpec):
@@ -447,7 +462,10 @@ def create_summary_plots(
     fig = plt.figure(figsize=(24, 18))
     domain_label = "Depth Domain" if domain == "depth" else "Time Domain"
     fig.suptitle(
-        f"Quantitative Seismic-Facies Correlation Analysis: AVO vs AI vs EI ({domain_label})",
+        (
+            "Quantitative Seismic-Facies Correlation Analysis: AVO vs AI "
+            f"vs EI ({domain_label})"
+        ),
         fontsize=16,
         y=0.995,
     )

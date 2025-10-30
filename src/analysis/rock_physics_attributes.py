@@ -1,48 +1,22 @@
-"""
-Rock Physics Attributes Analysis
+"""Rock physics attribute helpers.
 
-Computes a set of rock-physics attributes derived from elastic properties
-(Vp, Vs, ρ). These attributes are intended for reservoir characterization
-and facies discrimination. The module combines multiple seismic analysis
-techniques to create discriminants that separate lithology and fluid effects.
-
-Attributes computed (high level):
-    - Lambda-Rho (λρ): Incompressibility × Density (fluid-sensitive)
-    - Mu-Rho (μρ): Shear modulus × Density (lithology-sensitive)
-    - Fluid Factor: Separates fluid effects from lithology
-    - Poisson Impedance: Direct fluid sensitivity indicator
-    - AVO Attributes: Intercept, Gradient (angle-dependent reflectivity)
-    - EI Gradient (ΔEI): Angle-dependent elastic impedance response
-    - Hybrid Discriminants: Combined attributes for enhanced separation
-
-Performance target:
-    - Current best: EI at 10° with Cohen's d = 3.407
-    - Goal: Cohen's d > 4.0 (very large effect size)
-
-References:
-    - Goodway et al. (1997): Lambda-Mu-Rho method
-    - Quakenbush et al. (2006): Poisson impedance
-    - Russell et al. (2003): Hybrid attributes for reservoir characterization
-    - Avseth et al. (2005): Quantitative Seismic Interpretation
-
-Note: Multi-angle EI helpers were moved to modeling_utils.py
+Note: multi-angle EI helpers are available in modeling_utils.py. A few
+helper aliases remain here for convenience.
 """
 
-import numpy as np
-
-# Defer heavy or specialized plotting imports.
-# GridSpec and similar helpers are imported inside local scopes when needed.
+import os
 import time
 import hashlib
-import os
 import logging
 from pathlib import Path
 
+import numpy as np
 from tqdm.auto import tqdm
 
 from src.modeling import modeling as modeling_utils
 from src.processing.ei import ei_processor
 from src.utils.units import UnitRegistry
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +28,8 @@ __all__ = [
 
 
 # Thin object-oriented facade for the analysis helpers. This provides a
-# stable OO entrypoint for callers to migrate to without changing the
-# underlying functional implementations in this module.
+# stable OO entrypoint for callers to use without changing the underlying
+# functional implementations in this module.
 class RockPhysicsAnalyzer:
     """Facade exposing key rock-physics analysis functions as methods."""
 
@@ -121,10 +95,7 @@ class RockPhysicsAnalyzer:
         return main(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton for gradual migration (lazy proxy)
+# Module-level lazy proxy for RockPhysicsAnalyzer
 rock_physics_analyzer = LazyObjectProxy(lambda: RockPhysicsAnalyzer())
 
 
@@ -135,10 +106,22 @@ def get_rock_physics_analyzer(
     instance: RockPhysicsAnalyzer | None = None,
 ) -> "RockPhysicsAnalyzer":
     """Return provided RockPhysicsAnalyzer or the module-level lazy singleton."""
-    return instance if instance is not None else rock_physics_analyzer
+    return _impl_get_rock_physics_analyzer(instance)
 
 
 __all__.append("get_rock_physics_analyzer")
+
+
+def _impl_get_rock_physics_analyzer(
+    instance: RockPhysicsAnalyzer | None = None,
+) -> RockPhysicsAnalyzer:
+    """Canonical implementation for obtaining the RockPhysicsAnalyzer.
+
+    Returns the provided instance when not None, otherwise returns the
+    module-level `rock_physics_analyzer` lazy proxy. Use this single
+    implementation for dependency injection and tests.
+    """
+    return instance if instance is not None else rock_physics_analyzer
 
 
 def _apply_seismic_plot_style():
@@ -422,8 +405,10 @@ def create_optimal_ei_stack(
             'variance', 'cohens_d', 'equal', 'cosine', 'gradient'
         facies (np.ndarray): Facies model for Cohen's d based optimization.
             Required if optimization == 'cohens_d'.
-        cohens_d_threshold (float): Minimum Cohen's d to include angle (for 'cohens_d' optimization)
-        top_n_angles (int): Use only top N angles by Cohen's d (for 'cohens_d' optimization)
+        cohens_d_threshold (float): Minimum Cohen's d to include angle (for
+            'cohens_d' optimization)
+        top_n_angles (int): Use only top N angles by Cohen's d (for
+            'cohens_d' optimization)
 
     Returns:
         tuple: (ei_stack, weights, selected_angles)
@@ -1000,7 +985,8 @@ def compute_hybrid_ei_avo_attributes(vp, vs, rho, ei_angle=10, angles_deg=None):
     )
     ei_gradient = ei_results["ei_gradient"]
     ei_stack = ei_results["ei_stack"]
-    # Determine single-angle optimal: prefer explicit ei_angle, otherwise pick middle of angles_to_use
+    # Determine single-angle optimal: prefer explicit ei_angle. Otherwise,
+    # pick the middle entry of angles_to_use
     if ei_angle is None:
         mid_idx = len(angles_to_use) // 2
         chosen_angle = angles_to_use[mid_idx]
@@ -1202,7 +1188,10 @@ def compare_all_attributes(hybrid_results, facies):
 
         logger.info(
             "%s",
-            f"{i:<5} {r['name']:<35} {r['cohens_d']:>10.4f} {r['pearson_r']:>10.4f} {r['snr']:>8.2f}  {effect}",
+            (
+                f"{i:<5} {r['name']:<35} {r['cohens_d']:>10.4f} "
+                f"{r['pearson_r']:>10.4f} {r['snr']:>8.2f}  {effect}"
+            ),
         )
 
     logger.info("%s", "-" * 70)
@@ -2490,7 +2479,8 @@ def plot_multiangle_ei_facies_analysis(ei_results, facies, cache_dir=".cache"):
 def plot_multiangle_ei_main(cache_dir: str = ".cache"):
     """Programmatic main to find latest EI cache and generate comparison + facies plots.
 
-    Returns a tuple (path_comparison, path_facies) where each may be None if not generated.
+    Returns a tuple (path_comparison, path_facies) where each may be None
+    if not generated.
     """
 
     from src.io.cache import cache_for_dir

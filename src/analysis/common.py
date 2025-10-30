@@ -1,7 +1,7 @@
-"""Shared helpers for analysis scripts (moved from regenerate_common).
+"""Shared helpers and convenience utilities for analysis scripts.
 
-This centralizes environment/venv helpers used by the analysis pipelines and
-exposes a small set of commonly-used stdlib names for convenience.
+Provides a small set of commonly-used stdlib names and analysis helpers for
+convenience within analysis pipelines.
 """
 
 from pathlib import Path
@@ -16,6 +16,7 @@ import time
 import shutil
 
 from src.processing.process import process_manager
+from src.utils.facades import LazyObjectProxy
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,6 @@ def get_analysis_helpers():
         "open_file": process_manager.open_file,
         "summarize_cache_files": process_manager.summarize_cache_files,
     }
-
-
-from src.utils.facades import LazyObjectProxy
 
 
 # Lazy proxy for the ANALYSIS_HELPERS mapping to avoid import-time work.
@@ -81,12 +79,6 @@ class AnalysisCommon:
         return self.helpers["summarize_cache_files"](*args, **kwargs)
 
 
-# Module-level singleton for gradual migration (lazy proxy)
-
-
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy for AnalysisCommon
 analysis_common = LazyObjectProxy(lambda: AnalysisCommon())
 
@@ -100,6 +92,12 @@ def get_analysis_common(instance: AnalysisCommon | None = None) -> "AnalysisComm
     This helper follows the repository pattern for get_* helpers and allows
     tests to pass their own instance.
     """
+    return _impl_get_analysis_common(instance)
+
+
+def _impl_get_analysis_common(
+    instance: AnalysisCommon | None = None,
+) -> "AnalysisCommon":
     return instance if instance is not None else analysis_common
 
 

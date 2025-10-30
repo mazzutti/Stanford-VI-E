@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-"""
-Seismic Modeling Pipeline (moved from regenerate_seismograms).
+"""Seismic modeling pipeline helpers.
 
 This module exposes a small programmatic `main()` used by the package-level
-CLI. The heavy orchestration is implemented in `src.modeling.api.run_full_modeling`
+CLI. The orchestration is implemented in `src.modeling.api.run_full_modeling`
 to keep this file compact and easy to test.
 """
 
@@ -12,16 +11,15 @@ from .common import time, Path
 from . import common as analysis
 
 import logging
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
 
 __all__ = [
-    "run_command",
-    "clear_cache",
-    "check_file_exists",
-    "open_file",
-    "main",
+    "SeismogramAnalyzer",
+    "seismogram_analyzer",
+    "get_seismogram_analyzer",
 ]
 
 
@@ -43,10 +41,7 @@ class SeismogramAnalyzer:
         return _impl_main(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton for gradual migration
+# Module-level lazy proxy for the seismogram facade
 seismogram_analyzer = LazyObjectProxy(lambda: SeismogramAnalyzer())
 
 
@@ -59,7 +54,19 @@ def get_seismogram_analyzer(
     instance: SeismogramAnalyzer | None = None,
 ) -> "SeismogramAnalyzer":
     """Return provided SeismogramAnalyzer or module-level lazy singleton."""
+    return _impl_get_seismogram_analyzer(instance)
+
+
+def _impl_get_seismogram_analyzer(
+    instance: SeismogramAnalyzer | None = None,
+) -> "SeismogramAnalyzer":
     return instance if instance is not None else seismogram_analyzer
+
+
+# Thin procedural wrappers have been removed in favor of using the
+# `seismogram_analyzer` proxy or requesting an instance via
+# `get_seismogram_analyzer()`. The canonical implementations are the
+# `_impl_*` functions and the SeismogramAnalyzer facade methods.
 
 
 def _impl_run_command(cmd, description, prefix: str = ""):

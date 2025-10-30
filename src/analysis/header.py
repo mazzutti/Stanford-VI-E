@@ -6,6 +6,8 @@ This module now uses logging so callers can configure verbosity centrally.
 from typing import List
 import logging
 
+from src.utils.facades import LazyObjectProxy
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,9 +35,6 @@ class HeaderPrinter:
         return print_analysis_header(title, description_lines)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Use generic lazy proxy for consistency across modules
 header_printer = LazyObjectProxy(lambda: HeaderPrinter())
 
@@ -44,7 +43,15 @@ __all__.extend(["HeaderPrinter", "header_printer"])
 
 def get_header_printer(printer: HeaderPrinter | None = None) -> "HeaderPrinter":
     """Return the provided HeaderPrinter or the module-level lazy singleton."""
-    return printer if printer is not None else header_printer
+    return _impl_get_header_printer(printer)
 
 
 __all__.append("get_header_printer")
+
+
+def _impl_print_analysis_header(title: str, description_lines: List[str]) -> None:
+    return print_analysis_header(title, description_lines)
+
+
+def _impl_get_header_printer(printer: HeaderPrinter | None = None) -> "HeaderPrinter":
+    return printer if printer is not None else header_printer
