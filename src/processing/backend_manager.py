@@ -145,13 +145,4 @@ __all__ = [
 ]
 
 
-def get_backend_manager_proxy(instance: BackendManager | None = None) -> BackendManager:
-    """Return the module-level BackendManager proxy or the provided instance.
-
-    This is a thin alias to the canonical `get_backend_manager` to keep the
-    `get_*` naming consistent for callers that expect the proxy-style helper.
-    """
-    return instance if instance is not None else get_backend_manager()
-
-
 
