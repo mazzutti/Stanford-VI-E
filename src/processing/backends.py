@@ -28,12 +28,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "register_backend",
-    "get_backend",
-    "list_backends",
-    "get_best_backend",
-    "set_backend_verbose",
-    "is_backend_verbose",
+    "BackendsRegistry",
+    "backends_registry",
+    "get_backends_registry",
 ]
 
 
@@ -85,42 +82,9 @@ def get_backends_registry(config: dict | None = None):
 __all__.append("get_backends_registry")
 
 
-def register_backend(name: str, impl: ResamplerBackend) -> None:
-    # delegate to facade proxy for easier testing/mocking
-    return backends_registry.register_backend(name, impl)
-
-
-def get_backend(name: str) -> ResamplerBackend:
-    return backends_registry.get_backend(name)
-
-
-def list_backends() -> List[str]:
-    return backends_registry.list_backends()
-
-
-def get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
-    return backends_registry.get_best_backend(plan)
-
-
-def set_backend_verbose(on: bool) -> None:
-    """Enable or disable backend debug logging at runtime.
-
-    This proxies to the runtime toggle in `src.processing.resampler` so
-    callers can enable verbose logging from the backend registry module.
-    """
-    # delegate to manager/resampler via manager helper
-    try:
-        return backends_registry.set_backend_verbose(bool(on))
-    except Exception:
-        return
-
-
-def is_backend_verbose() -> bool:
-    """Return whether backend verbose logging is enabled."""
-    try:
-        return bool(backends_registry.is_backend_verbose())
-    except Exception:
-        return False
+# The module now exposes the canonical BackendsRegistry facade and its
+# module-level lazy proxy. Callers should access `backends_registry` or
+# request a configured registry via `get_backends_registry`.
 
 
 class VectorizedBackend:
@@ -206,11 +170,11 @@ class BatchedInterpolatorBackend:
 
 # Register default backends
 try:
-    register_backend(VectorizedBackend.name, VectorizedBackend())
+    backends_registry.register_backend(VectorizedBackend.name, VectorizedBackend())
 except Exception:
     pass
 
 try:
-    register_backend(BatchedInterpolatorBackend.name, BatchedInterpolatorBackend())
+    backends_registry.register_backend(BatchedInterpolatorBackend.name, BatchedInterpolatorBackend())
 except Exception:
     pass
