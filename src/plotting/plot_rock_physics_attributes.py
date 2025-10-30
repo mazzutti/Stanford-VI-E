@@ -1,15 +1,25 @@
-"""Rock physics attribute plotting moved into src.plotting."""
+"""Rock-physics attribute plotting helpers and thin facade.
 
+Place lightweight imports (logging, LazyObjectProxy) at module top to satisfy
+E402. Heavy plotting initialization remains but is safe after the small imports.
+"""
+
+import logging
+
+from src.utils.facades import LazyObjectProxy
 from src.plotting.helpers.plot import init_plotting, plot_helper
 
 # Initialize plotting (matplotlib) for this module
 plt, np = init_plotting(backend="Agg")
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 __all__ = ["plot_attribute", "main"]
+"""Rock physics attribute plotting helpers and thin facade.
+
+Provides utilities and a small facade for visualizing rock-physics
+attributes using the project's plotting helpers.
+"""
 
 
 # Note: plotting modules now prefer using `PlotConfig` / `GridSpec` from
@@ -19,12 +29,19 @@ __all__ = ["plot_attribute", "main"]
 
 
 def plot_attribute(ax, data, idx, slice_type, title, cmap="viridis"):
+    return _impl_plot_attribute(ax, data, idx, slice_type, title, cmap=cmap)
+
+
+def _impl_plot_attribute(ax, data, idx, slice_type, title, cmap="viridis"):
+    """Canonical implementation for plotting a rock-physics attribute.
+
+    This delegates to the module-level `plot_rock_physics_attributes` facade
+    so callers have a single implementation point (`_impl_plot_attribute`) to
+    reference in tests or alternate APIs while preserving the lazy proxy.
+    """
     return plot_rock_physics_attributes.plot_attribute(
         ax, data, idx, slice_type, title, cmap=cmap
     )
-
-
-from src.utils.facades import LazyObjectProxy
 
 
 class PlotRockPhysicsAttributes:
@@ -70,7 +87,6 @@ class PlotRockPhysicsAttributes:
             )
 
 
-# Module-level lazy proxy for gradual migration
 plot_rock_physics_attributes: PlotRockPhysicsAttributes = LazyObjectProxy(
     lambda: PlotRockPhysicsAttributes()
 )
@@ -79,6 +95,13 @@ plot_rock_physics_attributes: PlotRockPhysicsAttributes = LazyObjectProxy(
 def get_plot_rock_physics_attributes(
     instance: PlotRockPhysicsAttributes | None = None,
 ) -> PlotRockPhysicsAttributes:
+    return _impl_get_plot_rock_physics_attributes(instance)
+
+
+def _impl_get_plot_rock_physics_attributes(
+    instance: PlotRockPhysicsAttributes | None = None,
+) -> PlotRockPhysicsAttributes:
+    """Canonical getter for the module-level PlotRockPhysicsAttributes proxy."""
     return instance if instance is not None else plot_rock_physics_attributes
 
 
@@ -89,7 +112,6 @@ def main(argv=None):
     """
     import argparse
     from src.plotting.helpers.plot import prepare_plotting_args, default_plot_config
-    import logging
 
     parser = argparse.ArgumentParser(description="Visualize rock physics attributes")
     # Mirror ParserFactory.common_parser exactly

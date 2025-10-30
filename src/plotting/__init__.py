@@ -30,6 +30,16 @@ __all__ = [
 
 
 def _load(name: str):
+    return _impl_load(name)
+
+
+def _impl_load(name: str):
+    """Canonical dynamic import used by the plotting package.
+
+    Centralizing this dynamic import makes it easier to mock during tests
+    and provides a single place to control import-time behavior for
+    optional plotting backends.
+    """
     return import_module(f"src.plotting.{name}")
 
 

@@ -1,8 +1,13 @@
-"""Formatting helpers used by plotting (migrated from src.utils.formatting)."""
+"""Formatting helpers used by plotting.
+
+Provides concise logging and header helpers for plotting and analysis
+commands.
+"""
 
 from typing import Optional, Sequence
 from pathlib import Path
 import logging
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +42,6 @@ class FormattingHelper:
         return print_cache_info(cache_file)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy using the shared LazyObjectProxy
 formatting_helper = LazyObjectProxy(lambda: FormattingHelper())
 
@@ -47,6 +49,10 @@ __all__.extend(["FormattingHelper", "formatting_helper"])
 
 
 def get_formatting_helper(config: dict | None = None):
+    return _impl_get_formatting_helper(config)
+
+
+def _impl_get_formatting_helper(config: dict | None = None):
     if config is None:
         return formatting_helper
     return FormattingHelper()
@@ -56,6 +62,10 @@ __all__.append("get_formatting_helper")
 
 
 def print_header(title: str):
+    return _impl_print_header(title)
+
+
+def _impl_print_header(title: str):
     logger.info("%s", "\n" + "=" * 70)
     logger.info("%s", title)
     logger.info("%s", "=" * 70)
@@ -64,8 +74,16 @@ def print_header(title: str):
 def print_angle_summary(
     angles: Sequence[float], ei_volumes: Sequence, ei_stack=None, ei_gradient=None
 ):
+    return _impl_print_angle_summary(
+        angles, ei_volumes, ei_stack=ei_stack, ei_gradient=ei_gradient
+    )
+
+
+def _impl_print_angle_summary(
+    angles: Sequence[float], ei_volumes: Sequence, ei_stack=None, ei_gradient=None
+):
     """Log a concise per-angle summary and optional stack/gradient stats."""
-    print_header("ANGLE-DEPENDENT EI SUMMARY")
+    _impl_print_header("ANGLE-DEPENDENT EI SUMMARY")
     for angle, ei_vol in zip(angles, ei_volumes):
         try:
             logger.info(
@@ -102,11 +120,19 @@ def print_angle_summary(
 
 
 def print_selected_angles(selected_angles, weights):
+    return _impl_print_selected_angles(selected_angles, weights)
+
+
+def _impl_print_selected_angles(selected_angles, weights):
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
 
 
 def print_cache_info(cache_file: Optional[str]):
+    return _impl_print_cache_info(cache_file)
+
+
+def _impl_print_cache_info(cache_file: Optional[str]):
     if not cache_file:
         return
     logger.info("\n✓ Saved multi-angle results to: %s", cache_file)

@@ -1,9 +1,15 @@
-"""Interactive 3D plotting (Plotly) moved into src.plotting package."""
+"""Interactive 3D plotting (Plotly).
+
+Utilities to create interactive 3D visualizations using Plotly. Provides a
+single canonical implementation and an OO facade for callers that prefer
+instance-based usage.
+"""
 
 import logging
 import numpy as np
 from numpy.typing import ArrayLike
 import plotly.graph_objects as go
+from src.utils.facades import LazyObjectProxy
 
 __all__ = ["create_3d_volume_plotly", "main"]
 
@@ -196,14 +202,21 @@ def main(argv=None):
     return resolved
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy for Plotly visualization facade
 plotly_visualization = LazyObjectProxy(lambda: PlotlyVisualization())
 
 
 def get_plotly_visualization(config: dict | None = None):
+    return _impl_get_plotly_visualization(config)
+
+
+def _impl_get_plotly_visualization(config: dict | None = None):
+    """Canonical getter for the module-level PlotlyVisualization proxy.
+
+    When ``config`` is None we return the module-level lazy proxy so callers
+    may inject alternate instances during tests by passing a configured
+    `PlotlyVisualization` instance to the same API.
+    """
     if config is None:
         return plotly_visualization
     return PlotlyVisualization()
@@ -222,6 +235,38 @@ def create_3d_volume_plotly(
     is_impedance=False,
     show_colorbar=True,
 ):
+    return _impl_create_3d_volume_plotly(
+        cube,
+        slice_indices,
+        title,
+        k_scale=k_scale,
+        k_label=k_label,
+        k_unit=k_unit,
+        colorscale=colorscale,
+        is_categorical=is_categorical,
+        is_impedance=is_impedance,
+        show_colorbar=show_colorbar,
+    )
+
+
+def _impl_create_3d_volume_plotly(
+    cube,
+    slice_indices,
+    title,
+    k_scale=1.0,
+    k_label="K",
+    k_unit="",
+    colorscale="RdBu",
+    is_categorical=False,
+    is_impedance=False,
+    show_colorbar=True,
+):
+    """Canonical implementation for creating a 3D Plotly volume.
+
+    This function provides a single implementation entrypoint (the
+    ``_impl_`` convention) which is useful for tests and for moving
+    to an OO facade while preserving the top-level API name.
+    """
     return plotly_visualization.create_3d_volume_plotly(
         cube,
         slice_indices,

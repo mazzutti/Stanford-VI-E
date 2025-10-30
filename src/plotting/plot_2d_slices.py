@@ -1,10 +1,11 @@
-"""2D slice plotting moved into src.plotting package.
+"""2D slice plotting.
 
-This file is the implementation moved from top-level `src/plot_2d_slices.py`.
-Imports adjusted to absolute package paths.
+Implementation of 2D slice plotting helpers using plotting utilities from
+`src.plotting.helpers`.
 """
 
 import logging
+from src.utils.facades import LazyObjectProxy
 
 from src.plotting.helpers.plot import init_plotting
 from src.io.grid import GridSpec
@@ -25,7 +26,9 @@ def convert_time_to_depth(
 
     Delegates to the centralized resampler helper.
     """
-    return plot_2d_slices.convert_time_to_depth(
+    # Call canonical implementation directly. Tests and callers that need an
+    # instance can still use `get_plot_2d_slices()` to obtain the proxy.
+    return _impl_convert_time_to_depth(
         seismogram_time, vp_depth, grid_spec, is_categorical=is_categorical
     )
 
@@ -35,68 +38,10 @@ def convert_time_to_depth(
 
 
 def plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
-    from src.plotting.helpers.plot import apply_plot_defaults, plot_helper
-
-    plot_kwargs = apply_plot_defaults(plot_kwargs)
-    k_scale = plot_kwargs["k_scale"]
-    k_label = plot_kwargs["k_label"]
-    k_unit = plot_kwargs["k_unit"]
-    cmap = plot_kwargs["cmap"]
-    is_categorical = plot_kwargs["is_categorical"]
-
-    ni, nj, nk = cube.shape
-
-    if slice_orientation == "inline":
-        slice_data = cube[slice_idx, :, :]  # [J, K]
-        xlabel = "Crossline (J)"
-        # extent intentionally not used here; kept for historical context
-        title_with_slice = f"{title}\n(Inline I={slice_idx})"
-    elif slice_orientation == "crossline":
-        slice_data = cube[:, slice_idx, :]  # [I, K]
-        xlabel = "Inline (I)"
-        # extent intentionally not used here; kept for historical context
-        title_with_slice = f"{title}\n(Crossline J={slice_idx})"
-    elif slice_orientation in ["timeslice", "depthslice"]:
-        slice_data = cube[:, :, slice_idx]  # [I, J]
-        xlabel = "Crossline (J)"
-        # extent intentionally not used here; kept for historical context
-        slice_label = (
-            f"{k_label}={slice_idx * k_scale:.3f}{k_unit}"
-            if k_unit
-            else f"{k_label}={slice_idx}"
-        )
-        title_with_slice = f"{title}\n({slice_label})"
-        k_unit = ""  # Don't add units to ylabel for horizontal slices
-    else:
-        raise ValueError(f"Unknown slice orientation: {slice_orientation}")
-
-    if is_categorical:
-        vmin = 0
-        vmax = 3  # Fixed to 4 facies (0, 1, 2, 3)
-        from matplotlib.colors import ListedColormap
-
-        colors = plt.cm.tab10(np.linspace(0, 0.4, 4))  # Get first 4 colors from tab10
-        cmap_discrete = ListedColormap(colors)
-    else:
-        p_i = np.percentile(np.abs(slice_data), 99.5)
-        vmax = float(p_i)
-        vmin = -vmax
-        if vmax == vmin:
-            vmax = vmin + 1.0
-
-    ax.clear()
-
-    return plot_2d_slices.plot_with_units(
-        ax,
-        cube,
-        slice_idx,
-        slice_orientation,
-        title,
-        **plot_kwargs,
+    # Delegate directly to canonical implementation for simplicity.
+    return _impl_plot_with_units(
+        ax, cube, slice_idx, slice_orientation, title, **plot_kwargs
     )
-
-
-from src.utils.facades import LazyObjectProxy
 
 
 class Plot2DSlices:
@@ -117,11 +62,20 @@ class Plot2DSlices:
         )
 
 
-# Module-level lazy proxy for gradual migration
+# Module-level lazy proxy
 plot_2d_slices: Plot2DSlices = LazyObjectProxy(lambda: Plot2DSlices())
 
 
 def get_plot_2d_slices(instance: Plot2DSlices | None = None) -> Plot2DSlices:
+    return _impl_get_plot_2d_slices(instance)
+
+
+def _impl_get_plot_2d_slices(instance: Plot2DSlices | None = None) -> Plot2DSlices:
+    """Canonical getter for the module-level Plot2DSlices proxy.
+
+    Keep this as the single point-of-truth so tests and callers can inject
+    alternate instances via the same API surface.
+    """
     return instance if instance is not None else plot_2d_slices
 
 
@@ -152,17 +106,17 @@ def _impl_plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_
     if slice_orientation == "inline":
         slice_data = cube[slice_idx, :, :]  # [J, K]
         xlabel = "Crossline (J)"
-        # extent intentionally not used here; kept for historical context
+        # extent intentionally not used here; retained for optional use
         title_with_slice = f"{title}\n(Inline I={slice_idx})"
     elif slice_orientation == "crossline":
         slice_data = cube[:, slice_idx, :]  # [I, K]
         xlabel = "Inline (I)"
-        # extent intentionally not used here; kept for historical context
+        # extent intentionally not used here; retained for optional use
         title_with_slice = f"{title}\n(Crossline J={slice_idx})"
     elif slice_orientation in ["timeslice", "depthslice"]:
         slice_data = cube[:, :, slice_idx]  # [I, J]
         xlabel = "Crossline (J)"
-        # extent intentionally not used here; kept for historical context
+        # extent intentionally not used here; retained for optional use
         slice_label = (
             f"{k_label}={slice_idx * k_scale:.3f}{k_unit}"
             if k_unit

@@ -1,15 +1,19 @@
-from src.plotting.helpers.plot import init_plotting
-from scipy.ndimage import sobel, gaussian_filter
+"""Facies overlay plotting helpers and thin OO facade.
 
-# Initialize matplotlib and numpy for this module
-plt, np = init_plotting(backend="Agg")
-
-# depth_to_time_cube and resample_time_cube are not used in this module;
-# avoid importing them
+Lightweight imports (logging, LazyObjectProxy) are placed at module top to
+avoid E402 linter errors. Heavy numerical imports remain deferred where used.
+"""
 
 import logging
 
+from src.utils.facades import LazyObjectProxy
+from src.plotting.helpers.plot import init_plotting
+from scipy.ndimage import sobel, gaussian_filter
+
 logger = logging.getLogger(__name__)
+
+# Initialize matplotlib and numpy for this module
+plt, np = init_plotting(backend="Agg")
 
 __all__ = [
     "detect_facies_boundaries",
@@ -21,8 +25,8 @@ __all__ = [
 class FaciesOverlay:
     """Facade for facies overlay plotting helpers.
 
-    The methods mirror the legacy top-level functions so callers can migrate
-    to an instance-based API while the old function names remain available.
+    The methods mirror the original top-level functions so callers can use
+    an instance-based API while the old function names remain available.
     """
 
     def detect_facies_boundaries(self, facies_slice):
@@ -223,14 +227,20 @@ class FaciesOverlay:
         )
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy for FaciesOverlay
 facies_overlay = LazyObjectProxy(lambda: FaciesOverlay())
 
 
 def get_facies_overlay(config: dict | None = None):
+    return _impl_get_facies_overlay(config)
+
+
+def _impl_get_facies_overlay(config: dict | None = None):
+    """Canonical getter for the module-level facies_overlay proxy.
+
+    Accepts an optional config for callers that prefer a fresh instance. When
+    no config is provided the standard lazy proxy is returned.
+    """
     if config is None:
         return facies_overlay
     return FaciesOverlay()
@@ -240,10 +250,51 @@ __all__.extend(["FaciesOverlay", "facies_overlay", "get_facies_overlay"])
 
 
 def detect_facies_boundaries(facies_slice):
-    return facies_overlay.detect_facies_boundaries(facies_slice)
+    return _impl_detect_facies_boundaries(facies_slice)
 
 
 def plot_seismic_with_facies_overlay(
+    ax,
+    seismic_slice,
+    facies_slice,
+    title,
+    k_scale=1.0,
+    k_label="K",
+    k_unit="",
+    cmap="seismic",
+    show_colorbar=True,
+):
+    return _impl_plot_seismic_with_facies_overlay(
+        ax,
+        seismic_slice,
+        facies_slice,
+        title,
+        k_scale=k_scale,
+        k_label=k_label,
+        k_unit=k_unit,
+        cmap=cmap,
+        show_colorbar=show_colorbar,
+    )
+
+
+def plot_facies_only(
+    ax,
+    facies_slice,
+    title,
+    k_scale=1.0,
+    k_label="K",
+    k_unit="",
+):
+    return _impl_plot_facies_only(
+        ax, facies_slice, title, k_scale=k_scale, k_label=k_label, k_unit=k_unit
+    )
+
+
+def _impl_detect_facies_boundaries(facies_slice):
+    return facies_overlay.detect_facies_boundaries(facies_slice)
+
+
+def _impl_plot_seismic_with_facies_overlay(
     ax,
     seismic_slice,
     facies_slice,
@@ -267,7 +318,7 @@ def plot_seismic_with_facies_overlay(
     )
 
 
-def plot_facies_only(
+def _impl_plot_facies_only(
     ax,
     facies_slice,
     title,

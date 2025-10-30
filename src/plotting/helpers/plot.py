@@ -1,8 +1,6 @@
-"""Plotting helpers moved from src.utils.plot into src.plotting.helpers
+"""Plotting helpers.
 
-This file is a nearly verbatim copy of `src/utils/plot.py` but re-homed under
-`src.plotting.helpers` to reduce the size of `src.utils` and provide a more
-logical package separation.
+Collection of plotting helper utilities used by the plotting subpackage.
 """
 
 from typing import Optional
@@ -12,6 +10,7 @@ from typing import Dict, Tuple
 from src.io.grid import GridSpec
 import numpy as np
 import logging
+from src.utils.facades import LazyObjectProxy
 
 
 __all__ = [
@@ -22,8 +21,6 @@ __all__ = [
     "PlotConfig",
     "prepare_plotting_args",
     "select_cache_files",
-    "create_figure_grid",
-    "imshow_with_labels",
     "apply_common_axis_style",
     "compute_boundary_alignment",
     "create_figure",
@@ -79,10 +76,7 @@ class PlotHelper:
         return _impl_create_figure(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton for gradual migration (lazy proxy to avoid heavy imports at import time)
+# Module-level singleton proxy for plotting helpers (lazy to avoid heavy imports at import time)
 plot_helper = LazyObjectProxy(lambda: PlotHelper(config=PlotConfig.default()))
 
 
@@ -93,6 +87,10 @@ def get_plot_helper(config: dict | None = None):
     """Return the module-level `plot_helper` proxy when `config` is None,
     otherwise return a new PlotHelper instance configured from `config`.
     """
+    return _impl_get_plot_helper(config)
+
+
+def _impl_get_plot_helper(config: dict | None = None):
     if config is None:
         return plot_helper
     # minimal config mapping supported for now
@@ -332,7 +330,10 @@ def _impl_create_figure_grid(
 def create_figure_grid(
     figsize=(12, 8), nrows=1, ncols=1, gridspec_kw=None, constrained_layout=True
 ):
-    return plot_helper.create_figure_grid(
+    # Deprecated thin wrapper removed in favor of using the `plot_helper` proxy
+    # or the `PlotHelper` instance directly. Kept the canonical implementation
+    # available as `_impl_create_figure_grid` for callers that need it.
+    return _impl_create_figure_grid(
         figsize=figsize,
         nrows=nrows,
         ncols=ncols,
@@ -429,7 +430,8 @@ def imshow_with_labels(
     fontsize_title: int = 12,
     fontsize_labels: int = 10,
 ):
-    return plot_helper.imshow_with_labels(
+    # Prefer the canonical implementation directly; preserve behaviour.
+    return _impl_imshow_with_labels(
         ax,
         data,
         title=title,
@@ -506,7 +508,9 @@ def _impl_create_figure(figsize=None):
 
 
 def create_figure(figsize=None):
-    return plot_helper.create_figure(figsize=figsize)
+    # Use canonical impl directly; callers that want an instance should use
+    # `get_plot_helper()` and call its `create_figure` method.
+    return _impl_create_figure(figsize=figsize)
 
 
 __all__.append("get_3d_surface_kwargs")

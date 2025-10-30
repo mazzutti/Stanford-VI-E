@@ -1,22 +1,27 @@
-"""Visualization helpers moved into src.plotting.helpers."""
+"""Visualization helpers for 2D/3D plotting and display.
 
-# Configure matplotlib and get pyplot + numpy via the plotting helpers
+Provides thin facade methods for common visualization tasks used by the
+plotting modules.
+"""
+
+# Lightweight imports must be at module top to satisfy linters (E402).
+import logging
+
 from src.plotting.helpers.plot import init_plotting
+from src.utils.facades import LazyObjectProxy
+
+logger = logging.getLogger(__name__)
 
 # Configure matplotlib and get pyplot + numpy
 plt, np = init_plotting(backend=None)
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-__all__ = ["plot_3d_slices", "plot_2d_slices"]
+__all__ = ["plot_visualization", "get_plot_visualization"]
 
 
 class PlotVisualization:
     """Thin facade grouping 2D/3D plotting helpers for visualization.
 
-    Methods mirror the module-level functions so callers can migrate to an
+    Methods mirror the module-level functions so callers can use an
     instance-based API while the old function names remain available.
     """
 
@@ -54,8 +59,10 @@ class PlotVisualization:
         Yk = J_k
         Zk = np.full_like(I_k, fill_value=idx_k, dtype=float)
 
-        # Plot each slice as a surface on the 3D axes. Use clipping when mapping to colors
+        # Plot each slice as a surface on the 3D axes. Use clipping when
+        # mapping to colors
         cmap_fn = plt.get_cmap(cmap)
+
         ax.plot_surface(
             Xi,
             J,
@@ -65,6 +72,7 @@ class PlotVisualization:
             facecolors=cmap_fn(np.clip((slice_i - vmin) / denom, 0, 1)),
             shade=False,
         )
+
         ax.plot_surface(
             Xj,
             Yj,
@@ -74,6 +82,7 @@ class PlotVisualization:
             facecolors=cmap_fn(np.clip((slice_j - vmin) / denom, 0, 1)),
             shade=False,
         )
+
         ax.plot_surface(
             Xk,
             Yk,
@@ -134,9 +143,6 @@ class PlotVisualization:
         )
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy for the visualization facade
 plot_visualization = LazyObjectProxy(lambda: PlotVisualization())
 
@@ -146,15 +152,10 @@ def get_plot_visualization(config: dict | None = None):
     otherwise return a new `PlotVisualization` instance. This keeps access
     patterns consistent with other helpers.
     """
+    return _impl_get_plot_visualization(config)
+
+
+def _impl_get_plot_visualization(config: dict | None = None):
     if config is None:
         return plot_visualization
     return PlotVisualization()
-
-
-# Backwards-compatible top-level wrappers delegate to the facade proxy
-def plot_3d_slices(ax, cube, slice_indices, title, cmap="seismic"):
-    return plot_visualization.plot_3d_slices(ax, cube, slice_indices, title, cmap=cmap)
-
-
-def plot_2d_slices(ax, cube, slice_indices, title, cmap="seismic"):
-    return plot_visualization.plot_2d_slices(ax, cube, slice_indices, title, cmap=cmap)
