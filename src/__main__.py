@@ -83,7 +83,10 @@ class ParserFactory:
         parser.add_argument(
             "--no-ei-noise",
             action="store_true",
-            help="Disable frequency-dependent noise for EI seismogram (noise is ON by default)",
+            help=(
+                "Disable frequency-dependent noise for EI seismogram "
+                "(noise is ON by default)"
+            ),
         )
         parser.add_argument(
             "--ei-noise-snr",
@@ -114,7 +117,8 @@ class ParserFactory:
             "--run-tool",
             choices=run_tool_choices,
             default=None,
-            help="Run a single centralized tool and exit (convenience for scripted runs)",
+            help="Run a single centralized tool and exit (convenience for "
+            "scripted runs)",
         )
         parser.add_argument(
             "--verbose",
@@ -136,7 +140,10 @@ class ParserFactory:
         parser.add_argument(
             "--save-npz-only",
             action="store_true",
-            help="Compute attributes and save cache .npz file only; skip plots and ranking",
+            help=(
+                "Compute attributes and save cache .npz file only; "
+                "skip plots and ranking"
+            ),
         )
         parser.add_argument(
             "--angles-list",
@@ -292,7 +299,7 @@ class ParserFactory:
             # vm.vp is a Quantity; store the numeric array for backward compat
             props_depth["vp"] = vm.vp.array if hasattr(vm.vp, "array") else vm.vp
         except Exception:
-            # Fallback: keep existing behavior (legacy unit heuristic)
+            # Fallback: keep existing behavior (unit heuristic)
             try:
                 # best-effort conversion using UnitRegistry
                 out, converted = UnitRegistry.ensure_m_per_s(
@@ -315,7 +322,7 @@ class ParserFactory:
             drm.ensure_kg_per_m3()
             props_depth["rho"] = drm.rho
         except Exception:
-            # Fallback to legacy heuristics
+            # Fallback to heuristics
             try:
                 out, converted = UnitRegistry.ensure_m_per_s(
                     props_depth["vs"], copy_on_convert=True
@@ -337,7 +344,8 @@ class ParserFactory:
 
     @staticmethod
     def run_modeling(props_depth, args, grid_spec: GridSpec):
-        """Run the core modeling steps (multi-angle EI, weighted product, depth->time, AVO, AI).
+        """Run the core modeling steps (multi-angle EI, weighted product,
+        depth->time, AVO, AI).
 
         Returns a dict with keys used by downstream steps.
         """
@@ -526,8 +534,8 @@ class ParserFactory:
         for seis, weight in zip(ei_angle_seismograms, weights):
             ei_optimal_stack += weight * seis
 
-        # (Removed legacy single-seismogram implementation)
-        # Legacy code removed: pre-stacked-impedance-based single seismogram
+        # (Removed single-seismogram implementation)
+        # Code removed: pre-stacked-impedance-based single seismogram
         # generation was deprecated in favor of multi-angle stacking and the
         # variance-weighted optimal stack computed above. The reflectivity
         # object is kept for downstream consumers where needed.
@@ -651,7 +659,8 @@ class ParserFactory:
                 # Warn if we're clobbering an existing registration
                 if cli_name in ParserFactory._registered_tools:
                     _warnings.warn(
-                        f"Registering tool '{cli_name}' will overwrite existing registration",
+                        f"Registering tool '{cli_name}' will overwrite existing "
+                        "registration",
                         UserWarning,
                     )
 
@@ -701,9 +710,11 @@ class ParserFactory:
             if argv is not None and kwargs is None:
                 raise SystemExit(
                     "argv-style emulation has been removed from run_tool().\n"
-                    "Call ParserFactory.run_tool(name, kwargs=dict(...)) or invoke the tool\n"
-                    "directly with explicit keyword args. Example:\n"
-                    "  ParserFactory.run_tool('seismograms', kwargs={'cache_dir': '.cache'})"
+                    "Call ParserFactory.run_tool(name, kwargs=dict(...)) or "
+                    "invoke the tool directly with explicit keyword args. "
+                    "Example:\n"
+                    "  ParserFactory.run_tool('seismograms', "
+                    "kwargs={'cache_dir': '.cache'})"
                 )
 
             full_kwargs = kwargs or {}
@@ -816,7 +827,8 @@ def cleanup_cache(
 # ---------------------------------------------------------------------------
 
 
-# Note: analyze_facies_correlation logic moved to src.analysis.facies_correlation.analyze_facies_correlation
+# Note: analyze_facies_correlation logic moved to
+# src.analysis.facies_correlation.analyze_facies_correlation
 
 
 @tool
@@ -1190,7 +1202,8 @@ def rock_physics_attributes(
 def main():
     # Allow forwarding arguments to a selected tool using a `--` sentinel.
     # Example:
-    #   python -m src --run-tool rock_physics_attributes -- --ei-angle 15 --cache-dir foo
+    #   python -m src --run-tool rock_physics_attributes -- --ei-angle 15
+    #   --cache-dir foo
     import sys as _sys
 
     if "--" in _sys.argv:
@@ -1204,7 +1217,8 @@ def main():
 
     # Use centralized modeling parser
     parser = ParserFactory.modeling_parser()
-    # If we prepared a trimmed argv (before --), parse that list; otherwise parse full CLI
+    # If we prepared a trimmed argv (before --), parse that list; otherwise
+    # parse full CLI
     args = (
         parser.parse_args(parse_argv) if parse_argv is not None else parser.parse_args()
     )
