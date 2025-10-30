@@ -1,8 +1,7 @@
 """Disk-backed cache helper for numpy-backed artifacts.
 
-Stores artifacts as compressed NPZ files under a cache directory. Keys are
-derived from a content hash (SHA1) computed from inputs to ensure reproducible
-lookup. Provides simple get/save helpers and a small TTL optionality.
+Implements a simple compressed-NPZ disk cache keyed by content hash (SHA1).
+Provides get/save helpers and optional TTL/pruning behaviour.
 """
 
 from __future__ import annotations
@@ -18,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 import time
 import logging
+from src.utils.facades import LazyObjectProxy
 
 __all__ = ["DiskCache", "_hash_for_obj"]
 
@@ -290,9 +290,6 @@ def make_disk_cache(
     )
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy instance to preserve the symbol `default_disk_cache`.
 default_disk_cache = LazyObjectProxy(lambda: make_disk_cache())
 
@@ -313,6 +310,20 @@ def get_default_disk_cache(
     single helper callers can use when they may or may not want the module
     default.
     """
+    return _impl_get_default_disk_cache(
+        cache_dir=cache_dir,
+        max_cache_bytes=max_cache_bytes,
+        ttl_seconds=ttl_seconds,
+        periodic_prune_interval_seconds=periodic_prune_interval_seconds,
+    )
+
+
+def _impl_get_default_disk_cache(
+    cache_dir: str | None = None,
+    max_cache_bytes: int = 10 * 1024**3,
+    ttl_seconds: Optional[int] = None,
+    periodic_prune_interval_seconds: Optional[int] = None,
+) -> DiskCache:
     if cache_dir is None:
         return default_disk_cache
     return DiskCache(

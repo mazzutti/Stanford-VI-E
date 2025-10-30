@@ -22,6 +22,7 @@ from src.processing.seismic_operator import SeismicOperator
 from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
 import logging
+from src.utils.facades import LazyObjectProxy
 
 
 def run_full_modeling(
@@ -38,8 +39,9 @@ def run_full_modeling(
     Returns a dict with keys similar to the previous pipeline output, for
     example: {'ei_cache_file': ..., 'save_dict': ..., 'ei_angle_seismograms': ...}
     """
-    # Delegate to facade implementation
-    return modeling_api.run_full_modeling(
+    # Call the canonical implementation directly. Callers that prefer an
+    # instance-based API can still use `get_modeling_api()`.
+    return _impl_run_full_modeling(
         cache_dir=cache_dir,
         skip_cleanup=skip_cleanup,
         verbose=verbose,
@@ -274,9 +276,6 @@ class ModelingAPI:
         return _impl_run_full_modeling(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level singleton facade using shared LazyObjectProxy
 modeling_api = LazyObjectProxy(lambda: ModelingAPI())
 
@@ -291,6 +290,10 @@ def get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":
 
     Useful for dependency injection in tests.
     """
+    return _impl_get_modeling_api(inst)
+
+
+def _impl_get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":
     return inst if inst is not None else modeling_api
 
 

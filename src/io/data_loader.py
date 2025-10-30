@@ -1,6 +1,6 @@
-"""Data loading helpers moved into `src.io`.
+"""Data loading helpers.
 
-This module contains functions to load GSLIB files and the Stanford VI-E
+This module contains utilities to load GSLIB files and the Stanford VI-E
 dataset used by the project.
 """
 
@@ -11,6 +11,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Mapping, Union
 from src.io.grid import GridSpec
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,8 @@ class DatasetManager:
     def load(self) -> None:
         """Populate self.data by locating and reading .dat files.
 
-        This mirrors the original procedural implementation but scopes the
-        loaded cubes under the `DatasetManager` instance.
+        The method locates candidate .dat files for each property and reads
+        them into the manager's `data` mapping.
         """
         for key, folder_name in self.file_map.items():
             dir_path = Path(self.data_path) / folder_name
@@ -139,16 +140,11 @@ class DatasetManager:
         return dm
 
 
-# Backwards-compatible top-level helper for reading a single gslib file.
-def load_gslib_file(filepath: Union[str, Path], grid_spec: GridSpec) -> np.ndarray:
-    """Compatibility wrapper that reads a GSLIB file using a transient
-    DatasetManager instance. Kept for API compatibility with existing callers.
-    """
-    # Delegate to the GslibLoader facade for a consistent OO API.
-    return gslib_loader.read(filepath, grid_spec)
+# Module API: prefer the OO facades and proxies. Use `gslib_loader.read(...)`
+# or obtain an instance via `get_gslib_loader()`.
 
 
-__all__ = ["load_gslib_file", "DatasetManager"]
+__all__ = ["DatasetManager"]
 
 
 # Thin facade to read individual GSLIB files using the existing DatasetManager
@@ -158,13 +154,10 @@ class GslibLoader:
         return dm._read_gslib(filepath)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Module-level lazy proxy for convenience (standardized)
 gslib_loader = LazyObjectProxy(lambda: GslibLoader())
 
-__all__.extend(["GslibLoader", "gslib_loader"])
+__all__.extend(["GslibLoader", "gslib_loader", "get_gslib_loader"])
 
 
 def get_gslib_loader(config: dict | None = None):
@@ -172,9 +165,10 @@ def get_gslib_loader(config: dict | None = None):
     otherwise return a new `GslibLoader` instance. This centralizes access
     patterns and matches other `get_*` helpers added during the refactor.
     """
+    return _impl_get_gslib_loader(config)
+
+
+def _impl_get_gslib_loader(config: dict | None = None):
     if config is None:
         return gslib_loader
     return GslibLoader()
-
-
-__all__.append("get_gslib_loader")

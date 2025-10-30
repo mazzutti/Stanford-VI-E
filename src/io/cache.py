@@ -1,6 +1,6 @@
-"""Cache utilities moved into src.io.
+"""Cache utilities.
 
-Provides helpers to list and save cache files used by the project.
+Helpers to list and save cache files used by the project.
 """
 
 import os
@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
+from src.utils.facades import LazyObjectProxy
 
 
 @dataclass
@@ -132,7 +133,7 @@ class CacheManager:
         self.cache_dir = cache_dir
         self.logger = logger or logging.getLogger(__name__)
 
-    # Backwards-compatibility wrapper removed; use select_latest_cache_entries()
+    # Compatibility wrapper not present here; use select_latest_cache_entries()
 
     def select_latest_cache_entries(
         self, skip_inspect: bool = False
@@ -280,7 +281,8 @@ class CacheManager:
     def main(self, dry_run: bool = False, verbose: bool = False) -> tuple[int, float]:
         """Programmatic entrypoint for cache cleanup.
 
-        Keeps the same behavior as the previous CLI helper. Returns (removed_count, total_size_mb).
+        Keeps the same behavior as the previous CLI helper. Returns a tuple
+        (removed_count, total_size_mb).
         """
         # Configure minimal logging if requested
         if verbose:
@@ -316,9 +318,6 @@ __all__ = ["CacheEntry", "CacheManager"]
 DEFAULT_CACHE_DIR = ".cache"
 
 
-from src.utils.facades import LazyObjectProxy
-
-
 # Default cache_manager proxy
 cache_manager = LazyObjectProxy(lambda: CacheManager(cache_dir=DEFAULT_CACHE_DIR))
 
@@ -330,15 +329,23 @@ def cache_for_dir(cache_dir: str | None):
     shared `cache_manager` singleton. Otherwise creates a lightweight
     temporary `CacheManager` for that directory.
     """
+    return _impl_cache_for_dir(cache_dir)
+
+
+def _impl_cache_for_dir(cache_dir: str | None):
+    """Canonical implementation for cache_for_dir providing a single entrypoint.
+
+    Keeps the lazy `cache_manager` behaviour for the default directory and
+    returns a temporary `CacheManager` for custom directories.
+    """
     if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
         return cache_manager
     return CacheManager(cache_dir=str(cache_dir))
 
+    # Note: module-level helpers have been replaced by `CacheManager` instances
+    # or the `cache_for_dir(...)` helper which returns either the shared proxy
+    # or a temporary instance.
 
-# Note: procedural wrapper helpers (select_latest_cache_entries, save_npz,
-# resolve_latest_paths, identify_old_cache_files, cleanup_old_cache, main)
-# have been removed in favor of explicit `cache_for_dir(...)` or constructing
-# a `CacheManager` instance. Callers should use `cache_for_dir(cache_dir).<method>()`.
 
 __all__.extend(["CacheEntry", "CacheManager", "cache_for_dir", "DEFAULT_CACHE_DIR"])
 
@@ -351,6 +358,10 @@ def get_default_cache(cache_dir: str | None = None):
     callers a single helper to obtain either the shared lazy singleton or a
     temporary instance for custom directories.
     """
+    return _impl_get_default_cache(cache_dir)
+
+
+def _impl_get_default_cache(cache_dir: str | None = None):
     if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
         return cache_manager
     return CacheManager(cache_dir=str(cache_dir))
@@ -365,7 +376,11 @@ def get_cache_manager(cache_dir: str | None = None):
     This mirrors older code that used `get_cache_manager` naming and simply
     forwards to `get_default_cache` which implements the canonical logic.
     """
-    return get_default_cache(cache_dir)
+    return _impl_get_cache_manager(cache_dir)
+
+
+def _impl_get_cache_manager(cache_dir: str | None = None):
+    return _impl_get_default_cache(cache_dir)
 
 
 __all__.append("get_cache_manager")

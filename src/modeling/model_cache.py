@@ -1,8 +1,8 @@
-"""Model cache wrappers (migrated from ``src.io.model_cache``).
+"""Model cache wrappers.
 
-These wrappers focus on caching compute-heavy modeling outputs. They keep
-call-time imports for heavy compute helpers to avoid import cycles. The
-module mirrors the API previously provided under ``src.io.model_cache``.
+Wrappers that focus on caching compute-heavy modeling outputs. They keep
+call-time imports for heavy compute helpers to avoid import cycles and
+mirror the public caching API used by modeling callers.
 """
 
 from pathlib import Path
@@ -12,6 +12,7 @@ from typing import Any, Dict, Tuple
 import logging
 
 from src.io.cache import cache_for_dir
+from src.utils.facades import LazyObjectProxy
 
 __all__ = [
     "cached_avo",
@@ -128,10 +129,7 @@ class ModelingCache:
         return _impl_cached_ei_depth(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Lazy proxy singleton for ModelingCache to support gradual migration
+# Module-level lazy proxy singleton for ModelingCache
 modeling_cache: ModelingCache = LazyObjectProxy(lambda: ModelingCache())
 
 
@@ -144,9 +142,7 @@ def cached_avo_from_vm(
     vs, rho: numpy arrays matching vm.vp shape
     """
     props_time = {"vp": vm.vp, "vs": vs, "rho": rho}
-    return modeling_cache.cached_avo(
-        props_time, angles, wavelet, cache_dir=cache_dir, **kwargs
-    )
+    return _impl_cached_avo(props_time, angles, wavelet, cache_dir=cache_dir, **kwargs)
 
 
 __all__.extend(
@@ -198,6 +194,10 @@ def get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
 
     This makes it easy to inject a test double or a configured cache instance.
     """
+    return _impl_get_modeling_cache(cache)
+
+
+def _impl_get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
     return cache if cache is not None else modeling_cache
 
 
@@ -305,24 +305,20 @@ def cached_avo(
 
 
 def cached_ai_seismogram(props_time, wavelet, cache_dir: str = ".cache"):
-    return modeling_cache.cached_ai_seismogram(props_time, wavelet, cache_dir=cache_dir)
+    return _impl_cached_ai_seismogram(props_time, wavelet, cache_dir=cache_dir)
 
 
 def cached_ai_seismogram_from_vm(vm, rho, wavelet, cache_dir: str = ".cache"):
-    return modeling_cache.cached_ai_seismogram_from_vm(
-        vm, rho, wavelet, cache_dir=cache_dir
-    )
+    return _impl_cached_ai_seismogram_from_vm(vm, rho, wavelet, cache_dir=cache_dir)
 
 
 def cached_avo_depth(props_depth, angles, cache_dir: str = ".cache"):
-    return modeling_cache.cached_avo_depth(props_depth, angles, cache_dir=cache_dir)
+    return _impl_cached_avo_depth(props_depth, angles, cache_dir=cache_dir)
 
 
 def cached_ai_depth(props_depth, cache_dir: str = ".cache"):
-    return modeling_cache.cached_ai_depth(props_depth, cache_dir=cache_dir)
+    return _impl_cached_ai_depth(props_depth, cache_dir=cache_dir)
 
 
 def cached_ei_depth(props_depth, angle_deg: int = 10, cache_dir: str = ".cache"):
-    return modeling_cache.cached_ei_depth(
-        props_depth, angle_deg=angle_deg, cache_dir=cache_dir
-    )
+    return _impl_cached_ei_depth(props_depth, angle_deg=angle_deg, cache_dir=cache_dir)

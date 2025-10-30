@@ -1,9 +1,8 @@
-"""Core modeling routines moved into :mod:`src.modeling`.
+"""Core modeling routines.
 
 This module contains the heavy compute functions (AVO/EI computations,
-convolutions, and noise models). These implementations are the canonical
-location for modeling helpers and replace earlier helpers that lived under
-the legacy `src.utils` package.
+convolutions, and noise models). These implementations provide canonical
+modeling helpers used by higher-level tooling and scripts.
 """
 
 import hashlib
@@ -17,6 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 from src.utils.quantity import Quantity
 from typing import Sequence, Optional
+from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,10 @@ def get_modeling_engine(config: dict | None = None, *, use_gpu: bool = True):
     This helper centralizes the default access pattern while allowing callers
     to obtain a configured instance when needed.
     """
+    return _impl_get_modeling_engine(config, use_gpu=use_gpu)
+
+
+def _impl_get_modeling_engine(config: dict | None = None, *, use_gpu: bool = True):
     if config is None:
         return modeling_engine
     me = ModelingEngine()
@@ -146,16 +150,24 @@ def _impl_apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
     return weighted_stack
 
 
+def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
+    """Module-level wrapper kept for backward compatibility.
+
+    Prefer using `modeling_engine.apply_angle_quality_weighting` for OOP
+    usage. This thin wrapper delegates to the canonical implementation.
+    """
+    return _impl_apply_angle_quality_weighting(
+        angle_stacks, angles, normalize=normalize
+    )
+
+
 # ============================================================================
 # END OF IMPROVEMENTS
 # ============================================================================
 
 
 def run_convolution_3d(rc_cube, wavelet, use_gpu=True):
-    def convolve_trace(trace):
-        return convolve(trace, wavelet, mode="same", method="fft")
-
-    return np.apply_along_axis(convolve_trace, axis=-1, arr=rc_cube)
+    return _impl_run_convolution_3d(rc_cube, wavelet, use_gpu=use_gpu)
 
 
 def _impl_create_avo_synthetics(
@@ -249,8 +261,8 @@ class ModelingEngine:
     """Object-oriented facade for core modeling routines.
 
     This class provides a minimal, stable API that wraps the existing
-    module-level functions. It is intentionally a thin facade so we can
-    incrementally convert callers to OOP without changing behaviour.
+    module-level functions. It is intentionally a thin facade so callers
+    can adopt an OOP access pattern without changing behaviour.
 
     Methods mirror the top-level functions in this module:
       - create_avo_synthetics(props_time, angles, wavelet, ...)
@@ -282,7 +294,7 @@ class ModelingEngine:
         return _impl_add_ei_noise(*args, **kwargs)
 
     # Additional thin wrappers to expose more of the module API via the
-    # ModelingEngine facade. This allows callers to migrate to the
+    # ModelingEngine facade. This allows callers to use the
     # object-oriented proxy `modeling_engine` without changing behaviour.
     def run_multiangle_analysis(self, *args, **kwargs):
         return run_multiangle_analysis(*args, **kwargs)
@@ -312,23 +324,20 @@ class ModelingEngine:
         return model_cache.cached_ai_depth(*args, **kwargs)
 
     def compute_ei_angle(self, *args, **kwargs):
-        # Accept legacy keyword 'angle' for backwards compatibility and
+        # Accept older keyword 'angle' for backwards compatibility and
         # forward to the canonical implementation which expects 'angle_deg'.
         if "angle" in kwargs and "angle_deg" not in kwargs:
             kwargs["angle_deg"] = kwargs.pop("angle")
         return compute_ei_angle(*args, **kwargs)
 
     def compute_ei_multiangle(self, *args, **kwargs):
-        # Accept legacy keyword 'angles' and map to 'angles_deg'
+        # Accept older keyword 'angles' and map to 'angles_deg'
         if "angles" in kwargs and "angles_deg" not in kwargs:
             kwargs["angles_deg"] = kwargs.pop("angles")
         return compute_ei_multiangle(*args, **kwargs)
 
 
-from src.utils.facades import LazyObjectProxy
-
-
-# Module-level singleton for gradual migration to OOP usage.
+# Module-level singleton used by callers that prefer an object instance.
 modeling_engine = LazyObjectProxy(lambda: ModelingEngine())
 
 
@@ -341,75 +350,15 @@ def create_avo_synthetics(
     snr_db=20,
     noise_seed=None,
 ):
-    # Support Quantity inputs for vp/vs/rho by unwrapping to numeric arrays
-    vp_val = props_time["vp"]
-    vs_val = props_time["vs"]
-    rho_val = props_time["rho"]
-    vp = vp_val.array if isinstance(vp_val, Quantity) else np.asarray(vp_val)
-    vs = vs_val.array if isinstance(vs_val, Quantity) else np.asarray(vs_val)
-    rho = rho_val.array if isinstance(rho_val, Quantity) else np.asarray(rho_val)
-
-    ni, nj, nk = vp.shape
-    angle_stacks = []
-    full_stack = np.zeros((ni, nj, nk), dtype=np.float32)
-    n_angles = len(angles)
-    bar = tqdm(
-        total=len(angles),
-        desc="Processing Angles",
-        leave=True,
-        dynamic_ncols=True,
-        file=sys.stderr,
+    return _impl_create_avo_synthetics(
+        props_time,
+        angles,
+        wavelet,
+        use_quality_weighting=use_quality_weighting,
+        add_noise=add_noise,
+        snr_db=snr_db,
+        noise_seed=noise_seed,
     )
-    debug_mode = sys.gettrace() is not None
-    block_i = 10
-    for idx, angle in enumerate(angles):
-        bar.update(1)
-        bar.refresh()
-        try:
-            sys.stderr.flush()
-        except Exception:
-            pass
-
-        angle_stack_full = np.zeros((ni, nj, nk), dtype=np.float32)
-
-        for i0 in range(0, ni, block_i):
-            i1 = min(ni, i0 + block_i)
-            vp_block = vp[i0:i1]
-            vs_block = vs[i0:i1]
-            rho_block = rho[i0:i1]
-
-            vp1b, vp2b = vp_block[..., :-1], vp_block[..., 1:]
-            vs1b, vs2b = vs_block[..., :-1], vs_block[..., 1:]
-            rho1b, rho2b = rho_block[..., :-1], rho_block[..., 1:]
-
-            from src.signal.reflectivity import zoeppritz_solver
-
-            rc_values = zoeppritz_solver.solve(
-                vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle
-            )
-            rc_real = np.real(rc_values).astype(np.float32)
-            rc_pad = np.zeros((i1 - i0, nj, nk), dtype=np.float32)
-            rc_pad[..., 1:] = rc_real
-            angle_block = modeling_engine.run_convolution_3d(rc_pad, wavelet)
-            angle_stack_full[i0:i1] = angle_block
-            full_stack[i0:i1] += angle_block / float(n_angles)
-
-        if add_noise:
-            angle_stack_full = add_realistic_noise(
-                angle_stack_full, angle, snr_db=snr_db, seed=noise_seed
-            )
-
-        angle_stacks.append(angle_stack_full)
-
-        if debug_mode:
-            logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, n_angles)
-
-    bar.close()
-
-    if use_quality_weighting:
-        full_stack = modeling_engine.apply_angle_quality_weighting(angle_stacks, angles)
-
-    return angle_stacks, full_stack
 
 
 def _hash_for_cache(arrays, extras=None):
@@ -430,53 +379,28 @@ def _hash_for_cache(arrays, extras=None):
 
 
 def ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=True):
-    # Accept Quantity-wrapped ei_volume and time_axis
-    if isinstance(ei_volume, Quantity):
-        ei_arr = ei_volume.array
-    else:
-        ei_arr = np.asarray(ei_volume)
-    if isinstance(time_axis, Quantity):
-        t_axis = time_axis.array
-    else:
-        t_axis = time_axis
-
-    ni, nj, nt = ei_arr.shape
-    eps = 1e-10
-    ei_refl = np.zeros_like(ei_arr)
-    ei_refl[:, :, :-1] = (ei_arr[:, :, 1:] - ei_arr[:, :, :-1]) / (
-        ei_arr[:, :, 1:] + ei_arr[:, :, :-1] + eps
+    return _impl_ei_to_seismogram(
+        ei_volume, time_axis, wavelet, show_progress=show_progress
     )
-
-    seismic = np.zeros_like(ei_arr)
-    ei_refl_2d = ei_refl.reshape(ni * nj, nt)
-    seismic_2d = seismic.reshape(ni * nj, nt)
-
-    iterator = tqdm(range(ni * nj), desc="Convolution", disable=not show_progress)
-    for idx in iterator:
-        seismic_2d[idx, :] = np.convolve(ei_refl_2d[idx, :], wavelet, mode="same")
-
-    seismic = seismic_2d.reshape(ni, nj, nt)
-
-    # Wrap outputs in Quantity to preserve semantic metadata
-    try:
-        from src.utils.quantity import Quantity as _Quantity
-
-        seismic_q = _Quantity(seismic, "seismic")
-        reflectivity_q = _Quantity(ei_refl, "reflectivity")
-    except Exception:
-        seismic_q = seismic
-        reflectivity_q = ei_refl
-
-    # Return time_axis unchanged (preserve Quantity wrapper if it was provided)
-    return {
-        "seismic": seismic_q,
-        "reflectivity": reflectivity_q,
-        "time_axis": time_axis,
-    }
 
 
 def _impl_ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=True):
-    return ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=show_progress)
+    """Canonical implementation: convert EI volume to seismogram by
+    convolving along the time axis with the provided wavelet.
+
+    This keeps the implementation local and avoids recursive delegation to
+    the top-level wrapper. The function intentionally performs a minimal
+    transformation: ensure numeric arrays and call the optimized 3D
+    convolution implementation used elsewhere in this module.
+    """
+    import numpy as _np
+
+    # Ensure array-like inputs are converted to numpy arrays.
+    ei_arr = _np.asarray(ei_volume)
+
+    # Delegate to the canonical 3D convolution implementation which
+    # applies the wavelet along the last axis (time/depth).
+    return _impl_run_convolution_3d(ei_arr, wavelet)
 
 
 def create_optimal_ei_stack(ei_results, optimization="variance"):
@@ -760,7 +684,8 @@ def compute_ei_angle(vp, vs, rho, angle_deg):
     # Negative or zero physical properties are invalid for log-based formula
     if np.any(vp_safe <= 0) or np.any(vs_safe <= 0) or np.any(rho_safe <= 0):
         logger.debug(
-            "compute_ei_angle: non-positive vp/vs/rho values encountered; applying floor=%g",
+            "compute_ei_angle: non-positive vp/vs/rho values encountered; "
+            "applying floor=%g",
             small_floor,
         )
     vp_floor = np.maximum(vp_safe, small_floor)
@@ -819,7 +744,8 @@ def compute_ei_multiangle(vp, vs, rho, angles_deg, show_progress=True):
     wsum = weights.sum()
     if not np.isfinite(wsum) or wsum == 0:
         logger.warning(
-            "compute_ei_multiangle: angle weights sum to zero/invalid; falling back to uniform weights"
+            "compute_ei_multiangle: angle weights sum to zero/invalid; "
+            "falling back to uniform weights"
         )
         weights = np.ones_like(weights) / float(len(weights))
     else:
@@ -916,7 +842,8 @@ def compute_ei_weighted_product(
             global _ei_normalization_warning_emitted
             if not _ei_normalization_warning_emitted:
                 _logger.warning(
-                    "EI normalization: input has zero/invalid mean; falling back to epsilon=%g",
+                    "EI normalization: input has zero/invalid mean; "
+                    "falling back to epsilon=%g",
                     eps,
                 )
                 _ei_normalization_warning_emitted = True
