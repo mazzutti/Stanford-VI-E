@@ -14,10 +14,14 @@ Flags are intentionally simple (env-var driven) so they are easy to
 toggle from CI or developer machines. Remove this module after the
 rollout is complete.
 """
+
 from __future__ import annotations
 
 import os
 from typing import Any
+
+
+__all__ = ["use_flag", "get_flag_value"]
 
 
 def _coerce_bool(value: Any) -> bool:
@@ -44,3 +48,30 @@ def use_flag(name: str, default: bool = False) -> bool:
 def get_flag_value(name: str, default: str | None = None) -> str | None:
     """Return the raw flag value from the environment or the default."""
     return os.environ.get(name, default)
+
+
+from src.utils.facades import LazyObjectProxy
+
+
+class Flags:
+    def use_flag(self, name: str, default: bool = False) -> bool:
+        return use_flag(name, default=default)
+
+    def get_flag_value(self, name: str, default: str | None = None) -> str | None:
+        return get_flag_value(name, default=default)
+
+
+# Module-level lazy flags facade
+flags = LazyObjectProxy(lambda: Flags())
+
+
+def get_flags(instance: Flags | None = None) -> Flags:
+    return instance if instance is not None else flags
+
+
+try:
+    __all__
+except NameError:
+    __all__ = ["use_flag", "get_flag_value"]
+
+__all__.extend(["flags", "get_flags"])

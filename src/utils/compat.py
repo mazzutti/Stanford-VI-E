@@ -37,3 +37,28 @@ def numba_available() -> bool:
 
 
 __all__ = ["njit", "prange", "_NUMBA_AVAILABLE", "numba_available"]
+
+from src.utils.facades import LazyObjectProxy
+
+
+class CompatFacade:
+    def njit(self, func=None, **kwargs):
+        return njit(func, **kwargs)
+
+    @property
+    def prange(self):
+        return prange
+
+    def numba_available(self) -> bool:
+        return numba_available()
+
+
+# Module-level lazy facade for compatibility helpers
+compat = LazyObjectProxy(lambda: CompatFacade())
+
+
+def get_compat(instance: CompatFacade | None = None) -> CompatFacade:
+    return instance if instance is not None else compat
+
+
+__all__.extend(["compat", "get_compat"])

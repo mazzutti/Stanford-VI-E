@@ -130,7 +130,7 @@ def add_realistic_noise(seismic, angle_deg, snr_db=20, seed=None):
     return seismic + total_noise.astype(seismic.dtype)
 
 
-def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
+def _impl_apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
     if len(angle_stacks) != len(angles):
         raise ValueError("Number of angle stacks must match number of angles")
 
@@ -152,6 +152,93 @@ def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
 
 
 def run_convolution_3d(rc_cube, wavelet, use_gpu=True):
+    def convolve_trace(trace):
+        return convolve(trace, wavelet, mode="same", method="fft")
+
+    return np.apply_along_axis(convolve_trace, axis=-1, arr=rc_cube)
+
+
+def _impl_create_avo_synthetics(
+    props_time,
+    angles,
+    wavelet,
+    use_quality_weighting=False,
+    add_noise=False,
+    snr_db=20,
+    noise_seed=None,
+):
+    # Support Quantity inputs for vp/vs/rho by unwrapping to numeric arrays
+    vp_val = props_time["vp"]
+    vs_val = props_time["vs"]
+    rho_val = props_time["rho"]
+    vp = vp_val.array if isinstance(vp_val, Quantity) else np.asarray(vp_val)
+    vs = vs_val.array if isinstance(vs_val, Quantity) else np.asarray(vs_val)
+    rho = rho_val.array if isinstance(rho_val, Quantity) else np.asarray(rho_val)
+
+    ni, nj, nk = vp.shape
+    angle_stacks = []
+    full_stack = np.zeros((ni, nj, nk), dtype=np.float32)
+    n_angles = len(angles)
+    bar = tqdm(
+        total=len(angles),
+        desc="Processing Angles",
+        leave=True,
+        dynamic_ncols=True,
+        file=sys.stderr,
+    )
+    debug_mode = sys.gettrace() is not None
+    block_i = 10
+    for idx, angle in enumerate(angles):
+        bar.update(1)
+        bar.refresh()
+        try:
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+        angle_stack_full = np.zeros((ni, nj, nk), dtype=np.float32)
+
+        for i0 in range(0, ni, block_i):
+            i1 = min(ni, i0 + block_i)
+            vp_block = vp[i0:i1]
+            vs_block = vs[i0:i1]
+            rho_block = rho[i0:i1]
+
+            vp1b, vp2b = vp_block[..., :-1], vp_block[..., 1:]
+            vs1b, vs2b = vs_block[..., :-1], vs_block[..., 1:]
+            rho1b, rho2b = rho_block[..., :-1], rho_block[..., 1:]
+
+            from src.signal.reflectivity import zoeppritz_solver
+
+            rc_values = zoeppritz_solver.solve(
+                vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle
+            )
+            rc_real = np.real(rc_values).astype(np.float32)
+            rc_pad = np.zeros((i1 - i0, nj, nk), dtype=np.float32)
+            rc_pad[..., 1:] = rc_real
+            angle_block = modeling_engine.run_convolution_3d(rc_pad, wavelet)
+            angle_stack_full[i0:i1] = angle_block
+            full_stack[i0:i1] += angle_block / float(n_angles)
+
+        if add_noise:
+            angle_stack_full = add_realistic_noise(
+                angle_stack_full, angle, snr_db=snr_db, seed=noise_seed
+            )
+
+        angle_stacks.append(angle_stack_full)
+
+        if debug_mode:
+            logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, n_angles)
+
+    bar.close()
+
+    if use_quality_weighting:
+        full_stack = modeling_engine.apply_angle_quality_weighting(angle_stacks, angles)
+
+    return angle_stacks, full_stack
+
+
+def _impl_run_convolution_3d(rc_cube, wavelet, use_gpu=True):
     def convolve_trace(trace):
         return convolve(trace, wavelet, mode="same", method="fft")
 
@@ -180,19 +267,19 @@ class ModelingEngine:
         self.use_gpu = True
 
     def create_avo_synthetics(self, *args, **kwargs):
-        return create_avo_synthetics(*args, **kwargs)
+        return _impl_create_avo_synthetics(*args, **kwargs)
 
     def run_convolution_3d(self, *args, **kwargs):
-        return run_convolution_3d(*args, **kwargs)
+        return _impl_run_convolution_3d(*args, **kwargs)
 
     def apply_angle_quality_weighting(self, *args, **kwargs):
-        return apply_angle_quality_weighting(*args, **kwargs)
+        return _impl_apply_angle_quality_weighting(*args, **kwargs)
 
     def ei_to_seismogram(self, *args, **kwargs):
-        return ei_to_seismogram(*args, **kwargs)
+        return _impl_ei_to_seismogram(*args, **kwargs)
 
     def add_ei_noise(self, *args, **kwargs):
-        return add_ei_noise(*args, **kwargs)
+        return _impl_add_ei_noise(*args, **kwargs)
 
     # Additional thin wrappers to expose more of the module API via the
     # ModelingEngine facade. This allows callers to migrate to the
@@ -388,6 +475,10 @@ def ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=True):
     }
 
 
+def _impl_ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=True):
+    return ei_to_seismogram(ei_volume, time_axis, wavelet, show_progress=show_progress)
+
+
 def create_optimal_ei_stack(ei_results, optimization="variance"):
     from src.processing.ei import ei_processor
 
@@ -496,6 +587,24 @@ def add_ei_noise(
     total_noise = random_noise + rock_physics_noise
     noisy_seismic = ei_seismic + total_noise
     return noisy_seismic
+
+
+def _impl_add_ei_noise(
+    ei_seismic,
+    frequency_hz,
+    snr_db=None,
+    include_rock_physics_error=True,
+    spatial_correlation_length=3,
+    seed=None,
+):
+    return add_ei_noise(
+        ei_seismic,
+        frequency_hz,
+        snr_db=snr_db,
+        include_rock_physics_error=include_rock_physics_error,
+        spatial_correlation_length=spatial_correlation_length,
+        seed=seed,
+    )
 
 
 def compare_noise_levels(

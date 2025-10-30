@@ -164,3 +164,18 @@ __all__ = ["UnitRegistry"]
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+
+from src.utils.facades import LazyObjectProxy
+
+
+# Module-level lazy registry for gradual migration
+unit_registry: UnitRegistry = LazyObjectProxy(lambda: UnitRegistry())
+
+
+def get_unit_registry(instance: UnitRegistry | None = None) -> UnitRegistry:
+    """Return provided UnitRegistry or the module-level lazy singleton."""
+    return instance if instance is not None else unit_registry
+
+
+__all__.extend(["unit_registry", "get_unit_registry"])

@@ -143,6 +143,3 @@ __all__ = [
     "set_backend_verbose",
     "is_backend_verbose",
 ]
-
-
-

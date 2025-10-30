@@ -109,6 +109,16 @@ class SeismicProcessor:
 
 
 # Backwards-compatible top-level wrapper functions
+from src.utils.facades import LazyObjectProxy
+
+# Module-level lazy singleton processor for gradual migration
+seismic_processor: SeismicProcessor = LazyObjectProxy(lambda: SeismicProcessor())
+
+
+def get_seismic_processor(instance: SeismicProcessor | None = None) -> SeismicProcessor:
+    return instance if instance is not None else seismic_processor
+
+
 _default_processor = SeismicProcessor()
 
 

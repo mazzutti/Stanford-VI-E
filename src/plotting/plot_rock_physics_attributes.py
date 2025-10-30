@@ -19,45 +19,67 @@ __all__ = ["plot_attribute", "main"]
 
 
 def plot_attribute(ax, data, idx, slice_type, title, cmap="viridis"):
-    if slice_type == "inline":
-        slice_data = data[idx, :, :]
-        plot_helper.imshow_with_labels(
-            ax,
-            slice_data,
-            f"{title} (Inline {idx})",
-            xlabel="Crossline Index",
-            k_label="Depth",
-            k_unit="m",
-            cmap=cmap,
-            origin="upper",
-            interpolation="bilinear",
-        )
-    elif slice_type == "crossline":
-        slice_data = data[:, idx, :]
-        plot_helper.imshow_with_labels(
-            ax,
-            slice_data,
-            f"{title} (Crossline {idx})",
-            xlabel="Inline Index",
-            k_label="Depth",
-            k_unit="m",
-            cmap=cmap,
-            origin="upper",
-            interpolation="bilinear",
-        )
-    else:
-        slice_data = data[:, :, idx]
-        plot_helper.imshow_with_labels(
-            ax,
-            slice_data,
-            f"{title} (Depth {idx}m)",
-            xlabel="Inline Index",
-            k_label="Crossline Index",
-            k_unit="",
-            cmap=cmap,
-            origin="upper",
-            interpolation="bilinear",
-        )
+    return plot_rock_physics_attributes.plot_attribute(
+        ax, data, idx, slice_type, title, cmap=cmap
+    )
+
+
+from src.utils.facades import LazyObjectProxy
+
+
+class PlotRockPhysicsAttributes:
+    def plot_attribute(self, ax, data, idx, slice_type, title, cmap="viridis"):
+        if slice_type == "inline":
+            slice_data = data[idx, :, :]
+            return plot_helper.imshow_with_labels(
+                ax,
+                slice_data,
+                f"{title} (Inline {idx})",
+                xlabel="Crossline Index",
+                k_label="Depth",
+                k_unit="m",
+                cmap=cmap,
+                origin="upper",
+                interpolation="bilinear",
+            )
+        elif slice_type == "crossline":
+            slice_data = data[:, idx, :]
+            return plot_helper.imshow_with_labels(
+                ax,
+                slice_data,
+                f"{title} (Crossline {idx})",
+                xlabel="Inline Index",
+                k_label="Depth",
+                k_unit="m",
+                cmap=cmap,
+                origin="upper",
+                interpolation="bilinear",
+            )
+        else:
+            slice_data = data[:, :, idx]
+            return plot_helper.imshow_with_labels(
+                ax,
+                slice_data,
+                f"{title} (Depth {idx}m)",
+                xlabel="Inline Index",
+                k_label="Crossline Index",
+                k_unit="",
+                cmap=cmap,
+                origin="upper",
+                interpolation="bilinear",
+            )
+
+
+# Module-level lazy proxy for gradual migration
+plot_rock_physics_attributes: PlotRockPhysicsAttributes = LazyObjectProxy(
+    lambda: PlotRockPhysicsAttributes()
+)
+
+
+def get_plot_rock_physics_attributes(
+    instance: PlotRockPhysicsAttributes | None = None,
+) -> PlotRockPhysicsAttributes:
+    return instance if instance is not None else plot_rock_physics_attributes
 
 
 def main(argv=None):

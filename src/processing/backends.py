@@ -175,6 +175,8 @@ except Exception:
     pass
 
 try:
-    backends_registry.register_backend(BatchedInterpolatorBackend.name, BatchedInterpolatorBackend())
+    backends_registry.register_backend(
+        BatchedInterpolatorBackend.name, BatchedInterpolatorBackend()
+    )
 except Exception:
     pass

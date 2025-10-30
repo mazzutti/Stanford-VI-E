@@ -725,14 +725,16 @@ __all__.extend(["ResamplerFactory", "resampler_factory"])
 # retained for backward compatibility but are removed here to reduce
 # duplicated surface area. Callers should use `resampler_factory` or
 # `get_resampler_service()` instead.
-__all__.extend([
-    "ResamplerFactory",
-    "resampler_factory",
-    "ResamplerService",
-    "resampler_service",
-    "get_resampler_service",
-    "get_resampler_factory",
-])
+__all__.extend(
+    [
+        "ResamplerFactory",
+        "resampler_factory",
+        "ResamplerService",
+        "resampler_service",
+        "get_resampler_service",
+        "get_resampler_factory",
+    ]
+)
 
 
 # --- Simplified OO facade -------------------------------------------------
@@ -748,14 +750,10 @@ class ResamplerService:
     def compute_one_way_time(
         self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
     ):
-        return resampler_factory.get_resampler(grid_spec).compute_one_way_time(
-            vp_trace
-        )
+        return resampler_factory.get_resampler(grid_spec).compute_one_way_time(vp_trace)
 
     def compute_one_way_times(self, grid_spec: GridSpec, vp_arr: np.ndarray | Quantity):
-        return resampler_factory.get_resampler(grid_spec).compute_one_way_times(
-            vp_arr
-        )
+        return resampler_factory.get_resampler(grid_spec).compute_one_way_times(vp_arr)
 
     def depth_to_time_cube(
         self,
@@ -799,6 +797,20 @@ class ResamplerService:
             progress_every=progress_every,
             prefix=prefix,
         )
+
+
+# Module-level lazy service proxy for convenience and DI in tests
+resampler_service = LazyObjectProxy(lambda: ResamplerService())
+
+
+def get_resampler_service(instance: ResamplerService | None = None) -> ResamplerService:
+    """Return provided ResamplerService instance or the module-level singleton."""
+    return instance if instance is not None else resampler_service
+
+
+def get_resampler_factory(instance: ResamplerFactory | None = None) -> ResamplerFactory:
+    """Return provided ResamplerFactory instance or the module-level singleton."""
+    return instance if instance is not None else resampler_factory
 
     def depth_to_time_from_twt(
         self,

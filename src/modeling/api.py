@@ -38,6 +38,28 @@ def run_full_modeling(
     Returns a dict with keys similar to the previous pipeline output, for
     example: {'ei_cache_file': ..., 'save_dict': ..., 'ei_angle_seismograms': ...}
     """
+    # Delegate to facade implementation
+    return modeling_api.run_full_modeling(
+        cache_dir=cache_dir,
+        skip_cleanup=skip_cleanup,
+        verbose=verbose,
+        add_avo_noise=add_avo_noise,
+        add_ei_noise=add_ei_noise,
+        ei_noise_snr=ei_noise_snr,
+        ei_noise_seed=ei_noise_seed,
+    )
+
+
+def _impl_run_full_modeling(
+    cache_dir: str = ".cache",
+    skip_cleanup: bool = False,
+    verbose: bool = False,
+    add_avo_noise: bool = False,
+    add_ei_noise: bool = False,
+    ei_noise_snr: float | None = None,
+    ei_noise_seed: int | None = None,
+):
+    # Original implementation from run_full_modeling (kept as canonical impl)
     # Load depth data defaults (kept intentionally simple)
     DATA_PATH = "."
     FILE_MAP = {
@@ -249,7 +271,7 @@ class ModelingAPI:
     """
 
     def run_full_modeling(self, *args, **kwargs):
-        return run_full_modeling(*args, **kwargs)
+        return _impl_run_full_modeling(*args, **kwargs)
 
 
 from src.utils.facades import LazyObjectProxy

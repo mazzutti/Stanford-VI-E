@@ -166,6 +166,3 @@ def get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator"
 
 
 __all__.append("get_seismic_operator")
-
-
-

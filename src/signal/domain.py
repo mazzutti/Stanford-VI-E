@@ -178,3 +178,26 @@ def convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
 def resample_properties_to_time(properties_depth, twt_irregular, grid_spec: GridSpec):
     converter = DepthTimeConverter(grid_spec)
     return converter.resample_properties_to_time(properties_depth, twt_irregular)
+
+
+from src.utils.facades import LazyObjectProxy
+
+
+# Module-level lazy converter for gradual migration
+depth_time_converter = LazyObjectProxy(lambda gs: DepthTimeConverter(gs))
+
+
+def get_depth_time_converter(
+    grid_spec: GridSpec | None = None, instance: DepthTimeConverter | None = None
+) -> DepthTimeConverter:
+    """Return provided DepthTimeConverter instance or a module-level lazy one.
+
+    If `instance` is provided it is returned directly. Otherwise a new
+    DepthTimeConverter is created for the provided `grid_spec` or the
+    module-level lazy proxy is returned when `grid_spec` is None.
+    """
+    if instance is not None:
+        return instance
+    if grid_spec is not None:
+        return DepthTimeConverter(grid_spec)
+    return depth_time_converter

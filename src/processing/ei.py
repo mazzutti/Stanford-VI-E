@@ -452,7 +452,6 @@ def _impl_compute_and_save_multiangle_ei_from_vm(
     )
 
 
-
 # Prefer the OO facade and the module-level lazy proxy. Callers should use
 # `ei_processor` or obtain a configured instance via `get_ei_processor()`.
 __all__ = ["MultiAngleEI", "ei_processor", "get_ei_processor"]
