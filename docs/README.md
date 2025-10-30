@@ -33,8 +33,8 @@ Modern web dashboard comparing AVO, AI, and EI seismic modeling techniques.
 python -m src.modeling
 
 # Generate plots
-python -m src.plot_2d_slices --domain depth
-python -m src.plot_2d_slices --domain time
+python -m src.plotting.plot_2d_slices --domain depth
+python -m src.plotting.plot_2d_slices --domain time
 
 # Push to GitHub
 git add docs/
