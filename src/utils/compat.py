@@ -1,11 +1,10 @@
-"""Compatibility helpers for optional accelerated libraries.
+"""Helpers for optional accelerated libraries.
 
 Provides a thin shim when Numba isn't available so callers can safely
 decorate functions with `njit` and use `prange` without conditional logic.
 """
 
 from typing import Callable, Optional, Any
-from src.utils.facades import LazyObjectProxy
 
 try:
     from numba import njit, prange  # type: ignore
@@ -40,24 +39,4 @@ def numba_available() -> bool:
 __all__ = ["njit", "prange", "_NUMBA_AVAILABLE", "numba_available"]
 
 
-class CompatFacade:
-    def njit(self, func=None, **kwargs):
-        return njit(func, **kwargs)
-
-    @property
-    def prange(self):
-        return prange
-
-    def numba_available(self) -> bool:
-        return numba_available()
-
-
-# Module-level lazy facade for compatibility helpers
-compat = LazyObjectProxy(lambda: CompatFacade())
-
-
-def get_compat(instance: CompatFacade | None = None) -> CompatFacade:
-    return instance if instance is not None else compat
-
-
-__all__.extend(["compat", "get_compat"])
+__all__ = ["njit", "prange", "_NUMBA_AVAILABLE", "numba_available"]

@@ -1,13 +1,11 @@
 """Rock physics convenience model.
 
-Small wrapper to hold vp/vs/rho/facies together, centralize unit handling and
-provide simple derived attribute calculations (e.g. acoustic impedance).
+Small wrapper to hold vp/vs/rho/facies together and centralize unit handling.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from collections import OrderedDict
 from typing import Optional
 
 import numpy as np
@@ -15,9 +13,7 @@ import numpy as np
 from src.io.grid import GridSpec
 from src.processing.velocity import VelocityModel
 from src.processing.materials import VsModel, DensityModel
-from src.modeling import modeling as modeling_utils
 from src.io.disk_cache import DiskCache
-import hashlib
 from src.utils.quantity import Quantity
 from src.utils.facades import LazyObjectProxy
 import logging
@@ -35,23 +31,10 @@ class RockPhysicsModel:
     facies: Optional[np.ndarray]
     grid_spec: GridSpec
     # Caches for derived attributes (LRU via OrderedDict)
-    _ai_cache: Optional[np.ndarray] = field(default=None, init=False, repr=False)
+    _derived_cache: Optional[np.ndarray] = field(default=None, init=False, repr=False)
     _refl_cache: Optional[np.ndarray] = field(default=None, init=False, repr=False)
-    _ei_angle_cache: OrderedDict = field(
-        default_factory=OrderedDict, init=False, repr=False
-    )
-    _ei_multi_cache: OrderedDict = field(
-        default_factory=OrderedDict, init=False, repr=False
-    )
-    _ei_weighted_cache: OrderedDict = field(
-        default_factory=OrderedDict, init=False, repr=False
-    )
-
-    # Cache size limits (tunable per-instance)
-    ei_angle_cache_max: int = field(default=8, init=True)
-    ei_multi_cache_max: int = field(default=4, init=True)
-    ei_weighted_cache_max: int = field(default=4, init=True)
-    # Optional disk cache (shared) for expensive EI results
+    # Technique-specific caches are not part of this module's public API
+    # Optional disk cache (shared) for expensive results
     disk_cache: Optional[DiskCache] = field(default=None, init=True, repr=False)
 
     @classmethod
@@ -111,54 +94,19 @@ class RockPhysicsModel:
         self.invalidate_cache()
 
     def compute_ai(self) -> np.ndarray:
-        """Compute acoustic impedance (AI = vp * rho).
+        raise AttributeError("compute_ai is not available")
 
-        Returns:
-            numpy.ndarray: the AI cube (same shape as vp/rho)
+    def reflectivity_from_props(self) -> np.ndarray:
+        """Compute reflectivity from current rock properties.
+
+        Use `src.signal.reflectivity` helpers for reflectivity calculations.
         """
-        return _impl_compute_ai(self)
-
-    def reflectivity_from_ai(self) -> np.ndarray:
-        """Compute (normal-incidence) reflectivity from AI (depth-domain).
-
-        This reuses the generic reflectivity helper. The output has the same
-        spatial shape as AI but with the leading depth sample padded as in the
-        reflectivity implementation.
-        """
-        return _impl_reflectivity_from_ai(self)
-
-    def compute_ei_angle(self, angle_deg: float) -> np.ndarray:
-        return _impl_compute_ei_angle(self, angle_deg)
-
-    def compute_ei_multiangle(self, angles_deg, show_progress=True) -> dict:
-        return _impl_compute_ei_multiangle(
-            self, angles_deg, show_progress=show_progress
-        )
-
-    def compute_ei_weighted_product(
-        self,
-        litho_angles=None,
-        fluid_angles=None,
-        litho_weight=0.7,
-        fluid_weight=0.3,
-        show_progress=True,
-    ) -> dict:
-        return _impl_compute_ei_weighted_product(
-            self,
-            litho_angles=litho_angles,
-            fluid_angles=fluid_angles,
-            litho_weight=litho_weight,
-            fluid_weight=fluid_weight,
-            show_progress=show_progress,
-        )
 
     def invalidate_cache(self) -> None:
         """Invalidate internal caches for derived attributes."""
-        self._ai_cache = None
+        self._derived_cache = None
         self._refl_cache = None
-        self._ei_angle_cache = OrderedDict()
-        self._ei_multi_cache = OrderedDict()
-        self._ei_weighted_cache = OrderedDict()
+        # keep only caches used by current codepaths
 
     def to_props_dict(self) -> dict:
         out = {}
@@ -217,7 +165,7 @@ class RockPhysicsModelProxy(LazyObjectProxy[RockPhysicsModel]):
         inst = self._ensure()
         setattr(inst, name, value)
 
-    def __repr__(self) -> str:  # keep previous repr for compatibility
+    def __repr__(self) -> str:
         if getattr(self, "_instance", None) is None:
             return "<LazyRockPhysicsModelProxy (uninitialized)>"
         return "<LazyRockPhysicsModelProxy>"
@@ -247,202 +195,3 @@ def _impl_get_rock_physics_model(
     module-level `rock_physics_model` lazy proxy.
     """
     return instance if instance is not None else rock_physics_model
-
-
-def _impl_compute_ai(self: RockPhysicsModel) -> np.ndarray:
-    if self._ai_cache is not None:
-        return self._ai_cache
-    if self.vp is None or self.rho is None:
-        raise ValueError("vp and rho are required to compute AI")
-    vp_arr = self.vp.array if isinstance(self.vp, Quantity) else self.vp
-    rho_arr = self.rho.array if isinstance(self.rho, Quantity) else self.rho
-    self._ai_cache = vp_arr * rho_arr
-    return self._ai_cache
-
-
-def _impl_reflectivity_from_ai(self: RockPhysicsModel) -> np.ndarray:
-    if self._refl_cache is not None:
-        return self._refl_cache
-    ai = _impl_compute_ai(self)
-    from src.signal.reflectivity import reflectivity_calc
-
-    self._refl_cache = reflectivity_calc.reflectivity_from_ai(ai)
-    return self._refl_cache
-
-
-def _impl_compute_ei_angle(self: RockPhysicsModel, angle_deg: float) -> np.ndarray:
-    key = float(angle_deg)
-    if key in self._ei_angle_cache:
-        # move to end to mark as recently used
-        val = self._ei_angle_cache.pop(key)
-        self._ei_angle_cache[key] = val
-        return val
-    if self.vp is None or self.vs is None or self.rho is None:
-        raise ValueError("vp, vs and rho are required for EI computation")
-    vp_arr = self.vp.array if isinstance(self.vp, Quantity) else self.vp
-    vs_arr = self.vs.array if isinstance(self.vs, Quantity) else self.vs
-    rho_arr = self.rho.array if isinstance(self.rho, Quantity) else self.rho
-    out = modeling_utils.modeling_engine.compute_ei_angle(
-        vp_arr, vs_arr, rho_arr, angle_deg
-    )
-    # insert and respect LRU size
-    self._ei_angle_cache[key] = out
-    if len(self._ei_angle_cache) > int(self.ei_angle_cache_max):
-        # pop the oldest item
-        self._ei_angle_cache.popitem(last=False)
-    return out
-
-
-def _impl_compute_ei_multiangle(
-    self: RockPhysicsModel, angles_deg, show_progress=True
-) -> dict:
-    key = tuple(angles_deg)
-    if key in self._ei_multi_cache:
-        val = self._ei_multi_cache.pop(key)
-        self._ei_multi_cache[key] = val
-        return val
-    # Attempt disk-backed lookup if available
-    if self.disk_cache is not None:
-        meta = {
-            "shape": tuple(self.vp.array.shape) if self.vp is not None else None,
-            "grid": (self.grid_spec.shape, self.grid_spec.dz, self.grid_spec.dt),
-            "angles": list(angles_deg),
-        }
-        # include small hashes of input arrays to detect content changes
-        try:
-            meta["vp_hash"] = hashlib.sha1(self.vp.array.tobytes()).hexdigest()
-            meta["vs_hash"] = hashlib.sha1(self.vs.array.tobytes()).hexdigest()
-            meta["rho_hash"] = hashlib.sha1(self.rho.array.tobytes()).hexdigest()
-        except Exception:
-            pass
-        disk_key = self.disk_cache.make_key("ei_multi", meta)
-        loaded = self.disk_cache.load_npz(disk_key)
-        if loaded is not None:
-            # loaded is a dict; cache and return
-            self._ei_multi_cache[key] = loaded
-            if len(self._ei_multi_cache) > int(self.ei_multi_cache_max):
-                self._ei_multi_cache.popitem(last=False)
-            return loaded
-    if self.vp is None or self.vs is None or self.rho is None:
-        raise ValueError("vp, vs and rho are required for EI computation")
-    vp_arr = self.vp.array if isinstance(self.vp, Quantity) else self.vp
-    vs_arr = self.vs.array if isinstance(self.vs, Quantity) else self.vs
-    rho_arr = self.rho.array if isinstance(self.rho, Quantity) else self.rho
-    out = modeling_utils.modeling_engine.compute_ei_multiangle(
-        vp_arr, vs_arr, rho_arr, angles_deg, show_progress=show_progress
-    )
-    self._ei_multi_cache[key] = out
-    if len(self._ei_multi_cache) > int(self.ei_multi_cache_max):
-        self._ei_multi_cache.popitem(last=False)
-    # Save to disk cache asynchronously (best-effort)
-    if self.disk_cache is not None:
-        try:
-            meta = {
-                "shape": (tuple(self.vp.array.shape) if self.vp is not None else None),
-                "grid": (
-                    self.grid_spec.shape,
-                    self.grid_spec.dz,
-                    self.grid_spec.dt,
-                ),
-                "angles": list(angles_deg),
-            }
-            meta["vp_hash"] = hashlib.sha1(self.vp.array.tobytes()).hexdigest()
-            meta["vs_hash"] = hashlib.sha1(self.vs.array.tobytes()).hexdigest()
-            meta["rho_hash"] = hashlib.sha1(self.rho.array.tobytes()).hexdigest()
-            disk_key = self.disk_cache.make_key("ei_multi", meta)
-            self.disk_cache.save_npz(disk_key, out)
-        except Exception:
-            pass
-    return out
-
-
-def _impl_compute_ei_weighted_product(
-    self: RockPhysicsModel,
-    litho_angles=None,
-    fluid_angles=None,
-    litho_weight=0.7,
-    fluid_weight=0.3,
-    show_progress=True,
-) -> dict:
-    key = (
-        tuple(litho_angles) if litho_angles is not None else None,
-        tuple(fluid_angles) if fluid_angles is not None else None,
-        float(litho_weight),
-        float(fluid_weight),
-    )
-    if key in self._ei_weighted_cache:
-        val = self._ei_weighted_cache.pop(key)
-        self._ei_weighted_cache[key] = val
-        return val
-    # Try disk cache
-    if self.disk_cache is not None:
-        try:
-            meta = {
-                "shape": (tuple(self.vp.array.shape) if self.vp is not None else None),
-                "grid": (
-                    self.grid_spec.shape,
-                    self.grid_spec.dz,
-                    self.grid_spec.dt,
-                ),
-                "litho_angles": (
-                    tuple(litho_angles) if litho_angles is not None else None
-                ),
-                "fluid_angles": (
-                    tuple(fluid_angles) if fluid_angles is not None else None
-                ),
-                "litho_weight": float(litho_weight),
-                "fluid_weight": float(fluid_weight),
-            }
-            meta["vp_hash"] = hashlib.sha1(self.vp.tobytes()).hexdigest()
-            meta["vs_hash"] = hashlib.sha1(self.vs.tobytes()).hexdigest()
-            meta["rho_hash"] = hashlib.sha1(self.rho.tobytes()).hexdigest()
-            disk_key = self.disk_cache.make_key("ei_weighted", meta)
-            loaded = self.disk_cache.load_npz(disk_key)
-            if loaded is not None:
-                self._ei_weighted_cache[key] = loaded
-                if len(self._ei_weighted_cache) > int(self.ei_weighted_cache_max):
-                    self._ei_weighted_cache.popitem(last=False)
-                return loaded
-        except Exception:
-            pass
-    if self.vp is None or self.vs is None or self.rho is None:
-        raise ValueError("vp, vs and rho are required for EI computation")
-    out = modeling_utils.compute_ei_weighted_product(
-        self.vp,
-        self.vs,
-        self.rho,
-        litho_angles=litho_angles,
-        fluid_angles=fluid_angles,
-        litho_weight=litho_weight,
-        fluid_weight=fluid_weight,
-        show_progress=show_progress,
-    )
-    self._ei_weighted_cache[key] = out
-    if len(self._ei_weighted_cache) > int(self.ei_weighted_cache_max):
-        self._ei_weighted_cache.popitem(last=False)
-    if self.disk_cache is not None:
-        try:
-            meta = {
-                "shape": tuple(self.vp.shape) if self.vp is not None else None,
-                "grid": (
-                    self.grid_spec.shape,
-                    self.grid_spec.dz,
-                    self.grid_spec.dt,
-                ),
-                "litho_angles": (
-                    tuple(litho_angles) if litho_angles is not None else None
-                ),
-                "fluid_angles": (
-                    tuple(fluid_angles) if fluid_angles is not None else None
-                ),
-                "litho_weight": float(litho_weight),
-                "fluid_weight": float(fluid_weight),
-            }
-            meta["vp_hash"] = hashlib.sha1(self.vp.array.tobytes()).hexdigest()
-            meta["vs_hash"] = hashlib.sha1(self.vs.array.tobytes()).hexdigest()
-            meta["rho_hash"] = hashlib.sha1(self.rho.array.tobytes()).hexdigest()
-            disk_key = self.disk_cache.make_key("ei_weighted", meta)
-            self.disk_cache.save_npz(disk_key, out)
-        except Exception:
-            pass
-    return out

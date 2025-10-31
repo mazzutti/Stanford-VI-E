@@ -74,7 +74,6 @@ def get_backends_registry(config: dict | None = None):
     return _impl_get_backends_registry(config)
 
 
-# canonical single entrypoint for get_backends_registry (keeps compatibility)
 def _impl_get_backends_registry(config: dict | None = None):
     if config is None:
         return backends_registry

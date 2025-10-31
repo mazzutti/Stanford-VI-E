@@ -1,6 +1,6 @@
 """Simple BackendManager to centralize backend registration and selection.
 
-This is intentionally small and backwards-compatible with the existing
+This is intentionally small and aligned with the existing
 `backends` module API. It provides an instance that can be used for
 dependency injection when needed.
 """

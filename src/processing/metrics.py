@@ -79,8 +79,7 @@ class BackendMetrics:
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
 
 
-# Export a module-level proxy instance and keep the old function name for
-# compatibility. Callers that prefer direct access can import `global_metrics`.
+# Export a module-level proxy instance for convenience.
 global_metrics = LazyObjectProxy(lambda: BackendMetrics())
 
 
