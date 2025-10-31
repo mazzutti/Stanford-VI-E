@@ -17,11 +17,7 @@ from src.utils.facades import LazyObjectProxy
 __all__ = [
     "cached_avo",
     "cached_avo_from_vm",
-    "cached_ai_seismogram",
-    "cached_ai_seismogram_from_vm",
-    "cached_avo_depth",
-    "cached_ai_depth",
-    "cached_ei_depth",
+    # Public API focuses on AVO cache helpers
 ]
 
 logger = logging.getLogger(__name__)
@@ -113,21 +109,6 @@ class ModelingCache:
     def cached_avo_from_vm(self, *args, **kwargs):
         return _impl_cached_avo_from_vm(*args, **kwargs)
 
-    def cached_ai_seismogram(self, *args, **kwargs):
-        return _impl_cached_ai_seismogram(*args, **kwargs)
-
-    def cached_ai_seismogram_from_vm(self, *args, **kwargs):
-        return _impl_cached_ai_seismogram_from_vm(*args, **kwargs)
-
-    def cached_avo_depth(self, *args, **kwargs):
-        return _impl_cached_avo_depth(*args, **kwargs)
-
-    def cached_ai_depth(self, *args, **kwargs):
-        return _impl_cached_ai_depth(*args, **kwargs)
-
-    def cached_ei_depth(self, *args, **kwargs):
-        return _impl_cached_ei_depth(*args, **kwargs)
-
 
 # Module-level lazy proxy singleton for ModelingCache
 modeling_cache: ModelingCache = LazyObjectProxy(lambda: ModelingCache())
@@ -151,42 +132,8 @@ __all__.extend(
         "modeling_cache",
         "cached_avo",
         "cached_avo_from_vm",
-        "cached_ai_seismogram",
-        "cached_ai_seismogram_from_vm",
-        "cached_avo_depth",
-        "cached_ai_depth",
-        "cached_ei_depth",
     ]
 )
-
-
-def _impl_cached_ai_seismogram(props_time, wavelet, cache_dir: str = ".cache"):
-    from src.modeling.modeling import _hash_for_cache
-    from src.modeling.modeling import modeling_engine
-    from src.signal.reflectivity import reflectivity_calc
-
-    force = os.environ.get("FORCE_RECOMPUTE", "0") == "1"
-    ai = props_time["vp"] * props_time["rho"]
-    key = _hash_for_cache([ai], extras=[wavelet])
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    fn = Path(cache_dir) / f"ai_time_{key}.npz"
-    if (not force) and fn.exists():
-        data = np.load(fn)
-        return data["seismogram_ai"]
-
-    rc_ai = reflectivity_calc.reflectivity_from_ai(ai)
-    seismogram_ai = modeling_engine.run_convolution_3d(rc_ai, wavelet)
-    cache_for_dir(cache_dir).save_npz(fn, {"seismogram_ai": seismogram_ai})
-    return seismogram_ai
-
-
-def _impl_cached_ai_seismogram_from_vm(vm, rho, wavelet, cache_dir: str = ".cache"):
-    """Convenience wrapper that builds an `ai` from a VelocityModel and rho.
-
-    Returns the same output as `cached_ai_seismogram`.
-    """
-    props_time = {"vp": vm.vp, "rho": rho}
-    return _impl_cached_ai_seismogram(props_time, wavelet, cache_dir=cache_dir)
 
 
 def get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
@@ -204,84 +151,9 @@ def _impl_get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCac
 __all__.append("get_modeling_cache")
 
 
-def _impl_cached_avo_depth(props_depth, angles, cache_dir: str = ".cache"):
-    from src.modeling.modeling import _hash_for_cache
-    from src.modeling.modeling import modeling_engine
-
-    force = os.environ.get("FORCE_RECOMPUTE", "0") == "1"
-    vp = props_depth["vp"]
-    vs = props_depth["vs"]
-    rho = props_depth["rho"]
-
-    key = _hash_for_cache([vp, vs, rho], extras=[angles])
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    fn = Path(cache_dir) / f"avo_depth_{key}.npz"
-
-    if (not force) and fn.exists():
-        return dict(np.load(fn))
-
-    ni, nj, nk = vp.shape
-    angle_impedances = []
-
-    for idx, theta in enumerate(angles):
-        ei_angle = modeling_engine.compute_ei_angle(vp, vs, rho, theta)
-        angle_impedances.append(ei_angle)
-
-    impedance_depth = np.mean(angle_impedances, axis=0)
-    save_dict = {"impedance_depth": impedance_depth}
-    for i, imp in enumerate(angle_impedances):
-        save_dict[f"angle_{i}"] = imp
-
-    cache_for_dir(cache_dir).save_npz(fn, save_dict)
-    return save_dict
+# Depth cache helpers for other per-technique caches are not part of the current API
 
 
-def _impl_cached_ai_depth(props_depth, cache_dir: str = ".cache"):
-    from src.modeling.modeling import _hash_for_cache
-
-    force = os.environ.get("FORCE_RECOMPUTE", "0") == "1"
-    vp = props_depth["vp"]
-    rho = props_depth["rho"]
-
-    key = _hash_for_cache([vp, rho], extras=["ai_depth"])
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    fn = Path(cache_dir) / f"ai_depth_{key}.npz"
-
-    if (not force) and fn.exists():
-        data = np.load(fn)
-        return data["impedance_ai"]
-
-    impedance_ai = vp * rho
-    cache_for_dir(cache_dir).save_npz(fn, {"impedance_ai": impedance_ai})
-    return impedance_ai
-
-
-def _impl_cached_ei_depth(props_depth, angle_deg: int = 10, cache_dir: str = ".cache"):
-    from src.modeling.modeling import _hash_for_cache
-    from src.modeling.modeling import modeling_engine
-
-    force = os.environ.get("FORCE_RECOMPUTE", "0") == "1"
-    vp = props_depth["vp"]
-    vs = props_depth["vs"]
-    rho = props_depth["rho"]
-
-    key = _hash_for_cache([vp, vs, rho], extras=[f"ei_depth_{angle_deg}"])
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    fn = Path(cache_dir) / f"ei_depth_{key}.npz"
-
-    if (not force) and fn.exists():
-        data = np.load(fn)
-        return data["impedance_ei"]
-
-    impedance_ei = modeling_engine.compute_ei_angle(vp, vs, rho, angle_deg)
-
-    cache_for_dir(cache_dir).save_npz(
-        fn, {"impedance_ei": impedance_ei, "angle": angle_deg}
-    )
-    return impedance_ei
-
-
-# Backwards-compatible thin wrappers that delegate to the module-level proxy
 def cached_avo(
     props_time: Dict[str, Any],
     angles,
@@ -302,23 +174,3 @@ def cached_avo(
         snr_db=snr_db,
         noise_seed=noise_seed,
     )
-
-
-def cached_ai_seismogram(props_time, wavelet, cache_dir: str = ".cache"):
-    return _impl_cached_ai_seismogram(props_time, wavelet, cache_dir=cache_dir)
-
-
-def cached_ai_seismogram_from_vm(vm, rho, wavelet, cache_dir: str = ".cache"):
-    return _impl_cached_ai_seismogram_from_vm(vm, rho, wavelet, cache_dir=cache_dir)
-
-
-def cached_avo_depth(props_depth, angles, cache_dir: str = ".cache"):
-    return _impl_cached_avo_depth(props_depth, angles, cache_dir=cache_dir)
-
-
-def cached_ai_depth(props_depth, cache_dir: str = ".cache"):
-    return _impl_cached_ai_depth(props_depth, cache_dir=cache_dir)
-
-
-def cached_ei_depth(props_depth, angle_deg: int = 10, cache_dir: str = ".cache"):
-    return _impl_cached_ei_depth(props_depth, angle_deg=angle_deg, cache_dir=cache_dir)

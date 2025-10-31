@@ -9,17 +9,12 @@ exposing a small, testable function for external callers (for example
 
 from __future__ import annotations
 
-import os
-import hashlib
 import numpy as np
 
 from src.io import data_loader
 from src.io.grid import GridSpec
 from src.modeling import modeling as modeling_utils
 from src.signal import wavelets
-from src.signal.reflectivity import reflectivity_calc
-from src.processing.seismic_operator import SeismicOperator
-from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
 import logging
 from src.utils.facades import LazyObjectProxy
@@ -30,14 +25,11 @@ def run_full_modeling(
     skip_cleanup: bool = False,
     verbose: bool = False,
     add_avo_noise: bool = False,
-    add_ei_noise: bool = False,
-    ei_noise_snr: float | None = None,
-    ei_noise_seed: int | None = None,
 ):
     """Run the full modeling pipeline in-process and save caches.
 
     Returns a dict with keys similar to the previous pipeline output, for
-    example: {'ei_cache_file': ..., 'save_dict': ..., 'ei_angle_seismograms': ...}
+    example: {'avo_cached': True}
     """
     # Call the canonical implementation directly. Callers that prefer an
     # instance-based API can still use `get_modeling_api()`.
@@ -46,9 +38,6 @@ def run_full_modeling(
         skip_cleanup=skip_cleanup,
         verbose=verbose,
         add_avo_noise=add_avo_noise,
-        add_ei_noise=add_ei_noise,
-        ei_noise_snr=ei_noise_snr,
-        ei_noise_seed=ei_noise_seed,
     )
 
 
@@ -57,9 +46,6 @@ def _impl_run_full_modeling(
     skip_cleanup: bool = False,
     verbose: bool = False,
     add_avo_noise: bool = False,
-    add_ei_noise: bool = False,
-    ei_noise_snr: float | None = None,
-    ei_noise_seed: int | None = None,
 ):
     # Original implementation from run_full_modeling (kept as canonical impl)
     # Load depth data defaults (kept intentionally simple)
@@ -85,49 +71,7 @@ def _impl_run_full_modeling(
     # prefer keeping rpm available so consumers can access Quantity metadata.
     props_depth = rpm.to_props_dict()
 
-    # Multi-angle EI (depth)
-    ei_multiangle_results = modeling_utils.modeling_engine.run_multiangle_analysis(
-        props_depth, angles_deg=[0, 5, 10, 15, 20, 25]
-    )
-    ei_depth = ei_multiangle_results.get("ei_optimal")
-    props_depth["ei"] = ei_depth
-
-    # Weighted product EI
-    # Ensure canonical SI units first, then produce km/s representations
-    # props_depth may already hold numpy arrays (to_props_dict returns arrays).
-    vp_si, _ = UnitRegistry.ensure_m_per_s(props_depth["vp"], copy_on_convert=True)
-    vs_si, _ = UnitRegistry.ensure_m_per_s(props_depth["vs"], copy_on_convert=True)
-    vp_kms = vp_si / 1000.0
-    vs_kms = vs_si / 1000.0
-    weighted_results = modeling_utils.modeling_engine.compute_ei_weighted_product(
-        vp_kms,
-        vs_kms,
-        props_depth["rho"],
-        litho_angles=[15, 10, 20, 25],
-        fluid_angles=[30, 35, 25, 40],
-        litho_weight=0.7,
-        fluid_weight=0.3,
-        show_progress=not verbose,
-    )
-
-    props_depth["ei_litho"] = weighted_results["ei_litho"]
-    props_depth["ei_fluid"] = weighted_results["ei_fluid"]
-    props_depth["ei_product"] = weighted_results["ei_product"]
-
-    # Update EI cache with weighted product if a cache was produced
-    ei_cache_file = ei_multiangle_results.get("cache_file")
-    if ei_cache_file:
-        try:
-            ei_cache_data = dict(np.load(ei_cache_file))
-            ei_cache_data["ei_litho"] = weighted_results["ei_litho"]
-            ei_cache_data["ei_fluid"] = weighted_results["ei_fluid"]
-            ei_cache_data["ei_product"] = weighted_results["ei_product"]
-            ei_cache_data["weighted_config"] = str(weighted_results.get("config"))
-            from src.io.cache import cache_for_dir
-
-            cache_for_dir(cache_dir).save_npz(ei_cache_file, ei_cache_data)
-        except Exception:
-            pass
+    # This pipeline focuses on AVO computations and resampling.
 
     # Depth -> time resampling using DepthTimeResampler
     from src.processing.resampler import resampler_factory
@@ -165,7 +109,7 @@ def _impl_run_full_modeling(
 
     nx, ny, nt_samples = props_time["vp"].shape
 
-    # AVO and AI seismograms
+    # AVO seismograms
     wavelet_avo = wavelets.ricker_wavelet(f_peak=26, dt=grid_spec.dt)
     modeling_utils.modeling_engine.cached_avo(
         props_time,
@@ -175,93 +119,12 @@ def _impl_run_full_modeling(
         add_noise=add_avo_noise,
         snr_db=20,
     )
-
-    wavelet_ai = wavelets.ricker_wavelet(f_peak=30, dt=grid_spec.dt)
-    modeling_utils.modeling_engine.cached_ai_seismogram(props_time, wavelet_ai)
-
-    # Cache depth-domain AVO/AI
+    # Cache depth-domain AVO
     modeling_utils.modeling_engine.cached_avo_depth(props_depth, [0, 5, 10, 15])
-    modeling_utils.modeling_engine.cached_ai_depth(props_depth)
 
-    # EI time-domain seismograms and optimal stacking
-    from scipy.ndimage import sobel
-
-    EI_ANGLES = [0, 5, 10, 15, 20, 25]
-    ei_angle_seismograms = []
-    for angle_idx, angle in enumerate(EI_ANGLES):
-        ei_time_angle = modeling_utils.modeling_engine.compute_ei_angle(
-            props_time["vp"], props_time["vs"], props_time["rho"], angle
-        )
-        ei_refl_angle = reflectivity_calc.reflectivity_from_ai(ei_time_angle)
-        ei_seis_angle = SeismicOperator.convolve_reflectivity_with_wavelet(
-            ei_refl_angle, wavelet_avo, mode="same"
-        )
-        if add_ei_noise:
-            seed = (ei_noise_seed or 42) + angle_idx
-            from src.modeling.modeling import modeling_engine
-
-            ei_seis_angle = modeling_engine.add_ei_noise(
-                ei_seis_angle,
-                frequency_hz=45,
-                snr_db=ei_noise_snr,
-                include_rock_physics_error=True,
-                spatial_correlation_length=3,
-                seed=seed,
-            )
-        ei_angle_seismograms.append(ei_seis_angle)
-
-    boundary_correlations = []
-    for ei_seis in ei_angle_seismograms:
-        grad_time = sobel(ei_seis, axis=2, mode="constant")
-        boundary_quality = np.percentile(np.abs(grad_time), 90)
-        boundary_correlations.append(boundary_quality)
-    boundary_correlations = np.array(boundary_correlations)
-    weights = boundary_correlations / boundary_correlations.sum()
-    ei_optimal_stack = np.zeros_like(ei_angle_seismograms[0])
-    for seis, weight in zip(ei_angle_seismograms, weights):
-        ei_optimal_stack += weight * seis
-
-    ei_refl = reflectivity_calc.reflectivity_from_ai(props_time["ei"])
-
-    os.makedirs(cache_dir, exist_ok=True)
-    noise_suffix = "_noise" if add_ei_noise else ""
-    config_str_ei = (
-        f"ei_time_multiangle_{grid_spec.dt}_{grid_spec.dz}_"
-        f"{'_'.join(map(str, grid_spec.shape))}{noise_suffix}"
-    )
-    config_hash_ei = hashlib.md5(config_str_ei.encode()).hexdigest()[:20]
-    ei_cache_file = f"{cache_dir}/ei_time_{config_hash_ei}.npz"
-
-    save_dict = {
-        **{f"angle_{i}": seis for i, seis in enumerate(ei_angle_seismograms)},
-        "optimal_stack": ei_optimal_stack,
-        "ei_refl": ei_refl,
-        "time_axis": np.arange(nt_samples) * grid_spec.dt,
-        "facies": props_time["facies"],
-        "config": {
-            "source": "multi-angle seismograms (time-domain stacking)",
-            "angles": EI_ANGLES,
-            "method": "variance-weighted stack in time domain",
-            "f_peak": 45,
-            "dt": grid_spec.dt,
-            "dz": grid_spec.dz,
-            "grid_shape": grid_spec.shape,
-            "noise_enabled": add_ei_noise,
-            "noise_snr_db": ei_noise_snr,
-            "noise_seed": ei_noise_seed,
-            "num_angles": len(EI_ANGLES),
-        },
-    }
-
-    from src.io.cache import cache_for_dir
-
-    cache_for_dir(cache_dir).save_npz(ei_cache_file, save_dict)
-
+    # The function returns AVO-related results only.
     return {
-        "ei_cache_file": ei_cache_file,
-        "save_dict": save_dict,
-        "ei_angle_seismograms": ei_angle_seismograms,
-        "ei_optimal_stack": ei_optimal_stack,
+        "avo_cached": True,
     }
 
 

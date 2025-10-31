@@ -16,7 +16,7 @@ class CacheEntry:
     """Represents a single cache file and basic metadata.
 
     Attributes:
-        key: logical key prefix (e.g., 'ei', 'ai', 'avo')
+        key: logical key prefix (e.g., 'avo')
         path: absolute Path to the cache file
         mtime: modification time (seconds since epoch)
         size_bytes: file size in bytes
@@ -133,7 +133,7 @@ class CacheManager:
         self.cache_dir = cache_dir
         self.logger = logger or logging.getLogger(__name__)
 
-    # Compatibility wrapper not present here; use select_latest_cache_entries()
+    # Use select_latest_cache_entries() to obtain grouped CacheEntry objects
 
     def select_latest_cache_entries(
         self, skip_inspect: bool = False
@@ -197,16 +197,8 @@ class CacheManager:
 
             resolved[key] = str(pick.path)
 
-        if "ei" not in resolved:
-            ei_depth = resolved.get("ei_depth")
-            ei_time = resolved.get("ei_time")
-            if prefer_depth_ei and ei_depth:
-                resolved["ei"] = ei_depth
-            elif ei_time:
-                resolved["ei"] = ei_time
-            else:
-                ei_group = groups.get("ei")
-                resolved["ei"] = str(ei_group[-1].path) if ei_group else None
+        # Do not synthesize implicit keys; callers should request explicit
+        # filenames such as 'avo_time_<hash>.npz' or 'avo_depth_<hash>.npz'.
 
         return resolved
 
@@ -223,15 +215,6 @@ class CacheManager:
 
             if filename.startswith("avo_") and not (
                 "_time_" in filename or "_depth_" in filename
-            ):
-                old_files.append(str(file_path))
-            elif filename.startswith("ai_") and not (
-                "_time_" in filename or "_depth_" in filename
-            ):
-                old_files.append(str(file_path))
-            elif filename.startswith("ei_") and (
-                "angle" in filename
-                or not ("_time_" in filename or "_depth_" in filename)
             ):
                 old_files.append(str(file_path))
 
@@ -371,10 +354,9 @@ __all__.append("get_default_cache")
 
 
 def get_cache_manager(cache_dir: str | None = None):
-    """Compatibility alias that returns the module CacheManager instance.
+    """Return a CacheManager instance for `cache_dir`.
 
-    This mirrors older code that used `get_cache_manager` naming and simply
-    forwards to `get_default_cache` which implements the canonical logic.
+    When `cache_dir` is None the shared module-level proxy is returned.
     """
     return _impl_get_cache_manager(cache_dir)
 
