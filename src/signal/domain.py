@@ -34,13 +34,7 @@ __all__ = [
 
 
 class DepthTimeConverter:
-    """Encapsulates depth-to-time conversion and property resampling.
-
-    This class is a thin facade around the resampler infrastructure and
-    groups depth-to-time conversion and resampling operations under a
-    single object. It keeps the same semantics as the previous helpers
-    while offering an instance to hold configuration/state.
-    """
+    """Encapsulates depth-to-time conversion and property resampling."""
 
     def __init__(self, grid_spec: GridSpec):
         self.grid_spec = grid_spec
@@ -166,7 +160,6 @@ class DepthTimeConverter:
         return resampled_properties, time_axis
 
 
-# Backwards-compatible wrapper helpers
 def convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
     return _impl_convert_depth_to_twt(vp_depth, grid_spec)
 

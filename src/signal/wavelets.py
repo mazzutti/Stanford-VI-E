@@ -81,15 +81,11 @@ def _impl_get_wavelet_helper(config: dict | None = None):
 __all__.append("get_wavelet_helper")
 
 
-# A simple function-level `ricker_wavelet(...)` helper is provided for
-# convenience. Callers may use this function or the `WaveletHelper` facade
-# via the `wavelet_helper` proxy depending on style preference.
+# A simple function-level `ricker_wavelet(...)` helper is provided for convenience.
 def ricker_wavelet(f_peak: float, length: float = 0.128, dt: float = 0.002):
-    """Return Ricker wavelet samples (compatibility wrapper).
+    """Return Ricker wavelet samples.
 
-    Callers may continue to import and use this function while the module
-    also exposes an OO facade via `WaveletHelper` and the `wavelet_helper`
-    proxy.
+    This delegates to the `WaveletHelper` facade via the `wavelet_helper` proxy.
     """
     return _impl_ricker_wavelet(f_peak, length=length, dt=dt)
 

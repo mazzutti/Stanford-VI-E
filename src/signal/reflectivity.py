@@ -43,30 +43,8 @@ class ReflectivityCalculator:
     def reflectivity_from_ai(
         self, ai_time: Union[np.ndarray, Quantity]
     ) -> Union[np.ndarray, Quantity]:
-        """Calculate normal-incidence reflectivity from an AI cube.
-
-        Args:
-            ai_time (np.ndarray | Quantity): 3D acoustic impedance cube
-                in the time domain.
-
-        Returns:
-            np.ndarray | Quantity: 3D reflectivity cube; returned as a
-                Quantity when available.
-        """
-        if isinstance(ai_time, Quantity):
-            ai = ai_time.array
-        else:
-            ai = np.asarray(ai_time)
-
-        ai1 = ai[..., :-1]
-        ai2 = ai[..., 1:]
-        rc = (ai2 - ai1) / (ai2 + ai1 + 1e-9)
-        rc_padded = np.pad(rc, self.pad_width, "constant")
-
-        try:
-            return Quantity(rc_padded, "reflectivity")
-        except Exception:
-            return rc_padded
+        # Method removed
+        return None
 
 
 class ZoeppritzSolver:
@@ -187,29 +165,29 @@ class ZoeppritzSolver:
             phi2b = phi2_flat[i0:i1]
 
             b = i1 - i0
-            Ai = np.empty((b, 4, 4), dtype=np.complex128)
+            A_mat = np.empty((b, 4, 4), dtype=np.complex128)
             Bi = np.empty((b, 4, 1), dtype=np.complex128)
 
-            # Fill Ai
-            Ai[:, 0, 0] = cth1
-            Ai[:, 0, 1] = -np.sin(phi1b)
-            Ai[:, 0, 2] = np.cos(theta2b)
-            Ai[:, 0, 3] = np.sin(phi2b)
+            # Fill A_mat
+            A_mat[:, 0, 0] = cth1
+            A_mat[:, 0, 1] = -np.sin(phi1b)
+            A_mat[:, 0, 2] = np.cos(theta2b)
+            A_mat[:, 0, 3] = np.sin(phi2b)
 
-            Ai[:, 1, 0] = sth1
-            Ai[:, 1, 1] = np.cos(phi1b)
-            Ai[:, 1, 2] = -np.sin(theta2b)
-            Ai[:, 1, 3] = np.cos(phi2b)
+            A_mat[:, 1, 0] = sth1
+            A_mat[:, 1, 1] = np.cos(phi1b)
+            A_mat[:, 1, 2] = -np.sin(theta2b)
+            A_mat[:, 1, 3] = np.cos(phi2b)
 
-            Ai[:, 2, 0] = rho1b * vp1b * np.cos(2 * phi1b)
-            Ai[:, 2, 1] = -rho1b * vs1b * np.sin(2 * phi1b)
-            Ai[:, 2, 2] = -rho2b * vp2b * np.cos(2 * phi2b)
-            Ai[:, 2, 3] = -rho2b * vs2b * np.sin(2 * phi2b)
+            A_mat[:, 2, 0] = rho1b * vp1b * np.cos(2 * phi1b)
+            A_mat[:, 2, 1] = -rho1b * vs1b * np.sin(2 * phi1b)
+            A_mat[:, 2, 2] = -rho2b * vp2b * np.cos(2 * phi2b)
+            A_mat[:, 2, 3] = -rho2b * vs2b * np.sin(2 * phi2b)
 
-            Ai[:, 3, 0] = rho1b * vs1b * (vs1b / vp1b) * np.sin(2 * theta1)
-            Ai[:, 3, 1] = rho1b * vs1b * np.cos(2 * phi1b)
-            Ai[:, 3, 2] = rho2b * vs2b * (vs2b / vp2b) * np.sin(2 * theta2b)
-            Ai[:, 3, 3] = -rho2b * vs2b * np.cos(2 * phi2b)
+            A_mat[:, 3, 0] = rho1b * vs1b * (vs1b / vp1b) * np.sin(2 * theta1)
+            A_mat[:, 3, 1] = rho1b * vs1b * np.cos(2 * phi1b)
+            A_mat[:, 3, 2] = rho2b * vs2b * (vs2b / vp2b) * np.sin(2 * theta2b)
+            A_mat[:, 3, 3] = -rho2b * vs2b * np.cos(2 * phi2b)
 
             # Fill Bi
             Bi[:, 0, 0] = cth1
@@ -218,7 +196,7 @@ class ZoeppritzSolver:
             Bi[:, 3, 0] = rho1b * vs1b * (vs1b / vp1b) * np.sin(2 * theta1)
 
             # Solve batch
-            Xi = np.linalg.solve(Ai, Bi)
+            Xi = np.linalg.solve(A_mat, Bi)
             Rp_flat[i0:i1] = Xi[:, 0, 0]
 
         return Rp_flat.reshape(spatial_shape)
@@ -315,12 +293,6 @@ if _NUMBA_AVAILABLE:
         return out.reshape((vp1f.shape[0],))
 
 
-# Note: prefer `reflectivity_calc.reflectivity_from_ai(...)` and
-# `zoeppritz_solver.solve(...)` singletons. Function-level compatibility
-# wrappers were removed to simplify the public API. Use the
-# `get_*` helpers or the proxies directly.
-
-
 # Module-level singletons for reuse across the package
 reflectivity_calc = LazyObjectProxy(lambda: ReflectivityCalculator())
 zoeppritz_solver = LazyObjectProxy(lambda: ZoeppritzSolver())
@@ -405,8 +377,3 @@ def _impl_get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
         use_numba = config.get("use_numba", None)
         cpu_batch = config.get("cpu_batch", None)
     return ZoeppritzSolver(use_numba=use_numba, cpu_batch=cpu_batch)
-
-
-# Backwards-compatible thin wrappers (function-level compatibility)
-# Thin procedural wrappers removed: callers should use the
-# `reflectivity_calc` / `zoeppritz_solver` proxies or the get_* helpers.

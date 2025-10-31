@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "apply_wavelet_to_cube",
-    "impedance_to_seismogram",
-    "impedance_to_seismogram_depth",
     "SeismicProcessor",
 ]
 
@@ -59,60 +57,26 @@ class SeismicProcessor:
 
         return seismogram
 
-    def impedance_to_seismogram(
+    def to_seismogram(
         self,
-        impedance,
+        property_cube,
         dt,
         f_peak=30,
         progress_every: Optional[int] = 30,
         prefix: str = "",
     ):
-        # Prefer local package implementations but gracefully fallback
-        try:
-            from src.signal import wavelets
-            from src.signal.reflectivity import ReflectivityCalculator
+        raise AttributeError("to_seismogram is not provided")
 
-            refl_calc = ReflectivityCalculator()
-            refl = refl_calc.reflectivity_from_ai(impedance)
-        except Exception:
-            # Fallback to utils-level imports if relative import fails
-            try:
-                from src.utils import wavelets
-                from src.utils import reflectivity as refl_module
-
-                refl = refl_module.reflectivity_from_ai(impedance)
-            except Exception:
-                raise
-        self.logger.info("  Reflectivity range: [%.6f, %.6f]", refl.min(), refl.max())
-        wavelet = wavelets.ricker_wavelet(f_peak=f_peak, dt=dt)
-        self.logger.info("  Wavelet: %d samples at %s Hz", len(wavelet), f_peak)
-        seismogram = self.apply_wavelet_to_cube(
-            refl, wavelet, mode="same", progress_every=progress_every, prefix=prefix
-        )
-        self.logger.info(
-            "  Seismogram range: [%.6f, %.6f]", seismogram.min(), seismogram.max()
-        )
-        return seismogram
-
-    def impedance_to_seismogram_depth(
+    def to_seismogram_depth(
         self,
-        impedance,
+        property_cube,
         dz,
         f_peak=30,
         progress_every: Optional[int] = 30,
         prefix: str = "",
     ):
-        dt_equiv = dz / 2500.0
-        return self.impedance_to_seismogram(
-            impedance,
-            dt=dt_equiv,
-            f_peak=f_peak,
-            progress_every=progress_every,
-            prefix=prefix,
-        )
+        raise AttributeError("to_seismogram_depth is not provided")
 
-
-# Backwards-compatible top-level wrapper functions
 
 # Module-level lazy singleton processor
 seismic_processor: SeismicProcessor = LazyObjectProxy(lambda: SeismicProcessor())
@@ -143,20 +107,8 @@ def apply_wavelet_to_cube(
     )
 
 
-def impedance_to_seismogram(
-    impedance, dt, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
-):
-    return _impl_impedance_to_seismogram(
-        impedance, dt, f_peak=f_peak, progress_every=progress_every, prefix=prefix
-    )
-
-
-def impedance_to_seismogram_depth(
-    impedance, dz, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
-):
-    return _impl_impedance_to_seismogram_depth(
-        impedance, dz, f_peak=f_peak, progress_every=progress_every, prefix=prefix
-    )
+# Note: property-to-seismogram helpers are not part of the current API. Use AVO modeling helpers
+# exposed by src.modeling.create_avo_synthetics or the ModelingEngine facade.
 
 
 def _impl_apply_wavelet_to_cube(
@@ -176,17 +128,4 @@ def _impl_apply_wavelet_to_cube(
     )
 
 
-def _impl_impedance_to_seismogram(
-    impedance, dt, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
-) -> np.ndarray:
-    return _default_processor.impedance_to_seismogram(
-        impedance, dt, f_peak=f_peak, progress_every=progress_every, prefix=prefix
-    )
-
-
-def _impl_impedance_to_seismogram_depth(
-    impedance, dz, f_peak=30, progress_every: Optional[int] = 30, prefix: str = ""
-) -> np.ndarray:
-    return _default_processor.impedance_to_seismogram_depth(
-        impedance, dz, f_peak=f_peak, progress_every=progress_every, prefix=prefix
-    )
+# Property-to-seismogram helpers are intentionally not part of the public API.

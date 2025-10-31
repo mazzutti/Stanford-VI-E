@@ -16,15 +16,12 @@ import atexit
 import signal
 import multiprocessing
 
-import numpy as np
 
 from src.io import data_loader
 from src.io.grid import GridSpec
-from src.modeling import modeling as modeling_utils
 from src.signal import wavelets
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
-import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -50,11 +47,7 @@ class ParserFactory:
             default="depth",
             help="Domain for processing/visualization (default: depth)",
         )
-        parser.add_argument(
-            "--no-multiangle",
-            action="store_true",
-            help="Disable multi-angle EI processing and use single-angle fallback",
-        )
+        # multi-angle options (AVO-focused)
         parser.add_argument(
             "--cache-dir", default=".cache", help="Directory for cache files"
         )
@@ -68,7 +61,7 @@ class ParserFactory:
         import argparse
 
         parser = argparse.ArgumentParser(
-            description="Complete seismic forward modeling (AVO + AI + EI)"
+            description="Complete seismic forward modeling (AVO)"
         )
         # Add common args
         common = ParserFactory.common_parser(add_help=False)
@@ -80,26 +73,7 @@ class ParserFactory:
             action="store_true",
             help="Add angle-dependent noise to AVO seismograms (SNR=20dB)",
         )
-        parser.add_argument(
-            "--no-ei-noise",
-            action="store_true",
-            help=(
-                "Disable frequency-dependent noise for EI seismogram "
-                "(noise is ON by default)"
-            ),
-        )
-        parser.add_argument(
-            "--ei-noise-snr",
-            type=float,
-            default=None,
-            help="Target SNR for EI noise in dB",
-        )
-        parser.add_argument(
-            "--ei-noise-seed",
-            type=int,
-            default=None,
-            help="Random seed for reproducible EI noise",
-        )
+        # noise options (AVO)
         parser.add_argument(
             "--skip-cleanup",
             action="store_true",
@@ -126,12 +100,7 @@ class ParserFactory:
             help="Enable verbose logging across tools",
         )
         # Rock-physics specific options (centralized here so main() parses them)
-        parser.add_argument(
-            "--ei-angle",
-            type=int,
-            default=10,
-            help="Single-angle EI (degrees) to treat as the optimal EI (default: 10)",
-        )
+        # angle option for AVO
         parser.add_argument(
             "--no-generate-plots",
             action="store_true",
@@ -149,7 +118,7 @@ class ParserFactory:
             "--angles-list",
             type=str,
             default=None,
-            help="Comma-separated list of EI angles to compute (e.g. '0,5,10,15')",
+            help="Comma-separated list of angles to use for AVO (e.g. '0,5,10,15')",
         )
         return parser
 
@@ -296,7 +265,7 @@ class ParserFactory:
             vm = VelocityModel.from_dataset(dm, vp_key="vp")
             # from_dataset already converts and validates, but be explicit
             converted = vm.ensure_m_per_s()
-            # vm.vp is a Quantity; store the numeric array for backward compat
+            # vm.vp is a Quantity; store the numeric array for downstream processing
             props_depth["vp"] = vm.vp.array if hasattr(vm.vp, "array") else vm.vp
         except Exception:
             # Fallback: keep existing behavior (unit heuristic)
@@ -344,60 +313,10 @@ class ParserFactory:
 
     @staticmethod
     def run_modeling(props_depth, args, grid_spec: GridSpec):
-        """Run the core modeling steps (multi-angle EI, weighted product,
-        depth->time, AVO, AI).
+        """Run the core modeling steps (depth->time, AVO).
 
         Returns a dict with keys used by downstream steps.
         """
-        # STEP 2: MULTI-ANGLE EI (depth domain)
-        # rock_physics_attributes lives under src.analysis; import explicitly
-
-        t0 = time.time()
-        # Build RockPhysicsModel to centralize unit handling and EI helpers
-        from src.processing.rock_physics import RockPhysicsModel
-
-        rpm = RockPhysicsModel.from_props(props_depth, grid_spec)
-        rpm.ensure_units()
-        ei_multiangle_results = rpm.compute_ei_multiangle(
-            [0, 5, 10, 15, 20, 25], show_progress=True
-        )
-        t1 = time.time()
-        logger.info("Computed multi-angle EI in %.2fs", (t1 - t0))
-
-        # compute_ei_multiangle returns a dict with keys like 'ei_stack'
-        ei_depth = ei_multiangle_results.get("ei_stack")
-        props_depth["ei"] = ei_depth
-
-        # Weighted product EI
-        weighted_results = rpm.compute_ei_weighted_product(
-            litho_angles=[15, 10, 20, 25],
-            fluid_angles=[30, 35, 25, 40],
-            litho_weight=0.7,
-            fluid_weight=0.3,
-            show_progress=True,
-        )
-
-        props_depth["ei_litho"] = weighted_results["ei_litho"]
-        props_depth["ei_fluid"] = weighted_results["ei_fluid"]
-        props_depth["ei_product"] = weighted_results["ei_product"]
-
-        # Update EI cache with weighted product
-        ei_cache_file = ei_multiangle_results.get("cache_file")
-        if ei_cache_file:
-            try:
-                ei_cache_data = dict(np.load(ei_cache_file))
-                ei_cache_data["ei_litho"] = weighted_results["ei_litho"]
-                ei_cache_data["ei_fluid"] = weighted_results["ei_fluid"]
-                ei_cache_data["ei_product"] = weighted_results["ei_product"]
-                ei_cache_data["weighted_config"] = str(weighted_results["config"])
-                # use centralized cache helper
-                from src.io.cache import cache_for_dir
-
-                cache_for_dir(getattr(args, "cache_dir", ".cache")).save_npz(
-                    ei_cache_file, ei_cache_data
-                )
-            except Exception:
-                pass
 
         # STEP 3: DEPTH-TO-TIME
         _t0 = time.time()
@@ -447,13 +366,7 @@ class ParserFactory:
             snr_db=20,
         )
 
-        # STEP 5: AI
-        wavelet_ai = wavelets.ricker_wavelet(f_peak=30, dt=grid_spec.dt)
-        modeling_cache.cached_ai_seismogram(props_time, wavelet_ai)
-
-        # STEP 5b: CACHE DEPTH DATA
-        modeling_cache.cached_avo_depth(props_depth, [0, 5, 10, 15])
-        modeling_cache.cached_ai_depth(props_depth)
+        # AVO depth caching removed from centralized cache wrapper
 
         return {
             "props_depth": props_depth,
@@ -462,139 +375,17 @@ class ParserFactory:
             "nx": nx,
             "ny": ny,
             "nt_samples": nt_samples,
-            "ei_multiangle_results": ei_multiangle_results,
-            "weighted_results": weighted_results,
         }
 
     @staticmethod
-    def run_ei(model_outputs, args, grid_spec: GridSpec):
-        """Compute EI seismograms and produce caches.
-
-        Returns a dict with saved cache file path and related items.
-        """
-        props_time = model_outputs["props_time"]
-        nt = model_outputs["nt"]
-        nx = model_outputs["nx"]
-        ny = model_outputs["ny"]
-        nt_samples = model_outputs["nt_samples"]
-
-        wavelet_ei = wavelets.ricker_wavelet(f_peak=45, dt=grid_spec.dt)
-        from scipy.signal import fftconvolve
-
-        EI_ANGLES = [0, 5, 10, 15, 20, 25]
-
-        ei_angle_seismograms = []
-        for angle_idx, angle in enumerate(EI_ANGLES):
-            ei_time_angle = modeling_utils.modeling_engine.compute_ei_angle(
-                props_time["vp"], props_time["vs"], props_time["rho"], angle
-            )
-            from src.signal.reflectivity import reflectivity_calc
-
-            ei_refl_angle = reflectivity_calc.reflectivity_from_ai(ei_time_angle)
-            # Unwrap Quantity if necessary
-            ei_refl_arr = (
-                ei_refl_angle.array
-                if hasattr(ei_refl_angle, "array")
-                else ei_refl_angle
-            )
-            ei_seis_angle = np.zeros((nx, ny, nt_samples))
-            for i in range(nx):
-                for j in range(ny):
-                    trace = fftconvolve(ei_refl_arr[i, j, :], wavelet_ei, mode="same")
-                    ei_seis_angle[i, j, :] = trace
-            if getattr(args, "add_ei_noise", False):
-                angle_seed = (
-                    getattr(args, "ei_noise_seed", None)
-                    if getattr(args, "ei_noise_seed", None) is not None
-                    else 42
-                ) + angle_idx
-                from src.modeling.modeling import modeling_engine
-
-                ei_seis_angle = modeling_engine.add_ei_noise(
-                    ei_seis_angle,
-                    frequency_hz=45,
-                    snr_db=getattr(args, "ei_noise_snr", None),
-                    include_rock_physics_error=True,
-                    spatial_correlation_length=3,
-                    seed=angle_seed,
-                )
-            ei_angle_seismograms.append(ei_seis_angle)
-
-        # Create optimal stack (boundary-correlation weighting)
-        from scipy.ndimage import sobel
-
-        boundary_correlations = []
-        for ei_seis in ei_angle_seismograms:
-            grad_time = sobel(ei_seis, axis=2, mode="constant")
-            boundary_quality = np.percentile(np.abs(grad_time), 90)
-            boundary_correlations.append(boundary_quality)
-        boundary_correlations = np.array(boundary_correlations)
-        weights = boundary_correlations / boundary_correlations.sum()
-        ei_optimal_stack = np.zeros_like(ei_angle_seismograms[0])
-        for seis, weight in zip(ei_angle_seismograms, weights):
-            ei_optimal_stack += weight * seis
-
-        # (Removed single-seismogram implementation)
-        # Code removed: pre-stacked-impedance-based single seismogram
-        # generation was deprecated in favor of multi-angle stacking and the
-        # variance-weighted optimal stack computed above. The reflectivity
-        # object is kept for downstream consumers where needed.
-        from src.signal.reflectivity import reflectivity_calc
-
-        ei_refl = reflectivity_calc.reflectivity_from_ai(props_time["ei"])
-
-        # STEP 7: SAVE CACHE FILES
-        cache_dir = getattr(args, "cache_dir", ".cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        noise_suffix = (
-            f"_noise{getattr(args, 'ei_noise_snr', None)}db"
-            if getattr(args, "add_ei_noise", False)
-            and getattr(args, "ei_noise_snr", None)
-            else ("_noise" if getattr(args, "add_ei_noise", False) else "")
-        )
-        config_str_ei = (
-            f"ei_time_multiangle_45_{grid_spec.dt}_{grid_spec.dz}_"
-            f"{'_'.join(map(str, grid_spec.shape))}{noise_suffix}"
-        )
-        config_hash_ei = hashlib.md5(config_str_ei.encode()).hexdigest()[:20]
-        ei_cache_file = f"{cache_dir}/ei_time_{config_hash_ei}.npz"
-
-        save_dict = {
-            **{f"angle_{i}": seis for i, seis in enumerate(ei_angle_seismograms)},
-            "optimal_stack": ei_optimal_stack,
-            "ei_refl": ei_refl,
-            "time_axis": nt,
-            "facies": props_time["facies"],
-            "config": {
-                "source": "multi-angle seismograms (time-domain stacking)",
-                "angles": EI_ANGLES,
-                "method": "variance-weighted stack in time domain",
-                "f_peak": 45,
-                "dt": grid_spec.dt,
-                "dz": grid_spec.dz,
-                "grid_shape": grid_spec.shape,
-                "noise_enabled": getattr(args, "add_ei_noise", False),
-                "noise_snr_db": getattr(args, "ei_noise_snr", None),
-                "noise_seed": getattr(args, "ei_noise_seed", None),
-                "num_angles": len(EI_ANGLES),
-            },
-        }
-
-        logger.info("✓ Saved EI to: %s", ei_cache_file)
-
-        return {
-            "ei_cache_file": ei_cache_file,
-            "save_dict": save_dict,
-            "ei_angle_seismograms": ei_angle_seismograms,
-            "ei_optimal_stack": ei_optimal_stack,
-        }
+    # AVO pipeline is supported via `run_modeling`.
 
     @staticmethod
     def save_results():
         logger.info("%s", "\n" + "=" * 70)
         logger.info("SUMMARY - ALL MODELING COMPLETE")
         logger.info("%s", "=" * 70)
-        logger.info("\n✓ Generated techniques: AVO, AI, EI (multi-angle)")
+        logger.info("\n✓ Generated techniques: AVO")
         logger.info(
             "\nNext steps: see README or run plotting modules under src.plotting"
         )
@@ -831,77 +622,7 @@ def cleanup_cache(
 # src.analysis.facies_correlation.analyze_facies_correlation
 
 
-@tool
-def plot_multiangle_ei(cache_dir: str = ".cache"):
-    # use top-level os import
-    import numpy as np
-    from src.io.cache import cache_for_dir
-
-    # Allow callers to override cache location programmatically
-    # (when invoked via ParserFactory.run_tool the TOPLEVEL_ARGS will be
-    # forwarded as kwargs).
-    groups = cache_for_dir(cache_dir).select_latest_cache_entries()
-
-    # find EI entries (group keys may be 'ei' or 'ei_depth' etc.)
-    ei_candidates = []
-    for k, v in groups.items():
-        if k.startswith("ei"):
-            ei_candidates.extend(v)
-
-    if not ei_candidates:
-        logger.warning("No multi-angle EI cache file found")
-        return
-
-    # pick latest by mtime
-    ei_candidates_sorted = sorted(ei_candidates, key=lambda e: e.mtime)
-    latest_ei_file = str(ei_candidates_sorted[-1].path)
-    ei_data = np.load(latest_ei_file)
-
-    if "facies" not in ei_data:
-        logger.warning("No facies in cache file")
-        return
-
-    facies = ei_data["facies"]
-
-    if "angles" in ei_data:
-        angles = ei_data["angles"]
-        ei_volumes = []
-        for angle in angles:
-            key = f"ei_{int(angle)}deg"
-            if key in ei_data:
-                ei_volumes.append(ei_data[key])
-
-        if len(ei_volumes) == 0:
-            logger.warning("No EI volumes found in cache")
-            return
-
-        ei_results = {
-            "angles": angles,
-            "ei_volumes": ei_volumes,
-            "ei_dict": {int(a): v for a, v in zip(angles, ei_volumes)},
-        }
-
-    from src.analysis.rock_physics_attributes import (
-        plot_multiangle_ei_comparison,
-        plot_multiangle_ei_facies_analysis,
-    )
-
-    # Delegate to a canonical programmatic entrypoint in the analysis module
-    try:
-        from src.analysis.rock_physics_attributes import plot_multiangle_ei_main
-
-        return plot_multiangle_ei_main(cache_dir=cache_dir)
-    except Exception:
-        # Fall back to inline behavior if the helper isn't available
-        path1 = plot_multiangle_ei_comparison(ei_results, facies, cache_dir)
-        path2 = plot_multiangle_ei_facies_analysis(ei_results, facies, cache_dir)
-
-        if path1:
-            logger.info(path1)
-        if path2:
-            logger.info(path2)
-
-        return path1, path2
+# plot_multiangle tool is not part of this codebase
 
 
 @tool
@@ -937,13 +658,13 @@ def analysis_rock_physics(
     from src.analysis import common as analysis
 
     long_desc = (
-        "This pipeline clears caches, runs multi-angle EI, computes rock physics "
-        "attributes and creates visualizations."
+        "This pipeline clears caches, computes rock physics attributes and "
+        "creates visualizations (AVO-focused)."
     )
     print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
-            "Compute ALL Attributes + Multi-Angle EI + Generate ALL Plots",
+            "Compute ALL Attributes + Generate ALL Plots",
             long_desc,
         ],
     )
@@ -1126,13 +847,13 @@ def regenerate_rock_physics():
     from .analysis.header import print_analysis_header
 
     long_desc = (
-        "This pipeline clears caches, runs multi-angle EI, computes rock physics "
-        "attributes and creates visualizations."
+        "This pipeline clears caches, computes rock physics attributes and "
+        "creates visualizations."
     )
     print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
-            "Compute ALL Attributes + Multi-Angle EI + Generate ALL Plots",
+            "Compute ALL Attributes + Generate ALL Plots",
             long_desc,
         ],
     )
@@ -1148,9 +869,7 @@ def regenerate_rock_physics():
 
         props = load_depth_data()
         run_multiangle_analysis(props, angles_deg=[0, 5, 10, 15, 20, 25])
-        rp_main(
-            cache_dir=".cache", ei_angle=10, generate_plots=True, save_npz_only=False
-        )
+        rp_main(cache_dir=".cache", generate_plots=True, save_npz_only=False)
     except Exception as e:
         logger.error("Rock physics regeneration failed: %s", e)
         return False
@@ -1161,7 +880,6 @@ def regenerate_rock_physics():
 @tool
 def rock_physics_attributes(
     cache_dir: str = ".cache",
-    ei_angle: int = 10,
     generate_plots: bool = True,
     save_npz_only: bool = False,
     angles_list: list | None = None,
@@ -1191,7 +909,6 @@ def rock_physics_attributes(
 
     return rp_main(
         cache_dir=cache_dir,
-        ei_angle=ei_angle,
         generate_plots=generate_plots,
         save_npz_only=save_npz_only,
         angles_list=angles_list,
@@ -1202,8 +919,7 @@ def rock_physics_attributes(
 def main():
     # Allow forwarding arguments to a selected tool using a `--` sentinel.
     # Example:
-    #   python -m src --run-tool rock_physics_attributes -- --ei-angle 15
-    #   --cache-dir foo
+    #   python -m src --run-tool rock_physics_attributes -- --cache-dir foo
     import sys as _sys
 
     if "--" in _sys.argv:
@@ -1230,24 +946,12 @@ def main():
             args.run_tool, argv=tool_argv, kwargs=dict(vars(args))
         )
 
-    args.add_ei_noise = not args.no_ei_noise
-
     # Optional cleanup handled by helper
     ParserFactory.maybe_cleanup(args)
 
-    # Use helpers to perform modeling pipeline
+    # Use helpers to perform modeling pipeline (AVO only)
     props_depth, DATA_PATH, FILE_MAP, grid_spec = ParserFactory.load_data()
-    model_outputs = ParserFactory.run_modeling(props_depth, args, grid_spec)
-    _ei_outputs = ParserFactory.run_ei(model_outputs, args, grid_spec)
-    # ensure we reference the outputs so linters don't report unused variables
-    logger.debug(
-        "EI outputs: %s",
-        (
-            list(_ei_outputs.keys())
-            if isinstance(_ei_outputs, dict)
-            else str(type(_ei_outputs))
-        ),
-    )
+    _ = ParserFactory.run_modeling(props_depth, args, grid_spec)
     ParserFactory.save_results()
 
     return True

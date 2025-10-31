@@ -3,18 +3,14 @@
 This script performs statistical analysis to measure:
 1. How well seismic amplitudes correlate with facies boundaries
 2. Reflection strength at facies interfaces
-3. Comparative performance of AVO vs AI techniques
+3. Comparative performance of AVO techniques
 4. Facies discrimination capability
 
 Usage:
     python -m src.analyze_facies_correlation
-        # Default: depth domain, multi-angle EI
-    python -m src.analyze_facies_correlation --no-multiangle
-        # Use single-angle EI seismogram
+        # Default: depth domain (AVO analysis)
     python -m src.analyze_facies_correlation --domain time
-        # Time domain (implies --no-multiangle)
-    python -m src.analyze_facies_correlation --domain depth
-        # Explicit depth domain with multi-angle
+        # Time domain (AVO analysis uses seismograms)
 """
 
 import numpy as np
@@ -42,7 +38,6 @@ plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "Arial", "Helvetica", "sans-se
 # Public API for the analysis module
 __all__ = [
     "convert_time_to_depth",
-    "impedance_to_seismogram_depth",
     "detect_facies_boundaries",
     "extract_boundary_amplitudes",
     "calculate_gradient_correlation",
@@ -59,11 +54,6 @@ __all__ = [
 class FaciesCorrelationAnalyzer:
     def convert_time_to_depth(self, seismogram_time, vp_depth, grid_spec: "GridSpec"):
         return _impl_convert_time_to_depth(seismogram_time, vp_depth, grid_spec)
-
-    def impedance_to_seismogram_depth(
-        self, impedance, grid_spec: "GridSpec", f_peak=30
-    ):
-        return _impl_impedance_to_seismogram_depth(impedance, grid_spec, f_peak=f_peak)
 
     def detect_facies_boundaries(self, facies_cube):
         return _impl_detect_facies_boundaries(facies_cube)
@@ -82,15 +72,11 @@ class FaciesCorrelationAnalyzer:
     def calculate_facies_discrimination(self, seismic_cube, facies_cube):
         return _impl_calculate_facies_discrimination(seismic_cube, facies_cube)
 
-    def compare_techniques(self, avo_stats, ai_stats, metric_name):
-        return _impl_compare_techniques(avo_stats, ai_stats, metric_name)
+    def compare_techniques(self, avo_stats, metric_name):
+        return _impl_compare_techniques(avo_stats, metric_name)
 
-    def create_summary_plots(
-        self, avo_results, ai_results, ei_results, cache_dir, domain="depth"
-    ):
-        return _impl_create_summary_plots(
-            avo_results, ai_results, ei_results, cache_dir, domain=domain
-        )
+    def create_summary_plots(self, avo_results, cache_dir, domain="depth"):
+        return _impl_create_summary_plots(avo_results, cache_dir, domain=domain)
 
 
 # Module-level singleton (lazy proxy)
@@ -150,33 +136,6 @@ def convert_time_to_depth(seismogram_time, vp_depth, grid_spec: GridSpec):
 
     plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
     return resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
-
-
-def impedance_to_seismogram_depth(impedance, grid_spec: GridSpec, f_peak=30):
-    """
-    Convert depth-domain impedance to seismogram by computing reflectivity
-    and convolving with wavelet.
-
-    Args:
-        impedance: 3D impedance cube in depth (ni, nj, nk)
-        dz: Depth sampling interval (meters)
-        f_peak: Peak frequency for Ricker wavelet (Hz)
-
-    Returns:
-        seismogram: 3D seismogram cube in depth (ni, nj, nk)
-    """
-    from src.processing.seismic_operator import SeismicOperator
-
-    logger.info(
-        "Converting impedance to seismogram (f_peak=%s Hz, depth domain)...", f_peak
-    )
-
-    seismogram = SeismicOperator.impedance_to_seismogram_depth(
-        impedance, grid_spec.dz, f_peak=f_peak
-    )
-
-    logger.info("Seismogram range: [%.6f, %.6f]", seismogram.min(), seismogram.max())
-    return seismogram
 
 
 def detect_facies_boundaries(facies_cube):
@@ -429,491 +388,171 @@ def calculate_facies_discrimination(seismic_cube, facies_cube):
     return facies_stats, separation_matrix, facies_amplitudes
 
 
-def compare_techniques(avo_stats, ai_stats, metric_name):
-    """Compare AVO vs AI performance on a given metric."""
-    comparison = {}
+def compare_techniques(avo_stats, metric_name):
+    """Return a concise AVO-only comparison for the requested metric.
+
+    This repository has been adjusted to focus on AVO results. The
+    function returns AVO-centric numbers and a short summary for a given
+    metric.
+    """
 
     if metric_name == "gradient_correlation":
-        comparison["AVO"] = {
-            "Pearson": avo_stats["pearson_correlation"],
-            "Spearman": avo_stats["spearman_correlation"],
+        return {
+            "AVO": {
+                "Pearson": avo_stats.get("pearson_correlation"),
+                "Spearman": avo_stats.get("spearman_correlation"),
+            },
+            "Winner": "AVO",
+            "Difference": 0.0,
         }
-        comparison["AI"] = {
-            "Pearson": ai_stats["pearson_correlation"],
-            "Spearman": ai_stats["spearman_correlation"],
-        }
-        comparison["Winner"] = (
-            "AVO"
-            if avo_stats["pearson_correlation"] > ai_stats["pearson_correlation"]
-            else "AI"
-        )
-        comparison["Difference"] = abs(
-            avo_stats["pearson_correlation"] - ai_stats["pearson_correlation"]
-        )
 
-    return comparison
+    # Fallback: return the raw AVO stats under a single key
+    return {"AVO": avo_stats}
 
 
-def create_summary_plots(
-    avo_results, ai_results, ei_results, cache_dir, domain="depth"
-):
-    """Create comprehensive visualization of analysis results."""
+def create_summary_plots(avo_results, cache_dir, domain="depth"):
+    """Create visualization of AVO-only analysis results.
 
-    fig = plt.figure(figsize=(24, 18))
+    Parameters
+    - avo_results: dict with keys used by the plotting code (boundary_amps,
+      interface_stats_summary, facies_amplitudes, separation_matrix)
+    - cache_dir: unused here; present for caller convenience
+    - domain: 'depth' or 'time'
+    """
+
+    fig = plt.figure(figsize=(18, 12))
     domain_label = "Depth Domain" if domain == "depth" else "Time Domain"
     fig.suptitle(
-        (
-            "Quantitative Seismic-Facies Correlation Analysis: AVO vs AI "
-            f"vs EI ({domain_label})"
-        ),
+        f"Quantitative Seismic-Facies Correlation Analysis: AVO Only ({domain_label})",
         fontsize=16,
         y=0.995,
     )
 
-    # 1. Amplitude distributions at vs away from boundaries
-    ax1 = plt.subplot(4, 4, 1)
-    ax1.hist(
-        avo_results["boundary_amps"]["at_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="At Boundaries",
-        density=True,
-        color="red",
+    # 1. AVO amplitude distribution (at boundaries vs away)
+    ax1 = plt.subplot(2, 3, 1)
+    at_bounds = avo_results.get("boundary_amps", {}).get("at_boundaries", np.array([]))
+    away = avo_results.get("boundary_amps", {}).get(
+        "away_from_boundaries", np.array([])
     )
-    ax1.hist(
-        avo_results["boundary_amps"]["away_from_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="Away from Boundaries",
-        density=True,
-        color="blue",
-    )
+    if at_bounds.size:
+        ax1.hist(
+            at_bounds,
+            bins=50,
+            alpha=0.7,
+            label="At Boundaries",
+            density=True,
+            color="red",
+        )
+    if away.size:
+        ax1.hist(
+            away,
+            bins=50,
+            alpha=0.7,
+            label="Away from Boundaries",
+            density=True,
+            color="blue",
+        )
     ax1.set_xlabel("AVO Amplitude")
     ax1.set_ylabel("Density")
     ax1.set_title("AVO: Amplitude Distribution")
     ax1.legend(fontsize=8)
     ax1.grid(True, alpha=0.3)
 
-    ax2 = plt.subplot(4, 4, 2)
-    ax2.hist(
-        ai_results["boundary_amps"]["at_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="At Boundaries",
-        density=True,
-        color="red",
-    )
-    ax2.hist(
-        ai_results["boundary_amps"]["away_from_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="Away from Boundaries",
-        density=True,
-        color="blue",
-    )
-    ax2.set_xlabel("AI Amplitude")
-    ax2.set_ylabel("Density")
-    ax2.set_title("AI: Amplitude Distribution")
-    ax2.legend(fontsize=8)
-    ax2.grid(True, alpha=0.3)
-
-    ax3_ei = plt.subplot(4, 4, 3)
-    ax3_ei.hist(
-        ei_results["boundary_amps"]["at_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="At Boundaries",
-        density=True,
-        color="red",
-    )
-    ax3_ei.hist(
-        ei_results["boundary_amps"]["away_from_boundaries"],
-        bins=50,
-        alpha=0.7,
-        label="Away from Boundaries",
-        density=True,
-        color="blue",
-    )
-    ax3_ei.set_xlabel("EI Amplitude")
-    ax3_ei.set_ylabel("Density")
-    ax3_ei.set_title("EI: Amplitude Distribution")
-    ax3_ei.legend(fontsize=8)
-    ax3_ei.grid(True, alpha=0.3)
-
-    # 2. Comparison bar chart (gradient correlation)
-    ax4 = plt.subplot(4, 4, 4)
-    methods = ["AVO", "AI", "EI"]
-    pearson_values = [
-        avo_results["gradient_correlation"]["pearson_correlation"],
-        ai_results["gradient_correlation"]["pearson_correlation"],
-        ei_results["gradient_correlation"]["pearson_correlation"],
-    ]
-    colors_comp = ["steelblue", "coral", "mediumseagreen"]
-    ax4.bar(methods, pearson_values, color=colors_comp, alpha=0.7)
-    ax4.set_ylabel("Pearson Correlation")
-    ax4.set_title("Gradient-Boundary Correlation Comparison")
-    ax4.grid(True, alpha=0.3, axis="y")
-    ax4.set_ylim([0, max(pearson_values) * 1.2])
-
-    # 3. Reflection strength at different interface types
-    ax5 = plt.subplot(4, 4, 5)
+    # 2. Reflection strength at different interface types (AVO)
+    ax2 = plt.subplot(2, 3, 2)
     interface_types = []
     avo_means = []
     avo_stds = []
-    for key, stats in avo_results["interface_stats_summary"].items():
-        if stats is not None and stats["count"] > 10:
+    for key, stats in (avo_results.get("interface_stats_summary") or {}).items():
+        if stats is not None and stats.get("count", 0) > 10:
             interface_types.append(key)
-            avo_means.append(stats["mean"])
-            avo_stds.append(stats["std"])
+            avo_means.append(stats.get("mean", 0.0))
+            avo_stds.append(stats.get("std", 0.0))
 
     x_pos = np.arange(len(interface_types))
-    ax5.bar(x_pos, avo_means, yerr=avo_stds, alpha=0.7, color="steelblue", capsize=5)
-    ax5.set_xticks(x_pos)
-    ax5.set_xticklabels(interface_types, rotation=45, ha="right", fontsize=8)
-    ax5.set_ylabel("Mean Amplitude")
-    ax5.set_title("AVO: Reflection Strength at Interfaces")
-    ax5.grid(True, alpha=0.3, axis="y")
-
-    ax6 = plt.subplot(4, 4, 6)
-    interface_types_ai = []
-    ai_means = []
-    ai_stds = []
-    for key, stats in ai_results["interface_stats_summary"].items():
-        if stats is not None and stats["count"] > 10:
-            interface_types_ai.append(key)
-            ai_means.append(stats["mean"])
-            ai_stds.append(stats["std"])
-
-    x_pos_ai = np.arange(len(interface_types_ai))
-    ax6.bar(x_pos_ai, ai_means, yerr=ai_stds, alpha=0.7, color="coral", capsize=5)
-    ax6.set_xticks(x_pos_ai)
-    ax6.set_xticklabels(interface_types_ai, rotation=45, ha="right", fontsize=8)
-    ax6.set_ylabel("Mean Amplitude")
-    ax6.set_title("AI: Reflection Strength at Interfaces")
-    ax6.grid(True, alpha=0.3, axis="y")
-
-    ax7_ei = plt.subplot(4, 4, 7)
-    interface_types_ei = []
-    ei_means = []
-    ei_stds = []
-    for key, stats in ei_results["interface_stats_summary"].items():
-        if stats is not None and stats["count"] > 10:
-            interface_types_ei.append(key)
-            ei_means.append(stats["mean"])
-            ei_stds.append(stats["std"])
-
-    x_pos_ei = np.arange(len(interface_types_ei))
-    ax7_ei.bar(
-        x_pos_ei, ei_means, yerr=ei_stds, alpha=0.7, color="mediumseagreen", capsize=5
-    )
-    ax7_ei.set_xticks(x_pos_ei)
-    ax7_ei.set_xticklabels(interface_types_ei, rotation=45, ha="right", fontsize=8)
-    ax7_ei.set_ylabel("Mean Amplitude")
-    ax7_ei.set_title("EI: Reflection Strength at Interfaces")
-    ax7_ei.grid(True, alpha=0.3, axis="y")
-
-    # Position 8: Facies Separation Comparison
-    ax8 = plt.subplot(4, 4, 8)
-    methods = ["AVO", "AI", "EI"]
-    sep_values = [
-        np.mean(avo_results["separation_matrix"][avo_results["separation_matrix"] > 0]),
-        np.mean(ai_results["separation_matrix"][ai_results["separation_matrix"] > 0]),
-        np.mean(ei_results["separation_matrix"][ei_results["separation_matrix"] > 0]),
-    ]
-    colors_sep = ["steelblue", "coral", "mediumseagreen"]
-    bars = ax8.bar(methods, sep_values, color=colors_sep, alpha=0.7)
-    ax8.set_ylabel("Cohen's d (Effect Size)")
-    ax8.set_title("Facies Separation Comparison")
-    ax8.grid(True, alpha=0.3, axis="y")
-    ax8.set_ylim([0, max(sep_values) * 1.2])
-    # Add value labels on bars
-    for bar, val in zip(bars, sep_values):
-        height = bar.get_height()
-        ax8.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            height,
-            f"{val:.3f}",
-            ha="center",
-            va="bottom",
-            fontsize=9,
+    if len(x_pos):
+        ax2.bar(
+            x_pos, avo_means, yerr=avo_stds, alpha=0.7, color="steelblue", capsize=5
         )
+        ax2.set_xticks(x_pos)
+        ax2.set_xticklabels(interface_types, rotation=45, ha="right", fontsize=8)
+    ax2.set_ylabel("Mean Amplitude")
+    ax2.set_title("AVO: Reflection Strength at Interfaces")
+    ax2.grid(True, alpha=0.3, axis="y")
 
-    # 4. Facies discrimination - amplitude by facies type
-    ax9 = plt.subplot(4, 4, 9)
+    # 3. Facies discrimination - amplitude by facies type (AVO)
+    ax3 = plt.subplot(2, 3, 3)
     facies_labels = []
     avo_facies_data = []
     for facies_val in range(4):
-        if facies_val in avo_results["facies_amplitudes"]:
+        facies_data = (avo_results.get("facies_amplitudes") or {}).get(facies_val)
+        if facies_data is not None:
             facies_labels.append(f"Facies {facies_val}")
-            # Sample for plotting (too many points otherwise)
-            data = avo_results["facies_amplitudes"][facies_val]
-            sampled = data[:: max(1, len(data) // 1000)]
+            sampled = facies_data[:: max(1, len(facies_data) // 1000)]
             avo_facies_data.append(sampled)
 
-    bp = ax9.boxplot(avo_facies_data, labels=facies_labels, patch_artist=True)
-    for patch, color in zip(bp["boxes"], plt.cm.tab10(np.linspace(0, 0.4, 4))):
-        patch.set_facecolor(color)
-    ax9.set_ylabel("AVO Amplitude")
-    ax9.set_title("AVO: Amplitude by Facies Type")
-    ax9.grid(True, alpha=0.3, axis="y")
+    if avo_facies_data:
+        bp = ax3.boxplot(avo_facies_data, labels=facies_labels, patch_artist=True)
+        for patch, color in zip(
+            bp["boxes"], plt.cm.tab10(np.linspace(0, 0.4, len(bp["boxes"])))
+        ):
+            patch.set_facecolor(color)
+    ax3.set_ylabel("AVO Amplitude")
+    ax3.set_title("AVO: Amplitude by Facies Type")
+    ax3.grid(True, alpha=0.3, axis="y")
 
-    ax10 = plt.subplot(4, 4, 10)
-    facies_labels_ai = []
-    ai_facies_data = []
-    for facies_val in range(4):
-        if facies_val in ai_results["facies_amplitudes"]:
-            facies_labels_ai.append(f"Facies {facies_val}")
-            data = ai_results["facies_amplitudes"][facies_val]
-            sampled = data[:: max(1, len(data) // 1000)]
-            ai_facies_data.append(sampled)
+    # 4. Boundary amplitude comparison (AVO only: at vs away)
+    ax4 = plt.subplot(2, 3, 4)
+    boundary_mean = np.nan
+    away_mean = np.nan
+    if at_bounds.size:
+        boundary_mean = np.mean(np.abs(at_bounds))
+    if away.size:
+        away_mean = np.mean(np.abs(away))
 
-    bp = ax10.boxplot(ai_facies_data, labels=facies_labels_ai, patch_artist=True)
-    for patch, color in zip(bp["boxes"], plt.cm.tab10(np.linspace(0, 0.4, 4))):
-        patch.set_facecolor(color)
-    ax10.set_ylabel("AI Amplitude")
-    ax10.set_title("AI: Amplitude by Facies Type")
-    ax10.grid(True, alpha=0.3, axis="y")
-
-    ax11_ei = plt.subplot(4, 4, 11)
-    facies_labels_ei = []
-    ei_facies_data = []
-    for facies_val in range(4):
-        if facies_val in ei_results["facies_amplitudes"]:
-            facies_labels_ei.append(f"Facies {facies_val}")
-            data = ei_results["facies_amplitudes"][facies_val]
-            sampled = data[:: max(1, len(data) // 1000)]
-            ei_facies_data.append(sampled)
-
-    bp = ax11_ei.boxplot(ei_facies_data, labels=facies_labels_ei, patch_artist=True)
-    for patch, color in zip(bp["boxes"], plt.cm.tab10(np.linspace(0, 0.4, 4))):
-        patch.set_facecolor(color)
-    ax11_ei.set_ylabel("EI Amplitude")
-    ax11_ei.set_title("EI: Amplitude by Facies Type")
-    ax11_ei.grid(True, alpha=0.3, axis="y")
-
-    # Position 12: Boundary Amplitude Comparison
-    ax12 = plt.subplot(4, 4, 12)
-
-    boundary_means = [
-        np.mean(np.abs(avo_results["boundary_amps"]["at_boundaries"])),
-        np.mean(np.abs(ai_results["boundary_amps"]["at_boundaries"])),
-        np.mean(np.abs(ei_results["boundary_amps"]["at_boundaries"])),
+    labels = ["At Boundaries", "Away from Boundaries"]
+    values = [
+        boundary_mean if not np.isnan(boundary_mean) else 0.0,
+        away_mean if not np.isnan(away_mean) else 0.0,
     ]
-    away_means = [
-        np.mean(np.abs(avo_results["boundary_amps"]["away_from_boundaries"])),
-        np.mean(np.abs(ai_results["boundary_amps"]["away_from_boundaries"])),
-        np.mean(np.abs(ei_results["boundary_amps"]["away_from_boundaries"])),
-    ]
+    ax4.bar(labels, values, color=["steelblue", "lightsteelblue"], alpha=0.8)
+    ax4.set_ylabel("Mean |Amplitude|")
+    ax4.set_title("Boundary vs Background Amplitude (AVO)")
+    ax4.grid(True, alpha=0.3, axis="y")
 
-    x = np.arange(len(methods))
-    width = 0.35
-    ax12.bar(
-        x - width / 2,
-        boundary_means,
-        width,
-        label="At Boundaries",
-        color=["steelblue", "coral", "mediumseagreen"],
-        alpha=0.8,
-    )
-    ax12.bar(
-        x + width / 2,
-        away_means,
-        width,
-        label="Away from Boundaries",
-        color=["lightsteelblue", "lightcoral", "lightgreen"],
-        alpha=0.8,
-    )
+    # 5. Facies separation matrix (Cohen's d) for AVO
+    ax5 = plt.subplot(2, 3, 5)
+    sep = avo_results.get("separation_matrix")
+    if sep is not None:
+        ax5.imshow(sep, cmap="YlOrRd", aspect="auto", vmin=0, vmax=3)
+        ax5.set_xticks([0, 1, 2, 3])
+        ax5.set_yticks([0, 1, 2, 3])
+        ax5.set_xticklabels(["F0", "F1", "F2", "F3"])
+        ax5.set_yticklabels(["F0", "F1", "F2", "F3"])
+        ax5.set_xlabel("Facies")
+        ax5.set_ylabel("Facies")
+        ax5.set_title("AVO: Facies Separation (Cohen's d)")
+        # Add text annotations when matrix is small
+        if hasattr(sep, "shape") and sep.shape == (4, 4):
+            for i in range(4):
+                for j in range(4):
+                    ax5.text(
+                        j, i, f"{sep[i, j]:.2f}", ha="center", va="center", fontsize=8
+                    )
 
-    ax12.set_ylabel("Mean |Amplitude|")
-    ax12.set_title("Boundary vs Background Amplitude")
-    ax12.set_xticks(x)
-    ax12.set_xticklabels(methods)
-    ax12.legend(fontsize=8)
-    ax12.grid(True, alpha=0.3, axis="y")
-
-    # 5. Facies separation matrix (Cohen's d)
-    ax13 = plt.subplot(4, 4, 13)
-    im = ax13.imshow(
-        avo_results["separation_matrix"], cmap="YlOrRd", aspect="auto", vmin=0, vmax=3
-    )
-    ax13.set_xticks([0, 1, 2, 3])
-    ax13.set_yticks([0, 1, 2, 3])
-    ax13.set_xticklabels(["F0", "F1", "F2", "F3"])
-    ax13.set_yticklabels(["F0", "F1", "F2", "F3"])
-    ax13.set_xlabel("Facies")
-    ax13.set_ylabel("Facies")
-    ax13.set_title("AVO: Facies Separation (Cohen's d)")
-    # Add text annotations
-    for i in range(4):
-        for j in range(4):
-            if i != j:
-                ax13.text(
-                    j,
-                    i,
-                    f'{avo_results["separation_matrix"][i, j]:.2f}',
-                    ha="center",
-                    va="center",
-                    color="black",
-                    fontsize=8,
-                )
-    plt.colorbar(im, ax=ax13, label="Effect Size")
-
-    ax14 = plt.subplot(4, 4, 14)
-    im = ax14.imshow(
-        ai_results["separation_matrix"], cmap="YlOrRd", aspect="auto", vmin=0, vmax=3
-    )
-    ax14.set_xticks([0, 1, 2, 3])
-    ax14.set_yticks([0, 1, 2, 3])
-    ax14.set_xticklabels(["F0", "F1", "F2", "F3"])
-    ax14.set_yticklabels(["F0", "F1", "F2", "F3"])
-    ax14.set_xlabel("Facies")
-    ax14.set_ylabel("Facies")
-    ax14.set_title("AI: Facies Separation (Cohen's d)")
-    for i in range(4):
-        for j in range(4):
-            if i != j:
-                ax14.text(
-                    j,
-                    i,
-                    f'{ai_results["separation_matrix"][i, j]:.2f}',
-                    ha="center",
-                    va="center",
-                    color="black",
-                    fontsize=8,
-                )
-    plt.colorbar(im, ax=ax14, label="Effect Size")
-
-    ax15_ei = plt.subplot(4, 4, 15)
-    im = ax15_ei.imshow(
-        ei_results["separation_matrix"], cmap="YlOrRd", aspect="auto", vmin=0, vmax=3
-    )
-    ax15_ei.set_xticks([0, 1, 2, 3])
-    ax15_ei.set_yticks([0, 1, 2, 3])
-    ax15_ei.set_xticklabels(["F0", "F1", "F2", "F3"])
-    ax15_ei.set_yticklabels(["F0", "F1", "F2", "F3"])
-    ax15_ei.set_xlabel("Facies")
-    ax15_ei.set_ylabel("Facies")
-    ax15_ei.set_title("EI: Facies Separation (Cohen's d)")
-    for i in range(4):
-        for j in range(4):
-            if i != j:
-                ax15_ei.text(
-                    j,
-                    i,
-                    f'{ei_results["separation_matrix"][i, j]:.2f}',
-                    ha="center",
-                    va="center",
-                    color="black",
-                    fontsize=8,
-                )
-    plt.colorbar(im, ax=ax15_ei, label="Effect Size")
-
-    # 6. Summary statistics table
-    ax16 = plt.subplot(4, 4, 16)
-    ax16.axis("off")
-
-    # Create summary table with EI
-    avo_pearson = avo_results["gradient_correlation"]["pearson_correlation"]
-    ai_pearson = ai_results["gradient_correlation"]["pearson_correlation"]
-    ei_pearson = ei_results["gradient_correlation"]["pearson_correlation"]
-
-    avo_boundary = np.mean(avo_results["boundary_amps"]["at_boundaries"])
-    ai_boundary = np.mean(ai_results["boundary_amps"]["at_boundaries"])
-    ei_boundary = np.mean(ei_results["boundary_amps"]["at_boundaries"])
-
-    avo_sep = np.mean(
-        avo_results["separation_matrix"][avo_results["separation_matrix"] > 0]
-    )
-    ai_sep = np.mean(
-        ai_results["separation_matrix"][ai_results["separation_matrix"] > 0]
-    )
-    ei_sep = np.mean(
-        ei_results["separation_matrix"][ei_results["separation_matrix"] > 0]
-    )
-
-    summary_data = [
-        ["Metric", "AVO", "AI", "EI", "Best"],
-        [
-            "Pearson r",
-            f"{avo_pearson:.4f}",
-            f"{ai_pearson:.4f}",
-            f"{ei_pearson:.4f}",
-            (
-                "EI"
-                if ei_pearson == max(avo_pearson, ai_pearson, ei_pearson)
-                else (
-                    "AI"
-                    if ai_pearson == max(avo_pearson, ai_pearson, ei_pearson)
-                    else "AVO"
-                )
-            ),
-        ],
-        [
-            "Boundary Amp",
-            f"{avo_boundary:.4f}",
-            f"{ai_boundary:.4f}",
-            f"{ei_boundary:.4f}",
-            (
-                "EI"
-                if ei_boundary == max(avo_boundary, ai_boundary, ei_boundary)
-                else (
-                    "AI"
-                    if ai_boundary == max(avo_boundary, ai_boundary, ei_boundary)
-                    else "AVO"
-                )
-            ),
-        ],
-        [
-            "Avg Sep (d)",
-            f"{avo_sep:.3f}",
-            f"{ai_sep:.3f}",
-            f"{ei_sep:.3f}",
-            (
-                "EI"
-                if ei_sep == max(avo_sep, ai_sep, ei_sep)
-                else "AI" if ai_sep == max(avo_sep, ai_sep, ei_sep) else "AVO"
-            ),
-        ],
-    ]
-
-    table = ax16.table(
-        cellText=summary_data,
-        cellLoc="center",
-        loc="center",
-        colWidths=[0.25, 0.15, 0.15, 0.15, 0.15],
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(7)
-    table.scale(1, 2)
-
-    # Style header row
-    for i in range(5):
-        table[(0, i)].set_facecolor("#4472C4")
-        table[(0, i)].set_text_props(weight="bold", color="white")
-
-    ax16.set_title("Performance Summary", fontsize=10, pad=20)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.99])
-
-    outfn = os.path.join(cache_dir, f"facies_analysis_{domain}.png")
-    plt.savefig(
-        outfn, dpi=300, facecolor="white", edgecolor="none", bbox_inches="tight"
-    )
-    logger.info("✓ Saved quantitative analysis to %s", outfn)
-
-    return outfn
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    return fig
 
 
 def analyze_facies_correlation():
     """CLI-style entry moved from src.__main__.py.
 
     This function parses common plotting CLI args via start_plot_main,
-    loads the appropriate AVO/AI/EI cache files, converts domains as
+    loads the appropriate AVO cache file, converts domains as
     necessary, and then runs the analysis helpers defined in this
     module. Returns the path to the generated summary PNG.
     """
     from src.__main__ import ParserFactory
-    from src.plotting.helpers.plot import plot_helper
 
     # os not required at module level; keep os usage local where necessary
     import numpy as np
@@ -935,57 +574,22 @@ def analyze_facies_correlation():
 
     cache_dir = args.cache_dir
 
-    # retrieve cache list but we don't use the returned value here
+    # retrieve AVO cache file
+    from src.plotting.helpers.plot import select_cache_files
 
-    avo_fn, ai_fn, ei_fn, ei_data_key, ei_type_str, ei_is_depth_domain = (
-        plot_helper.select_cache_files(cache_dir, args.domain)
-    )
+    avo_fn = select_cache_files(cache_dir, args.domain)[0]
 
     assert avo_fn is not None, f"No AVO cache file found in {cache_dir}"
-    assert ai_fn is not None, f"No AI cache file found in {cache_dir}"
-    assert ei_fn is not None, f"No EI cache file found in {cache_dir}"
 
-    logger.info("Loading cache files:")
+    logger.info("Loading cache file:")
     logger.info("  AVO: %s", os.path.basename(avo_fn))
-    logger.info("  AI: %s", os.path.basename(ai_fn))
-    logger.info("  EI: %s (%s)", os.path.basename(ei_fn), ei_type_str)
 
     avo_cache = np.load(avo_fn)
-    ai_cache = np.load(ai_fn)
-    ei_cache = np.load(ei_fn)
 
-    if "impedance_depth" in avo_cache:
-        avo = avo_cache["impedance_depth"]
-    else:
-        avo = avo_cache.get("full_stack")
-
-    if "impedance_ai" in ai_cache:
-        ai = ai_cache["impedance_ai"]
-    else:
-        ai = ai_cache.get("seismogram_ai")
-
-    if "ei_product" in ei_cache:
-        ei_km = ei_cache["ei_product"]
-        if "ei_optimal" in ei_cache:
-            ei_optimal = ei_cache["ei_optimal"]
-            conversion_factor = np.mean(ei_optimal) / np.mean(ei_km)
-            ei = ei_km * conversion_factor
-            ei_source = "Weighted Product (converted)"
-        else:
-            ei = ei_km * 491.0
-            ei_source = "Weighted Product (theoretical)"
-    elif "ei_optimal" in ei_cache:
-        ei = ei_cache["ei_optimal"]
-        ei_source = "Variance-weighted optimal"
-    else:
-        ei = ei_cache[ei_data_key]
-        ei_source = "standard multi-angle optimal"
-
-    data_type = "impedances" if args.domain == "depth" else "seismograms"
+    avo = avo_cache.get("full_stack")
+    data_type = "seismograms" if args.domain == "time" else "seismograms"
     logger.info("Loaded %s (%s domain):", data_type, args.domain)
     logger.info("  AVO: %s", getattr(avo, "shape", None))
-    logger.info("  AI: %s", getattr(ai, "shape", None))
-    logger.info("  EI: %s (%s)", getattr(ei, "shape", None), ei_source)
 
     # Load velocity model and facies (depth domain)
     dm = data_loader.DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
@@ -994,40 +598,18 @@ def analyze_facies_correlation():
 
     # Build a VelocityModel which handles unit conversion and validation
     vm = VelocityModel.from_dataset(dm, vp_key="vp")
-    vp_depth = vm.vp
 
     if args.domain == "depth":
         logger.info("%s", "\n" + "=" * 70)
         logger.info("QUANTITATIVE ANALYSIS - DEPTH DOMAIN")
         logger.info("%s", "=" * 70)
-
         avo_display = avo
-        ai_display = ai
-
-        if ei_is_depth_domain:
-            ei_display = ei
-        else:
-            # Use the centralized ResamplerFactory (resampler_factory) to
-            # obtain a cached DepthTimeResampler for the GridSpec and use the
-            # shared ResamplePlan cache to avoid recomputation.
-            from src.processing.resampler import resampler_factory
-            from src.processing.resample_cache import get_resample_plan_cache
-
-            resampler = resampler_factory.get_resampler(grid_spec)
-            plan = get_resample_plan_cache().get_plan(
-                grid_spec, vp_depth, target_dt=grid_spec.dt
-            )
-            ei_display = resampler.time_to_depth_cube(ei, vp_depth, plan=plan)
-
         facies_display = facies_depth
     else:
         logger.info("%s", "\n" + "=" * 70)
         logger.info("QUANTITATIVE ANALYSIS - TIME DOMAIN")
         logger.info("%s", "=" * 70)
-
         avo_display = avo
-        ai_display = ai
-        ei_display = ei
 
         # Resample facies from depth to time using the VelocityModel convenience
         # which uses DepthTimeResampler under the hood. Preserve categorical
@@ -1036,7 +618,7 @@ def analyze_facies_correlation():
             facies_depth, is_categorical=True, target_dt=grid_spec.dt
         )
 
-    logger.info("\nAVO vs AI vs EI Seismic-Facies Correlation\n")
+    logger.info("\nAVO Seismic-Facies Correlation\n")
 
     # AVO analysis
     avo_gradient_corr = calculate_gradient_correlation(avo_display, facies_display)
@@ -1049,32 +631,7 @@ def analyze_facies_correlation():
     avo_facies_stats, avo_separation, avo_facies_amps = calculate_facies_discrimination(
         avo_display, facies_display
     )
-
-    # AI analysis
-    ai_gradient_corr = calculate_gradient_correlation(ai_display, facies_display)
-    ai_boundary_amps = extract_boundary_amplitudes(
-        ai_display, ai_gradient_corr["boundaries"]
-    )
-    ai_interface_summary, ai_interface_raw = analyze_interface_reflections(
-        ai_display, facies_display
-    )
-    ai_facies_stats, ai_separation, ai_facies_amps = calculate_facies_discrimination(
-        ai_display, facies_display
-    )
-
-    # EI analysis
-    ei_gradient_corr = calculate_gradient_correlation(ei_display, facies_display)
-    ei_boundary_amps = extract_boundary_amplitudes(
-        ei_display, ei_gradient_corr["boundaries"]
-    )
-    ei_interface_summary, ei_interface_raw = analyze_interface_reflections(
-        ei_display, facies_display
-    )
-    ei_facies_stats, ei_separation, ei_facies_amps = calculate_facies_discrimination(
-        ei_display, facies_display
-    )
-
-    # Create summary plots
+    # Create summary plots (AVO-only)
     outfn = create_summary_plots(
         {
             "boundary_amps": avo_boundary_amps,
@@ -1082,20 +639,6 @@ def analyze_facies_correlation():
             "separation_matrix": avo_separation,
             "facies_amplitudes": avo_facies_amps,
             "interface_stats_summary": avo_interface_summary,
-        },
-        {
-            "boundary_amps": ai_boundary_amps,
-            "gradient_correlation": ai_gradient_corr,
-            "separation_matrix": ai_separation,
-            "facies_amplitudes": ai_facies_amps,
-            "interface_stats_summary": ai_interface_summary,
-        },
-        {
-            "boundary_amps": ei_boundary_amps,
-            "gradient_correlation": ei_gradient_corr,
-            "separation_matrix": ei_separation,
-            "facies_amplitudes": ei_facies_amps,
-            "interface_stats_summary": ei_interface_summary,
         },
         cache_dir,
         domain=args.domain,
@@ -1106,7 +649,6 @@ def analyze_facies_correlation():
 
 # --- Implementation aliases for OO facade (keep these after functions are defined)
 _impl_convert_time_to_depth = convert_time_to_depth
-_impl_impedance_to_seismogram_depth = impedance_to_seismogram_depth
 _impl_detect_facies_boundaries = detect_facies_boundaries
 _impl_extract_boundary_amplitudes = extract_boundary_amplitudes
 _impl_calculate_gradient_correlation = calculate_gradient_correlation
@@ -1130,7 +672,7 @@ def main(
     `analyze_facies_correlation()` but takes explicit keyword args so
     callers like `src.__main__` can delegate programmatically.
     """
-    from src.plotting.helpers.plot import plot_helper, default_plot_config
+    from src.plotting.helpers.plot import default_plot_config
     import os
     import numpy as np
     import logging
@@ -1148,56 +690,22 @@ def main(
         # Time domain analysis requires seismograms, disable multi-angle
         use_multiangle = False
 
-    # retrieve cache list
-    avo_fn, ai_fn, ei_fn, ei_data_key, ei_type_str, ei_is_depth_domain = (
-        plot_helper.select_cache_files(cache_dir, domain)
-    )
+    # retrieve AVO cache
+    from src.plotting.helpers.plot import select_cache_files
+
+    avo_fn = select_cache_files(cache_dir, domain)
 
     assert avo_fn is not None, f"No AVO cache file found in {cache_dir}"
-    assert ai_fn is not None, f"No AI cache file found in {cache_dir}"
-    assert ei_fn is not None, f"No EI cache file found in {cache_dir}"
 
-    logger.info("Loading cache files:")
+    logger.info("Loading cache file:")
     logger.info("  AVO: %s", os.path.basename(avo_fn))
-    logger.info("  AI: %s", os.path.basename(ai_fn))
-    logger.info("  EI: %s (%s)", os.path.basename(ei_fn), ei_type_str)
 
     avo_cache = np.load(avo_fn)
-    ai_cache = np.load(ai_fn)
-    ei_cache = np.load(ei_fn)
 
-    if "impedance_depth" in avo_cache:
-        avo = avo_cache["impedance_depth"]
-    else:
-        avo = avo_cache.get("full_stack")
-
-    if "impedance_ai" in ai_cache:
-        ai = ai_cache["impedance_ai"]
-    else:
-        ai = ai_cache.get("seismogram_ai")
-
-    if "ei_product" in ei_cache:
-        ei_km = ei_cache["ei_product"]
-        if "ei_optimal" in ei_cache:
-            ei_optimal = ei_cache["ei_optimal"]
-            conversion_factor = np.mean(ei_optimal) / np.mean(ei_km)
-            ei = ei_km * conversion_factor
-            ei_source = "Weighted Product (converted)"
-        else:
-            ei = ei_km * 491.0
-            ei_source = "Weighted Product (theoretical)"
-    elif "ei_optimal" in ei_cache:
-        ei = ei_cache["ei_optimal"]
-        ei_source = "Variance-weighted optimal"
-    else:
-        ei = ei_cache[ei_data_key]
-        ei_source = "standard multi-angle optimal"
-
-    data_type = "impedances" if domain == "depth" else "seismograms"
+    avo = avo_cache.get("full_stack")
+    data_type = "seismograms" if domain == "time" else "seismograms"
     logger.info("Loaded %s (%s domain):", data_type, domain)
     logger.info("  AVO: %s", getattr(avo, "shape", None))
-    logger.info("  AI: %s", getattr(ai, "shape", None))
-    logger.info("  EI: %s (%s)", getattr(ei, "shape", None), ei_source)
 
     # Load velocity model and facies (depth domain)
     # `grid_spec` is provided by the plotting config from start_plot_main
@@ -1207,42 +715,29 @@ def main(
 
     # Use VelocityModel to handle unit conversion and validation
     vm = VelocityModel.from_dataset(dm, vp_key="vp")
-    vp_depth = vm.vp
 
     if domain == "depth":
+        logger.info("%s", "\n" + "=" * 70)
+        logger.info("QUANTITATIVE ANALYSIS - DEPTH DOMAIN")
+        logger.info("%s", "=" * 70)
+
         avo_display = avo
-        ai_display = ai
-
-        if ei_is_depth_domain:
-            ei_display = ei
-        else:
-            # Resample EI from time to depth using the shared resampler and plan cache
-            from src.processing.resampler import resampler_factory
-            from src.processing.resample_cache import get_resample_plan_cache
-
-            resampler = resampler_factory.get_resampler(grid_spec)
-            plan = get_resample_plan_cache().get_plan(
-                grid_spec, vp_depth, target_dt=grid_spec.dt
-            )
-            ei_display = resampler.time_to_depth_cube(ei, vp_depth, plan=plan)
-
         facies_display = facies_depth
     else:
+        logger.info("%s", "\n" + "=" * 70)
+        logger.info("QUANTITATIVE ANALYSIS - TIME DOMAIN")
+        logger.info("%s", "=" * 70)
+
         avo_display = avo
-        ai_display = ai
-        ei_display = ei
 
-        # Resample facies from depth to time using the shared ResamplerFactory
-        from src.processing.resampler import resampler_factory
-        from src.processing.resample_cache import get_resample_plan_cache
+        # Resample facies from depth to time using the VelocityModel convenience
+        # which uses DepthTimeResampler under the hood. Preserve categorical
+        # handling so integer facies labels are not interpolated incorrectly.
+        facies_display, _dt = vm.resample_to_time(
+            facies_depth, is_categorical=True, target_dt=grid_spec.dt
+        )
 
-        resampler = resampler_factory.get_resampler(grid_spec)
-        plan = get_resample_plan_cache().get_plan(
-            grid_spec, vp_depth, target_dt=grid_spec.dt
-        )
-        facies_display, _dt = resampler.depth_to_time_cube(
-            facies_depth, vp_depth, target_dt=grid_spec.dt, plan=plan
-        )
+    logger.info("\nAVO Seismic-Facies Correlation\n")
 
     # AVO analysis
     avo_gradient_corr = calculate_gradient_correlation(avo_display, facies_display)
@@ -1256,31 +751,7 @@ def main(
         avo_display, facies_display
     )
 
-    # AI analysis
-    ai_gradient_corr = calculate_gradient_correlation(ai_display, facies_display)
-    ai_boundary_amps = extract_boundary_amplitudes(
-        ai_display, ai_gradient_corr["boundaries"]
-    )
-    ai_interface_summary, ai_interface_raw = analyze_interface_reflections(
-        ai_display, facies_display
-    )
-    ai_facies_stats, ai_separation, ai_facies_amps = calculate_facies_discrimination(
-        ai_display, facies_display
-    )
-
-    # EI analysis
-    ei_gradient_corr = calculate_gradient_correlation(ei_display, facies_display)
-    ei_boundary_amps = extract_boundary_amplitudes(
-        ei_display, ei_gradient_corr["boundaries"]
-    )
-    ei_interface_summary, ei_interface_raw = analyze_interface_reflections(
-        ei_display, facies_display
-    )
-    ei_facies_stats, ei_separation, ei_facies_amps = calculate_facies_discrimination(
-        ei_display, facies_display
-    )
-
-    # Create summary plots
+    # Create summary plots (AVO-only)
     outfn = create_summary_plots(
         {
             "boundary_amps": avo_boundary_amps,
@@ -1288,20 +759,6 @@ def main(
             "separation_matrix": avo_separation,
             "facies_amplitudes": avo_facies_amps,
             "interface_stats_summary": avo_interface_summary,
-        },
-        {
-            "boundary_amps": ai_boundary_amps,
-            "gradient_correlation": ai_gradient_corr,
-            "separation_matrix": ai_separation,
-            "facies_amplitudes": ai_facies_amps,
-            "interface_stats_summary": ai_interface_summary,
-        },
-        {
-            "boundary_amps": ei_boundary_amps,
-            "gradient_correlation": ei_gradient_corr,
-            "separation_matrix": ei_separation,
-            "facies_amplitudes": ei_facies_amps,
-            "interface_stats_summary": ei_interface_summary,
         },
         cache_dir,
         domain=domain,

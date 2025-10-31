@@ -90,7 +90,7 @@ def _impl_run_command(cmd, description, prefix: str = ""):
 
 def _impl_clear_cache(patterns=None, prefix: str = ""):
     if patterns is None:
-        patterns = ["avo_*.npz", "ai_*.npz", "ei_*.npz"]
+        patterns = ["avo_*.npz"]
     return analysis.clear_cache(patterns=patterns, prefix=prefix)
 
 
@@ -147,7 +147,6 @@ def _impl_main(
             skip_cleanup=skip_cleanup,
             verbose=verbose,
             add_avo_noise=False,
-            add_ei_noise=False,
         )
         return True
     except Exception as e:

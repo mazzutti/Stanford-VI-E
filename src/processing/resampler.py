@@ -521,11 +521,10 @@ class DepthTimeResampler:
     def compute_twt_for_trace(
         self, vp_trace: np.ndarray | Quantity
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Compatibility helper: return TWT (padded) and depth axis (padded).
+        """Return TWT (padded) and depth axis (padded) for a single trace.
 
-        Returns the same shapes as the old `compute_twt_for_trace` helper used
-        elsewhere in the codebase: twt_trace (with a leading 0) and a depth
-        trace (also padded) so they can be passed to interp functions.
+        Returns twt_trace (with a leading 0) and a depth trace (also padded)
+        so they can be passed to interpolation helpers.
         """
         dz = self.grid_spec.dz
         # Accept Quantity-wrapped vp_trace
@@ -727,9 +726,7 @@ resampler_factory = LazyObjectProxy(lambda: ResamplerFactory())
 __all__.extend(["ResamplerFactory", "resampler_factory"])
 
 
-# Callers should use the `ResamplerFactory` facade or the `ResamplerService`
-# module-level proxy. The top-level delegate wrappers remain for convenience
-# and backward compatibility.
+# Delegate wrappers and facades for resampler factory/service
 __all__.extend(
     [
         "ResamplerFactory",

@@ -212,13 +212,7 @@ def _impl_summarize_cache_files(
 
     groups = cache_for_dir(cache_dir).select_latest_cache_entries()
     if keys is None:
-        keys = [
-            "avo_depth",
-            "ai_depth",
-            "ei_depth",
-            "ei_time",
-            "rock_physics_attributes",
-        ]
+        keys = ["avo_depth", "rock_physics_attributes"]
     logger.info("%sCache summary (%s):", prefix, cache_dir)
     for k in keys:
         candidates = groups.get(k + "_", groups.get(k, []))
