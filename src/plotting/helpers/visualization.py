@@ -127,9 +127,9 @@ class PlotVisualization:
         ax.set_title(title)
         # We will use a simple layout: show i-slice, j-slice (vertical), k-slice
         # Create a mini-grid with imshow; treat axes as normal 2D
-        from src.plotting.helpers.plot import plot_helper
+        from src.plotting.helpers.plot import imshow_with_labels
 
-        plot_helper.imshow_with_labels(
+        imshow_with_labels(
             ax,
             slice_i,
             title,

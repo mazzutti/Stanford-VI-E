@@ -27,13 +27,11 @@ class FormattingHelper:
     def print_angle_summary(
         self,
         angles: Sequence[float],
-        ei_volumes: Sequence,
-        ei_stack=None,
-        ei_gradient=None,
+        volumes: Sequence,
+        stack=None,
+        gradient=None,
     ):
-        return print_angle_summary(
-            angles, ei_volumes, ei_stack=ei_stack, ei_gradient=ei_gradient
-        )
+        return print_angle_summary(angles, volumes, stack=stack, gradient=gradient)
 
     def print_selected_angles(self, selected_angles, weights):
         return print_selected_angles(selected_angles, weights)
@@ -72,48 +70,46 @@ def _impl_print_header(title: str):
 
 
 def print_angle_summary(
-    angles: Sequence[float], ei_volumes: Sequence, ei_stack=None, ei_gradient=None
+    angles: Sequence[float], volumes: Sequence, stack=None, gradient=None
 ):
-    return _impl_print_angle_summary(
-        angles, ei_volumes, ei_stack=ei_stack, ei_gradient=ei_gradient
-    )
+    return _impl_print_angle_summary(angles, volumes, stack=stack, gradient=gradient)
 
 
 def _impl_print_angle_summary(
-    angles: Sequence[float], ei_volumes: Sequence, ei_stack=None, ei_gradient=None
+    angles: Sequence[float], volumes: Sequence, stack=None, gradient=None
 ):
     """Log a concise per-angle summary and optional stack/gradient stats."""
-    _impl_print_header("ANGLE-DEPENDENT EI SUMMARY")
-    for angle, ei_vol in zip(angles, ei_volumes):
+    _impl_print_header("ANGLE-DEPENDENT SUMMARY")
+    for angle, vol in zip(angles, volumes):
         try:
             logger.info(
-                "  %5.1f° : EI = [%.3e, %.3e] (mean = %.3e)",
+                "  %5.1f° : value = [%.3e, %.3e] (mean = %.3e)",
                 angle,
-                ei_vol.min(),
-                ei_vol.max(),
-                ei_vol.mean(),
+                vol.min(),
+                vol.max(),
+                vol.mean(),
             )
         except Exception:
-            logger.info("  %5.1f° : EI = [?, ?] (stats unavailable)", angle)
+            logger.info("  %5.1f° : value = [?, ?] (stats unavailable)", angle)
 
-    if ei_stack is not None:
+    if stack is not None:
         try:
             logger.info(
-                "\nStack   : EI = [%.3e, %.3e] (mean = %.3e)",
-                ei_stack.min(),
-                ei_stack.max(),
-                ei_stack.mean(),
+                "\nStack   : value = [%.3e, %.3e] (mean = %.3e)",
+                stack.min(),
+                stack.max(),
+                stack.mean(),
             )
         except Exception:
             logger.info("\nStack   : stats unavailable")
 
-    if ei_gradient is not None:
+    if gradient is not None:
         try:
             logger.info(
-                "Gradient: ΔEI = [%.3e, %.3e] (mean = %.3e)",
-                ei_gradient.min(),
-                ei_gradient.max(),
-                ei_gradient.mean(),
+                "Gradient: Δ = [%.3e, %.3e] (mean = %.3e)",
+                gradient.min(),
+                gradient.max(),
+                gradient.mean(),
             )
         except Exception:
             logger.info("Gradient: stats unavailable")

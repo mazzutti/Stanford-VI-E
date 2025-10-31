@@ -58,9 +58,9 @@ class FaciesOverlay:
 
         extent = [0, nj - 1, (nk - 1) * k_scale, 0]
 
-        from src.plotting.helpers.plot import plot_helper
+        from src.plotting.helpers.plot import imshow_with_labels
 
-        im = plot_helper.imshow_with_labels(
+        im = imshow_with_labels(
             ax,
             seismic_slice,
             title,
@@ -111,32 +111,19 @@ class FaciesOverlay:
         )
 
         # use plot_helper for axis labeling if available
-        try:
-            plot_helper.set_axis_labels(
-                ax,
-                title,
-                xlabel="Crossline (J)",
-                k_label=k_label,
-                k_unit=k_unit,
-                fontsize_title=12,
-                fontsize_labels=10,
-                im=im if show_colorbar else None,
-                colorbar_label="Amplitude" if show_colorbar else None,
-            )
-        except Exception:
-            from src.plotting.helpers.plot import set_axis_labels
+        from src.plotting.helpers.plot import set_axis_labels
 
-            set_axis_labels(
-                ax,
-                title,
-                xlabel="Crossline (J)",
-                k_label=k_label,
-                k_unit=k_unit,
-                fontsize_title=12,
-                fontsize_labels=10,
-                im=im if show_colorbar else None,
-                colorbar_label="Amplitude" if show_colorbar else None,
-            )
+        set_axis_labels(
+            ax,
+            title,
+            xlabel="Crossline (J)",
+            k_label=k_label,
+            k_unit=k_unit,
+            fontsize_title=12,
+            fontsize_labels=10,
+            im=im if show_colorbar else None,
+            colorbar_label="Amplitude" if show_colorbar else None,
+        )
 
         from matplotlib.lines import Line2D
 

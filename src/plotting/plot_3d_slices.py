@@ -8,6 +8,7 @@ from src.utils.facades import LazyObjectProxy
 
 from src.plotting.helpers.plot import (
     init_plotting,
+    select_cache_files,
 )
 
 __all__ = ["plot_3d_volume", "main"]
@@ -67,7 +68,6 @@ def _impl_get_plot_3d_slices(instance: Plot3DSlices | None = None) -> Plot3DSlic
 def _impl_main(argv=None):
     import argparse
     from src.plotting.helpers.plot import (
-        plot_helper,
         prepare_plotting_args,
         default_plot_config,
     )
@@ -85,7 +85,7 @@ def _impl_main(argv=None):
         help="Domain for processing/visualization",
     )
     parser.add_argument(
-        "--no-multiangle", action="store_true", help="Disable multi-angle EI processing"
+        "--no-multiangle", action="store_true", help="Disable multi-angle processing"
     )
     parser.add_argument(
         "--backend", default=None, help="Optional matplotlib backend override"
@@ -110,18 +110,9 @@ def _impl_main(argv=None):
 
     os.makedirs(cache_dir, exist_ok=True)
 
-    avo_fn, ai_fn, ei_fn, ei_data_key, ei_type_str, ei_is_depth_domain = (
-        plot_helper.select_cache_files(cache_dir, args.domain)
-    )
+    avo_fn = select_cache_files(cache_dir, args.domain)
 
-    return {
-        "avo": avo_fn,
-        "ai": ai_fn,
-        "ei": ei_fn,
-        "ei_key": ei_data_key,
-        "ei_type": ei_type_str,
-        "is_depth": ei_is_depth_domain,
-    }
+    return {"avo": avo_fn}
 
 
 def _impl_plot_3d_volume(ax, cube, slice_indices, title, **plot_kwargs):

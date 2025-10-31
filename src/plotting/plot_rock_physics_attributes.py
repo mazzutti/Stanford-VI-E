@@ -7,7 +7,7 @@ E402. Heavy plotting initialization remains but is safe after the small imports.
 import logging
 
 from src.utils.facades import LazyObjectProxy
-from src.plotting.helpers.plot import init_plotting, plot_helper
+from src.plotting.helpers.plot import init_plotting
 
 # Initialize plotting (matplotlib) for this module
 plt, np = init_plotting(backend="Agg")
@@ -48,7 +48,9 @@ class PlotRockPhysicsAttributes:
     def plot_attribute(self, ax, data, idx, slice_type, title, cmap="viridis"):
         if slice_type == "inline":
             slice_data = data[idx, :, :]
-            return plot_helper.imshow_with_labels(
+            from src.plotting.helpers.plot import imshow_with_labels
+
+            return imshow_with_labels(
                 ax,
                 slice_data,
                 f"{title} (Inline {idx})",
@@ -61,7 +63,9 @@ class PlotRockPhysicsAttributes:
             )
         elif slice_type == "crossline":
             slice_data = data[:, idx, :]
-            return plot_helper.imshow_with_labels(
+            from src.plotting.helpers.plot import imshow_with_labels
+
+            return imshow_with_labels(
                 ax,
                 slice_data,
                 f"{title} (Crossline {idx})",
@@ -74,7 +78,9 @@ class PlotRockPhysicsAttributes:
             )
         else:
             slice_data = data[:, :, idx]
-            return plot_helper.imshow_with_labels(
+            from src.plotting.helpers.plot import imshow_with_labels
+
+            return imshow_with_labels(
                 ax,
                 slice_data,
                 f"{title} (Depth {idx}m)",
@@ -120,11 +126,6 @@ def main(argv=None):
         choices=["depth", "time"],
         default="depth",
         help="Domain for processing/visualization (default: depth)",
-    )
-    parser.add_argument(
-        "--no-multiangle",
-        action="store_true",
-        help="Disable multi-angle EI processing and use single-angle fallback",
     )
     parser.add_argument(
         "--cache-dir", default=".cache", help="Directory for cache files"

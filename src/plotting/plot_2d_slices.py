@@ -33,10 +33,6 @@ def convert_time_to_depth(
     )
 
 
-# impedance_to_seismogram is not used in this module; keep commented reference
-# from src.utils.signal import impedance_to_seismogram
-
-
 def plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
     # Delegate directly to canonical implementation for simplicity.
     return _impl_plot_with_units(
@@ -92,7 +88,7 @@ def _impl_convert_time_to_depth(
 
 
 def _impl_plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
-    from src.plotting.helpers.plot import apply_plot_defaults, plot_helper
+    from src.plotting.helpers.plot import apply_plot_defaults
 
     plot_kwargs = apply_plot_defaults(plot_kwargs)
     k_scale = plot_kwargs["k_scale"]
@@ -143,7 +139,9 @@ def _impl_plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_
 
     ax.clear()
 
-    return plot_helper.imshow_with_labels(
+    from src.plotting.helpers.plot import imshow_with_labels
+
+    return imshow_with_labels(
         ax,
         slice_data,
         title_with_slice,

@@ -27,7 +27,6 @@ class PlotlyVisualization:
         k_unit="",
         colorscale="RdBu",
         is_categorical=False,
-        is_impedance=False,
         show_colorbar=True,
     ):
         """Create Plotly Surface traces for three orthogonal slices."""
@@ -44,19 +43,6 @@ class PlotlyVisualization:
             ]
             cmin = 0
             cmax = 3
-        elif is_impedance:
-            slice_inline = arr[idx_i, :, :]
-            slice_crossline = arr[:, idx_j, :]
-            slice_k = arr[:, :, idx_k]
-
-            all_slices = np.concatenate(
-                [slice_inline.ravel(), slice_crossline.ravel(), slice_k.ravel()]
-            )
-            cmin = float(np.percentile(all_slices, 2))
-            cmax = float(np.percentile(all_slices, 98))
-            if cmax == cmin:
-                cmax = cmin + 1.0
-            colorscale = "Turbo"
         else:
             slice_inline = arr[idx_i, :, :]
             slice_crossline = arr[:, idx_j, :]
@@ -158,7 +144,7 @@ def main(argv=None):
         help="Domain for processing/visualization",
     )
     parser.add_argument(
-        "--no-multiangle", action="store_true", help="Disable multi-angle EI processing"
+        "--no-multiangle", action="store_true", help="Disable multi-angle processing"
     )
     parser.add_argument(
         "--backend", default=None, help="Optional matplotlib backend override"
@@ -179,27 +165,18 @@ def main(argv=None):
     plot_cfg.apply_backend()
 
     cache_dir = args.cache_dir
-    keys = [
-        "avo_depth" if args.domain != "time" else "avo_time",
-        "ai_depth" if args.domain != "time" else "ai_time",
-        "ei_depth",
-        "ei_time",
-    ]
-
+    # Only an AVO cache is required for interactive plotting
+    key = "avo_depth" if args.domain != "time" else "avo_time"
     from src.io.cache import cache_for_dir
 
-    resolved = cache_for_dir(cache_dir).resolve_latest_paths(
-        keys=keys, prefer_depth_ei=(args.domain != "time")
-    )
+    resolved = cache_for_dir(cache_dir).resolve_latest_paths(keys=[key])
 
-    avo_fn = resolved.get(keys[0])
-    ai_fn = resolved.get(keys[1])
-    ei_fn = resolved.get("ei")
+    avo_fn = resolved.get(key)
 
-    if not (avo_fn and ai_fn and ei_fn):
-        raise SystemExit("Missing required cache files for 3D interactive plotting")
+    if not avo_fn:
+        raise SystemExit("Missing required AVO cache file for 3D interactive plotting")
 
-    return resolved
+    return {key: avo_fn}
 
 
 # Module-level lazy proxy for Plotly visualization facade
@@ -222,7 +199,6 @@ def _impl_get_plotly_visualization(config: dict | None = None):
     return PlotlyVisualization()
 
 
-# Backwards-compatible top-level wrapper
 def create_3d_volume_plotly(
     cube: ArrayLike,
     slice_indices,
@@ -232,7 +208,6 @@ def create_3d_volume_plotly(
     k_unit="",
     colorscale="RdBu",
     is_categorical=False,
-    is_impedance=False,
     show_colorbar=True,
 ):
     return _impl_create_3d_volume_plotly(
@@ -244,7 +219,6 @@ def create_3d_volume_plotly(
         k_unit=k_unit,
         colorscale=colorscale,
         is_categorical=is_categorical,
-        is_impedance=is_impedance,
         show_colorbar=show_colorbar,
     )
 
@@ -258,7 +232,6 @@ def _impl_create_3d_volume_plotly(
     k_unit="",
     colorscale="RdBu",
     is_categorical=False,
-    is_impedance=False,
     show_colorbar=True,
 ):
     """Canonical implementation for creating a 3D Plotly volume.
@@ -276,6 +249,5 @@ def _impl_create_3d_volume_plotly(
         k_unit=k_unit,
         colorscale=colorscale,
         is_categorical=is_categorical,
-        is_impedance=is_impedance,
         show_colorbar=show_colorbar,
     )

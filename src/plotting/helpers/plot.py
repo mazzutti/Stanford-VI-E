@@ -37,43 +37,11 @@ class PlotHelper:
         """
         self.config = config or PlotConfig.default()
 
-    def setup_matplotlib(self, backend: Optional[str] = "Agg") -> None:
-        return setup_matplotlib(backend=backend)
-
-    def init_plt(self, backend: Optional[str] = "Agg"):
-        return init_plt(backend=backend)
-
-    def init_plotting(self, backend: Optional[str] = "Agg"):
-        return init_plotting(backend=backend)
-
-    def default_plot_config(self):
-        # Return the instance config for stateful helpers; keep the top-level
-        # factory function for backwards compatibility.
-        return self.config
-
-    def prepare_plotting_args(self, args):
-        return prepare_plotting_args(args)
-
-    def select_cache_files(self, cache_dir: str, domain: str):
-        return select_cache_files(cache_dir, domain)
-
-    def create_figure_grid(self, *args, **kwargs):
-        # Delegate to module-level implementation but keep logic local so
-        # callers using the instance get the same behaviour.
-        return _impl_create_figure_grid(*args, **kwargs)
-
-    def imshow_with_labels(self, *args, **kwargs):
-        return _impl_imshow_with_labels(*args, **kwargs)
-
-    def apply_common_axis_style(self, *args, **kwargs):
-        return apply_common_axis_style(*args, **kwargs)
-
-    def compute_boundary_alignment(self, *args, **kwargs):
-        return compute_boundary_alignment(*args, **kwargs)
-
-    def create_figure(self, *args, **kwargs):
-        # simple wrapper matching the old create_figure convenience
-        return _impl_create_figure(*args, **kwargs)
+    # The PlotHelper intentionally exposes only stateful configuration.
+    # Callers should use the module-level helper functions (for example,
+    # `apply_plot_defaults`, `select_cache_files`, `compute_boundary_alignment`)
+    # when they require the canonical implementations. This class remains a
+    # lightweight container for a PlotConfig instance.
 
 
 # Module-level singleton proxy for plotting helpers (lazy to avoid heavy imports at import time)
@@ -120,10 +88,7 @@ def get_3d_surface_kwargs(stride: int = 1, **kwargs):
 
 
 def apply_plot_defaults(plot_kwargs: dict) -> dict:
-    """Ensure a minimal set of plotting keys exist and return a sanitized dict.
-
-    This keeps callers concise and backwards-compatible with older helpers.
-    """
+    """Ensure a minimal set of plotting keys exist and return a sanitized dict."""
     defaults = {
         "k_scale": 1.0,
         "k_label": "K",
@@ -187,7 +152,7 @@ class PlotConfig:
     grid_spec: GridSpec
     backend: Optional[str] = "Agg"
 
-    # Backwards-compatible accessors
+    # Convenience accessor properties
     @property
     def grid_shape(self) -> Tuple[int, int, int]:
         return self.grid_spec.shape
@@ -258,47 +223,21 @@ def _find_latest(cache_dir: str, prefix: str):
 
 
 def select_cache_files(cache_dir: str, domain: str):
+    """Return the most recent AVO cache file for the requested domain.
+
+    This helper previously returned multiple cache types; callers should only
+    expect a single AVO cache filename for plotting-related caches.
+    (or None if not found).
+    """
     # Note: we intentionally call select_latest_cache_entries inside helpers
     # such as _find_latest; no persistent 'groups' variable needed here.
 
     if domain == "time":
         avo_fn = _find_latest(cache_dir, "avo_time")
-        ai_fn = _find_latest(cache_dir, "ai_time")
     else:
         avo_fn = _find_latest(cache_dir, "avo_depth")
-        ai_fn = _find_latest(cache_dir, "ai_depth")
 
-    ei_fn = None
-    ei_data_key = None
-    ei_type_str = ""
-    ei_is_depth_domain = False
-
-    if domain == "depth":
-        ei_fn = _find_latest(cache_dir, "ei_depth") or _find_latest(
-            cache_dir, "ei_time"
-        )
-        if ei_fn and "ei_depth" in ei_fn:
-            ei_data_key = "ei_optimal"
-            ei_type_str = "multi-angle depth-domain impedance (optimal stack)"
-            ei_is_depth_domain = True
-        else:
-            ei_data_key = "ei_seismic"
-            ei_type_str = "multi-angle time-domain seismogram"
-            ei_is_depth_domain = False
-    else:
-        ei_fn = _find_latest(cache_dir, "ei_time") or _find_latest(
-            cache_dir, "ei_depth"
-        )
-        if ei_fn and "ei_time" in ei_fn:
-            ei_data_key = "ei_seismic"
-            ei_type_str = "multi-angle time-domain seismogram"
-            ei_is_depth_domain = False
-        else:
-            ei_data_key = "ei_optimal"
-            ei_type_str = "multi-angle depth-domain impedance (optimal stack)"
-            ei_is_depth_domain = True
-
-    return avo_fn, ai_fn, ei_fn, ei_data_key, ei_type_str, ei_is_depth_domain
+    return avo_fn
 
 
 def _impl_create_figure_grid(
