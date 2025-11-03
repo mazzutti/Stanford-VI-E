@@ -17,6 +17,7 @@ import signal
 import multiprocessing
 
 
+from src.analysis.types import DatasetManagerFactory
 from src.io import data_loader
 from src.io.grid import GridSpec
 from src.signal import wavelets
@@ -253,8 +254,22 @@ class ParserFactory:
         t0 = time.time()
         # Create GridSpec early and prefer DatasetManager for richer API
         # (grid_spec already constructed above)
-        dm = data_loader.DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
-        props_depth = dm.data
+        # Prefer the DatasetManagerFactory helper for consistency and testability
+        try:
+
+            dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
+        except Exception:
+            # Backward-compatible fallback to the legacy loader
+            dm = data_loader.DatasetManager.from_stanfordsix(
+                DATA_PATH, FILE_MAP, grid_spec
+            )
+            props_depth = {
+                "vp": dm.vp,
+                "vs": dm.vs,
+                "rho": dm.rho,
+                "facies": dm.facies,
+                "full_stack": dm.full_stack,
+            }
         t1 = time.time()
         logging.getLogger(__name__).info("✓ Loaded data in %.2fs", (t1 - t0))
 
@@ -379,7 +394,6 @@ class ParserFactory:
 
     @staticmethod
     # AVO pipeline is supported via `run_modeling`.
-
     @staticmethod
     def save_results():
         logger.info("%s", "\n" + "=" * 70)
@@ -618,50 +632,45 @@ def cleanup_cache(
 # ---------------------------------------------------------------------------
 
 
-# Note: analyze_facies_correlation logic moved to
-# src.analysis.facies_correlation.analyze_facies_correlation
-
-
-# plot_multiangle tool is not part of this codebase
-
-
 @tool
 def plot_3d_interactive(argv: list | None = None):
-    from src.plotting.plot_3d_interactive import main as _main
+    from src.plotting.plot_3d_interactive import PlotlyVisualization
 
-    # Forward argv if provided; otherwise rely on underlying main to parse
-    # from sys.argv or use defaults.
-    return _main(argv=argv)
+    viz = PlotlyVisualization()
+    return viz.main(argv=argv)
 
 
 @tool
 def plot_3d_slices(argv: list | None = None):
-    from src.plotting.plot_3d_slices import main as _main
+    from src.plotting.plot_3d_slices import Plot3DSlices
 
-    return _main(argv=argv)
+    slicer = Plot3DSlices()
+    return slicer.main(argv=argv)
 
 
 @tool
 def plot_rock_physics_attributes(argv: list | None = None):
-    from src.plotting.plot_rock_physics_attributes import main as _main
+    from src.plotting.plot_rock_physics_attributes import PlotRockPhysicsAttributes
 
-    # The plotting main returns the canonical 7-tuple. Forward argv if given.
-    result = _main(argv=argv)
-    return result
+    plotter = PlotRockPhysicsAttributes()
+    return plotter.main(argv=argv)
 
 
 @tool
 def analysis_rock_physics(
     venv_python: str | None = None, cache_dir: str = ".cache", prompt: bool = True
 ):
-    from .analysis.header import print_analysis_header
-    from src.analysis import common as analysis
+    from src.analysis.io import HeaderPrinter
+    from src.analysis.common import AnalysisCommon
+
+    # Instantiate the AnalysisCommon singleton for use in this tool.
+    analysis = AnalysisCommon()
 
     long_desc = (
         "This pipeline clears caches, computes rock physics attributes and "
         "creates visualizations (AVO-focused)."
     )
-    print_analysis_header(
+    HeaderPrinter.instance().print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
             "Compute ALL Attributes + Generate ALL Plots",
@@ -674,31 +683,28 @@ def analysis_rock_physics(
     # confirmation must perform it before calling this function.
     analysis.clear_cache()
 
+    # Use the class-based RockPhysicsAnalyzer pipeline (single canonical entry)
     try:
-        from src.analysis.rock_physics_attributes import (
-            load_depth_data,
-            run_multiangle_analysis,
-            main as _rp_main,
-        )
+        from src.analysis.rock_physics import RockPhysicsAnalyzer
 
-        props = load_depth_data()
-        run_multiangle_analysis(props, angles_deg=[0, 5, 10, 15, 20, 25])
-
-        _rp_main(
-            cache_dir=cache_dir, ei_angle=10, generate_plots=True, save_npz_only=False
+        rpa = RockPhysicsAnalyzer()
+        rpa.main(
+            cache_dir=cache_dir,
+            generate_plots=True,
+            save_npz_only=False,
+            angles_list=[0, 5, 10, 15, 20, 25],
+            verbose=False,
         )
     except Exception as e:
         logger.error("ERROR: Rock physics pipeline failed: %s", e)
         return False
 
     try:
-        from src.plotting.plot_rock_physics_attributes import main as _plot_rp
+        from src.analysis.common import AnalysisCommon
 
-        _plot_rp()
-    except Exception as e:
-        logger.warning("Rock physics visualization failed: %s", e)
+        # Instantiate the AnalysisCommon singleton for use in this block.
+        analysis = AnalysisCommon()
 
-    try:
         analysis.summarize_cache_files(cache_dir=cache_dir)
     except Exception:
         pass
@@ -720,9 +726,13 @@ def analyze_facies_correlation(
     `src.analysis.facies_correlation` with keyword args so the heavy logic
     runs in-process when invoked via the centralized CLI.
     """
-    from src.analysis.facies_correlation import main as _main
+    # Use class-based analyzer API (preferred OOP entrypoint)
+    from src.analysis.facies import (
+        FaciesCorrelationAnalyzer,
+    )
 
-    return _main(
+    analyzer = FaciesCorrelationAnalyzer()
+    return analyzer.run(
         cache_dir=cache_dir,
         domain=domain,
         no_multiangle=no_multiangle,
@@ -740,12 +750,13 @@ def seismograms(
     """Delegator for seismogram modeling pipeline.
 
     Parses the canonical common args and invokes the programmatic
-    `src.analysis.seismograms.main(...)` in-process. This is the
+    `src.analysis.pipelines.seismograms.main(...)` in-process. This is the
     in-process alternative to the regenerate-pipeline subprocess step.
     """
-    from src.analysis.seismograms import main as _main
+    from src.analysis.pipelines import SeismogramAnalyzer
 
-    return _main(
+    analyzer = SeismogramAnalyzer()
+    return analyzer.main(
         cache_dir=cache_dir,
         venv_python=venv_python,
         skip_cleanup=skip_cleanup,
@@ -755,7 +766,10 @@ def seismograms(
 
 @tool
 def analysis_seismograms():
-    from src.analysis import common as analysis
+    from src.analysis.common import AnalysisCommon
+
+    # Instantiate the AnalysisCommon singleton for use in this tool.
+    analysis = AnalysisCommon()
 
     logger.info("%s", "=" * 70)
     logger.info("COMPLETE SEISMIC MODELING PIPELINE - DUAL DOMAIN")
@@ -769,9 +783,10 @@ def analysis_seismograms():
 
     # Run seismic modeling (in-process)
     try:
-        from src.analysis.seismograms import main as _seis_main
+        from src.analysis.pipelines import SeismogramAnalyzer
 
-        _seis_main(cache_dir=".cache", skip_cleanup=True)
+        _seis = SeismogramAnalyzer()
+        _seis.main(cache_dir=".cache", skip_cleanup=True)
     except Exception as e:
         logger.error("Seismic modeling failed: %s", e)
         return False
@@ -779,32 +794,36 @@ def analysis_seismograms():
     # Run downstream analysis tasks (facies correlation, visualizations)
     # Facies correlation (depth)
     try:
-        from src.analysis.facies_correlation import main as _fac_main
+        from src.analysis.facies import FaciesCorrelationAnalyzer
 
-        _fac_main(cache_dir=".cache", domain="depth", no_multiangle=False)
+        _fac = FaciesCorrelationAnalyzer()
+        _fac.run(cache_dir=".cache", domain="depth")
     except Exception as e:
         logger.warning("Facies depth analysis failed: %s", e)
 
     # Facies correlation (time)
     try:
-        from src.analysis.facies_correlation import main as _fac_main_time
+        from src.analysis.facies import FaciesCorrelationAnalyzer
 
-        _fac_main_time(cache_dir=".cache", domain="time", no_multiangle=True)
+        _fac_time = FaciesCorrelationAnalyzer()
+        _fac_time.run(cache_dir=".cache", domain="time")
     except Exception as e:
         logger.warning("Facies time analysis failed: %s", e)
 
     # Interactive 3D plots (depth/time)
     try:
-        from src.plotting.plot_3d_interactive import main as _plot3d
+        from src.plotting.plot_3d_interactive import PlotlyVisualization
 
-        _plot3d(argv=["--domain", "depth"])
+        _plot3d = PlotlyVisualization()
+        _plot3d.main(argv=["--domain", "depth"])
     except Exception as e:
         logger.warning("3D interactive plot (depth) failed: %s", e)
 
     try:
-        from src.plotting.plot_3d_interactive import main as _plot3d_time
+        from src.plotting.plot_3d_interactive import PlotlyVisualization
 
-        _plot3d_time(argv=["--domain", "time"])
+        _plot3d_time = PlotlyVisualization()
+        _plot3d_time.main(argv=["--domain", "time"])
     except Exception as e:
         logger.warning("3D interactive plot (time) failed: %s", e)
 
@@ -813,7 +832,10 @@ def analysis_seismograms():
 
 @tool
 def regenerate_seismograms():
-    from src.analysis import common as regen
+    from src.analysis.common import AnalysisCommon
+
+    # Instantiate the AnalysisCommon singleton for use in this tool.
+    regen = AnalysisCommon()
 
     logger.info("%s", "=" * 70)
     logger.info("COMPLETE SEISMIC MODELING PIPELINE - DUAL DOMAIN")
@@ -830,9 +852,10 @@ def regenerate_seismograms():
     regen.clear_cache()
 
     try:
-        from src.analysis.seismograms import main as _seis_main
+        from src.analysis.pipelines import SeismogramAnalyzer
 
-        _seis_main(cache_dir=".cache", skip_cleanup=True)
+        _seis = SeismogramAnalyzer()
+        _seis.main(cache_dir=".cache", skip_cleanup=True)
     except Exception as e:
         logger.error("Seismic modeling failed: %s", e)
         return False
@@ -842,15 +865,22 @@ def regenerate_seismograms():
 
 @tool
 def regenerate_rock_physics():
-    from src.analysis import regenerate_common as regen
+    # Try to import a specialized regenerate_common module; if it's not
+    # present, fall back to the main AnalysisCommon implementation.
+    try:
+        from src.analysis import regenerate_common as regen
+    except Exception:
+        from src.analysis.common import AnalysisCommon
 
-    from .analysis.header import print_analysis_header
+        regen = AnalysisCommon()
+
+    from src.analysis.io import HeaderPrinter
 
     long_desc = (
         "This pipeline clears caches, computes rock physics attributes and "
         "creates visualizations."
     )
-    print_analysis_header(
+    HeaderPrinter.instance().print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
             "Compute ALL Attributes + Generate ALL Plots",
@@ -861,15 +891,15 @@ def regenerate_rock_physics():
     regen.clear_cache()
 
     try:
-        from src.analysis.rock_physics_attributes import (
-            load_depth_data,
-            run_multiangle_analysis,
-            main as rp_main,
-        )
+        from src.analysis.rock_physics import RockPhysicsAnalyzer
 
-        props = load_depth_data()
-        run_multiangle_analysis(props, angles_deg=[0, 5, 10, 15, 20, 25])
-        rp_main(cache_dir=".cache", generate_plots=True, save_npz_only=False)
+        rpa = RockPhysicsAnalyzer()
+        rpa.main(
+            cache_dir=".cache",
+            generate_plots=True,
+            save_npz_only=False,
+            angles_list=[0, 5, 10, 15, 20, 25],
+        )
     except Exception as e:
         logger.error("Rock physics regeneration failed: %s", e)
         return False
@@ -895,25 +925,31 @@ def rock_physics_attributes(
     except Exception:
         pass
 
-    # Call the canonical programmatic main in the analysis module.
-    from src.analysis.rock_physics_attributes import main as rp_main
+    # Directly use the class-based RockPhysicsAnalyzer
+    try:
+        from src.analysis.rock_physics import RockPhysicsAnalyzer
 
-    # Ensure angles_list is a list of ints if provided as a comma string
-    if isinstance(angles_list, str):
-        try:
-            angles_list = [int(x.strip()) for x in angles_list.split(",") if x.strip()]
-        except Exception:
-            raise SystemExit(
-                "Invalid --angles-list format; expected comma-separated ints"
-            )
+        # Normalize angles_list if passed as a comma string
+        if isinstance(angles_list, str):
+            try:
+                angles_list = [
+                    int(x.strip()) for x in angles_list.split(",") if x.strip()
+                ]
+            except Exception:
+                raise SystemExit(
+                    "Invalid --angles-list format; expected comma-separated ints"
+                )
 
-    return rp_main(
-        cache_dir=cache_dir,
-        generate_plots=generate_plots,
-        save_npz_only=save_npz_only,
-        angles_list=angles_list,
-        verbose=verbose,
-    )
+        rpa = RockPhysicsAnalyzer()
+        return rpa.main(
+            cache_dir=cache_dir,
+            generate_plots=generate_plots,
+            save_npz_only=save_npz_only,
+            angles_list=angles_list,
+            verbose=verbose,
+        )
+    except Exception as exc:
+        raise SystemExit(f"Rock physics delegator unavailable: {exc}") from exc
 
 
 def main():

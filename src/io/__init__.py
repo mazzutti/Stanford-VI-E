@@ -7,7 +7,8 @@ import logging
 
 from . import data_loader
 from . import cache
+from . import cache_backend
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["data_loader", "cache"]
+__all__ = ["data_loader", "cache", "cache_backend"]

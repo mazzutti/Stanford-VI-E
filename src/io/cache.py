@@ -312,7 +312,9 @@ def cache_for_dir(cache_dir: str | None):
     shared `cache_manager` singleton. Otherwise creates a lightweight
     temporary `CacheManager` for that directory.
     """
-    return _impl_cache_for_dir(cache_dir)
+    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
+        return cache_manager
+    return CacheManager(cache_dir=str(cache_dir))
 
 
 def _impl_cache_for_dir(cache_dir: str | None):
@@ -321,6 +323,8 @@ def _impl_cache_for_dir(cache_dir: str | None):
     Keeps the lazy `cache_manager` behaviour for the default directory and
     returns a temporary `CacheManager` for custom directories.
     """
+    # Backwards-compatible canonical implementation kept for tests; prefer
+    # calling `cache_for_dir(...)` above which includes the same logic.
     if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
         return cache_manager
     return CacheManager(cache_dir=str(cache_dir))
@@ -341,7 +345,9 @@ def get_default_cache(cache_dir: str | None = None):
     callers a single helper to obtain either the shared lazy singleton or a
     temporary instance for custom directories.
     """
-    return _impl_get_default_cache(cache_dir)
+    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
+        return cache_manager
+    return CacheManager(cache_dir=str(cache_dir))
 
 
 def _impl_get_default_cache(cache_dir: str | None = None):
@@ -358,7 +364,11 @@ def get_cache_manager(cache_dir: str | None = None):
 
     When `cache_dir` is None the shared module-level proxy is returned.
     """
-    return _impl_get_cache_manager(cache_dir)
+    # Return shared proxy when using the default cache dir, otherwise return a
+    # temporary CacheManager instance for the provided directory.
+    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
+        return cache_manager
+    return CacheManager(cache_dir=str(cache_dir))
 
 
 def _impl_get_cache_manager(cache_dir: str | None = None):

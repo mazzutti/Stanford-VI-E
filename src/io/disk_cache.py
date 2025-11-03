@@ -17,7 +17,9 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 import time
 import logging
+import atexit
 from src.utils.facades import LazyObjectProxy
+from src.io.cache_backend import PruneStrategy, TTLAndSizePruner
 
 __all__ = ["DiskCache", "_hash_for_obj"]
 
@@ -64,6 +66,13 @@ class DiskCache:
             else None
         )
 
+        # Initialize pruning strategy and pruner
+        self._prune_strategy = PruneStrategy.by_size_then_ttl(
+            max_cache_bytes=self.max_cache_bytes,
+            ttl_seconds=self.ttl_seconds,
+        )
+        self._pruner = TTLAndSizePruner(self._prune_strategy, logger_obj=logger)
+
         # Thread pool for background saves
         self._executor = ThreadPoolExecutor(max_workers=2)
         self._futures: Dict[str, Future] = {}
@@ -80,6 +89,17 @@ class DiskCache:
                 target=self._periodic_prune_loop, name="diskcache-pruner", daemon=True
             )
             self._prune_thread.start()
+
+        # Ensure background resources are cleaned up at interpreter exit.
+        # This prevents non-daemon ThreadPoolExecutor threads from keeping
+        # test runners (pytest) or other short-lived processes alive when a
+        # DiskCache is created but not explicitly shutdown. We register a
+        # non-blocking shutdown to avoid delaying interpreter exit.
+        try:
+            atexit.register(self.shutdown, False)
+        except Exception:
+            # best-effort; never raise from __init__
+            pass
 
     def make_key(self, prefix: str, meta: Dict[str, Any]) -> str:
         h = _hash_for_obj(meta)
@@ -113,40 +133,7 @@ class DiskCache:
 
     def _prune_cache_if_needed(self) -> None:
         """Prune oldest files until total size <= max_cache_bytes or TTL satisfied."""
-        try:
-            files = list(self.cache_dir.glob("*.npz"))
-            if not files:
-                return
-            total = sum(f.stat().st_size for f in files)
-            # remove TTL-expired files first
-            now = time.time()
-            if self.ttl_seconds is not None:
-                for f in files:
-                    try:
-                        if now - f.stat().st_mtime > self.ttl_seconds:
-                            f.unlink()
-                    except Exception:
-                        pass
-                files = list(self.cache_dir.glob("*.npz"))
-                total = sum(f.stat().st_size for f in files)
-
-            if total <= self.max_cache_bytes:
-                return
-
-            # sort by mtime (oldest first) and remove until under limit
-            files_sorted = sorted(files, key=lambda p: p.stat().st_mtime)
-            for f in files_sorted:
-                try:
-                    size = f.stat().st_size
-                    f.unlink()
-                    total -= size
-                    if total <= self.max_cache_bytes:
-                        break
-                except Exception:
-                    pass
-        except Exception:
-            # best-effort only
-            pass
+        self._pruner.prune(self.cache_dir)
 
     def save_npz(self, key: str, data: Dict[str, Any], blocking: bool = False) -> str:
         # filename includes key and short hash for uniqueness and readability
@@ -310,7 +297,9 @@ def get_default_disk_cache(
     single helper callers can use when they may or may not want the module
     default.
     """
-    return _impl_get_default_disk_cache(
+    if cache_dir is None:
+        return default_disk_cache
+    return DiskCache(
         cache_dir=cache_dir,
         max_cache_bytes=max_cache_bytes,
         ttl_seconds=ttl_seconds,

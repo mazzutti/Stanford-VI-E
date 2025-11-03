@@ -9,8 +9,25 @@ import numpy as np
 import logging
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Mapping, Union
+from typing import (
+    Dict,
+    Optional,
+    Mapping,
+    Union,
+    Iterator,
+    MutableMapping,
+    Any,
+    List,
+    Tuple,
+)
+from collections.abc import (
+    MutableMapping as _MutableMapping,
+    KeysView,
+    ItemsView,
+    ValuesView,
+)
 from src.io.grid import GridSpec
+from numpy.typing import NDArray
 from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
@@ -18,23 +35,19 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DatasetManager:
-    """Container for loading and accessing the Stanford-VI-E dataset.
-
-    Attributes:
-        data_path: root path where property folders live
-        file_map: mapping property_key -> folder name
-        grid_spec: GridSpec describing the expected shape and spacing for
-            each property cube
-        data: mapping property_key -> 3D numpy array (populated by load())
-    """
-
     data_path: str
-    # file_map maps property keys (e.g. 'porosity') to folder names
-    file_map: Mapping[str, str]
+    file_map: Dict[str, str]
     grid_spec: GridSpec
-    data: Dict[str, np.ndarray] = field(default_factory=dict)
 
-    def _read_gslib(self, filepath: Union[str, Path]) -> np.ndarray:
+    vp: Optional[NDArray[np.float64]] = None
+    vs: Optional[NDArray[np.float64]] = None
+    rho: Optional[NDArray[np.float64]] = None
+    facies: Optional[NDArray[np.float64]] = None
+    full_stack: Optional[NDArray[np.float64]] = None
+
+    _other: Dict[str, NDArray[np.float64]] = field(default_factory=dict, repr=False)
+
+    def _read_gslib(self, filepath: Union[str, Path]) -> NDArray[np.float64]:
         """Read a GSLIB `.dat` file and return a 3D NumPy array.
 
         The GSLIB files used here include a short header (3 lines) followed by
@@ -53,10 +66,12 @@ class DatasetManager:
         return data_column.reshape(shape, order="F")
 
     def load(self) -> None:
-        """Populate self.data by locating and reading .dat files.
+        """Locate and read .dat files, assigning arrays to attributes.
 
-        The method locates candidate .dat files for each property and reads
-        them into the manager's `data` mapping.
+        For each known property the corresponding dat file is read and the
+        resulting array is assigned to the canonical attribute (for example
+        `self.vp` or `self.facies`). Unknown keys are stored in the
+        `_other` mapping to preserve access to non-standard properties.
         """
         for key, folder_name in self.file_map.items():
             dir_path = Path(self.data_path) / folder_name
@@ -121,11 +136,84 @@ class DatasetManager:
 
             logger.info("Loading %s from %s...", key, full_path)
             # use the instance method to read the gslib-formatted file
-            self.data[key] = self._read_gslib(full_path)
+            arr = self._read_gslib(full_path)
+
+            # Assign to the explicit attribute when it's a known key; store
+            # unknown keys in the `_other` mapping so they remain accessible
+            # to callers that look up non-canonical keys.
+            if key == "vp":
+                self.vp = arr
+            elif key == "vs":
+                self.vs = arr
+            elif key == "rho":
+                self.rho = arr
+            elif key == "facies":
+                self.facies = arr
+            elif key == "full_stack":
+                self.full_stack = arr
+            else:
+                self._other[key] = arr
 
         logger.info(
             "All data loaded successfully. Grid shape: %s", self.grid_spec.shape
         )
+
+    def align_cache_array(
+        self,
+        arr: "NDArray[np.float64]",
+        *,
+        try_reshape: bool = True,
+    ) -> "NDArray[np.float64] | None":
+        """Validate and align a cache array to this DatasetManager's grid.
+
+        The function ensures the provided array matches the manager's
+        ``grid_spec.shape``. If the incoming array has the same number of
+        elements but a different shape, and ``try_reshape`` is True, the
+        function will attempt to reshape the array to the expected shape.
+
+        Reshaping tries Fortran-order first (to match GSLIB "F" ordering),
+        then C-order as a fallback. If alignment is not possible the
+        function returns ``None``.
+
+        Returns
+        -------
+        ndarray or None
+            The aligned array as an ndarray of dtype float64, or ``None`` if
+            alignment failed.
+        """
+        if arr is None:
+            return None
+
+        data = np.asarray(arr)
+        expected = tuple(self.grid_spec.shape)
+
+        # Exact shape match
+        if data.shape == expected:
+            return data.astype(np.float64)
+
+        # If same number of elements, try reshaping
+        if try_reshape and data.size == int(self.grid_spec.voxel_count()):
+            # Try Fortran order first (matches GSLIB usage in this project)
+            try:
+                reshaped = data.reshape(expected, order="F")
+                return reshaped.astype(np.float64)
+            except Exception:
+                pass
+
+            # Fallback to C-order reshape
+            try:
+                reshaped = data.reshape(expected, order="C")
+                return reshaped.astype(np.float64)
+            except Exception:
+                pass
+
+        # Could not align
+        logger.debug(
+            "Cache array shape %s cannot be aligned to grid shape %s",
+            data.shape,
+            expected,
+        )
+        return None
 
     @classmethod
     def from_stanfordsix(
@@ -149,7 +237,9 @@ __all__ = ["DatasetManager"]
 
 # Thin facade to read individual GSLIB files using the existing DatasetManager
 class GslibLoader:
-    def read(self, filepath: Union[str, Path], grid_spec: GridSpec) -> np.ndarray:
+    def read(
+        self, filepath: Union[str, Path], grid_spec: GridSpec
+    ) -> NDArray[np.float64]:
         dm = DatasetManager(data_path=".", file_map={}, grid_spec=grid_spec)
         return dm._read_gslib(filepath)
 
@@ -160,15 +250,21 @@ gslib_loader = LazyObjectProxy(lambda: GslibLoader())
 __all__.extend(["GslibLoader", "gslib_loader", "get_gslib_loader"])
 
 
-def get_gslib_loader(config: dict | None = None):
+def get_gslib_loader(config: Dict[str, Any] | None = None) -> object:
     """Return the module-level `gslib_loader` proxy when `config` is None,
     otherwise return a new `GslibLoader` instance. This centralizes access
     patterns and matches other `get_*` helpers added during the refactor.
+
+    The function returns the module-level proxy when ``config`` is None,
+    otherwise a fresh ``GslibLoader`` instance is returned.
     """
-    return _impl_get_gslib_loader(config)
+
+    if config is None:
+        return gslib_loader
+    return GslibLoader()
 
 
-def _impl_get_gslib_loader(config: dict | None = None):
+def _impl_get_gslib_loader(config: Dict[str, Any] | None = None) -> object:
     if config is None:
         return gslib_loader
     return GslibLoader()
