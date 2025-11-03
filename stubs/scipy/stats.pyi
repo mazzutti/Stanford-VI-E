@@ -1,0 +1,6 @@
+# Minimal stubs for scipy.stats functions used
+from typing import Tuple
+import numpy as np
+
+def pearsonr(x: np.ndarray, y: np.ndarray) -> Tuple[float, float]: ...
+def spearmanr(a: np.ndarray, b: np.ndarray) -> Tuple[float, float]: ...
