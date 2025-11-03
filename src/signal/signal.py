@@ -83,7 +83,7 @@ seismic_processor: SeismicProcessor = LazyObjectProxy(lambda: SeismicProcessor()
 
 
 def get_seismic_processor(instance: SeismicProcessor | None = None) -> SeismicProcessor:
-    return _impl_get_seismic_processor(instance)
+    return instance if instance is not None else seismic_processor
 
 
 def _impl_get_seismic_processor(
@@ -102,7 +102,9 @@ def apply_wavelet_to_cube(
     progress_every: Optional[int] = 30,
     prefix: str = "",
 ) -> np.ndarray:
-    return _impl_apply_wavelet_to_cube(
+    # Delegate directly to the default processor for convenience; tests can
+    # still obtain a custom processor via `get_seismic_processor()`.
+    return _default_processor.apply_wavelet_to_cube(
         refl_cube, wavelet, mode=mode, progress_every=progress_every, prefix=prefix
     )
 
