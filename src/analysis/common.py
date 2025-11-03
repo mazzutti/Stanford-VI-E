@@ -197,27 +197,35 @@ class AnalysisCommon(ProcessManagerDelegate):
         Raises:
             TypeError: If the ProcessManager does not implement ProcessManagerProtocol.
         """
-        # If no singleton exists yet, construct it with a provided
-        # proc_manager or fall back to the module-level default
-        if cls._instance is None:
-            if proc_manager is None:
-                # Import lazily to avoid import-time cycles
-                from src.processing.process import get_process_manager
+        # Use lock to ensure thread-safe singleton creation and configuration
+        with cls._lock:
+            # If no singleton exists yet, construct it with a provided
+            # proc_manager or fall back to the module-level default
+            if cls._instance is None:
+                if proc_manager is None:
+                    # Import lazily to avoid import-time cycles
+                    from src.processing.process import get_process_manager
 
-                proc: ProcessManagerProtocol = cast(
-                    ProcessManagerProtocol, get_process_manager()
+                    proc: ProcessManagerProtocol = cast(
+                        ProcessManagerProtocol, get_process_manager()
+                    )
+                else:
+                    proc = proc_manager
+                inst = cls(proc)
+                return inst
+
+            inst = cls._instance
+            if proc_manager is not None:
+                # Allow callers to replace the manager even if the singleton
+                # was already constructed previously.
+                # Validate the protocol without relying on isinstance
+                cls._validate_proc_manager(proc_manager)
+                inst._proc_manager = proc_manager
+                AnalysisCommon._logger.info(
+                    "AnalysisCommon configured with new ProcessManager: %s",
+                    type(proc_manager).__name__,
                 )
-            else:
-                proc = proc_manager
-            inst = cls(proc)
             return inst
-
-        inst = cls._instance
-        if proc_manager is not None:
-            # Allow callers to replace the manager even if the singleton
-            # was already constructed previously.
-            inst.configure(proc_manager)
-        return inst
 
     @classmethod
     def create_with_manager(
