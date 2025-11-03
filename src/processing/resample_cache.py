@@ -134,7 +134,10 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     if necessary. If a different maxsize is required, call this with
     the desired maxsize before other modules import the cache.
     """
-    return _impl_get_resample_plan_cache(maxsize)
+    global _DEFAULT_CACHE
+    if _DEFAULT_CACHE is None:
+        _DEFAULT_CACHE = ResamplePlanCache(maxsize=maxsize)
+    return _DEFAULT_CACHE
 
 
 def _impl_get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
@@ -146,7 +149,8 @@ def _impl_get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
 
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""
-    return _impl_set_resample_plan_cache(cache)
+    global _DEFAULT_CACHE
+    _DEFAULT_CACHE = cache
 
 
 def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
@@ -170,7 +174,8 @@ def get_plan(
     block_size: int = 65536,
 ) -> ResamplePlan:
     """Convenience wrapper delegating to the module resample plan cache."""
-    return _impl_get_plan(
+    cache = get_resample_plan_cache()
+    return cache.get_plan(
         grid_spec,
         vp_arr,
         target_dt=target_dt,

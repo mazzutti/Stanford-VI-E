@@ -119,12 +119,15 @@ def get_metrics_collector(
     dependency injection). Otherwise the module-level lazy
     `metrics_collector` is returned.
     """
-    return _impl_get_metrics_collector(collector)
+    # Return provided collector or the module-level lazy proxy directly.
+    return collector if collector is not None else metrics_collector
 
 
 def _impl_get_metrics_collector(
     collector: MetricsCollector | None = None,
 ) -> "MetricsCollector":
+    # Backwards-compatible alias kept for callers that referenced the
+    # canonical implementation; prefer using `get_metrics_collector`.
     return collector if collector is not None else metrics_collector
 
 
@@ -136,7 +139,8 @@ def get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
 
     Provides a single helper consistent with the rest of the codebase.
     """
-    return _impl_get_global_metrics(inst)
+    # Return provided BackendMetrics or the module-level lazy proxy directly.
+    return inst if inst is not None else global_metrics
 
 
 def _impl_get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":

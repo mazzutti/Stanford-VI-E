@@ -141,10 +141,6 @@ def get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
 
     This makes it easy to inject a test double or a configured cache instance.
     """
-    return _impl_get_modeling_cache(cache)
-
-
-def _impl_get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
     return cache if cache is not None else modeling_cache
 
 

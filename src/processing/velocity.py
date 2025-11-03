@@ -135,7 +135,11 @@ class VelocityModel:
         DatasetManager.grid_spec. The returned model is converted to m/s and
         validated.
         """
-        vp = dataset_manager.data[vp_key]
+        # Prefer attribute access on the DatasetManager dataclass; fall back
+        # to _other mapping if the key isn't a first-class attribute.
+        vp = getattr(dataset_manager, vp_key, None)
+        if vp is None:
+            vp = dataset_manager._other[vp_key]
         grid_spec = dataset_manager.grid_spec
         vm = cls(vp=vp.copy(), grid_spec=grid_spec)
         vm.to_m_per_s()

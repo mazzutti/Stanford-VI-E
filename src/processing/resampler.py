@@ -808,14 +808,16 @@ resampler_service: ResamplerService = LazyObjectProxy(lambda: ResamplerService()
 def get_resampler_service(
     service: ResamplerService | None = None,
 ) -> "ResamplerService":
-    return _impl_get_resampler_service(service)
+    return service if service is not None else resampler_service
 
 
 __all__.extend(["ResamplerService", "resampler_service", "get_resampler_service"])
 
 
 def get_resampler_factory(config: dict | None = None):
-    return _impl_get_resampler_factory(config)
+    if config is None:
+        return resampler_factory
+    return ResamplerFactory()
 
 
 # Canonical _impl_* entrypoints

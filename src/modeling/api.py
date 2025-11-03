@@ -58,8 +58,19 @@ def _impl_run_full_modeling(
     }
     # Default grid spec for standalone runs (inline to avoid module-level constants)
     grid_spec = GridSpec((150, 200, 200), dz=1.0, dt=0.001)
-    dm = data_loader.DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
-    props_depth = dm.data
+    try:
+        from src.analysis.dataset_factory import DatasetManagerFactory
+
+        dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
+    except Exception:
+        dm = data_loader.DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
+    props_depth = {
+        "vp": dm.vp,
+        "vs": dm.vs,
+        "rho": dm.rho,
+        "facies": dm.facies,
+        "full_stack": dm.full_stack,
+    }
 
     # Normalize units and validate properties via RockPhysicsModel
     from src.processing.rock_physics import RockPhysicsModel
@@ -153,7 +164,7 @@ def get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":
 
     Useful for dependency injection in tests.
     """
-    return _impl_get_modeling_api(inst)
+    return inst if inst is not None else modeling_api
 
 
 def _impl_get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":

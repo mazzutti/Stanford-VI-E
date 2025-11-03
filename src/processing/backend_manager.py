@@ -106,7 +106,8 @@ _manager: BackendManager = LazyObjectProxy(lambda: BackendManager())
 
 
 def get_backend_manager() -> BackendManager:
-    return _impl_get_backend_manager()
+    # Return the module-level lazy BackendManager proxy directly.
+    return _manager
 
 
 def _impl_get_backend_manager() -> BackendManager:
@@ -115,44 +116,29 @@ def _impl_get_backend_manager() -> BackendManager:
 
 
 def register_backend(name: str, backend: ResamplerBackend) -> None:
-    return _impl_register_backend(name, backend)
-
-
-def list_backends() -> List[str]:
-    return _impl_list_backends()
-
-
-def get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
-    return _impl_get_best_backend(plan)
-
-
-def set_backend_verbose(on: bool) -> None:
-    return _impl_set_backend_verbose(on)
-
-
-def is_backend_verbose() -> bool:
-    return _impl_is_backend_verbose()
-
-
-# Canonical _impl_* entrypoints
-def _impl_register_backend(name: str, backend: ResamplerBackend) -> None:
     _manager.register(name, backend)
 
 
-def _impl_list_backends() -> List[str]:
+def list_backends() -> List[str]:
     return _manager.list_backends()
 
 
-def _impl_get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
+def get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
     return _manager.get_best(plan)
 
 
-def _impl_set_backend_verbose(on: bool) -> None:
+def set_backend_verbose(on: bool) -> None:
     _manager.set_verbose(on)
 
 
-def _impl_is_backend_verbose() -> bool:
+def is_backend_verbose() -> bool:
     return _manager.is_verbose()
+
+
+# Canonical _impl_* entrypoints
+# The canonical implementations were thin wrappers delegating to the
+# module-level `_manager` proxy; they were inlined above to reduce
+# unnecessary indirection.
 
 
 # Module-level alias for convenience (parity with other facades)

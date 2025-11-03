@@ -32,7 +32,7 @@ def check_linearization_validity(vp, vs, rho, *, max_angle: float = 30.0):
 
 
 def print_validity_report(report: Dict[str, Any]) -> None:
-    return _impl_print_validity_report(report)
+    return avo_analyzer.print_validity_report(report)
 
 
 def _impl_print_validity_report(report: Dict[str, Any]) -> None:
@@ -44,7 +44,7 @@ __all__.extend(["AVOAnalyzer", "avo_analyzer"])
 
 def get_avo_analyzer(instance: AVOAnalyzer | None = None) -> "AVOAnalyzer":
     """Return provided AVOAnalyzer or module-level lazy singleton."""
-    return _impl_get_avo_analyzer(instance)
+    return instance if instance is not None else avo_analyzer
 
 
 __all__.append("get_avo_analyzer")
