@@ -29,9 +29,9 @@ def sample_seismic_properties():
     np.random.seed(42)
     shape = (10, 10, 10)
     return {
-        "vp": np.random.uniform(2500, 5500, shape),      # P-wave velocity m/s
-        "vs": np.random.uniform(1200, 3200, shape),      # S-wave velocity m/s
-        "rho": np.random.uniform(2100, 2900, shape),     # Density kg/m^3
+        "vp": np.random.uniform(2500, 5500, shape),  # P-wave velocity m/s
+        "vs": np.random.uniform(1200, 3200, shape),  # S-wave velocity m/s
+        "rho": np.random.uniform(2100, 2900, shape),  # Density kg/m^3
         "vp_sat": np.random.uniform(2400, 5400, shape),  # Saturated Vp
         "vs_sat": np.random.uniform(1100, 3100, shape),  # Saturated Vs
     }
@@ -66,7 +66,7 @@ class TestAVOAttributesComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         # Intercept is the normal incidence reflection coefficient
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
@@ -78,19 +78,19 @@ class TestAVOAttributesComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
     def test_compute_with_1d_profile(self):
         """Test computation rejects 1D data - expects 3D."""
         computer = AVOAttributesComputer()
-        
+
         # Should reject 1D data
         vp_1d = np.random.uniform(2500, 5500, 100)
         vs_1d = np.random.uniform(1200, 3200, 100)
         rho_1d = np.random.uniform(2100, 2900, 100)
-        
+
         with pytest.raises(ValueError, match="must be 3D"):
             computer.compute(vp=vp_1d, vs=vs_1d, rho=rho_1d)
 
@@ -98,16 +98,21 @@ class TestAVOAttributesComputer:
         """Test AVO result shape (one less in k due to interface computation)."""
         computer = AVOAttributesComputer()
         vp = sample_seismic_properties["vp"]
-        
-        result = computer.compute(vp=vp, vs=sample_seismic_properties["vs"], 
-                                 rho=sample_seismic_properties["rho"])
-        
+
+        result = computer.compute(
+            vp=vp,
+            vs=sample_seismic_properties["vs"],
+            rho=sample_seismic_properties["rho"],
+        )
+
         if isinstance(result, dict):
             for key, value in result.items():
                 if isinstance(value, np.ndarray):
                     # AVO reduces k dimension by 1 (interfaces)
                     expected_shape = (vp.shape[0], vp.shape[1], vp.shape[2] - 1)
-                    assert value.shape == expected_shape, f"Expected {expected_shape}, got {value.shape}"
+                    assert (
+                        value.shape == expected_shape
+                    ), f"Expected {expected_shape}, got {value.shape}"
 
     def test_avo_values_physical(self, sample_seismic_properties):
         """Test AVO values are physically reasonable."""
@@ -115,9 +120,9 @@ class TestAVOAttributesComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
-        
+
         # Check for finite values
         if isinstance(result, dict):
             for key, value in result.items():
@@ -128,13 +133,15 @@ class TestAVOAttributesComputer:
         """Test computation with velocity anomalies."""
         computer = AVOAttributesComputer()
         vp = sample_seismic_properties["vp"].copy()
-        
+
         # Add low-velocity zone
         vp[3:5, 3:5, 3:5] = 1500  # Below normal
-        
-        result = computer.compute(vp=vp, 
-                                 vs=sample_seismic_properties["vs"],
-                                 rho=sample_seismic_properties["rho"])
+
+        result = computer.compute(
+            vp=vp,
+            vs=sample_seismic_properties["vs"],
+            rho=sample_seismic_properties["rho"],
+        )
         assert result is not None
 
     def test_compute_with_high_vp_vs_ratio(self):
@@ -142,9 +149,9 @@ class TestAVOAttributesComputer:
         computer = AVOAttributesComputer()
         shape = (5, 5, 5)
         vp = np.full(shape, 2000.0)  # Low Vp (water-like)
-        vs = np.full(shape, 100.0)   # Very low Vs (water)
-        rho = np.full(shape, 1000.0) # Water density
-        
+        vs = np.full(shape, 100.0)  # Very low Vs (water)
+        rho = np.full(shape, 1000.0)  # Water density
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -155,7 +162,7 @@ class TestAVOAttributesComputer:
         vp = np.full(shape, 3000.0)
         vs = np.full(shape, 2500.0)  # High Vs (unusual)
         rho = np.full(shape, 2700.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -176,17 +183,17 @@ class TestFluidFactorComputer:
     def test_compute_fluid_factor(self, sample_seismic_properties):
         """Test fluid factor computation."""
         computer = FluidFactorComputer()
-        
+
         # First compute lambda_rho and mu_rho
         vp = sample_seismic_properties["vp_sat"]
         vs = sample_seismic_properties["vs_sat"]
         rho = sample_seismic_properties["rho"]
-        
+
         lambda_rho = rho * vp**2 - 2 * rho * vs**2
         mu_rho = rho * vs**2
-        
+
         result = computer.compute(lambda_rho=lambda_rho, mu_rho=mu_rho)
-        
+
         assert result is not None
         assert isinstance(result, np.ndarray)
 
@@ -196,27 +203,27 @@ class TestFluidFactorComputer:
         vp_sat = sample_seismic_properties["vp_sat"]
         vs_sat = sample_seismic_properties["vs_sat"]
         rho = sample_seismic_properties["rho"]
-        
+
         lambda_rho = rho * vp_sat**2 - 2 * rho * vs_sat**2
         mu_rho = rho * vs_sat**2
-        
+
         result = computer.compute(lambda_rho=lambda_rho, mu_rho=mu_rho)
-        
+
         assert result.shape == vp_sat.shape
 
     def test_fluid_factor_values_physical(self, sample_seismic_properties):
         """Test fluid factor values are reasonable."""
         computer = FluidFactorComputer()
-        
+
         vp_sat = sample_seismic_properties["vp_sat"]
         vs_sat = sample_seismic_properties["vs_sat"]
         rho = sample_seismic_properties["rho"]
-        
+
         lambda_rho = rho * vp_sat**2 - 2 * rho * vs_sat**2
         mu_rho = rho * vs_sat**2
-        
+
         result = computer.compute(lambda_rho=lambda_rho, mu_rho=mu_rho)
-        
+
         # Fluid factor should have reasonable values
         assert np.all(np.isfinite(result))
 
@@ -225,22 +232,22 @@ class TestFluidFactorComputer:
         computer = FluidFactorComputer()
         shape = (5, 5, 5)
         rho = np.full(shape, 2500.0)
-        
+
         # Dry rock
         vp_dry = np.full(shape, 3500.0)
         vs_dry = np.full(shape, 2000.0)
         lambda_rho_dry = rho * vp_dry**2 - 2 * rho * vs_dry**2
         mu_rho_dry = rho * vs_dry**2
-        
+
         # Wet rock (higher Vp)
         vp_wet = np.full(shape, 4000.0)
         vs_wet = np.full(shape, 2000.0)  # Vs stays same
         lambda_rho_wet = rho * vp_wet**2 - 2 * rho * vs_wet**2
         mu_rho_wet = rho * vs_wet**2
-        
+
         result_dry = computer.compute(lambda_rho=lambda_rho_dry, mu_rho=mu_rho_dry)
         result_wet = computer.compute(lambda_rho=lambda_rho_wet, mu_rho=mu_rho_wet)
-        
+
         assert result_dry is not None
         assert result_wet is not None
 
@@ -248,19 +255,19 @@ class TestFluidFactorComputer:
         """Test fluid factor with properly shaped 3D data."""
         computer = FluidFactorComputer()
         shape = (10, 10, 10)
-        
+
         vp = np.full(shape, 3500.0)
         vs = np.full(shape, 2000.0)
         rho = np.full(shape, 2500.0)
-        
+
         # Assume slightly higher Vp for saturated
         vp_sat = vp * 1.1
-        
+
         lambda_rho = rho * vp_sat**2 - 2 * rho * vs**2
         mu_rho = rho * vs**2
-        
+
         result = computer.compute(lambda_rho=lambda_rho, mu_rho=mu_rho)
-        
+
         assert result is not None
 
 
@@ -278,9 +285,9 @@ class TestLambdaMuRhoComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
-        
+
         assert result is not None
         if isinstance(result, dict):
             assert "lambda_rho" in result or "LambdaRho" in result
@@ -291,9 +298,9 @@ class TestLambdaMuRhoComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
-        
+
         assert result is not None
         if isinstance(result, dict):
             assert "mu_rho" in result or "MuRho" in result
@@ -302,10 +309,13 @@ class TestLambdaMuRhoComputer:
         """Test LMR results have correct shape."""
         computer = LambdaMuRhoComputer()
         vp = sample_seismic_properties["vp"]
-        
-        result = computer.compute(vp=vp, vs=sample_seismic_properties["vs"],
-                                 rho=sample_seismic_properties["rho"])
-        
+
+        result = computer.compute(
+            vp=vp,
+            vs=sample_seismic_properties["vs"],
+            rho=sample_seismic_properties["rho"],
+        )
+
         if isinstance(result, dict):
             for key, value in result.items():
                 if isinstance(value, np.ndarray):
@@ -317,9 +327,9 @@ class TestLambdaMuRhoComputer:
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
-        
+
         # Mu-Rho should always be positive
         if isinstance(result, dict):
             if "mu_rho" in result:
@@ -334,7 +344,7 @@ class TestLambdaMuRhoComputer:
         vp = realistic_1d_properties["vp"]
         vs = realistic_1d_properties["vs"]
         rho = realistic_1d_properties["rho"]
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -342,18 +352,18 @@ class TestLambdaMuRhoComputer:
         """Test Lambda-Mu physical relationships."""
         computer = LambdaMuRhoComputer()
         shape = (10, 10, 10)
-        
+
         vp = np.full(shape, 4000.0)
         vs = np.full(shape, 2300.0)
         rho = np.full(shape, 2700.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
-        
+
         if isinstance(result, dict):
             if "lambda_rho" in result and "mu_rho" in result:
                 lambda_rho = result["lambda_rho"]
                 mu_rho = result["mu_rho"]
-                
+
                 # Lambda should typically be larger than Mu
                 assert np.all(lambda_rho >= 0)
                 assert np.all(mu_rho > 0)
@@ -369,7 +379,7 @@ class TestComputerEdgeCases:
         vp = np.full(shape, 3500.0)
         vs = np.full(shape, 2000.0)
         rho = np.full(shape, 2600.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -380,10 +390,10 @@ class TestComputerEdgeCases:
         vp = np.full(shape, 3500.0)
         vs = np.full(shape, 2000.0)
         rho = np.full(shape, 2600.0)
-        
+
         lambda_rho = rho * vp**2 - 2 * rho * vs**2
         mu_rho = rho * vs**2
-        
+
         result = computer.compute(lambda_rho=lambda_rho, mu_rho=mu_rho)
         assert result is not None
 
@@ -394,7 +404,7 @@ class TestComputerEdgeCases:
         vp = np.full(shape, 3500.0)
         vs = np.full(shape, 2000.0)
         rho = np.full(shape, 2600.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -405,7 +415,7 @@ class TestComputerEdgeCases:
         vp = np.full(shape, 8000.0)  # Very high Vp
         vs = np.full(shape, 4500.0)
         rho = np.full(shape, 3300.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -414,9 +424,9 @@ class TestComputerEdgeCases:
         computer = AVOAttributesComputer()
         shape = (5, 5, 5)
         vp = np.full(shape, 1500.0)  # Water velocity
-        vs = np.full(shape, 100.0)   # Water Vs ~0
+        vs = np.full(shape, 100.0)  # Water Vs ~0
         rho = np.full(shape, 1000.0)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -427,7 +437,7 @@ class TestComputerEdgeCases:
         vp = np.random.uniform(3000, 5000, shape)
         vs = np.random.uniform(1500, 3000, shape)
         rho = np.random.uniform(2300, 2900, shape)
-        
+
         result = computer.compute(vp=vp, vs=vs, rho=rho)
         assert result is not None
 
@@ -440,19 +450,19 @@ class TestComputerIntegration:
         avo_comp = AVOAttributesComputer()
         lmr_comp = LambdaMuRhoComputer()
         fluid_comp = FluidFactorComputer()
-        
+
         vp = sample_seismic_properties["vp"]
         vs = sample_seismic_properties["vs"]
         rho = sample_seismic_properties["rho"]
-        
+
         # Compute AVO
         avo_result = avo_comp.compute(vp=vp, vs=vs, rho=rho)
         assert avo_result is not None
-        
+
         # Compute LMR
         lmr_result = lmr_comp.compute(vp=vp, vs=vs, rho=rho)
         assert lmr_result is not None
-        
+
         # Compute fluid factor using LMR results
         if "lambda_rho" in lmr_result and "mu_rho" in lmr_result:
             fluid_result = fluid_comp.compute(

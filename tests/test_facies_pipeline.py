@@ -118,7 +118,7 @@ class TestAnalysisPipelineDataLoading:
     def test_load_cache_data(self, mock_cache_loader, mock_analyzer):
         """Test loading data from cache."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Should be able to work with cache loader
         data = mock_cache_loader.load_full_stack()
         assert data is not None
@@ -127,7 +127,7 @@ class TestAnalysisPipelineDataLoading:
     def test_load_dataset(self, mock_dataset_loader, mock_analyzer):
         """Test loading dataset."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         data = mock_dataset_loader.load()
         assert data is not None
         assert "seismic" in data
@@ -136,29 +136,29 @@ class TestAnalysisPipelineDataLoading:
     def test_load_multiple_datasets(self, mock_dataset_loader, mock_analyzer):
         """Test loading multiple datasets."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         datasets = []
         for i in range(3):
             data = mock_dataset_loader.load()
             datasets.append(data)
-        
+
         assert len(datasets) == 3
 
     def test_load_with_validation(self, mock_analyzer):
         """Test data loading with validation."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Create valid data
         seismic = np.random.rand(10, 10, 10)
         facies = np.random.randint(0, 4, (10, 10, 10))
-        
+
         assert seismic.shape == (10, 10, 10)
         assert facies.shape == (10, 10, 10)
 
     def test_load_handles_different_shapes(self):
         """Test loading data with different shapes."""
         shapes = [(5, 5, 5), (10, 10, 10), (20, 20, 20)]
-        
+
         for shape in shapes:
             data = np.random.rand(*shape)
             assert data.shape == shape
@@ -170,7 +170,7 @@ class TestAnalysisPipelineCubePreparation:
     def test_prepare_seismic_cube(self, mock_cube_preparer, mock_analyzer):
         """Test seismic cube preparation."""
         seismic = np.random.rand(10, 10, 10)
-        
+
         result = mock_cube_preparer.prepare(seismic)
         assert result is not None
         assert "seismic" in result
@@ -178,25 +178,25 @@ class TestAnalysisPipelineCubePreparation:
     def test_prepare_extracts_attributes(self, mock_cube_preparer, mock_analyzer):
         """Test attribute extraction during preparation."""
         seismic = np.random.rand(10, 10, 10)
-        
+
         result = mock_cube_preparer.prepare(seismic)
         assert "attributes" in result
 
     def test_prepare_preserves_shape(self, mock_cube_preparer, mock_analyzer):
         """Test that preparation preserves spatial shape."""
         seismic = np.random.rand(10, 10, 10)
-        
+
         result = mock_cube_preparer.prepare(seismic)
-        
+
         if "seismic" in result:
             assert result["seismic"].shape[:3] == (10, 10, 10)
 
     def test_prepare_with_different_sizes(self, mock_analyzer):
         """Test preparation with different cube sizes."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         sizes = [(5, 5, 5), (10, 10, 10), (32, 32, 32)]
-        
+
         for shape in sizes:
             cube = np.random.rand(*shape)
             assert cube.shape == shape
@@ -204,19 +204,19 @@ class TestAnalysisPipelineCubePreparation:
     def test_prepare_with_artifacts(self, mock_analyzer):
         """Test preparation handles artifacts."""
         cube = np.random.rand(10, 10, 10)
-        
+
         # Add noise
         cube += np.random.normal(0, 0.1, cube.shape)
-        
+
         assert cube.shape == (10, 10, 10)
 
     def test_prepare_with_gaps(self, mock_analyzer):
         """Test preparation handles gaps in data."""
         cube = np.random.rand(10, 10, 10)
-        
+
         # Create gap
         cube[3:5, 3:5, 3:5] = np.nan
-        
+
         # Should handle NaN values
         assert cube.shape == (10, 10, 10)
 
@@ -227,7 +227,7 @@ class TestAnalysisPipelineExecution:
     def test_execute_simple_analysis(self, mock_analyzer):
         """Test simple analysis execution."""
         data = np.random.rand(10, 10, 10)
-        
+
         result = mock_analyzer.analyze(data)
         assert result is not None
         assert "classification" in result
@@ -236,14 +236,14 @@ class TestAnalysisPipelineExecution:
         """Test analysis with precomputed attributes."""
         seismic = np.random.rand(10, 10, 10)
         attributes = np.random.rand(10, 10, 10, 5)
-        
+
         result = mock_analyzer.analyze(seismic)
         assert result is not None
 
     def test_execute_generates_classification(self, mock_analyzer):
         """Test classification generation."""
         data = np.random.rand(10, 10, 10)
-        
+
         result = mock_analyzer.analyze(data)
         assert "classification" in result
         assert result["classification"].shape == (10, 10, 10)
@@ -251,7 +251,7 @@ class TestAnalysisPipelineExecution:
     def test_execute_generates_probabilities(self, mock_analyzer):
         """Test probability generation."""
         data = np.random.rand(10, 10, 10)
-        
+
         result = mock_analyzer.analyze(data)
         if "probability" in result:
             prob = result["probability"]
@@ -261,13 +261,13 @@ class TestAnalysisPipelineExecution:
     def test_execute_multiple_analyses(self, mock_analyzer):
         """Test multiple sequential analyses."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         results = []
         for i in range(3):
             data = np.random.rand(10, 10, 10)
             result = mock_analyzer.analyze(data)
             results.append(result)
-        
+
         assert len(results) == 3
 
 
@@ -275,46 +275,43 @@ class TestAnalysisPipelineWorkflow:
     """Tests for complete pipeline workflows."""
 
     def test_full_workflow_load_to_analysis(
-        self, mock_cache_loader, mock_dataset_loader, 
-        mock_cube_preparer, mock_analyzer
+        self, mock_cache_loader, mock_dataset_loader, mock_cube_preparer, mock_analyzer
     ):
         """Test complete workflow from load to analysis."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Step 1: Load data
         cache_data = mock_cache_loader.load_full_stack()
         assert cache_data is not None
-        
+
         # Step 2: Load dataset
         dataset = mock_dataset_loader.load()
         assert dataset is not None
-        
+
         # Step 3: Prepare cubes
         prepared = mock_cube_preparer.prepare(dataset["seismic"])
         assert prepared is not None
-        
+
         # Step 4: Execute analysis
         result = mock_analyzer.analyze(prepared["seismic"])
         assert result is not None
 
-    def test_workflow_with_multiple_cubes(
-        self, mock_cube_preparer, mock_analyzer
-    ):
+    def test_workflow_with_multiple_cubes(self, mock_cube_preparer, mock_analyzer):
         """Test workflow with multiple cubes."""
         results = []
-        
+
         for i in range(3):
             cube = np.random.rand(10, 10, 10)
             prepared = mock_cube_preparer.prepare(cube)
             result = mock_analyzer.analyze(prepared["seismic"])
             results.append(result)
-        
+
         assert len(results) == 3
 
     def test_workflow_preserves_metadata(self, mock_dataset, mock_analyzer):
         """Test that workflow preserves metadata."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         metadata = mock_dataset.metadata
         assert "source" in metadata
         assert "shape" in metadata
@@ -322,13 +319,13 @@ class TestAnalysisPipelineWorkflow:
     def test_workflow_with_caching(self, mock_cache_loader, mock_analyzer):
         """Test workflow benefits from caching."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Load once
         data1 = mock_cache_loader.load_full_stack()
-        
+
         # Load again (should be cached)
         data2 = mock_cache_loader.load_full_stack()
-        
+
         # Should be identical
         np.testing.assert_array_equal(data1, data2)
 
@@ -339,7 +336,7 @@ class TestAnalysisPipelineErrorHandling:
     def test_handle_missing_data(self, mock_analyzer):
         """Test handling of missing data."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # None data should be handled
         data = None
         # Pipeline should handle this gracefully
@@ -347,7 +344,7 @@ class TestAnalysisPipelineErrorHandling:
     def test_handle_invalid_shapes(self, mock_analyzer):
         """Test handling of invalid shapes."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # 2D data instead of 3D
         data_2d = np.random.rand(10, 10)
         # Should detect and handle
@@ -356,14 +353,14 @@ class TestAnalysisPipelineErrorHandling:
         """Test handling of NaN values."""
         cube = np.random.rand(10, 10, 10)
         cube[0:2, 0:2, 0:2] = np.nan
-        
+
         assert np.isnan(cube).any()
 
     def test_handle_infinite_values(self):
         """Test handling of infinite values."""
         cube = np.random.rand(10, 10, 10)
         cube[0, 0, 0] = np.inf
-        
+
         assert np.isinf(cube).any()
 
     def test_handle_empty_data(self):
@@ -407,7 +404,7 @@ class TestAnalysisPipelineDataTypes:
         """Test pipeline with mixed data types."""
         seismic = np.random.rand(10, 10, 10).astype(np.float32)
         facies = np.random.randint(0, 4, (10, 10, 10)).astype(np.uint8)
-        
+
         assert seismic.dtype == np.float32
         assert facies.dtype == np.uint8
 
@@ -433,7 +430,7 @@ class TestAnalysisPipelineScaling:
     def test_non_cubic_data(self):
         """Test with non-cubic data shapes."""
         shapes = [(10, 20, 30), (100, 200, 50), (64, 128, 32)]
-        
+
         for shape in shapes:
             data = np.random.rand(*shape)
             assert data.shape == shape
@@ -443,24 +440,23 @@ class TestAnalysisPipelineIntegration:
     """Integration tests for complete workflows."""
 
     def test_full_pipeline_execution(
-        self, mock_cache_loader, mock_dataset_loader,
-        mock_cube_preparer, mock_analyzer
+        self, mock_cache_loader, mock_dataset_loader, mock_cube_preparer, mock_analyzer
     ):
         """Test complete pipeline execution."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Load cache
         cache_data = mock_cache_loader.load_full_stack()
-        
+
         # Load dataset
         dataset = mock_dataset_loader.load()
-        
+
         # Prepare cubes
         prepared = mock_cube_preparer.prepare(dataset["seismic"])
-        
+
         # Execute analysis
         result = mock_analyzer.analyze(prepared["seismic"])
-        
+
         # Verify result
         assert result is not None
         assert "classification" in result
@@ -468,34 +464,32 @@ class TestAnalysisPipelineIntegration:
     def test_pipeline_with_multiple_stages(self, mock_analyzer):
         """Test pipeline handles multiple stages correctly."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Simulate multi-stage workflow
         stages = ["load", "prepare", "analyze"]
-        
+
         assert len(stages) == 3
 
     def test_pipeline_state_management(self, mock_analyzer):
         """Test pipeline manages state correctly."""
         pipeline = AnalysisPipeline(mock_analyzer)
-        
+
         # Pipeline should track state
         assert pipeline is not None
 
-    def test_pipeline_reproducibility(
-        self, mock_cube_preparer, mock_analyzer
-    ):
+    def test_pipeline_reproducibility(self, mock_cube_preparer, mock_analyzer):
         """Test pipeline produces reproducible results."""
         np.random.seed(42)
-        
+
         cube = np.random.rand(10, 10, 10)
         prepared1 = mock_cube_preparer.prepare(cube.copy())
         result1 = mock_analyzer.analyze(prepared1["seismic"])
-        
+
         np.random.seed(42)
         cube = np.random.rand(10, 10, 10)
         prepared2 = mock_cube_preparer.prepare(cube.copy())
         result2 = mock_analyzer.analyze(prepared2["seismic"])
-        
+
         # With same seed, should be reproducible
         assert result1 is not None
         assert result2 is not None
@@ -546,7 +540,7 @@ class TestAnalysisPipelinePerformance:
     def test_sequential_processing(self, mock_analyzer):
         """Test sequential processing performance."""
         times = []
-        
+
         for i in range(5):
             data = np.random.rand(10, 10, 10)
             result = mock_analyzer.analyze(data)
@@ -555,19 +549,19 @@ class TestAnalysisPipelinePerformance:
     def test_batch_processing(self, mock_analyzer):
         """Test batch processing."""
         batch = [np.random.rand(10, 10, 10) for _ in range(10)]
-        
+
         results = []
         for cube in batch:
             result = mock_analyzer.analyze(cube)
             results.append(result)
-        
+
         assert len(results) == 10
 
     def test_memory_efficiency(self):
         """Test memory usage with large data."""
         # Create large cube
         large = np.random.rand(256, 256, 100)
-        
+
         # Should be manageable
         assert large.nbytes / (1024**3) < 1  # Less than 1GB
 
