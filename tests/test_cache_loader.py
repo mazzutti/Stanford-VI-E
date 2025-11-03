@@ -1069,3 +1069,109 @@ class TestCoverageEnhancements:
         # This should raise in the try block and return None at line 959
         result = loader.load_full_stack(str(p), raise_on_error=False)
         assert result is None
+
+
+# =============================================================================
+# IMPROVED TESTS FOR ADDITIONAL COVERAGE
+# =============================================================================
+
+
+class TestCacheConfigImproved:
+    """Improved tests for CacheConfig."""
+
+    def test_cache_config_creation_minimal(self):
+        """Test creating CacheConfig with minimal arguments."""
+        config = CacheConfig(cache_size=100)
+        assert config.cache_size == 100
+        assert config.archive_extractor is None
+        assert config.selector is None
+        assert config.cache is None
+        assert config.np_load is np.load
+
+    def test_cache_config_zero_cache_size(self):
+        """Test CacheConfig with zero cache size (caching disabled)."""
+        config = CacheConfig(cache_size=0)
+        assert config.cache_size == 0
+
+    def test_cache_config_large_cache_size(self):
+        """Test CacheConfig with large cache size."""
+        config = CacheConfig(cache_size=10000)
+        assert config.cache_size == 10000
+
+
+class TestCacheLoaderFileOperationsImproved:
+    """Improved tests for file operations."""
+
+    def test_load_npy_file(self, tmp_path: Path) -> None:
+        """Test loading NPY file."""
+        config = CacheConfig(cache_size=100)
+        loader = CacheLoader(config)
+
+        npy_path = tmp_path / "test.npy"
+        test_data = np.random.rand(10, 10, 10)
+        np.save(npy_path, test_data)
+
+        data = loader._load_single_npy(str(npy_path))
+        assert data is not None
+        np.testing.assert_array_equal(data, test_data)
+
+    def test_load_preserves_shape(self, tmp_path: Path) -> None:
+        """Test that loaded data preserves shape."""
+        config = CacheConfig(cache_size=100)
+        loader = CacheLoader(config)
+
+        npy_path = tmp_path / "test.npy"
+        test_data = np.random.rand(10, 10, 10)
+        np.save(npy_path, test_data)
+
+        data = loader._load_single_npy(str(npy_path))
+        assert data.shape == (10, 10, 10)
+
+    def test_load_large_array(self, tmp_path: Path) -> None:
+        """Test loading large array."""
+        config = CacheConfig(cache_size=100)
+        loader = CacheLoader(config)
+
+        # Create and save large array
+        large_data = np.random.rand(100, 100, 100).astype(np.float64)
+        large_path = tmp_path / "large.npy"
+        np.save(large_path, large_data)
+
+        data = loader._load_single_npy(str(large_path))
+        assert data.shape == (100, 100, 100)
+
+
+class TestCacheLoaderIntegrationImproved:
+    """Improved integration tests for CacheLoader."""
+
+    def test_full_workflow_npy(self, tmp_path: Path) -> None:
+        """Test full workflow with NPY file."""
+        config = CacheConfig(cache_size=100)
+        loader = CacheLoader(config)
+
+        npy_path = tmp_path / "test.npy"
+        test_data = np.random.rand(10, 10, 10)
+        np.save(npy_path, test_data)
+
+        data = loader._load_single_npy(str(npy_path))
+
+        assert data is not None
+        assert isinstance(data, np.ndarray)
+
+    def test_multiple_loads(self, tmp_path: Path) -> None:
+        """Test multiple sequential loads."""
+        config = CacheConfig(cache_size=100)
+        loader = CacheLoader(config)
+
+        npy_path = tmp_path / "test.npy"
+        test_data = np.random.rand(10, 10, 10)
+        np.save(npy_path, test_data)
+
+        # Load multiple times
+        data1 = loader._load_single_npy(str(npy_path))
+        data2 = loader._load_single_npy(str(npy_path))
+
+        assert data1 is not None
+        assert data2 is not None
+        # Should be equal
+        np.testing.assert_array_equal(data1, data2)
