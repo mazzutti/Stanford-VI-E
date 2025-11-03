@@ -6,10 +6,15 @@ Helpers for generating orthogonal 3D slice visualizations using matplotlib.
 import logging
 from src.utils.facades import LazyObjectProxy
 
-from src.plotting.helpers.plot import (
-    init_plotting,
-    select_cache_files,
-)
+from src.plotting.helpers.plot import init_plotting
+from typing import Optional
+from src.analysis.types import CacheLoaderProtocol
+
+# Prefer the new CacheLoader helper when available (backwards-compatible)
+try:
+    from src.analysis.cache import CacheLoader
+except Exception:
+    CacheLoader = None
 
 __all__ = ["plot_3d_volume", "main"]
 
@@ -39,33 +44,41 @@ def main(argv=None):
 
 
 class Plot3DSlices:
-    """Facade for 3D slice plotting helpers."""
+    """Facade for 3D slice plotting helpers.
+
+    Accepts an optional `cache_loader` implementing `CacheLoaderProtocol` to
+    locate and load cache files. This allows explicit dependency injection
+    instead of constructing loaders ad-hoc.
+    """
+
+    def __init__(self, cache_loader: Optional[CacheLoaderProtocol] = None):
+        self.cache_loader = cache_loader
 
     def plot_3d_volume(self, ax, cube, slice_indices, title, **plot_kwargs):
         return _impl_plot_3d_volume(ax, cube, slice_indices, title, **plot_kwargs)
 
     def main(self, argv=None):
-        return _impl_main(argv)
+        return _impl_main(argv, cache_loader=self.cache_loader)
 
 
 # Module-level lazy proxy for the plotting facade
 plot_3d_slices: Plot3DSlices = LazyObjectProxy(lambda: Plot3DSlices())
 
 
-def get_plot_3d_slices(instance: Plot3DSlices | None = None) -> Plot3DSlices:
-    return _impl_get_plot_3d_slices(instance)
+def get_plot_3d_slices(
+    instance: Plot3DSlices | None = None,
+    cache_loader: Optional[CacheLoaderProtocol] = None,
+) -> Plot3DSlices:
+    # Return provided instance, a new instance constructed with the provided
+    # cache_loader, or the module-level lazy proxy.
+    if instance is not None:
+        return instance
+    if cache_loader is not None:
+        return Plot3DSlices(cache_loader=cache_loader)
+    return plot_3d_slices
 
 
-def _impl_get_plot_3d_slices(instance: Plot3DSlices | None = None) -> Plot3DSlices:
-    """Canonical getter for the module-level Plot3DSlices proxy.
-
-    Tests and callers may inject instances using the same `get_plot_3d_slices`
-    API; keeping a single implementation simplifies mocking.
-    """
-    return instance if instance is not None else plot_3d_slices
-
-
-def _impl_main(argv=None):
+def _impl_main(argv=None, cache_loader: Optional[CacheLoaderProtocol] = None):
     import argparse
     from src.plotting.helpers.plot import (
         prepare_plotting_args,
@@ -110,7 +123,24 @@ def _impl_main(argv=None):
 
     os.makedirs(cache_dir, exist_ok=True)
 
-    avo_fn = select_cache_files(cache_dir, args.domain)
+    # Prefer CacheLoader.select_cache_file if available, otherwise fall back
+    # to the legacy select_cache_files helper. This keeps behavior stable
+    # while enabling easier testing/mocking via CacheLoader.
+    avo_fn = None
+    if cache_loader is not None:
+        try:
+            avo_fn = cache_loader.select_cache_file(cache_dir, args.domain)
+        except Exception:
+            avo_fn = None
+    else:
+        # fallback to constructing a CacheLoader locally
+        try:
+            from src.analysis.cache import CacheLoader
+
+            loader = CacheLoader()
+            avo_fn = loader.select_cache_file(cache_dir, args.domain)
+        except Exception:
+            avo_fn = None
 
     return {"avo": avo_fn}
 

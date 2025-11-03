@@ -152,10 +152,6 @@ def get_plot_visualization(config: dict | None = None):
     otherwise return a new `PlotVisualization` instance. This keeps access
     patterns consistent with other helpers.
     """
-    return _impl_get_plot_visualization(config)
-
-
-def _impl_get_plot_visualization(config: dict | None = None):
     if config is None:
         return plot_visualization
     return PlotVisualization()

@@ -101,13 +101,7 @@ plot_rock_physics_attributes: PlotRockPhysicsAttributes = LazyObjectProxy(
 def get_plot_rock_physics_attributes(
     instance: PlotRockPhysicsAttributes | None = None,
 ) -> PlotRockPhysicsAttributes:
-    return _impl_get_plot_rock_physics_attributes(instance)
-
-
-def _impl_get_plot_rock_physics_attributes(
-    instance: PlotRockPhysicsAttributes | None = None,
-) -> PlotRockPhysicsAttributes:
-    """Canonical getter for the module-level PlotRockPhysicsAttributes proxy."""
+    # Return provided instance or the module-level lazy proxy directly.
     return instance if instance is not None else plot_rock_physics_attributes
 
 

@@ -6,7 +6,6 @@ avoid E402 linter errors. Heavy numerical imports remain deferred where used.
 
 import logging
 
-from src.utils.facades import LazyObjectProxy
 from src.plotting.helpers.plot import init_plotting
 from scipy.ndimage import sobel, gaussian_filter
 
@@ -214,30 +213,9 @@ class FaciesOverlay:
         )
 
 
-# Module-level lazy proxy for FaciesOverlay
-facies_overlay = LazyObjectProxy(lambda: FaciesOverlay())
-
-
-def get_facies_overlay(config: dict | None = None):
-    return _impl_get_facies_overlay(config)
-
-
-def _impl_get_facies_overlay(config: dict | None = None):
-    """Canonical getter for the module-level facies_overlay proxy.
-
-    Accepts an optional config for callers that prefer a fresh instance. When
-    no config is provided the standard lazy proxy is returned.
-    """
-    if config is None:
-        return facies_overlay
-    return FaciesOverlay()
-
-
-__all__.extend(["FaciesOverlay", "facies_overlay", "get_facies_overlay"])
-
-
 def detect_facies_boundaries(facies_slice):
-    return _impl_detect_facies_boundaries(facies_slice)
+    overlay = FaciesOverlay()
+    return overlay.detect_facies_boundaries(facies_slice)
 
 
 def plot_seismic_with_facies_overlay(
@@ -251,7 +229,8 @@ def plot_seismic_with_facies_overlay(
     cmap="seismic",
     show_colorbar=True,
 ):
-    return _impl_plot_seismic_with_facies_overlay(
+    overlay = FaciesOverlay()
+    return overlay.plot_seismic_with_facies_overlay(
         ax,
         seismic_slice,
         facies_slice,
@@ -272,47 +251,7 @@ def plot_facies_only(
     k_label="K",
     k_unit="",
 ):
-    return _impl_plot_facies_only(
-        ax, facies_slice, title, k_scale=k_scale, k_label=k_label, k_unit=k_unit
-    )
-
-
-def _impl_detect_facies_boundaries(facies_slice):
-    return facies_overlay.detect_facies_boundaries(facies_slice)
-
-
-def _impl_plot_seismic_with_facies_overlay(
-    ax,
-    seismic_slice,
-    facies_slice,
-    title,
-    k_scale=1.0,
-    k_label="K",
-    k_unit="",
-    cmap="seismic",
-    show_colorbar=True,
-):
-    return facies_overlay.plot_seismic_with_facies_overlay(
-        ax,
-        seismic_slice,
-        facies_slice,
-        title,
-        k_scale=k_scale,
-        k_label=k_label,
-        k_unit=k_unit,
-        cmap=cmap,
-        show_colorbar=show_colorbar,
-    )
-
-
-def _impl_plot_facies_only(
-    ax,
-    facies_slice,
-    title,
-    k_scale=1.0,
-    k_label="K",
-    k_unit="",
-):
-    return facies_overlay.plot_facies_only(
+    overlay = FaciesOverlay()
+    return overlay.plot_facies_only(
         ax, facies_slice, title, k_scale=k_scale, k_label=k_label, k_unit=k_unit
     )

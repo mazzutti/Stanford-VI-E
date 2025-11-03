@@ -5,10 +5,10 @@ Implementation of 2D slice plotting helpers using plotting utilities from
 """
 
 import logging
-from src.utils.facades import LazyObjectProxy
 
 from src.plotting.helpers.plot import init_plotting
 from src.io.grid import GridSpec
+from src.analysis.facies import FaciesCorrelationAnalyzer
 
 # Initialize matplotlib and numpy for this module
 plt, np = init_plotting(backend="Agg")
@@ -24,55 +24,17 @@ def convert_time_to_depth(
 ):
     """Convert a time-domain seismogram to depth using the provided GridSpec.
 
-    Delegates to the centralized resampler helper.
+    Uses the canonical class-based analyzer API directly.
     """
-    # Call canonical implementation directly. Tests and callers that need an
-    # instance can still use `get_plot_2d_slices()` to obtain the proxy.
-    return _impl_convert_time_to_depth(
-        seismogram_time, vp_depth, grid_spec, is_categorical=is_categorical
-    )
+    analyzer = FaciesCorrelationAnalyzer()
+    return analyzer.convert_time_to_depth(seismogram_time, vp_depth, grid_spec)
 
 
 def plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
-    # Delegate directly to canonical implementation for simplicity.
+    # Delegate directly to the implementation helper
     return _impl_plot_with_units(
         ax, cube, slice_idx, slice_orientation, title, **plot_kwargs
     )
-
-
-class Plot2DSlices:
-    """Facade for 2D slice plotting helpers."""
-
-    def convert_time_to_depth(
-        self, seismogram_time, vp_depth, grid_spec, is_categorical=False
-    ):
-        return _impl_convert_time_to_depth(
-            seismogram_time, vp_depth, grid_spec, is_categorical=is_categorical
-        )
-
-    def plot_with_units(
-        self, ax, cube, slice_idx, slice_orientation, title, **plot_kwargs
-    ):
-        return _impl_plot_with_units(
-            ax, cube, slice_idx, slice_orientation, title, **plot_kwargs
-        )
-
-
-# Module-level lazy proxy
-plot_2d_slices: Plot2DSlices = LazyObjectProxy(lambda: Plot2DSlices())
-
-
-def get_plot_2d_slices(instance: Plot2DSlices | None = None) -> Plot2DSlices:
-    return _impl_get_plot_2d_slices(instance)
-
-
-def _impl_get_plot_2d_slices(instance: Plot2DSlices | None = None) -> Plot2DSlices:
-    """Canonical getter for the module-level Plot2DSlices proxy.
-
-    Keep this as the single point-of-truth so tests and callers can inject
-    alternate instances via the same API surface.
-    """
-    return instance if instance is not None else plot_2d_slices
 
 
 def _impl_convert_time_to_depth(

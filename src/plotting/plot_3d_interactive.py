@@ -184,16 +184,6 @@ plotly_visualization = LazyObjectProxy(lambda: PlotlyVisualization())
 
 
 def get_plotly_visualization(config: dict | None = None):
-    return _impl_get_plotly_visualization(config)
-
-
-def _impl_get_plotly_visualization(config: dict | None = None):
-    """Canonical getter for the module-level PlotlyVisualization proxy.
-
-    When ``config`` is None we return the module-level lazy proxy so callers
-    may inject alternate instances during tests by passing a configured
-    `PlotlyVisualization` instance to the same API.
-    """
     if config is None:
         return plotly_visualization
     return PlotlyVisualization()
