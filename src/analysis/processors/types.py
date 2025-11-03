@@ -1,0 +1,70 @@
+"""Type aliases and type variables for processor operations."""
+
+from typing import Any, Callable, Optional, Tuple, TypeVar, Dict
+
+import numpy as np
+from numpy.typing import NDArray
+
+__all__ = [
+    "Float64Array",
+    "Int64Array",
+    "BoolArray",
+    "FloatingArray",
+    "IntegerArray",
+    "T",
+    "StatsType",
+    "FilterResult",
+    "CorrelationResult",
+    "OptionalArrayPair",
+    "ArrayNamePair",
+    "FloatingArrayNamePair",
+    "CorrelationFunction",
+    "AttributeArrayDict",
+]
+
+# Specific array types for cleaner type hints
+Float64Array = NDArray[np.float64]
+"""Type alias for 64-bit float arrays."""
+
+Int64Array = NDArray[np.int64]
+"""Type alias for 64-bit integer arrays."""
+
+BoolArray = NDArray[np.bool_]
+"""Type alias for boolean arrays."""
+
+FloatingArray = NDArray[np.floating[Any]]
+"""Type alias for any floating-point precision arrays."""
+
+IntegerArray = NDArray[np.integer[Any]]
+"""Type alias for integer arrays (includes facies labels and indices)."""
+
+# Type variables for generic programming
+T = TypeVar("T", bound=NDArray[Any])
+"""Generic type variable for array types."""
+
+StatsType = TypeVar("StatsType")
+"""Generic type variable for statistics types."""
+
+# Common result type aliases
+FilterResult = Tuple[Float64Array, Float64Array, int]
+"""Type alias for (filtered_arr1, filtered_arr2, n_removed)."""
+
+CorrelationResult = Tuple[float, float]
+"""Type alias for (correlation_coefficient, p_value) result tuples."""
+
+OptionalArrayPair = Tuple[Optional[Float64Array], Optional[Float64Array]]
+"""Type alias for validation results: (filtered_arr1, filtered_arr2) or (None, None)."""
+
+ArrayNamePair = Tuple[NDArray[Any], str]
+"""Type alias for generic (array, name) tuples used in validation."""
+
+FloatingArrayNamePair = Tuple[FloatingArray, str]
+"""Type alias for (floating_array, name) tuples used in array validation."""
+
+CorrelationFunction = Callable[
+    [NDArray[np.float64], NDArray[np.float64]], CorrelationResult
+]
+"""Type alias for correlation functions: takes two float arrays, returns (coeff, p_value)."""
+
+AttributeArrayDict = Dict[str, FloatingArray]
+"""Type alias for dict mapping attribute names to floating-point arrays."""
