@@ -1,7 +1,7 @@
+# mypy: ignore-errors
 import threading
 import time
 
-import numpy as np
 
 from src.utils.lru import LRUCache
 

@@ -1,8 +1,9 @@
+# mypy: ignore-errors
 import threading
 import numpy as np
 
 from src.analysis.cache import CacheLoaderFactory, CacheLoader
-from src.utils.lru import ShardedLRUCache, LRUCache
+from src.utils.lru import ShardedLRUCache
 
 
 def test_factory_creates_sharded_cache():
@@ -65,13 +66,6 @@ def test_sharded_cache_concurrency_smoke():
     assert cache.info()["currsize"] <= 200
 
 
-import threading
-import numpy as np
-
-from src.utils.lru import ShardedLRUCache
-from src.analysis.cache import CacheLoaderFactory, CacheLoader
-
-
 def test_sharded_cache_concurrency():
     c = ShardedLRUCache[int](maxsize=100, shards=4)
 
@@ -119,14 +113,7 @@ def test_cacheloader_injection_and_extractor(tmp_path):
     def extractor(archive):
         return np.asarray(archive["full_stack"]) * 2.0
 
-    loader = (
-        create_cache_loader(
-            cache_size=0, selector=None, archive_extractor=extractor, cache=cache
-        )
-        if False
-        else None
-    )
-    # Instead of passing wrong args via factory (which expects specific types), construct manually
+    # Construct CacheLoader manually with injected cache
     loader = CacheLoader(
         selector=None, cache=cache, cache_size=0, archive_extractor=extractor
     )

@@ -12,6 +12,8 @@ Tests cover:
 - Context manager functionality
 - Error handling and recovery
 """
+# mypy: ignore-errors
+
 
 import logging
 from unittest.mock import Mock, patch

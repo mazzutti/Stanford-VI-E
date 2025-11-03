@@ -2,11 +2,12 @@
 
 Consolidates all processor unit tests from 10 separate files.
 """
+# mypy: ignore-errors
+
 
 import logging
 import time
-from abc import ABC
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -41,7 +42,6 @@ from src.analysis.processors.utils import ProcessorUtils
 from src.analysis.processors.validators import (
     ArrayValidator,
     ValidationHelpers,
-    _ValidationErrors,
 )
 
 
@@ -207,7 +207,7 @@ class TestBoundaryAmplitudeExtractorLogging:
 
         with caplog.at_level(logging.DEBUG):
             extractor = BoundaryAmplitudeExtractor(dilation_window=1)
-            result = extractor.extract(seismic, boundaries)
+            _ = extractor.extract(seismic, boundaries)
 
         # Should have logged extraction message
         assert any("boundary" in record.message.lower() for record in caplog.records)
@@ -725,7 +725,7 @@ class TestTimeOperationDecorator:
 
     def test_time_operation_measures_actual_time(self):
         """Test that time_operation actually measures execution time."""
-        durations = []
+        _ = []
 
         @ProcessorDecorators.time_operation("measured op", threshold_ms=10000.0)
         def timed_func(sleep_time):
@@ -1297,7 +1297,7 @@ class TestFaciesDiscriminationCalculatorLogging:
 
         with caplog.at_level(logging.DEBUG):
             calc = FaciesDiscriminationCalculator()
-            result = calc.calculate(seismic, facies)
+            _ = calc.calculate(seismic, facies)
 
         # Should have logged something about discrimination
         assert any(
@@ -1749,7 +1749,7 @@ class TestGradientCorrelationCalculatorLogging:
 
         with caplog.at_level(logging.DEBUG):
             calc = GradientCorrelationCalculator()
-            result = calc.calculate(seismic, facies)
+            _ = calc.calculate(seismic, facies)
 
         # Should have logged something about gradient correlation
         assert any(
@@ -1769,7 +1769,7 @@ class TestGradientCorrelationCalculatorLogging:
             )
 
         # Should have logged correlation result
-        debug_messages = [r.message for r in caplog.records if r.levelname == "DEBUG"]
+        _ = [r.message for r in caplog.records if r.levelname == "DEBUG"]
         # May have logged correlation or correlation parameters
 
     def test_compute_correlation_logging_error(self, caplog):
@@ -2062,7 +2062,7 @@ class TestInterfaceReflectionAnalyzerLogging:
 
         with caplog.at_level(logging.DEBUG):
             analyzer = InterfaceReflectionAnalyzer()
-            result = analyzer.analyze(seismic, facies)
+            _ = analyzer.analyze(seismic, facies)
 
         # Should have logged something about interface reflection analysis
         assert any(

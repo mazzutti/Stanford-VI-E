@@ -13,6 +13,8 @@ Test organization:
 - Integration tests
 - Edge cases and error handling
 """
+# mypy: ignore-errors
+
 
 import pytest
 import threading

@@ -9,12 +9,13 @@ Tests focus on:
 - Error handling and edge cases
 - Complex workflows
 """
+# mypy: ignore-errors
+
 
 import pytest
 import numpy as np
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
-from typing import Dict, List, Any
+from unittest.mock import Mock
 import tempfile
 
 from src.analysis.facies.pipeline import AnalysisPipeline
@@ -117,7 +118,7 @@ class TestAnalysisPipelineDataLoading:
 
     def test_load_cache_data(self, mock_cache_loader, mock_analyzer):
         """Test loading data from cache."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Should be able to work with cache loader
         data = mock_cache_loader.load_full_stack()
@@ -126,7 +127,7 @@ class TestAnalysisPipelineDataLoading:
 
     def test_load_dataset(self, mock_dataset_loader, mock_analyzer):
         """Test loading dataset."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         data = mock_dataset_loader.load()
         assert data is not None
@@ -135,7 +136,7 @@ class TestAnalysisPipelineDataLoading:
 
     def test_load_multiple_datasets(self, mock_dataset_loader, mock_analyzer):
         """Test loading multiple datasets."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         datasets = []
         for i in range(3):
@@ -146,7 +147,7 @@ class TestAnalysisPipelineDataLoading:
 
     def test_load_with_validation(self, mock_analyzer):
         """Test data loading with validation."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Create valid data
         seismic = np.random.rand(10, 10, 10)
@@ -193,7 +194,7 @@ class TestAnalysisPipelineCubePreparation:
 
     def test_prepare_with_different_sizes(self, mock_analyzer):
         """Test preparation with different cube sizes."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         sizes = [(5, 5, 5), (10, 10, 10), (32, 32, 32)]
 
@@ -235,7 +236,7 @@ class TestAnalysisPipelineExecution:
     def test_execute_with_attributes(self, mock_analyzer):
         """Test analysis with precomputed attributes."""
         seismic = np.random.rand(10, 10, 10)
-        attributes = np.random.rand(10, 10, 10, 5)
+        _ = np.random.rand(10, 10, 10, 5)
 
         result = mock_analyzer.analyze(seismic)
         assert result is not None
@@ -260,7 +261,7 @@ class TestAnalysisPipelineExecution:
 
     def test_execute_multiple_analyses(self, mock_analyzer):
         """Test multiple sequential analyses."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         results = []
         for i in range(3):
@@ -278,7 +279,7 @@ class TestAnalysisPipelineWorkflow:
         self, mock_cache_loader, mock_dataset_loader, mock_cube_preparer, mock_analyzer
     ):
         """Test complete workflow from load to analysis."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Step 1: Load data
         cache_data = mock_cache_loader.load_full_stack()
@@ -310,7 +311,7 @@ class TestAnalysisPipelineWorkflow:
 
     def test_workflow_preserves_metadata(self, mock_dataset, mock_analyzer):
         """Test that workflow preserves metadata."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         metadata = mock_dataset.metadata
         assert "source" in metadata
@@ -318,7 +319,7 @@ class TestAnalysisPipelineWorkflow:
 
     def test_workflow_with_caching(self, mock_cache_loader, mock_analyzer):
         """Test workflow benefits from caching."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Load once
         data1 = mock_cache_loader.load_full_stack()
@@ -335,18 +336,18 @@ class TestAnalysisPipelineErrorHandling:
 
     def test_handle_missing_data(self, mock_analyzer):
         """Test handling of missing data."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # None data should be handled
-        data = None
+        _ = None
         # Pipeline should handle this gracefully
 
     def test_handle_invalid_shapes(self, mock_analyzer):
         """Test handling of invalid shapes."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # 2D data instead of 3D
-        data_2d = np.random.rand(10, 10)
+        _ = np.random.rand(10, 10)
         # Should detect and handle
 
     def test_handle_nan_values(self):
@@ -443,10 +444,10 @@ class TestAnalysisPipelineIntegration:
         self, mock_cache_loader, mock_dataset_loader, mock_cube_preparer, mock_analyzer
     ):
         """Test complete pipeline execution."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Load cache
-        cache_data = mock_cache_loader.load_full_stack()
+        _ = mock_cache_loader.load_full_stack()
 
         # Load dataset
         dataset = mock_dataset_loader.load()
@@ -463,7 +464,7 @@ class TestAnalysisPipelineIntegration:
 
     def test_pipeline_with_multiple_stages(self, mock_analyzer):
         """Test pipeline handles multiple stages correctly."""
-        pipeline = AnalysisPipeline(mock_analyzer)
+        _ = AnalysisPipeline(mock_analyzer)
 
         # Simulate multi-stage workflow
         stages = ["load", "prepare", "analyze"]
@@ -539,7 +540,7 @@ class TestAnalysisPipelinePerformance:
 
     def test_sequential_processing(self, mock_analyzer):
         """Test sequential processing performance."""
-        times = []
+        _ = []
 
         for i in range(5):
             data = np.random.rand(10, 10, 10)

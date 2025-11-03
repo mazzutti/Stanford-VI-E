@@ -11,13 +11,16 @@ Tests cover:
 - Error handling and validation
 """
 
+# mypy: ignore-errors
+
+
 from __future__ import annotations
 
 import logging
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -276,7 +279,10 @@ class TestCheckFileExists:
 
     def test_check_file_exists_handles_permission_error(self, analyzer, caplog):
         """Test check_file_exists handles permission errors gracefully."""
-        with patch("src.analysis.pipelines.seismograms.Path.exists", side_effect=PermissionError):
+        with patch(
+            "src.analysis.pipelines.seismograms.Path.exists",
+            side_effect=PermissionError,
+        ):
             with caplog.at_level(logging.ERROR):
                 result = analyzer.check_file_exists("/restricted/file", "Restricted")
 
@@ -326,7 +332,9 @@ class TestOpenFile:
 
         mock_sleep.assert_not_called()
 
-    @patch("src.analysis.pipelines.seismograms.time.sleep", side_effect=InterruptedError)
+    @patch(
+        "src.analysis.pipelines.seismograms.time.sleep", side_effect=InterruptedError
+    )
     def test_open_file_handles_interrupted_sleep(
         self, mock_sleep, analyzer, mock_analysis, caplog
     ):

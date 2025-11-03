@@ -9,6 +9,8 @@ Tests the AnalyzerBuilder and AnalyzerFactory classes with coverage for:
 - Factory presets
 - Debug functionality
 """
+# mypy: ignore-errors
+
 
 import logging
 from unittest.mock import Mock

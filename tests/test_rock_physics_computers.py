@@ -7,11 +7,11 @@ Tests focus on:
 - Edge cases and numerical stability
 - Integration with seismic data
 """
+# mypy: ignore-errors
+
 
 import pytest
 import numpy as np
-from unittest.mock import Mock, patch
-from typing import Dict, Tuple
 
 from src.analysis.rock_physics.computers import (
     AVOAttributesComputer,

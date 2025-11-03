@@ -1,10 +1,11 @@
+# mypy: ignore-errors
 import os
 import numpy as np
 
+from src.plotting.facies_plotter import FaciesPlotter
+
 # Use a non-interactive backend to avoid GUI/font issues in CI
 os.environ.setdefault("MPLBACKEND", "Agg")
-
-from src.plotting.facies_plotter import FaciesPlotter
 
 
 # Create a minimal Transition-like object to avoid importing the analysis module

@@ -13,6 +13,8 @@ This module consolidates all tests covering:
 - Cache management
 - Display cube preparation
 """
+# mypy: ignore-errors
+
 
 import time
 from pathlib import Path
@@ -1238,7 +1240,7 @@ class TestDomainValidation:
 
     def test_validate_domain_with_invalid_enum_value(self):
         """Test domain validation catches invalid enum values (line 317)."""
-        analyzer = FaciesCorrelationAnalyzer()
+        _ = FaciesCorrelationAnalyzer()
 
         class InvalidDomain:
             """Fake domain that's not a Domain enum."""

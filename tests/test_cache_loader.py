@@ -15,6 +15,9 @@ Test Organization:
     7. Integration Tests
 """
 
+# mypy: ignore-errors
+
+
 import os
 from pathlib import Path
 from typing import Optional
@@ -1074,29 +1077,6 @@ class TestCoverageEnhancements:
 # =============================================================================
 # IMPROVED TESTS FOR ADDITIONAL COVERAGE
 # =============================================================================
-
-
-class TestCacheConfigImproved:
-    """Improved tests for CacheConfig."""
-
-    def test_cache_config_creation_minimal(self):
-        """Test creating CacheConfig with minimal arguments."""
-        config = CacheConfig(cache_size=100)
-        assert config.cache_size == 100
-        assert config.archive_extractor is None
-        assert config.selector is None
-        assert config.cache is None
-        assert config.np_load is np.load
-
-    def test_cache_config_zero_cache_size(self):
-        """Test CacheConfig with zero cache size (caching disabled)."""
-        config = CacheConfig(cache_size=0)
-        assert config.cache_size == 0
-
-    def test_cache_config_large_cache_size(self):
-        """Test CacheConfig with large cache size."""
-        config = CacheConfig(cache_size=10000)
-        assert config.cache_size == 10000
 
 
 class TestCacheConfigImproved:

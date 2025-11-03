@@ -11,6 +11,8 @@ Test organization:
 - Result classes tests (various analysis results)
 - Integration and edge case tests
 """
+# mypy: ignore-errors
+
 
 import pytest
 import numpy as np

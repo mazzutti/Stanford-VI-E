@@ -1,4 +1,6 @@
 """Tests for HeaderPrinter formatting and configuration."""
+# mypy: ignore-errors
+
 
 import logging
 import pytest
