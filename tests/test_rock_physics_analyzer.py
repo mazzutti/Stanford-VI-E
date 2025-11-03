@@ -1553,7 +1553,7 @@ class TestRockPhysicsAnalyzerShapesImproved:
         """Test 2D data (2D survey) - should raise error."""
         computer = AVOAttributesComputer()
         data_2d = np.random.uniform(2000, 6000, (100, 100))
-        
+
         # Should require 3D data
         assert computer is not None
 
