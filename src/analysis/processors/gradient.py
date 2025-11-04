@@ -166,18 +166,15 @@ class GradientCorrelationCalculator(BaseProcessor):
             (correlation_coefficient, p_value) or (nan, nan) on failure.
         """
         # Flatten and filter in composite operation
-        seismic_grad_valid, boundaries_valid = ProcessorUtils.flatten_and_filter_finite(
-            seismic_grad, boundaries
+        seismic_grad_valid, boundaries_valid = (
+            ProcessorUtils._flatten_and_filter_finite_static(seismic_grad, boundaries)
         )
 
         if seismic_grad_valid is None or boundaries_valid is None:
             return np.nan, np.nan
 
         # Check minimum sample size after filtering
-        if (
-            seismic_grad_valid.size < ProcessorConfig.MIN_VALID_SAMPLES
-            or boundaries_valid.size < ProcessorConfig.MIN_VALID_SAMPLES
-        ):
+        if seismic_grad_valid.size < 2 or boundaries_valid.size < 2:
             logger.warning("Insufficient valid samples for correlation computation")
             return np.nan, np.nan
 

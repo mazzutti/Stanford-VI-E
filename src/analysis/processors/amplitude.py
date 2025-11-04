@@ -22,9 +22,7 @@ __all__ = ["BoundaryAmplitudeExtractor"]
 class BoundaryAmplitudeExtractor(BaseProcessor):
     """Extracts amplitudes at and away from facies boundaries."""
 
-    def __init__(
-        self, dilation_window: int = ProcessorConfig.BOUNDARY_DILATION_DEFAULT
-    ):
+    def __init__(self, dilation_window: int = 2):
         """Initialize the extractor.
 
         Parameters

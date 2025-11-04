@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .base import BaseProcessor, Processor
-from .config import NeighborSlices, ProcessorConfig
+from .config import NeighborDirection, ProcessorConfig
 from .decorators import ProcessorDecorators
 from .validators import ArrayValidator
 
@@ -129,7 +129,10 @@ class BoundaryDetector(BaseProcessor):
             Boolean boundary mask where True indicates a boundary voxel.
         """
         # Pad with edge mode so edge comparisons behave consistently
-        pad_config = ProcessorConfig.BOUNDARY_PAD_CONFIG
+        pad_config = {
+            "pad_width": ((0, 0), (1, 1), (1, 1)),
+            "mode": "edge",
+        }
         padded = np.pad(
             facies_cube,
             pad_width=cast(
@@ -139,23 +142,29 @@ class BoundaryDetector(BaseProcessor):
             mode=cast(Literal["edge"], pad_config["mode"]),
         )
 
-        center = padded[:, NeighborSlices.CENTER.value, NeighborSlices.CENTER.value]
+        center = padded[
+            :, NeighborDirection.CENTER.value, NeighborDirection.CENTER.value
+        ]
 
         # Initialize boundaries with first comparison, then OR in remaining comparisons
         # This avoids creating intermediate arrays for each comparison
         boundaries: NDArray[np.bool_] = (
-            center != padded[:, NeighborSlices.UP.value, NeighborSlices.CENTER.value]
+            center
+            != padded[:, NeighborDirection.UP.value, NeighborDirection.CENTER.value]
         )
 
         # Use |= operator for in-place OR to reduce memory allocations
         boundaries |= (
-            center != padded[:, NeighborSlices.DOWN.value, NeighborSlices.CENTER.value]
+            center
+            != padded[:, NeighborDirection.DOWN.value, NeighborDirection.CENTER.value]
         )
         boundaries |= (
-            center != padded[:, NeighborSlices.CENTER.value, NeighborSlices.LEFT.value]
+            center
+            != padded[:, NeighborDirection.CENTER.value, NeighborDirection.LEFT.value]
         )
         boundaries |= (
-            center != padded[:, NeighborSlices.CENTER.value, NeighborSlices.RIGHT.value]
+            center
+            != padded[:, NeighborDirection.CENTER.value, NeighborDirection.RIGHT.value]
         )
 
         logger.debug(

@@ -152,8 +152,8 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
         pad_width = (
             (0, 0),
             (
-                ProcessorConfig.AMPLITUDE_WINDOW_RADIUS,
-                ProcessorConfig.AMPLITUDE_WINDOW_RADIUS,
+                2,
+                2,
             ),
         )
         seismic_padded = np.pad(
@@ -173,7 +173,7 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
                     "wrap",
                     "empty",
                 ],
-                ProcessorConfig.PAD_MODE,
+                "edge",
             ),
         )
 
@@ -182,7 +182,7 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
 
             windows = sliding_window_view(
                 seismic_padded,
-                window_shape=ProcessorConfig.AMPLITUDE_WINDOW_SIZE,
+                window_shape=5,
                 axis=1,
             )
             logger.debug("Using optimized sliding_window_view for amplitude extraction")
@@ -193,10 +193,10 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
             # Fallback: construct windows using strided-view manual implementation
             # More memory efficient than explicit loop construction
             n_traces, padded_nk = seismic_padded.shape
-            n_windows = padded_nk - ProcessorConfig.AMPLITUDE_WINDOW_SIZE + 1
+            n_windows = padded_nk - 5 + 1
             windows = np.lib.stride_tricks.as_strided(
                 seismic_padded,
-                shape=(n_traces, n_windows, ProcessorConfig.AMPLITUDE_WINDOW_SIZE),
+                shape=(n_traces, n_windows, 5),
                 strides=(
                     seismic_padded.strides[0],
                     seismic_padded.strides[1],

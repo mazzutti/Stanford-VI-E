@@ -211,9 +211,7 @@ class FaciesDiscriminationCalculator(BaseProcessor):
         pooled_stds = np.sqrt((stds[:, np.newaxis] ** 2 + stds[np.newaxis, :] ** 2) / 2)
 
         # Compute separation with epsilon for numerical stability
-        separations = mean_diffs / (
-            pooled_stds + ProcessorConfig.SEPARATION_MATRIX_EPSILON
-        )
+        separations = mean_diffs / (pooled_stds + 1e-10)
 
         # Map results back to the full matrix using pre-computed index mapping
         row_indices = np.array([label_to_idx[lab] for lab in available_facies])
