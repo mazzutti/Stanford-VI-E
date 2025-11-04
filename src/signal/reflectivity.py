@@ -5,14 +5,12 @@ signal/math helpers are used by modeling and analysis pipelines.
 """
 
 import numpy as np
-from typing import Union
 from src.utils.quantity import Quantity
 import os
 import logging
+from numba import njit, prange
 
 from src.utils.facades import LazyObjectProxy
-
-from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
 
 __all__ = [
     "ReflectivityCalculator",
@@ -27,8 +25,6 @@ __all__ = [
 # Module logger
 logger = logging.getLogger(__name__)
 
-# Try to import numba; if not present we keep falling back to pure-NumPy code.
-
 
 class ReflectivityCalculator:
     """Calculate reflectivity-related quantities.
@@ -40,30 +36,15 @@ class ReflectivityCalculator:
     def __init__(self, pad_width=((0, 0), (0, 0), (1, 0))):
         self.pad_width = pad_width
 
-    def reflectivity_from_ai(
-        self, ai_time: Union[np.ndarray, Quantity]
-    ) -> Union[np.ndarray, Quantity]:
-        # Method removed
-        return None
-
 
 class ZoeppritzSolver:
     """Batched Zoeppritz equation solver for P-P reflection coefficients.
 
-    Provides the same functionality as the previous `solve_zoeppritz`
-    function but organized as an object so configuration (batch size,
-    numba usage) can be changed per-instance.
+    Provides optimized Zoeppritz computations using Numba JIT compilation.
+    Numba is a required dependency for this solver.
     """
 
-    def __init__(self, use_numba: bool = None, cpu_batch: int = None):
-        # If use_numba is None, decide from environment and availability
-        if use_numba is None:
-            self.use_numba = (
-                os.environ.get("ZOEPPRITZ_USE_NUMBA", "0") == "1" and _NUMBA_AVAILABLE
-            )
-        else:
-            self.use_numba = use_numba and _NUMBA_AVAILABLE
-
+    def __init__(self, cpu_batch: int = None):
         if cpu_batch is None:
             try:
                 self.cpu_batch = int(os.environ.get("ZOEPPRITZ_CPU_BATCH", "1024"))
@@ -87,137 +68,54 @@ class ZoeppritzSolver:
         Args are the same as the prior function. Returns complex128 array
             shaped like the inputs.
         """
-        if self.use_numba:
-            spatial_shape = vp1.shape
-            N = int(np.prod(spatial_shape)) if spatial_shape else 1
-            vp1f = vp1.reshape(N)
-            vs1f = vs1.reshape(N)
-            rho1f = rho1.reshape(N)
-            vp2f = vp2.reshape(N)
-            vs2f = vs2.reshape(N)
-            rho2f = rho2.reshape(N)
-
-            theta1 = np.deg2rad(theta1_deg)
-            p_flat = np.sin(theta1) / vp1f
-
-            theta2_flat = np.lib.scimath.arcsin(p_flat * vp2f)
-            phi1_flat = np.lib.scimath.arcsin(p_flat * vs1f)
-            phi2_flat = np.lib.scimath.arcsin(p_flat * vs2f)
-
-            rp_flat = _numba_solve_zoeppritz(
-                vp1f,
-                vs1f,
-                rho1f,
-                vp2f,
-                vs2f,
-                rho2f,
-                theta1,
-                theta2_flat,
-                phi1_flat,
-                phi2_flat,
-            )
-            return rp_flat.reshape(spatial_shape)
-
-        # Basic input validation
-        if not (
-            vp1.shape == vs1.shape == rho1.shape == vp2.shape == vs2.shape == rho2.shape
-        ):
-            raise ValueError("All property arrays must have the same spatial shape")
-
         spatial_shape = vp1.shape
-        theta1 = np.deg2rad(theta1_deg)
-
-        # Flatten spatial arrays so we can stream small batches through the 4x4 solver
         N = int(np.prod(spatial_shape)) if spatial_shape else 1
-        vp1_flat = vp1.reshape(N)
-        vs1_flat = vs1.reshape(N)
-        rho1_flat = rho1.reshape(N)
-        vp2_flat = vp2.reshape(N)
-        vs2_flat = vs2.reshape(N)
-        rho2_flat = rho2.reshape(N)
+        vp1f = vp1.reshape(N)
+        vs1f = vs1.reshape(N)
+        rho1f = rho1.reshape(N)
+        vp2f = vp2.reshape(N)
+        vs2f = vs2.reshape(N)
+        rho2f = rho2.reshape(N)
 
-        # Ray parameter (per-point)
-        p_flat = np.sin(theta1) / vp1_flat
+        theta1 = np.deg2rad(theta1_deg)
+        p_flat = np.sin(theta1) / vp1f
 
-        # Use scimath to handle evanescent waves
-        theta2_flat = np.lib.scimath.arcsin(p_flat * vp2_flat)
-        phi1_flat = np.lib.scimath.arcsin(p_flat * vs1_flat)
-        phi2_flat = np.lib.scimath.arcsin(p_flat * vs2_flat)
+        theta2_flat = np.lib.scimath.arcsin(p_flat * vp2f)
+        phi1_flat = np.lib.scimath.arcsin(p_flat * vs1f)
+        phi2_flat = np.lib.scimath.arcsin(p_flat * vs2f)
 
-        # Scalar incident-angle trig terms
-        cth1 = np.cos(theta1)
-        sth1 = np.sin(theta1)
-
-        Rp_flat = np.empty(N, dtype=np.complex128)
-
-        for i0 in range(0, N, self.cpu_batch):
-            i1 = min(N, i0 + self.cpu_batch)
-            # Slice batch
-            vp1b = vp1_flat[i0:i1]
-            vs1b = vs1_flat[i0:i1]
-            rho1b = rho1_flat[i0:i1]
-            vp2b = vp2_flat[i0:i1]
-            vs2b = vs2_flat[i0:i1]
-            rho2b = rho2_flat[i0:i1]
-
-            theta2b = theta2_flat[i0:i1]
-            phi1b = phi1_flat[i0:i1]
-            phi2b = phi2_flat[i0:i1]
-
-            b = i1 - i0
-            A_mat = np.empty((b, 4, 4), dtype=np.complex128)
-            Bi = np.empty((b, 4, 1), dtype=np.complex128)
-
-            # Fill A_mat
-            A_mat[:, 0, 0] = cth1
-            A_mat[:, 0, 1] = -np.sin(phi1b)
-            A_mat[:, 0, 2] = np.cos(theta2b)
-            A_mat[:, 0, 3] = np.sin(phi2b)
-
-            A_mat[:, 1, 0] = sth1
-            A_mat[:, 1, 1] = np.cos(phi1b)
-            A_mat[:, 1, 2] = -np.sin(theta2b)
-            A_mat[:, 1, 3] = np.cos(phi2b)
-
-            A_mat[:, 2, 0] = rho1b * vp1b * np.cos(2 * phi1b)
-            A_mat[:, 2, 1] = -rho1b * vs1b * np.sin(2 * phi1b)
-            A_mat[:, 2, 2] = -rho2b * vp2b * np.cos(2 * phi2b)
-            A_mat[:, 2, 3] = -rho2b * vs2b * np.sin(2 * phi2b)
-
-            A_mat[:, 3, 0] = rho1b * vs1b * (vs1b / vp1b) * np.sin(2 * theta1)
-            A_mat[:, 3, 1] = rho1b * vs1b * np.cos(2 * phi1b)
-            A_mat[:, 3, 2] = rho2b * vs2b * (vs2b / vp2b) * np.sin(2 * theta2b)
-            A_mat[:, 3, 3] = -rho2b * vs2b * np.cos(2 * phi2b)
-
-            # Fill Bi
-            Bi[:, 0, 0] = cth1
-            Bi[:, 1, 0] = -sth1
-            Bi[:, 2, 0] = -rho1b * vp1b * np.cos(2 * phi1b)
-            Bi[:, 3, 0] = rho1b * vs1b * (vs1b / vp1b) * np.sin(2 * theta1)
-
-            # Solve batch
-            Xi = np.linalg.solve(A_mat, Bi)
-            Rp_flat[i0:i1] = Xi[:, 0, 0]
-
-        return Rp_flat.reshape(spatial_shape)
+        rp_flat = _numba_solve_zoeppritz(
+            vp1f,
+            vs1f,
+            rho1f,
+            vp2f,
+            vs2f,
+            rho2f,
+            theta1,
+            theta2_flat,
+            phi1_flat,
+            phi2_flat,
+        )
+        return rp_flat.reshape(spatial_shape)
 
 
-if _NUMBA_AVAILABLE:
+# Numba-compiled Gaussian solver is always available (Numba is a required dependency)
 
-    @njit
-    def _solve_4x4_numba(A, b):
-        # In-place Gaussian elimination with partial pivoting
-        M = A.copy()
-        rhs = b.copy()
-        # Forward elimination
-        for k in range(4):
-            piv = k
-            maxval = abs(M[k, k])
-            for ii in range(k + 1, 4):
-                aval = abs(M[ii, k])
-                if aval > maxval:
-                    maxval = aval
-                    piv = ii
+
+@njit
+def _solve_4x4_numba(A, b):
+    # In-place Gaussian elimination with partial pivoting
+    M = A.copy()
+    rhs = b.copy()
+    # Forward elimination
+    for k in range(4):
+        piv = k
+        maxval = abs(M[k, k])
+        for ii in range(k + 1, 4):
+            aval = abs(M[ii, k])
+            if aval > maxval:
+                maxval = aval
+                piv = ii
             if piv != k:
                 for jj in range(k, 4):
                     tmp = M[k, jj]
@@ -246,51 +144,52 @@ if _NUMBA_AVAILABLE:
                 x[ii] = s / M[ii, ii]
         return x
 
-    @njit(parallel=True)
-    def _numba_solve_zoeppritz(
-        vp1f, vs1f, rho1f, vp2f, vs2f, rho2f, theta1, theta2f, phi1f, phi2f
-    ):
-        N = vp1f.size
-        cth1 = np.cos(theta1)
-        sth1 = np.sin(theta1)
 
-        out = np.empty(N, dtype=np.complex128)
-        for i in prange(N):
-            theta2 = theta2f[i]
-            phi1 = phi1f[i]
-            phi2 = phi2f[i]
+@njit(parallel=True)
+def _numba_solve_zoeppritz(
+    vp1f, vs1f, rho1f, vp2f, vs2f, rho2f, theta1, theta2f, phi1f, phi2f
+):
+    N = vp1f.size
+    cth1 = np.cos(theta1)
+    sth1 = np.sin(theta1)
 
-            A = np.empty((4, 4), dtype=np.complex128)
-            b = np.empty(4, dtype=np.complex128)
-            A[0, 0] = cth1
-            A[0, 1] = -np.sin(phi1)
-            A[0, 2] = np.cos(theta2)
-            A[0, 3] = np.sin(phi2)
+    out = np.empty(N, dtype=np.complex128)
+    for i in prange(N):
+        theta2 = theta2f[i]
+        phi1 = phi1f[i]
+        phi2 = phi2f[i]
 
-            A[1, 0] = sth1
-            A[1, 1] = np.cos(phi1)
-            A[1, 2] = -np.sin(theta2)
-            A[1, 3] = np.cos(phi2)
+        A = np.empty((4, 4), dtype=np.complex128)
+        b = np.empty(4, dtype=np.complex128)
+        A[0, 0] = cth1
+        A[0, 1] = -np.sin(phi1)
+        A[0, 2] = np.cos(theta2)
+        A[0, 3] = np.sin(phi2)
 
-            A[2, 0] = rho1f[i] * vp1f[i] * np.cos(2 * phi1)
-            A[2, 1] = -rho1f[i] * vs1f[i] * np.sin(2 * phi1)
-            A[2, 2] = -rho2f[i] * vp2f[i] * np.cos(2 * phi2)
-            A[2, 3] = -rho2f[i] * vs2f[i] * np.sin(2 * phi2)
+        A[1, 0] = sth1
+        A[1, 1] = np.cos(phi1)
+        A[1, 2] = -np.sin(theta2)
+        A[1, 3] = np.cos(phi2)
 
-            A[3, 0] = rho1f[i] * vs1f[i] * (vs1f[i] / vp1f[i]) * np.sin(2 * theta1)
-            A[3, 1] = rho1f[i] * vs1f[i] * np.cos(2 * phi1)
-            A[3, 2] = rho2f[i] * vs2f[i] * (vs2f[i] / vp2f[i]) * np.sin(2 * theta2)
-            A[3, 3] = -rho2f[i] * vs2f[i] * np.cos(2 * phi2)
+        A[2, 0] = rho1f[i] * vp1f[i] * np.cos(2 * phi1)
+        A[2, 1] = -rho1f[i] * vs1f[i] * np.sin(2 * phi1)
+        A[2, 2] = -rho2f[i] * vp2f[i] * np.cos(2 * phi2)
+        A[2, 3] = -rho2f[i] * vs2f[i] * np.sin(2 * phi2)
 
-            b[0] = cth1
-            b[1] = -sth1
-            b[2] = -rho1f[i] * vp1f[i] * np.cos(2 * phi1)
-            b[3] = rho1f[i] * vs1f[i] * (vs1f[i] / vp1f[i]) * np.sin(2 * theta1)
+        A[3, 0] = rho1f[i] * vs1f[i] * (vs1f[i] / vp1f[i]) * np.sin(2 * theta1)
+        A[3, 1] = rho1f[i] * vs1f[i] * np.cos(2 * phi1)
+        A[3, 2] = rho2f[i] * vs2f[i] * (vs2f[i] / vp2f[i]) * np.sin(2 * theta2)
+        A[3, 3] = -rho2f[i] * vs2f[i] * np.cos(2 * phi2)
 
-            x = _solve_4x4_numba(A, b)
-            out[i] = x[0]
+        b[0] = cth1
+        b[1] = -sth1
+        b[2] = -rho1f[i] * vp1f[i] * np.cos(2 * phi1)
+        b[3] = rho1f[i] * vs1f[i] * (vs1f[i] / vp1f[i]) * np.sin(2 * theta1)
 
-        return out.reshape((vp1f.shape[0],))
+        x = _solve_4x4_numba(A, b)
+        out[i] = x[0]
+
+    return out.reshape((vp1f.shape[0],))
 
 
 # Module-level singletons for reuse across the package
@@ -312,21 +211,9 @@ def configure_reflectivity(
     performance without constructing new objects.
     """
     global reflectivity_calc, zoeppritz_solver
-    return _impl_configure_reflectivity(use_numba=use_numba, cpu_batch=cpu_batch)
-
-
-def _impl_configure_reflectivity(
-    use_numba: bool | None = None, cpu_batch: int | None = None
-) -> None:
-    """Canonical implementation for configuring module-level reflectivity singletons.
-
-    This keeps configuration logic in a single implementation function that
-    can be invoked by both the top-level helper and tests.
-    """
-    global reflectivity_calc, zoeppritz_solver
     if use_numba is not None:
-        # Update zoeppritz solver preference
-        zoeppritz_solver.use_numba = bool(use_numba) and _NUMBA_AVAILABLE
+        # Update zoeppritz solver preference (Numba is always available)
+        zoeppritz_solver.use_numba = bool(use_numba)
     if cpu_batch is not None:
         try:
             zoeppritz_solver.cpu_batch = int(cpu_batch)
@@ -341,16 +228,6 @@ def get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator
     This follows the repository convention of providing `get_*` helpers for
     module-level lazy singletons to simplify testing and dependency injection.
     """
-    return _impl_get_reflectivity_calc(config)
-
-
-def _impl_get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator":
-    """Canonical getter for the module-level reflectivity_calc proxy.
-
-    When `config` is None the lazy proxy is returned; when a dict is
-    provided a new instance is returned to allow tests to inject configured
-    instances via the same API surface.
-    """
     if config is None:
         return reflectivity_calc
     return ReflectivityCalculator()
@@ -359,15 +236,6 @@ def _impl_get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalc
 def get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
     """Return the module-level zoeppritz_solver proxy when `config` is None,
     otherwise return a new ZoeppritzSolver instance with optional config.
-    """
-    return _impl_get_zoeppritz_solver(config)
-
-
-def _impl_get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
-    """Canonical getter for the module-level zoeppritz_solver proxy.
-
-    Returns the lazy singleton when `config` is None. If a config dict is
-    provided the dict is used to construct a configured ZoeppritzSolver.
     """
     if config is None:
         return zoeppritz_solver

@@ -83,12 +83,7 @@ seismic_processor: SeismicProcessor = LazyObjectProxy(lambda: SeismicProcessor()
 
 
 def get_seismic_processor(instance: SeismicProcessor | None = None) -> SeismicProcessor:
-    return instance if instance is not None else seismic_processor
-
-
-def _impl_get_seismic_processor(
-    instance: SeismicProcessor | None = None,
-) -> SeismicProcessor:
+    """Get the seismic processor instance."""
     return instance if instance is not None else seismic_processor
 
 
@@ -102,29 +97,7 @@ def apply_wavelet_to_cube(
     progress_every: Optional[int] = 30,
     prefix: str = "",
 ) -> np.ndarray:
-    # Delegate directly to the default processor for convenience; tests can
-    # still obtain a custom processor via `get_seismic_processor()`.
-    return _default_processor.apply_wavelet_to_cube(
-        refl_cube, wavelet, mode=mode, progress_every=progress_every, prefix=prefix
-    )
-
-
-# Note: property-to-seismogram helpers are not part of the current API. Use AVO modeling helpers
-# exposed by src.modeling.create_avo_synthetics or the ModelingEngine facade.
-
-
-def _impl_apply_wavelet_to_cube(
-    refl_cube: np.ndarray,
-    wavelet: np.ndarray,
-    mode: str = "same",
-    progress_every: Optional[int] = 30,
-    prefix: str = "",
-) -> np.ndarray:
-    """Canonical implementation delegating to the default SeismicProcessor.
-
-    This provides a single implementation point that callers and tests can
-    reference without depending on module-level mutable defaults.
-    """
+    """Apply wavelet to reflection cube."""
     return _default_processor.apply_wavelet_to_cube(
         refl_cube, wavelet, mode=mode, progress_every=progress_every, prefix=prefix
     )

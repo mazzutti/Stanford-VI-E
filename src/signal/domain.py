@@ -6,6 +6,7 @@ Helpers to convert depth-domain property cubes into irregular two-way time
 
 import os
 import numpy as np
+from numba import njit, prange
 
 # tqdm is only used in some code paths; import lazily if needed to avoid
 # top-level unused-import warnings and heavy deps during import.
@@ -13,9 +14,6 @@ try:
     from tqdm import tqdm  # type: ignore
 except Exception:
     tqdm = None
-
-# Try to import numba for faster resampling
-from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
 
 import logging
 
@@ -88,28 +86,24 @@ class DepthTimeConverter:
                 (ni, nj, len(time_axis)), dtype=cube_arr.dtype
             )
 
-        # If numba is available and enabled, use a compiled nearest-neighbor resampler
-        use_numba = (
-            os.environ.get("RESAMPLE_USE_NUMBA", "1") == "1" and _NUMBA_AVAILABLE
-        )
-        if use_numba:
-            # Use a parallel numba kernel that walks each trace with a two-pointer
-            # approach (O(nz+nt) per trace) which is very efficient and avoids
-            # Python overhead for large grids.
-            @njit(parallel=True)
-            def _resample_numba(twt_ir, props, t_axis, out):
-                ni, nj, nz = props.shape
-                nt = t_axis.shape[0]
-                for ii in prange(ni):
-                    for jj in range(nj):
-                        twt = twt_ir[ii, jj]
-                        prop = props[ii, jj]
-                        k = 0
-                        for ti in range(nt):
-                            t = t_axis[ti]
-                            # advance k while next sample is still less than t
-                            while k + 1 < nz and twt[k + 1] < t:
-                                k += 1
+        # Numba is a required dependency, so always use optimized resampling
+        # Use a parallel numba kernel that walks each trace with a two-pointer
+        # approach (O(nz+nt) per trace) which is very efficient and avoids
+        # Python overhead for large grids.
+        @njit(parallel=True)
+        def _resample_numba(twt_ir, props, t_axis, out):
+            ni, nj, nz = props.shape
+            nt = t_axis.shape[0]
+            for ii in prange(ni):
+                for jj in range(nj):
+                    twt = twt_ir[ii, jj]
+                    prop = props[ii, jj]
+                    k = 0
+                    for ti in range(nt):
+                        t = t_axis[ti]
+                        # advance k while next sample is still less than t
+                        while k + 1 < nz and twt[k + 1] < t:
+                            k += 1
                             # choose nearest between k and k+1
                             if k + 1 < nz:
                                 if abs(twt[k] - t) <= abs(twt[k + 1] - t):
@@ -161,33 +155,13 @@ class DepthTimeConverter:
 
 
 def convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
-    return _impl_convert_depth_to_twt(vp_depth, grid_spec)
-
-
-def resample_properties_to_time(properties_depth, twt_irregular, grid_spec: GridSpec):
-    return _impl_resample_properties_to_time(properties_depth, twt_irregular, grid_spec)
-
-
-def _impl_convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
-    """Canonical implementation for convert_depth_to_twt.
-
-    This function centralizes the conversion entrypoint for easier testing
-    and to provide a canonical callable. It preserves the original
-    behavior.
-    """
-    # Prefer the get_* helper which returns either a provided instance or
-    # the module-level lazy proxy when grid_spec is None.
+    """Convert depth to two-way time."""
     converter = get_depth_time_converter(grid_spec=grid_spec)
     return converter.convert_depth_to_twt(vp_depth)
 
 
-def _impl_resample_properties_to_time(
-    properties_depth, twt_irregular, grid_spec: GridSpec
-):
-    """Canonical implementation for resample_properties_to_time.
-
-    Delegates to DepthTimeConverter while preserving Quantity handling.
-    """
+def resample_properties_to_time(properties_depth, twt_irregular, grid_spec: GridSpec):
+    """Resample properties from depth to time."""
     converter = get_depth_time_converter(grid_spec=grid_spec)
     return converter.resample_properties_to_time(properties_depth, twt_irregular)
 
@@ -205,12 +179,6 @@ def get_depth_time_converter(
     DepthTimeConverter is created for the provided `grid_spec` or the
     module-level lazy proxy is returned when `grid_spec` is None.
     """
-    return _impl_get_depth_time_converter(grid_spec=grid_spec, instance=instance)
-
-
-def _impl_get_depth_time_converter(
-    grid_spec: GridSpec | None = None, instance: DepthTimeConverter | None = None
-) -> DepthTimeConverter:
     if instance is not None:
         return instance
     if grid_spec is not None:

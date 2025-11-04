@@ -63,16 +63,6 @@ def get_wavelet_helper(config: dict | None = None):
     otherwise return a new `WaveletHelper` instance. This mirrors the
     `get_default_*` helpers used elsewhere and centralizes access patterns.
     """
-    return _impl_get_wavelet_helper(config)
-
-
-def _impl_get_wavelet_helper(config: dict | None = None):
-    """Canonical getter for the module-level wavelet_helper proxy.
-
-    When `config` is None the lazy proxy is returned. If a config dict is
-    provided a new WaveletHelper instance is returned so callers can inject
-    configured helpers during testing.
-    """
     if config is None:
         return wavelet_helper
     return WaveletHelper()
@@ -87,11 +77,7 @@ def ricker_wavelet(f_peak: float, length: float = 0.128, dt: float = 0.002):
 
     This delegates to the `WaveletHelper` facade via the `wavelet_helper` proxy.
     """
-    return _impl_ricker_wavelet(f_peak, length=length, dt=dt)
-
-
-def _impl_ricker_wavelet(f_peak: float, length: float = 0.128, dt: float = 0.002):
     return wavelet_helper.ricker_wavelet(f_peak=f_peak, length=length, dt=dt)
 
 
-__all__.extend(["ricker_wavelet", "_impl_ricker_wavelet"])
+__all__.append("ricker_wavelet")
