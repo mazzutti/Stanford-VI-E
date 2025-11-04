@@ -13,6 +13,7 @@ Test organization:
 - Integration tests
 - Edge cases and error handling
 """
+
 # mypy: ignore-errors
 
 
@@ -119,15 +120,15 @@ def dummy_manager() -> DummyProcessManager:
 @pytest.fixture
 def initialized_instance(dummy_manager: DummyProcessManager) -> AnalysisCommon:
     """Provide an initialized AnalysisCommon singleton."""
-    return AnalysisCommon.create_with_manager(dummy_manager)
+    return AnalysisCommon.instance(dummy_manager)
 
 
 def test_singleton_instance_returns_same_object(
     dummy_manager: DummyProcessManager,
 ) -> None:
     """Test that instance() always returns the same singleton object."""
-    instance1 = AnalysisCommon.create_with_manager(dummy_manager)
-    instance2 = AnalysisCommon.create_with_manager(dummy_manager)
+    instance1 = AnalysisCommon.instance(dummy_manager)
+    instance2 = AnalysisCommon.instance(dummy_manager)
     assert instance1 is instance2, "Should return same singleton instance"
 
 
@@ -135,7 +136,7 @@ def test_singleton_identity_with_multiple_calls(
     dummy_manager: DummyProcessManager,
 ) -> None:
     """Test singleton identity across multiple calls."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
     instances = [AnalysisCommon.instance() for _ in range(5)]
     assert all(
         inst is instance for inst in instances
@@ -145,10 +146,10 @@ def test_singleton_identity_with_multiple_calls(
 def test_singleton_reset_creates_new_instance() -> None:
     """Test that reset() invalidates the singleton."""
     manager1 = DummyProcessManager()
-    instance1 = AnalysisCommon.create_with_manager(manager1)
+    instance1 = AnalysisCommon.instance(manager1)
     AnalysisCommon.reset()
     manager2 = DummyProcessManager()
-    instance2 = AnalysisCommon.create_with_manager(manager2)
+    instance2 = AnalysisCommon.instance(manager2)
     assert instance1 is not instance2, "After reset, should create new instance"
 
 
@@ -160,18 +161,18 @@ def test_instance_without_manager_auto_initializes() -> None:
         assert instance.is_initialized, "Should auto-initialize with default manager"
 
 
-def test_create_with_manager_initializes_with_provided_manager(
+def test_instance_initializes_with_provided_manager(
     dummy_manager: DummyProcessManager,
 ) -> None:
-    """Test that create_with_manager() properly initializes singleton."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    """Test that instance() properly initializes singleton."""
+    instance = AnalysisCommon.instance(dummy_manager)
     assert instance.is_initialized, "Should be initialized"
     assert instance.proc_manager is dummy_manager, "Should use provided manager"
 
 
 def test_initialize_via_configure(dummy_manager: DummyProcessManager) -> None:
     """Test initialization through configure()."""
-    instance = AnalysisCommon.create_with_manager(DummyProcessManager())
+    instance = AnalysisCommon.instance(DummyProcessManager())
     second_manager = DummyProcessManager()
     instance.configure(second_manager)
     assert instance.is_initialized, "Should still be initialized"
@@ -233,10 +234,10 @@ def test_inequality_different_instances() -> None:
     """Test that different instances are not equal."""
     AnalysisCommon.reset()
     manager1 = DummyProcessManager()
-    instance1 = AnalysisCommon.create_with_manager(manager1)
+    instance1 = AnalysisCommon.instance(manager1)
     AnalysisCommon.reset()
     manager2 = DummyProcessManager()
-    instance2 = AnalysisCommon.create_with_manager(manager2)
+    instance2 = AnalysisCommon.instance(manager2)
     assert instance1 != instance2, "Different singletons should not be equal"
 
 
@@ -281,36 +282,29 @@ def test_hash_same_for_singleton() -> None:
 
 def test_bool_initialized_is_true() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     assert instance
     assert bool(instance) is True
 
 
 def test_context_manager_basic() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     with instance as ctx:
         assert ctx is instance
         assert ctx.is_initialized
 
 
-def test_temporary_manager_context() -> None:
-    manager = DummyProcessManager()
-    with AnalysisCommon.temporary_manager(manager) as temp_instance:
-        assert temp_instance.is_initialized
-        assert temp_instance.proc_manager is manager
-
-
 def test_call_delegates_to_process_manager() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     result = instance("clear_cache")
     assert result == 5
 
 
 def test_call_with_keyword_arguments(dummy_manager: DummyProcessManager) -> None:
     """Test __call__ with keyword arguments."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
     result = instance("open_file", filepath=TEST_FILEPATH)
     assert result is True
 
@@ -327,7 +321,7 @@ def test_delegated_methods(
     dummy_manager: DummyProcessManager, method_name: str, expected_result: Any
 ) -> None:
     """Test that delegated methods return correct values using parametrize."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
 
     if method_name == "clear_cache":
         result = instance.clear_cache()
@@ -345,7 +339,7 @@ def test_delegated_methods(
 
 def test_clear_cache_delegates(dummy_manager: DummyProcessManager) -> None:
     """Test clear_cache() properly delegates to process_manager."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
     result = instance.clear_cache()
     assert result == 5
     assert dummy_manager.get_call_count("clear_cache") == 1
@@ -353,7 +347,7 @@ def test_clear_cache_delegates(dummy_manager: DummyProcessManager) -> None:
 
 def test_open_file_delegates(dummy_manager: DummyProcessManager) -> None:
     """Test open_file() properly delegates to process_manager."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
     result = instance.open_file(TEST_FILEPATH)
     assert result is True
     assert dummy_manager.get_call_count("open_file") == 1
@@ -361,14 +355,14 @@ def test_open_file_delegates(dummy_manager: DummyProcessManager) -> None:
 
 def test_summarize_cache_files_delegates(dummy_manager: DummyProcessManager) -> None:
     """Test summarize_cache_files() properly delegates to process_manager."""
-    instance = AnalysisCommon.create_with_manager(dummy_manager)
+    instance = AnalysisCommon.instance(dummy_manager)
     instance.summarize_cache_files()
     assert dummy_manager.get_call_count("summarize_cache_files") == 1
 
 
 def test_full_workflow() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     assert instance.is_initialized
     instance.clear_cache()
     instance.open_file("test.txt")
@@ -377,7 +371,7 @@ def test_full_workflow() -> None:
 
 
 def test_configuration_change() -> None:
-    instance = AnalysisCommon.create_with_manager(DummyProcessManager())
+    instance = AnalysisCommon.instance(DummyProcessManager())
     manager1 = DummyProcessManager()
     manager2 = DummyProcessManager()
     instance.configure(manager1)
@@ -388,7 +382,7 @@ def test_configuration_change() -> None:
 
 def test_access_manager_after_initialization() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     assert instance.proc_manager is manager
 
 
@@ -398,7 +392,7 @@ def test_thread_safe_singleton_creation() -> None:
     manager = DummyProcessManager()
 
     def create_instance() -> None:
-        instances.append(AnalysisCommon.create_with_manager(manager))
+        instances.append(AnalysisCommon.instance(manager))
 
     threads = [threading.Thread(target=create_instance) for _ in range(10)]
     for thread in threads:
@@ -412,7 +406,7 @@ def test_thread_safe_singleton_creation() -> None:
 
 def test_thread_safe_configuration() -> None:
     """Test that configuration changes are thread-safe."""
-    instance = AnalysisCommon.create_with_manager(DummyProcessManager())
+    instance = AnalysisCommon.instance(DummyProcessManager())
     managers = [DummyProcessManager() for _ in range(5)]
 
     def configure_with_manager(mgr: DummyProcessManager) -> None:
@@ -432,7 +426,7 @@ def test_thread_safe_configuration() -> None:
 def test_concurrent_method_calls() -> None:
     """Test that concurrent method calls work correctly."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
 
     def call_method() -> None:
         instance.clear_cache()
@@ -446,14 +440,14 @@ def test_concurrent_method_calls() -> None:
 
 
 def test_double_reset() -> None:
-    AnalysisCommon.create_with_manager(DummyProcessManager())
+    AnalysisCommon.instance(DummyProcessManager())
     AnalysisCommon.reset()
     AnalysisCommon.reset()
 
 
 def test_hash_in_set() -> None:
     manager = DummyProcessManager()
-    instance1 = AnalysisCommon.create_with_manager(manager)
+    instance1 = AnalysisCommon.instance(manager)
     instance2 = AnalysisCommon.instance()
 
     singleton_set = {instance1, instance2}
@@ -462,14 +456,14 @@ def test_hash_in_set() -> None:
 
 def test_hash_in_dict() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     dict_with_singleton = {instance: "value"}
 
     assert dict_with_singleton[AnalysisCommon.instance()] == "value"
 
 
 def test_repr_consistency() -> None:
-    instance = AnalysisCommon.create_with_manager(DummyProcessManager())
+    instance = AnalysisCommon.instance(DummyProcessManager())
     repr1 = repr(instance)
     repr2 = repr(instance)
 
@@ -478,21 +472,21 @@ def test_repr_consistency() -> None:
 
 def test_call_with_invalid_method_raises_error() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     with pytest.raises(AttributeError, match="ProcessManager has no method"):
         instance("nonexistent_method")
 
 
 def test_clear_cache_with_patterns() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     result = instance.clear_cache(patterns=["*.pkl"])
     assert result == 5
 
 
 def test_open_file_with_description() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     result = instance.open_file("/path/file.txt", description="test file")
     assert result is True
 
@@ -500,13 +494,13 @@ def test_open_file_with_description() -> None:
 def test_summarize_with_keys() -> None:
     """Test summarize_cache_files with keys parameter."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     instance.summarize_cache_files(keys=["key1", "key2"])
 
 
 def test_validation_rejects_none() -> None:
     """Test that configure(None) raises TypeError."""
-    instance = AnalysisCommon.create_with_manager(DummyProcessManager())
+    instance = AnalysisCommon.instance(DummyProcessManager())
     with pytest.raises(TypeError):
         instance.configure(None)  # type: ignore[arg-type]
 
@@ -530,14 +524,14 @@ def test_validation_accepts_duck_typed_manager() -> None:
         ) -> None:
             return None
 
-    instance = AnalysisCommon.create_with_manager(MinimalManager())
+    instance = AnalysisCommon.instance(MinimalManager())
     assert instance.is_initialized
 
 
 def test_initialization_idempotent() -> None:
     manager1 = DummyProcessManager()
     manager2 = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager1)
+    instance = AnalysisCommon.instance(manager1)
     first_mgr = instance.proc_manager
     instance.configure(manager2)
     second_mgr = instance.proc_manager
@@ -545,19 +539,9 @@ def test_initialization_idempotent() -> None:
     assert second_mgr is manager2
 
 
-def test_multiple_context_managers() -> None:
-    manager1 = DummyProcessManager()
-    manager2 = DummyProcessManager()
-
-    with AnalysisCommon.temporary_manager(manager1) as instance1:
-        assert instance1.proc_manager is manager1
-        instance1.configure(manager2)
-        assert instance1.proc_manager is manager2
-
-
 def test_manager_method_with_all_parameters() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     cache_dir = Path("/tmp/cache")
     instance.clear_cache(
         patterns=["*.pkl", "*.npy"], cache_dir=cache_dir, prefix="test"
@@ -567,14 +551,14 @@ def test_manager_method_with_all_parameters() -> None:
 
 def test_call_method_returns_value() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     result = instance("clear_cache", patterns=["*.pkl"])
     assert result == 5
 
 
 def test_clear_cache_default_parameters() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     result = instance.clear_cache()
     assert result == 5
 
@@ -585,28 +569,6 @@ def test_new_always_returns_singleton() -> None:
     instance2 = AnalysisCommon(manager)
     instance3 = AnalysisCommon.instance()
     assert instance1 is instance2 is instance3
-
-
-def test_context_manager_restores_state() -> None:
-    """Test that context manager properly restores state."""
-    manager1 = DummyProcessManager()
-    manager2 = DummyProcessManager()
-    AnalysisCommon.create_with_manager(manager1)
-
-    with AnalysisCommon.temporary_manager(manager2):
-        pass
-
-    AnalysisCommon.reset()
-
-
-def test_singleton_with_exception_in_context() -> None:
-    manager = DummyProcessManager()
-    try:
-        with AnalysisCommon.temporary_manager(manager):
-            raise ValueError("Test exception")
-    except ValueError:
-        pass
-    AnalysisCommon.reset()
 
 
 def test_required_methods_constant() -> None:
@@ -625,7 +587,7 @@ def test_initialization_requires_manager() -> None:
 def test_configure_replaces_manager() -> None:
     manager1 = DummyProcessManager()
     manager2 = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager1)
+    instance = AnalysisCommon.instance(manager1)
 
     assert instance.proc_manager is manager1
     instance.configure(manager2)
@@ -634,7 +596,7 @@ def test_configure_replaces_manager() -> None:
 
 def test_call_with_return_value() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
 
     result = instance("clear_cache", patterns=["*.pkl"])
     assert result == 5
@@ -643,7 +605,7 @@ def test_call_with_return_value() -> None:
 
 def test_multiple_delegated_calls() -> None:
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
 
     for i in range(5):
         instance.clear_cache()
@@ -657,7 +619,7 @@ def test_manager_state_isolation() -> None:
     manager1 = DummyProcessManager()
     manager2 = DummyProcessManager()
 
-    instance = AnalysisCommon.create_with_manager(manager1)
+    instance = AnalysisCommon.instance(manager1)
     instance.clear_cache()
 
     assert len(manager1.call_log) == 1
@@ -670,18 +632,10 @@ def test_manager_state_isolation() -> None:
     assert len(manager2.call_log) == 1
 
 
-def test_assert_initialized_static_method() -> None:
-    """Test _assert_initialized static validation method."""
-    manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
-    # Should not raise
-    AnalysisCommon._assert_initialized(instance)
-
-
 def test_repr_uninitialized() -> None:
     """Test __repr__ with error handling for uninitialized."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     repr_str = repr(instance)
     assert "AnalysisCommon" in repr_str
     assert "DummyProcessManager" in repr_str
@@ -691,7 +645,7 @@ def test_str_uninitialized_case() -> None:
     """Test __str__ returns uninitialized string."""
     # Create initialized instance, then we'd need reflection to test uninitialized
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     str_repr = str(instance)
     assert "initialized" in str_repr
     assert "DummyProcessManager" in str_repr
@@ -700,7 +654,7 @@ def test_str_uninitialized_case() -> None:
 def test_configure_idempotent_with_same_manager() -> None:
     """Test that configuring with same manager is safe."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     instance.configure(manager)  # Should not raise or error
     assert instance.proc_manager is manager
 
@@ -708,36 +662,25 @@ def test_configure_idempotent_with_same_manager() -> None:
 def test_call_logging_behavior() -> None:
     """Test that __call__ logs method invocations."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
     # This exercises the logging path
     result = instance("clear_cache", patterns=["*.pkl"], prefix="test")
     assert result == 5
     assert len(manager.call_log) > 0
 
 
-def test_temporary_manager_context_calls_enter_exit() -> None:
-    """Test that temporary_manager properly calls context manager protocol."""
-    manager = DummyProcessManager()
-    AnalysisCommon.create_with_manager(manager)
-
-    with AnalysisCommon.temporary_manager(manager) as ctx:
-        assert ctx.is_initialized
-
-    AnalysisCommon.reset()
-
-
 def test_multiple_resets_safe() -> None:
     """Test that multiple consecutive resets are safe."""
     for i in range(3):
         manager = DummyProcessManager()
-        AnalysisCommon.create_with_manager(manager)
+        AnalysisCommon.instance(manager)
         AnalysisCommon.reset()
 
 
 def test_eq_with_non_analysiscommon_object() -> None:
     """Test equality comparison with non-AnalysisCommon objects."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
 
     # Test inequality with various types
     assert (instance == "string") is False
@@ -750,7 +693,7 @@ def test_eq_with_non_analysiscommon_object() -> None:
 def test_ne_returns_correct_inverse() -> None:
     """Test inequality is correct inverse of equality."""
     manager = DummyProcessManager()
-    instance1 = AnalysisCommon.create_with_manager(manager)
+    instance1 = AnalysisCommon.instance(manager)
 
     # Self equality and inequality
     assert (instance1 == instance1) is True
@@ -764,7 +707,7 @@ def test_ne_returns_correct_inverse() -> None:
 def test_hash_allows_use_in_collections() -> None:
     """Test that hash makes singleton usable in collections."""
     manager = DummyProcessManager()
-    instance = AnalysisCommon.create_with_manager(manager)
+    instance = AnalysisCommon.instance(manager)
 
     # Use in set
     s = {instance}

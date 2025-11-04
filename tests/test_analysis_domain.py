@@ -12,6 +12,7 @@ Tests cover:
 - Context manager functionality
 - Error handling and recovery
 """
+
 # mypy: ignore-errors
 
 
@@ -30,7 +31,7 @@ from src.analysis.domain import (
     DomainHandlerFactory,
     HandlerStatistics,
 )
-from src.analysis.types import Domain
+from src.analysis.domain.enum import Domain
 
 
 class TestDisplayCubes:

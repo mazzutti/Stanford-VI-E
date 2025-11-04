@@ -9,6 +9,7 @@ Tests the AnalyzerBuilder and AnalyzerFactory classes with coverage for:
 - Factory presets
 - Debug functionality
 """
+
 # mypy: ignore-errors
 
 
@@ -20,9 +21,8 @@ import pytest
 from src.analysis.factories import (
     AnalyzerBuilder,
     AnalyzerFactory,
-    BuilderFrozenError,
-    BuilderValidationError,
 )
+from src.analysis.exceptions import BuilderFrozenError, BuilderValidationError
 from src.analysis.models import FaciesCorrelationConfig
 from src.analysis.processors import (
     BoundaryDetector,
