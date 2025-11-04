@@ -17,6 +17,7 @@ from typing import Dict, Sequence, cast
 import numpy as np
 
 from src.analysis.processors.types import FloatingArray
+from src.analysis.types.base import Computer, AnalysisSchema
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,61 @@ DEFAULT_AVO_ANGLES_DEG = (0, 5, 10, 15, 20, 25)
 DEFAULT_FLUID_FACTOR_K = 1.0
 
 
-class AVOAttributesComputer:
+class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
     """Computes AVO (Amplitude Variation with Offset) attributes.
 
     Handles computation of intercept and gradient from rock property cubes
     using least-squares fitting of reflectivity values across angles.
     """
+
+    def validate(self, inputs: tuple) -> bool:
+        """Validate AVO inputs.
+
+        Parameters
+        ----------
+        inputs
+            Tuple of (vp, vs, rho) arrays.
+
+        Returns
+        -------
+        bool
+            True if inputs are valid.
+        """
+        if not isinstance(inputs, tuple) or len(inputs) != 3:
+            return False
+        vp, vs, rho = inputs
+        try:
+            self._validate_inputs(vp, vs, rho)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def get_schema(self) -> AnalysisSchema:
+        """Get schema for AVO computation.
+
+        Returns
+        -------
+        AnalysisSchema
+            Schema describing inputs and outputs.
+        """
+        return AnalysisSchema(
+            input_fields={
+                "vp": np.ndarray,
+                "vs": np.ndarray,
+                "rho": np.ndarray,
+            },
+            output_fields={
+                "intercept": np.ndarray,
+                "gradient": np.ndarray,
+                "product": np.ndarray,
+                "scaled_gradient": np.ndarray,
+            },
+            description="Compute AVO attributes (intercept, gradient) from rock properties",
+            constraints={
+                "all_shapes_match": "vp, vs, rho must have identical shapes",
+                "3d_arrays": "All inputs must be 3D arrays",
+            },
+        )
 
     def compute(
         self,
@@ -195,12 +245,56 @@ class AVOAttributesComputer:
             )
 
 
-class LambdaMuRhoComputer:
+class LambdaMuRhoComputer(Computer[tuple, Dict[str, FloatingArray]]):
     """Computes Lamé parameters and derived rock physics attributes.
 
     Handles computation of Lambda-Rho and Mu-Rho from seismic velocities
     and density.
     """
+
+    def validate(self, inputs: tuple) -> bool:
+        """Validate Lambda-Mu-Rho inputs.
+
+        Parameters
+        ----------
+        inputs
+            Tuple of (vp, vs, rho) arrays.
+
+        Returns
+        -------
+        bool
+            True if inputs are valid.
+        """
+        if not isinstance(inputs, tuple) or len(inputs) != 3:
+            return False
+        vp, vs, rho = inputs
+        try:
+            AVOAttributesComputer._validate_inputs(vp, vs, rho)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def get_schema(self) -> AnalysisSchema:
+        """Get schema for Lambda-Mu-Rho computation.
+
+        Returns
+        -------
+        AnalysisSchema
+            Schema describing inputs and outputs.
+        """
+        return AnalysisSchema(
+            input_fields={
+                "vp": np.ndarray,
+                "vs": np.ndarray,
+                "rho": np.ndarray,
+            },
+            output_fields={
+                "lambda_rho": np.ndarray,
+                "mu_rho": np.ndarray,
+                "lambda_mu_ratio": np.ndarray,
+            },
+            description="Compute Lamé parameters from rock properties",
+        )
 
     def compute(
         self,
@@ -239,11 +333,55 @@ class LambdaMuRhoComputer:
         }
 
 
-class FluidFactorComputer:
+class FluidFactorComputer(Computer[tuple, FloatingArray]):
     """Computes fluid factor attribute.
 
     Derives fluid-sensitive attributes from Lambda-Rho and Mu-Rho.
     """
+
+    def validate(self, inputs: tuple) -> bool:
+        """Validate Fluid Factor inputs.
+
+        Parameters
+        ----------
+        inputs
+            Tuple of (lambda_rho, mu_rho) arrays.
+
+        Returns
+        -------
+        bool
+            True if inputs are valid.
+        """
+        if not isinstance(inputs, tuple) or len(inputs) != 2:
+            return False
+        lambda_rho, mu_rho = inputs
+        try:
+            if lambda_rho.shape != mu_rho.shape:
+                return False
+            if lambda_rho.ndim != 3 or mu_rho.ndim != 3:
+                return False
+            return True
+        except (ValueError, TypeError, AttributeError):
+            return False
+
+    def get_schema(self) -> AnalysisSchema:
+        """Get schema for Fluid Factor computation.
+
+        Returns
+        -------
+        AnalysisSchema
+            Schema describing inputs and outputs.
+        """
+        return AnalysisSchema(
+            input_fields={
+                "lambda_rho": np.ndarray,
+                "mu_rho": np.ndarray,
+            },
+            output_fields={
+                "fluid_factor": np.ndarray,
+            },
+            description="Compute fluid-sensitive attribute from Lamé parameters",
+        )
 
     def compute(
         self,
