@@ -24,12 +24,7 @@ Example:
 
 from src.analysis.rock_physics.analyzer import (
     RockPhysicsAnalyzer,
-    _unwrap,
-    AVO_KEYS,
-    LAMBDA_MU_KEYS,
-    DISCRIMINATION_KEYS,
-    OUTPUT_FILENAME,
-    SNR_EPSILON,
+    RockPhysicsConstants,
 )
 from src.analysis.rock_physics.computers import (
     AVOAttributesComputer,
@@ -44,26 +39,11 @@ from src.analysis.rock_physics.discrimination import (
 
 __all__ = [
     "RockPhysicsAnalyzer",
+    "RockPhysicsConstants",
     "AVOAttributesComputer",
     "LambdaMuRhoComputer",
     "FluidFactorComputer",
     "AttributeDiscriminationAnalyzer",
-    "_unwrap",
-    "AVO_KEYS",
-    "LAMBDA_MU_KEYS",
-    "DISCRIMINATION_KEYS",
-    "OUTPUT_FILENAME",
-    "SNR_EPSILON",
     "DEFAULT_AVO_ANGLES_DEG",
     "DEFAULT_FLUID_FACTOR_K",
 ]
-
-# Module-level singleton and getter
-rock_physics_analyzer = RockPhysicsAnalyzer()
-
-
-def get_rock_physics_analyzer(
-    instance: RockPhysicsAnalyzer | None = None,
-) -> RockPhysicsAnalyzer:
-    """Return provided RockPhysicsAnalyzer or module-level singleton."""
-    return instance if instance is not None else rock_physics_analyzer

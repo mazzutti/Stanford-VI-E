@@ -34,48 +34,87 @@ from src.analysis.rock_physics.discrimination import (
 
 logger = logging.getLogger(__name__)
 
-# Constants
-EPSILON = 1e-10
-AVO_KEYS = {"intercept", "gradient", "product", "scaled_gradient"}
-LAMBDA_MU_KEYS = {"lambda_rho", "mu_rho", "lambda_mu_ratio"}
-DISCRIMINATION_KEYS = {
-    "name",
-    "cohens_d",
-    "pearson_r",
-    "p_value",
-    "snr",
-    "mean_class0",
-    "mean_class1",
-    "std_class0",
-    "std_class1",
-}
-SNR_EPSILON = 1e-10
-OUTPUT_FILENAME = "rock_physics_attributes.npz"
-
 # Type variables
 T = TypeVar("T")
 
-# Defaults
-DEFAULT_GRID_SHAPE = (150, 200, 200)
-DEFAULT_DZ = 1.0
-DEFAULT_DT = 0.001
-DEFAULT_DATA_PATH = "."
-DEFAULT_FILE_MAP = {
-    "vp": "P-wave Velocity",
-    "vs": "S-wave Velocity",
-    "rho": "Density",
-    "facies": "Facies",
-}
 
+class RockPhysicsConstants:
+    """Central repository for rock physics computation constants and defaults.
 
-def _unwrap(x: Optional[T]) -> Optional[T]:
-    """Unwrap Quantity objects to numpy arrays if present.
+    Consolidates all magic numbers, configuration values, and default parameters
+    used throughout rock physics analysis into a single, well-documented class.
+    This improves maintainability and makes tuning easier.
 
-    Preserves None values and unwraps Quantity objects that have an 'array' attribute.
+    Constants
+    ---------
+    EPSILON : float
+        Small value for numerical stability in computations.
+    SNR_EPSILON : float
+        Small value for signal-to-noise ratio calculations.
+    AVO_KEYS : frozenset
+        Expected keys in AVO results dictionary.
+    LAMBDA_MU_KEYS : frozenset
+        Expected keys in Lamé parameter results.
+    DISCRIMINATION_KEYS : frozenset
+        Expected keys in discrimination analysis results.
+    OUTPUT_FILENAME : str
+        Default filename for saved rock physics attributes.
+
+    Defaults
+    --------
+    DEFAULT_GRID_SHAPE : tuple
+        Default grid dimensions for analysis.
+    DEFAULT_DZ : float
+        Default depth increment (in meters or units).
+    DEFAULT_DT : float
+        Default time increment (in seconds).
+    DEFAULT_DATA_PATH : str
+        Default path for data loading.
+    DEFAULT_FILE_MAP : dict
+        Default mapping of data fields to filenames.
     """
-    if x is None:
-        return None
-    return x.array if hasattr(x, "array") else x
+
+    # Numerical constants
+    EPSILON: float = 1e-10
+    SNR_EPSILON: float = 1e-10
+
+    # Result key constants
+    AVO_KEYS: frozenset[str] = frozenset(
+        {"intercept", "gradient", "product", "scaled_gradient"}
+    )
+    LAMBDA_MU_KEYS: frozenset[str] = frozenset(
+        {"lambda_rho", "mu_rho", "lambda_mu_ratio"}
+    )
+    DISCRIMINATION_KEYS: frozenset[str] = frozenset(
+        {
+            "name",
+            "cohens_d",
+            "pearson_r",
+            "p_value",
+            "snr",
+            "mean_class0",
+            "mean_class1",
+            "std_class0",
+            "std_class1",
+        }
+    )
+
+    # Output configuration
+    OUTPUT_FILENAME: str = "rock_physics_attributes.npz"
+
+    # Default grid parameters
+    DEFAULT_GRID_SHAPE: tuple[int, int, int] = (150, 200, 200)
+    DEFAULT_DZ: float = 1.0
+    DEFAULT_DT: float = 0.001
+
+    # Default file handling
+    DEFAULT_DATA_PATH: str = "."
+    DEFAULT_FILE_MAP: dict[str, str] = {
+        "vp": "P-wave Velocity",
+        "vs": "S-wave Velocity",
+        "rho": "Density",
+        "facies": "Facies",
+    }
 
 
 class RockPhysicsAnalyzer:
@@ -92,6 +131,53 @@ class RockPhysicsAnalyzer:
         self._lambda_mu_computer = LambdaMuRhoComputer()
         self._fluid_computer = FluidFactorComputer()
         self._discrimination_analyzer = AttributeDiscriminationAnalyzer()
+
+    @classmethod
+    def from_builder(
+        cls,
+        builder_func: Optional[Any] = None,
+    ) -> "RockPhysicsAnalyzer":
+        """Create analyzer using fluent AnalysisBuilder pattern.
+
+        This factory method enables fluent API construction of the analyzer
+        with the AnalysisBuilder pattern for cleaner initialization code.
+
+        Parameters
+        ----------
+        builder_func : Callable, optional
+            Builder function to customize analyzer. If omitted, creates
+            default RockPhysicsAnalyzer instance.
+
+        Returns
+        -------
+        RockPhysicsAnalyzer
+            Constructed analyzer instance
+
+        Examples
+        --------
+        Using default construction::
+
+            from src.analysis import build_rock_physics_analyzer
+            analyzer = RockPhysicsAnalyzer.from_builder()
+
+        Using custom builder::
+
+            from src.analysis import AnalysisBuilder
+            analyzer = RockPhysicsAnalyzer.from_builder(
+                lambda: AnalysisBuilder()
+                    .with_dependency("avo_computer", custom_computer)
+                    .build())
+
+        Or direct instantiation::
+
+            analyzer = RockPhysicsAnalyzer()
+        """
+        from src.analysis.builder import build_rock_physics_analyzer
+
+        if builder_func is None:
+            return build_rock_physics_analyzer()
+
+        return builder_func()
 
     def compute_avo_attributes(
         self,
@@ -186,7 +272,7 @@ class RockPhysicsAnalyzer:
         self, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
         """Load dataset using DatasetManagerFactory with fallback."""
-        from src.analysis.types import DatasetManagerFactory
+        from src.analysis.types.base import DatasetManagerFactory
         from src.io import data_loader
         from typing import cast
 
@@ -209,12 +295,12 @@ class RockPhysicsAnalyzer:
     ) -> Dict[str, FloatingArray]:
         """Consolidate computed attributes into a single results dictionary."""
         # Validate AVO results
-        missing_avo = AVO_KEYS - set(avo_results.keys())
+        missing_avo = RockPhysicsConstants.AVO_KEYS - set(avo_results.keys())
         if missing_avo:
             raise ValueError(f"AVO results missing expected keys: {missing_avo}")
 
         # Validate Lambda-Mu-Rho results
-        missing_lmr = LAMBDA_MU_KEYS - set(lam_mu_rho.keys())
+        missing_lmr = RockPhysicsConstants.LAMBDA_MU_KEYS - set(lam_mu_rho.keys())
         if missing_lmr:
             raise ValueError(
                 f"Lambda-Mu-Rho results missing expected keys: {missing_lmr}"
@@ -236,27 +322,24 @@ class RockPhysicsAnalyzer:
         return results
 
     def _load_and_unwrap_properties(self, dm: DatasetManager) -> tuple[
-        FloatingArray,
-        FloatingArray,
-        FloatingArray,
-        IntegerArray,
+        FloatingArray | None,
+        FloatingArray | None,
+        FloatingArray | None,
+        FloatingArray | None,
     ]:
-        """Load and unwrap properties from dataset manager.
+        """Load and unwrap rock physics properties from dataset manager.
 
-        The unwrapped values should never be None after successful data loading.
+        Returns
+        -------
+        tuple
+            Tuple of (vp, vs, rho, facies), each potentially None.
         """
-        vp = _unwrap(dm.vp)
-        vs = _unwrap(dm.vs)
-        rho = _unwrap(dm.rho)
-        facies = _unwrap(dm.facies)
-
-        # Cast to non-optional since these are loaded from actual data
-        return (
-            cast(FloatingArray, vp),
-            cast(FloatingArray, vs),
-            cast(FloatingArray, rho),
-            cast(IntegerArray, facies),
-        )
+        # Unwrap Quantity objects to numpy arrays if present
+        vp = dm.vp.array if hasattr(dm.vp, "array") else dm.vp
+        vs = dm.vs.array if hasattr(dm.vs, "array") else dm.vs
+        rho = dm.rho.array if hasattr(dm.rho, "array") else dm.rho
+        facies = dm.facies.array if hasattr(dm.facies, "array") else dm.facies
+        return vp, vs, rho, facies
 
     def _get_grid_configuration(self) -> tuple[str, Dict[str, str], Any]:
         """Acquire grid configuration from plotting config or sensible defaults."""
@@ -273,9 +356,13 @@ class RockPhysicsAnalyzer:
             from src.io.grid import GridSpec
 
             return (
-                DEFAULT_DATA_PATH,
-                DEFAULT_FILE_MAP.copy(),
-                GridSpec(DEFAULT_GRID_SHAPE, dz=DEFAULT_DZ, dt=DEFAULT_DT),
+                RockPhysicsConstants.DEFAULT_DATA_PATH,
+                RockPhysicsConstants.DEFAULT_FILE_MAP.copy(),
+                GridSpec(
+                    RockPhysicsConstants.DEFAULT_GRID_SHAPE,
+                    dz=RockPhysicsConstants.DEFAULT_DZ,
+                    dt=RockPhysicsConstants.DEFAULT_DT,
+                ),
             )
 
     def _compute_all_attributes(
@@ -334,7 +421,7 @@ class RockPhysicsAnalyzer:
 
         return avo_results, lam_mu_rho, fluid
 
-    def main(
+    def run(
         self,
         *,
         cache_dir: str = ".cache",
@@ -397,7 +484,7 @@ class RockPhysicsAnalyzer:
         logger.info(f"Saving results to {cache_dir}...")
         try:
             os.makedirs(cache_dir, exist_ok=True)
-            out_fn = os.path.join(cache_dir, OUTPUT_FILENAME)
+            out_fn = os.path.join(cache_dir, RockPhysicsConstants.OUTPUT_FILENAME)
             # Prepare keyword arguments for savez_compressed
             save_kwargs: Dict[str, Any] = {
                 k: (v if v is not None else np.array([]))
