@@ -13,7 +13,6 @@ import numpy as np
 from scipy.signal import fftconvolve
 
 from src.utils.quantity import Quantity
-from src.utils.facades import LazyObjectProxy
 import logging
 
 __all__ = ["SeismicOperator"]
@@ -65,45 +64,21 @@ class SeismicOperator:
         return out
 
 
-# Module-level singleton for convenience (placed after class definition)
-
-
-# Module-level lazy proxy using shared LazyObjectProxy
-seismic_operator = LazyObjectProxy(lambda: SeismicOperator())
-
-
 def convolve_reflectivity_with_wavelet(
     reflectivity_cube: np.ndarray, wavelet: np.ndarray, mode: str = "same"
 ) -> np.ndarray:
-    return _impl_convolve_reflectivity_with_wavelet(
-        reflectivity_cube, wavelet, mode=mode
-    )
+    """Convolve a reflectivity cube with a 1D wavelet along the sample axis.
 
-
-__all__.extend(["seismic_operator", "convolve_reflectivity_with_wavelet"])
-
-
-def get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator":
-    """Return the provided SeismicOperator or the module-level lazy singleton."""
-    return _impl_get_seismic_operator(op)
-
-
-__all__.append("get_seismic_operator")
-
-
-def _impl_convolve_reflectivity_with_wavelet(
-    reflectivity_cube: np.ndarray, wavelet: np.ndarray, mode: str = "same"
-) -> np.ndarray:
-    """Canonical implementation: delegate to SeismicOperator static method."""
+    This is a simple wrapper around fftconvolve to keep callers concise.
+    """
     return SeismicOperator.convolve_reflectivity_with_wavelet(
         reflectivity_cube, wavelet, mode=mode
     )
 
 
-def _impl_get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator":
-    """Canonical implementation for obtaining a SeismicOperator instance.
+__all__.extend(["convolve_reflectivity_with_wavelet"])
 
-    Maintains DI-friendly behaviour: return provided instance or the
-    module-level lazy proxy.
-    """
-    return op if op is not None else seismic_operator
+
+def get_seismic_operator(op: SeismicOperator | None = None) -> "SeismicOperator":
+    """Return the provided SeismicOperator or a new instance."""
+    return op if op is not None else SeismicOperator()

@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 import hashlib
 
-from src.utils.facades import LazyObjectProxy
 from src.processing.resample_plan import ResamplePlan
 
 
@@ -80,10 +79,17 @@ class BackendMetrics:
 
 
 # Export a module-level proxy instance for convenience.
-global_metrics = LazyObjectProxy(lambda: BackendMetrics())
+from src.utils.facades import LazyObjectProxy
 
-
-__all__ = ["PlanFingerprint", "BackendMetrics", "global_metrics"]
+__all__ = [
+    "PlanFingerprint",
+    "BackendMetrics",
+    "global_metrics",
+    "MetricsCollector",
+    "metrics_collector",
+    "get_metrics_collector",
+    "get_global_metrics",
+]
 
 
 # Object-oriented facade for the metrics collector
@@ -106,7 +112,8 @@ class MetricsCollector:
         return self._metrics.get_runtime(backend_name, fingerprint)
 
 
-# provide a module-level lazy proxy for MetricsCollector
+# Module-level lazy proxies
+global_metrics = LazyObjectProxy(lambda: BackendMetrics())
 metrics_collector = LazyObjectProxy(lambda: MetricsCollector())
 
 
@@ -123,14 +130,6 @@ def get_metrics_collector(
     return collector if collector is not None else metrics_collector
 
 
-def _impl_get_metrics_collector(
-    collector: MetricsCollector | None = None,
-) -> "MetricsCollector":
-    # Backwards-compatible alias kept for callers that referenced the
-    # canonical implementation; prefer using `get_metrics_collector`.
-    return collector if collector is not None else metrics_collector
-
-
 __all__.extend(["MetricsCollector", "metrics_collector", "get_metrics_collector"])
 
 
@@ -141,10 +140,3 @@ def get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
     """
     # Return provided BackendMetrics or the module-level lazy proxy directly.
     return inst if inst is not None else global_metrics
-
-
-def _impl_get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
-    return inst if inst is not None else global_metrics
-
-
-__all__.append("get_global_metrics")

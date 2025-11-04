@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 import numpy as np
 
 import logging
-from src.utils.facades import LazyObjectProxy
 
 from src.processing._backend_base import BackendError, ResamplerBackend, BackendResult
 from src.processing.resample_plan import ResamplePlan
@@ -67,14 +66,11 @@ class BackendsRegistry:
 
 
 # Module-level lazy proxy using shared LazyObjectProxy
-backends_registry = LazyObjectProxy(lambda: BackendsRegistry())
+
+
 
 
 def get_backends_registry(config: dict | None = None):
-    return _impl_get_backends_registry(config)
-
-
-def _impl_get_backends_registry(config: dict | None = None):
     if config is None:
         return backends_registry
     return BackendsRegistry()

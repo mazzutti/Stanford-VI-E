@@ -52,10 +52,8 @@ class ProcessManager:
         )
 
 
-# Module-level default instance for convenience (lazy)
-# Module-level lazy proxy using shared LazyObjectProxy
+# Module-level lazy proxy for convenience
 process_manager = LazyObjectProxy(lambda: ProcessManager())
-
 
 __all__.extend(["ProcessManager", "process_manager"])
 

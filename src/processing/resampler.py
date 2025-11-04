@@ -13,7 +13,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from src.processing.interpolator import BatchedInterpolator
 from src.processing.resample_plan import ResamplePlan
-from src.utils.compat import _NUMBA_AVAILABLE, njit, prange
+from numba import njit, prange
 import logging
 import os
 from src.utils.facades import LazyObjectProxy
@@ -53,16 +53,6 @@ def set_backend_verbose(on: bool) -> None:
     When enabled the module logger is set to DEBUG and additional plan
     metadata is emitted when a backend is selected.
     """
-    return _impl_set_backend_verbose(on)
-
-
-def _impl_set_backend_verbose(on: bool) -> None:
-    """Canonical implementation for toggling backend verbose logging.
-
-    Keep import-time side-effects and global changes inside the `_impl_*`
-    implementation so top-level imports remain side-effect free where
-    possible and tests can override behavior easily.
-    """
     global _BACKEND_VERBOSE
     _BACKEND_VERBOSE = bool(on)
     logger = logging.getLogger(__name__)
@@ -77,10 +67,6 @@ def _impl_set_backend_verbose(on: bool) -> None:
 
 def is_backend_verbose() -> bool:
     """Return whether backend verbose logging is enabled for this module."""
-    return _impl_is_backend_verbose()
-
-
-def _impl_is_backend_verbose() -> bool:
     return bool(_BACKEND_VERBOSE)
 
 
@@ -249,9 +235,8 @@ class DepthTimeResampler:
         # resampler that performs per-trace interpolation in parallel. This
         # avoids Python overhead for large grids. Nearest-neighbor categorical
         # resampling still uses the fallback interp1d for correctness.
-        use_numba = (
-            _NUMBA_AVAILABLE and os.environ.get("RESAMPLE_USE_NUMBA", "1") == "1"
-        )
+        # Numba is a required dependency, so use optimized compiled path
+        use_numba = os.environ.get("RESAMPLE_USE_NUMBA", "1") == "1"
 
         # Fast vectorized path: if all TWT traces are identical across the
         # spatial grid (common when using a flat layered model), we can
@@ -589,9 +574,8 @@ class DepthTimeResampler:
         nt = len(time_axis)
         data_time = np.zeros((ni, nj, nt), dtype=data_depth.dtype)
 
-        use_numba = (
-            _NUMBA_AVAILABLE and os.environ.get("RESAMPLE_USE_NUMBA", "1") == "1"
-        )
+        # Numba is a required dependency, so use optimized compiled path
+        use_numba = os.environ.get("RESAMPLE_USE_NUMBA", "1") == "1"
 
         if use_numba:
             if is_categorical or np.issubdtype(data_depth.dtype, np.integer):

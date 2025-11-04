@@ -7,7 +7,6 @@ from typing import Dict, Any
 import numpy as np
 from numpy.typing import ArrayLike
 import logging
-from src.utils.facades import LazyObjectProxy
 
 __all__ = ["check_linearization_validity", "print_validity_report"]
 
@@ -15,52 +14,7 @@ __all__ = ["check_linearization_validity", "print_validity_report"]
 logger = logging.getLogger(__name__)
 
 
-class AVOAnalyzer:
-    def check_linearization_validity(self, vp, vs, rho, *, max_angle: float = 30.0):
-        return _impl_check_linearization_validity(vp, vs, rho, max_angle=max_angle)
-
-    def print_validity_report(self, report: Dict[str, Any]) -> None:
-        return _impl_print_validity_report(report)
-
-
-# Module-level lazy proxy using shared LazyObjectProxy
-avo_analyzer = LazyObjectProxy(lambda: AVOAnalyzer())
-
-
-def check_linearization_validity(vp, vs, rho, *, max_angle: float = 30.0):
-    return _impl_check_linearization_validity(vp, vs, rho, max_angle=max_angle)
-
-
-def print_validity_report(report: Dict[str, Any]) -> None:
-    return avo_analyzer.print_validity_report(report)
-
-
-def _impl_print_validity_report(report: Dict[str, Any]) -> None:
-    return avo_analyzer.print_validity_report(report)
-
-
-__all__.extend(["AVOAnalyzer", "avo_analyzer"])
-
-
-def get_avo_analyzer(instance: AVOAnalyzer | None = None) -> "AVOAnalyzer":
-    """Return provided AVOAnalyzer or module-level lazy singleton."""
-    return instance if instance is not None else avo_analyzer
-
-
-__all__.append("get_avo_analyzer")
-
-
-def _impl_get_avo_analyzer(instance: AVOAnalyzer | None = None) -> AVOAnalyzer:
-    """Canonical implementation for obtaining an AVOAnalyzer instance.
-
-    Returns the provided instance when not None, otherwise returns the
-    module-level `avo_analyzer` lazy proxy. This single entrypoint simplifies
-    testing and consistent injection.
-    """
-    return instance if instance is not None else avo_analyzer
-
-
-def _impl_check_linearization_validity(
+def check_linearization_validity(
     vp: ArrayLike, vs: ArrayLike, rho: ArrayLike, *, max_angle: float = 30.0
 ) -> Dict[str, Any]:
     vp = np.asarray(vp)
@@ -100,7 +54,7 @@ def _impl_check_linearization_validity(
     }
 
 
-def _impl_print_validity_report(report: Dict[str, Any]) -> None:
+def print_validity_report(report: Dict[str, Any]) -> None:
     if not isinstance(report, dict):
         logger.error("Validity report: <invalid format>")
         return
