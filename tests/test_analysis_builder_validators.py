@@ -2,7 +2,7 @@
 # mypy: ignore-errors
 """Comprehensive unit tests for factories/validators module.
 
-Tests cover the validate_type function and BuilderValidationError class
+Tests cover the TypeValidator class and BuilderValidationError class
 with various type validation scenarios including regular types, callables,
 Protocols, and edge cases.
 """
@@ -15,11 +15,8 @@ from unittest import mock
 
 import pytest
 
-from src.analysis.factories.validators import (
-    BuilderFrozenError,
-    BuilderValidationError,
-    validate_type,
-)
+from src.analysis.factories.validators import TypeValidator
+from src.analysis.exceptions import BuilderFrozenError, BuilderValidationError
 
 
 class TestValidateTypeBasic:
@@ -28,18 +25,18 @@ class TestValidateTypeBasic:
     def test_validate_type_with_none_value(self) -> None:  # type: ignore
         """Test that None values are always acceptable."""
         # type: ignore
-        validate_type(None, int, "test_field")
-        validate_type(None, str, "test_field")
-        validate_type(None, list, "test_field")
+        TypeValidator.validate(None, int, "test_field")
+        TypeValidator.validate(None, str, "test_field")
+        TypeValidator.validate(None, list, "test_field")
         # Should not raise any exception
 
     def test_validate_type_with_matching_type(self) -> None:  # type: ignore
         """Test validation with matching types."""
         # type: ignore
-        validate_type(42, int, "count")
-        validate_type("hello", str, "name")
-        validate_type([1, 2, 3], list, "items")
-        validate_type({"key": "value"}, dict, "config")
+        TypeValidator.validate(42, int, "count")
+        TypeValidator.validate("hello", str, "name")
+        TypeValidator.validate([1, 2, 3], list, "items")
+        TypeValidator.validate({"key": "value"}, dict, "config")
 
     def test_validate_type_with_subclass(self) -> None:  # type: ignore
         """Test validation with subclass instances."""
@@ -48,16 +45,16 @@ class TestValidateTypeBasic:
         class CustomInt(int):
             pass
 
-        validate_type(CustomInt(5), int, "number")
+        TypeValidator.validate(CustomInt(5), int, "number")
 
     def test_validate_type_falls_back_to_duck_typing(self) -> None:  # type: ignore
         """Test that validate_type falls back to duck-typing on isinstance failure."""
         # type: ignore
         # The function catches TypeError and falls back to duck-typing,
         # so most values won't raise exceptions
-        validate_type("not an int", int, "count")  # Doesn't raise
-        validate_type(42, str, "name")  # Doesn't raise
-        validate_type([1, 2, 3], dict, "config")  # Doesn't raise
+        TypeValidator.validate("not an int", int, "count")  # Doesn't raise
+        TypeValidator.validate(42, str, "name")  # Doesn't raise
+        TypeValidator.validate([1, 2, 3], dict, "config")  # Doesn't raise
 
 
 class TestValidateCallable:
@@ -70,12 +67,12 @@ class TestValidateCallable:
         def my_func() -> None:  # type: ignore
             pass
 
-        validate_type(my_func, Callable, "handler")
+        TypeValidator.validate(my_func, Callable, "handler")
 
     def test_validate_callable_with_lambda(self) -> None:  # type: ignore
         """Test validation of lambda functions."""
         # type: ignore
-        validate_type(lambda x: x + 1, Callable, "operation")
+        TypeValidator.validate(lambda x: x + 1, Callable, "operation")
 
     def test_validate_callable_with_method(self) -> None:  # type: ignore
         """Test validation of methods."""
@@ -86,7 +83,7 @@ class TestValidateCallable:
                 pass
 
         obj = MyClass()
-        validate_type(obj.my_method, Callable, "callback")
+        TypeValidator.validate(obj.my_method, Callable, "callback")
 
     def test_validate_callable_with_callable_class(self) -> None:  # type: ignore
         """Test validation of callable class instances."""
@@ -97,22 +94,22 @@ class TestValidateCallable:
                 pass
 
         obj = CallableClass()
-        validate_type(obj, Callable, "handler")
+        TypeValidator.validate(obj, Callable, "handler")
 
     def test_validate_callable_with_non_callable(self) -> None:  # type: ignore
         """Test validation fails for non-callable."""
         # type: ignore
         with pytest.raises(TypeError, match="Expected callable"):
-            validate_type(42, Callable, "handler")
+            TypeValidator.validate(42, Callable, "handler")
 
         with pytest.raises(TypeError, match="Expected callable"):
-            validate_type("not callable", Callable, "callback")
+            TypeValidator.validate("not callable", Callable, "callback")
 
     def test_validate_callable_error_includes_field_name(self) -> None:  # type: ignore
         """Test error message includes field name for callable validation."""
         # type: ignore
         with pytest.raises(TypeError, match="my_callback"):
-            validate_type(42, Callable, "my_callback")
+            TypeValidator.validate(42, Callable, "my_callback")
 
 
 class TestValidateType:
@@ -121,7 +118,7 @@ class TestValidateType:
     def test_validate_type_with_int_class(self) -> None:  # type: ignore
         """Test validation of actual type objects."""
         # type: ignore
-        validate_type(int, type, "type_field")
+        TypeValidator.validate(int, type, "type_field")
 
     def test_validate_type_with_custom_class(self) -> None:  # type: ignore
         """Test validation of custom class objects."""
@@ -130,23 +127,23 @@ class TestValidateType:
         class MyClass:
             pass
 
-        validate_type(MyClass, type, "type_field")
+        TypeValidator.validate(MyClass, type, "type_field")
 
     def test_validate_type_with_builtin_type(self) -> None:  # type: ignore
         """Test validation of builtin types."""
         # type: ignore
-        validate_type(str, type, "field")
-        validate_type(list, type, "field")
-        validate_type(dict, type, "field")
+        TypeValidator.validate(str, type, "field")
+        TypeValidator.validate(list, type, "field")
+        TypeValidator.validate(dict, type, "field")
 
     def test_validate_type_fails_for_non_type(self) -> None:  # type: ignore
         """Test validation fails for non-type objects."""
         # type: ignore
         with pytest.raises(TypeError, match="Expected type"):
-            validate_type(42, type, "type_field")
+            TypeValidator.validate(42, type, "type_field")
 
         with pytest.raises(TypeError, match="Expected type"):
-            validate_type("not a type", type, "type_field")
+            TypeValidator.validate("not a type", type, "type_field")
 
 
 class TestValidateProtocol:
@@ -171,7 +168,7 @@ class TestValidateProtocol:
                 return "value"
 
         # Should not raise - implementation duck-types the protocol
-        validate_type(Implementation(), MyProtocol, "handler")
+        TypeValidator.validate(Implementation(), MyProtocol, "handler")
 
     def test_validate_protocol_with_logger(self) -> None:  # type: ignore
         """Test validation for custom types."""
@@ -182,7 +179,7 @@ class TestValidateProtocol:
             pass
 
         # Should not raise - same instance type
-        validate_type(CustomType(), CustomType, "test_field")
+        TypeValidator.validate(CustomType(), CustomType, "test_field")
 
     def test_validate_protocol_with_hasattr_check(self) -> None:  # type: ignore
         """Test Protocol validation uses hasattr checks."""
@@ -199,7 +196,7 @@ class TestValidateProtocol:
                 pass
 
         # Should not raise
-        validate_type(Implementation(), MockProtocol, "impl")
+        TypeValidator.validate(Implementation(), MockProtocol, "impl")
 
     def test_validate_protocol_with_missing_attributes(self) -> None:  # type: ignore
         """Test Protocol validation warns about missing attributes."""
@@ -215,7 +212,7 @@ class TestValidateProtocol:
                 def method1(self) -> None:  # type: ignore
                     pass
 
-            validate_type(PartialImplementation(), MockProtocol, "impl")
+            TypeValidator.validate(PartialImplementation(), MockProtocol, "impl")
             # Should warn about missing methods
             mock_warning.assert_called()
 
@@ -233,7 +230,7 @@ class TestValidateTypeEdgeCases:
             class BrokenProtocol:
                 __protocol_attrs__ = property(lambda self: 1 / 0)  # Will raise
 
-            validate_type(object(), BrokenProtocol, "test")
+            TypeValidator.validate(object(), BrokenProtocol, "test")
             mock_debug.assert_called()
 
     def test_validate_type_with_isinstance_exception(self) -> None:  # type: ignore
@@ -249,7 +246,7 @@ class TestValidateTypeEdgeCases:
                     raise RuntimeError("Bad type check")
 
             # Should handle the exception and fall through to protocol logic
-            validate_type(object(), BadType, "test")
+            TypeValidator.validate(object(), BadType, "test")
             # May log warning
             if mock_warning.called:
                 assert "Could not validate" in str(mock_warning.call_args)
@@ -259,9 +256,9 @@ class TestValidateTypeEdgeCases:
         # type: ignore
         # This tests that the function doesn't crash on type mismatches
         # but falls back to duck-typing
-        validate_type(42, str, "number")
-        validate_type(3.14, int, "number")
-        validate_type([1, 2], dict, "mapping")
+        TypeValidator.validate(42, str, "number")
+        TypeValidator.validate(3.14, int, "number")
+        TypeValidator.validate([1, 2], dict, "mapping")
 
 
 class TestBuilderValidationError:
@@ -364,26 +361,26 @@ class TestValidationWorkflow:
         }
 
         for field_name, (value, expected_type) in fields.items():
-            validate_type(value, expected_type, field_name)
+            TypeValidator.validate(value, expected_type, field_name)
 
     def test_validate_optional_fields(self) -> None:  # type: ignore
         """Test validating optional fields."""
         # type: ignore
         # None is acceptable for any type
-        validate_type(None, str, "optional_name")
-        validate_type(None, int, "optional_count")
-        validate_type(None, list, "optional_items")
+        TypeValidator.validate(None, str, "optional_name")
+        TypeValidator.validate(None, int, "optional_count")
+        TypeValidator.validate(None, list, "optional_items")
 
     def test_validation_error_recovery(self) -> None:  # type: ignore
         """Test error handling in validation."""
         # type: ignore
         try:
-            validate_type(42, str, "name")
+            TypeValidator.validate(42, str, "name")
         except TypeError as e:
             assert "name" in str(e)
             assert "Expected str" in str(e)
             # Recovery
-            validate_type("valid", str, "name")
+            TypeValidator.validate("valid", str, "name")
 
     def test_complex_type_hierarchy(self) -> None:  # type: ignore
         """Test validation with complex type hierarchies."""
@@ -396,10 +393,10 @@ class TestValidationWorkflow:
             pass
 
         # Derived instance matches Base type
-        validate_type(Derived(), Base, "obj")
+        TypeValidator.validate(Derived(), Base, "obj")
 
         # Base instance with Derived type also works due to duck-typing fallback
-        validate_type(Base(), Derived, "obj")
+        TypeValidator.validate(Base(), Derived, "obj")
 
 
 class TestValidateTypeLogging:
@@ -413,7 +410,7 @@ class TestValidateTypeLogging:
             class NotAType:
                 pass
 
-            validate_type(object(), NotAType, "field")
+            TypeValidator.validate(object(), NotAType, "field")
             # Check if any logging was done
             assert len(mock_logger.method_calls) > 0
 
@@ -427,7 +424,7 @@ class TestValidateTypeLogging:
                 def __instancecheck__(cls, instance: object) -> bool:  # type: ignore
                     raise RuntimeError("Bad")
 
-            validate_type(object(), BadType, "field")
+            TypeValidator.validate(object(), BadType, "field")
             assert mock_logger.warning.called or mock_logger.debug.called
 
     def test_logs_warning_on_missing_protocol_attrs(self) -> None:  # type: ignore
@@ -441,14 +438,14 @@ class TestValidateTypeLogging:
             class IncompleteImpl:
                 pass
 
-            validate_type(IncompleteImpl(), MockProtocol, "impl")
+            TypeValidator.validate(IncompleteImpl(), MockProtocol, "impl")
             assert mock_logger.warning.called
 
     def test_logs_with_correct_field_name(self) -> None:  # type: ignore
         """Test that logs include field names."""
         # type: ignore
         with mock.patch("src.analysis.factories.validators.logger") as mock_logger:
-            validate_type(object(), object, "my_specific_field")
+            TypeValidator.validate(object(), object, "my_specific_field")
             # Check that field name appears in logged calls
             call_args_list = [str(call) for call in mock_logger.method_calls]
             # At least one call should mention the field if logging occurs

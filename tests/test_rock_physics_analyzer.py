@@ -8,6 +8,7 @@ Tests cover:
 - RockPhysicsAnalyzer: Full pipeline orchestration
 - Edge cases, error handling, and input validation
 """
+
 # mypy: ignore-errors
 
 
@@ -25,17 +26,9 @@ from src.analysis.rock_physics import (
     FluidFactorComputer,
     AttributeDiscriminationAnalyzer,
     RockPhysicsAnalyzer,
-    get_rock_physics_analyzer,
-    rock_physics_analyzer,
-    AVO_KEYS,
-    LAMBDA_MU_KEYS,
+    RockPhysicsConstants,
     DEFAULT_AVO_ANGLES_DEG,
     DEFAULT_FLUID_FACTOR_K,
-    _unwrap,
-    DISCRIMINATION_KEYS,
-)
-from src.analysis.rock_physics.analyzer import (
-    EPSILON,
 )
 
 
@@ -83,35 +76,6 @@ def mock_zoeppritz_import(mock_zoeppritz_solver):
         yield mock_zoeppritz_solver
 
 
-class TestUnwrap:
-    """Test utility function _unwrap."""
-
-    def test_unwrap_with_quantity_object(self) -> None:
-        """Test unwrap extracts array from Quantity-like object."""
-        mock_quantity = Mock()
-        mock_quantity.array = np.array([1.0, 2.0, 3.0])
-
-        result = _unwrap(mock_quantity)
-        assert_array_equal(result, np.array([1.0, 2.0, 3.0]))
-
-    def test_unwrap_with_numpy_array(self) -> None:
-        """Test unwrap passes through numpy arrays unchanged."""
-        arr = np.array([1.0, 2.0, 3.0])
-        result = _unwrap(arr)
-        assert_array_equal(result, arr)
-        assert result is arr  # Same object
-
-    def test_unwrap_with_scalar(self) -> None:
-        """Test unwrap returns scalar unchanged."""
-        result = _unwrap(42)
-        assert result == 42
-
-    def test_unwrap_with_none(self) -> None:
-        """Test unwrap handles None."""
-        result = _unwrap(None)
-        assert result is None
-
-
 class TestAVOAttributesComputer:
     """Test suite for AVOAttributesComputer."""
 
@@ -139,7 +103,7 @@ class TestAVOAttributesComputer:
 
         # Verify result structure
         assert isinstance(result, dict)
-        assert set(result.keys()) == AVO_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.AVO_KEYS
         assert all(isinstance(v, np.ndarray) for v in result.values())
         assert all(v.shape == (10, 12, 7) for v in result.values())  # nk-1 = 7
 
@@ -166,7 +130,7 @@ class TestAVOAttributesComputer:
         result = computer.compute(vp, vs, rho, angles_deg=angles)
 
         assert isinstance(result, dict)
-        assert set(result.keys()) == AVO_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.AVO_KEYS
 
     def test_compute_empty_angles_raises_error(
         self, sample_rock_properties: tuple
@@ -276,7 +240,7 @@ class TestAVOAttributesComputer:
 
         result = computer.compute(vp, vs, rho)
 
-        expected_scaled = result["gradient"] / (np.abs(result["intercept"]) + EPSILON)
+        expected_scaled = result["gradient"] / (np.abs(result["intercept"]) + 1e-10)
         assert_array_almost_equal(result["scaled_gradient"], expected_scaled)
 
 
@@ -301,7 +265,7 @@ class TestLambdaMuRhoComputer:
             result = computer.compute(vp, vs, rho)
 
         assert isinstance(result, dict)
-        assert set(result.keys()) == LAMBDA_MU_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.LAMBDA_MU_KEYS
 
     def test_mu_rho_calculation(self, sample_rock_properties: tuple) -> None:
         """Test that mu_rho = rho * vs^2."""
@@ -334,7 +298,7 @@ class TestLambdaMuRhoComputer:
 
         mu = rho * vs**2
         lambda_mod = rho * vp**2 - 2 * mu
-        expected_ratio = lambda_mod / (mu + EPSILON)
+        expected_ratio = lambda_mod / (mu + 1e-10)
         assert_array_almost_equal(result["lambda_mu_ratio"], expected_ratio)
 
     def test_output_shapes(self, sample_rock_properties: tuple) -> None:
@@ -422,7 +386,7 @@ class TestAttributeDiscriminationAnalyzer:
 
         # Verify result structure
         assert isinstance(result, dict)
-        assert set(result.keys()) == DISCRIMINATION_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.DISCRIMINATION_KEYS
         assert result["name"] == "Test Attribute"
 
     def test_analyze_single_cohens_d(
@@ -447,7 +411,7 @@ class TestAttributeDiscriminationAnalyzer:
 
         # Should not raise and should have valid statistics
         assert isinstance(result, dict)
-        assert set(result.keys()) == DISCRIMINATION_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.DISCRIMINATION_KEYS
 
     def test_analyze_single_all_nan_returns_empty(self) -> None:
         """Test that all-NaN input returns empty result."""
@@ -491,7 +455,10 @@ class TestAttributeDiscriminationAnalyzer:
         assert isinstance(results, dict)
         assert len(results) == 3
         assert all(isinstance(v, dict) for v in results.values())
-        assert all(set(v.keys()) == DISCRIMINATION_KEYS for v in results.values())
+        assert all(
+            set(v.keys()) == RockPhysicsConstants.DISCRIMINATION_KEYS
+            for v in results.values()
+        )
 
     def test_analyze_multiple_with_failed_analysis(
         self, sample_data: tuple[np.ndarray, np.ndarray]
@@ -608,7 +575,7 @@ class TestRockPhysicsAnalyzer:
 
         result = analyzer_instance.compute_avo_attributes(vp, vs, rho)
 
-        assert set(result.keys()) == AVO_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.AVO_KEYS
 
     def test_compute_lambda_mu_rho(
         self,
@@ -620,7 +587,7 @@ class TestRockPhysicsAnalyzer:
 
         result = analyzer_instance.compute_lambda_mu_rho(vp, vs, rho)
 
-        assert set(result.keys()) == LAMBDA_MU_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.LAMBDA_MU_KEYS
 
     def test_compute_fluid_factor(
         self,
@@ -648,7 +615,7 @@ class TestRockPhysicsAnalyzer:
         )
 
         assert isinstance(result, dict)
-        assert set(result.keys()) == DISCRIMINATION_KEYS
+        assert set(result.keys()) == RockPhysicsConstants.DISCRIMINATION_KEYS
 
     def test_compare_all_attributes(
         self,
@@ -799,8 +766,8 @@ class TestRockPhysicsAnalyzer:
             vp, vs, rho, DEFAULT_AVO_ANGLES_DEG
         )
 
-        assert set(avo.keys()) == AVO_KEYS
-        assert set(lmr.keys()) == LAMBDA_MU_KEYS
+        assert set(avo.keys()) == RockPhysicsConstants.AVO_KEYS
+        assert set(lmr.keys()) == RockPhysicsConstants.LAMBDA_MU_KEYS
         assert isinstance(fluid, np.ndarray) or fluid is None
 
     def test_main_pipeline_with_missing_dataset(
@@ -828,26 +795,6 @@ class TestRockPhysicsAnalyzer:
             ):
                 with pytest.raises(FileNotFoundError):
                     analyzer_instance.run(cache_dir=cache_dir)
-
-
-class TestModuleLevelSingleton:
-    """Test module-level singleton and getter function."""
-
-    def test_rock_physics_analyzer_singleton_exists(self) -> None:
-        """Test that module-level singleton is created."""
-        assert rock_physics_analyzer is not None
-        assert isinstance(rock_physics_analyzer, RockPhysicsAnalyzer)
-
-    def test_get_rock_physics_analyzer_returns_singleton(self) -> None:
-        """Test getter returns module singleton by default."""
-        result = get_rock_physics_analyzer()
-        assert result is rock_physics_analyzer
-
-    def test_get_rock_physics_analyzer_returns_provided_instance(self) -> None:
-        """Test getter returns provided instance if given."""
-        custom_instance = RockPhysicsAnalyzer()
-        result = get_rock_physics_analyzer(instance=custom_instance)
-        assert result is custom_instance
 
 
 class TestEdgeCases:

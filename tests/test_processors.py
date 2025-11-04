@@ -2082,7 +2082,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_basic(self):
         """Test quartile computation on basic array."""
         amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         assert isinstance(q1, float)
         assert isinstance(q3, float)
@@ -2091,7 +2091,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_uniform(self):
         """Test quartiles on uniform array."""
         amps = np.array([2.0, 2.0, 2.0, 2.0, 2.0])
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         assert q1 == 2.0
         assert q3 == 2.0
@@ -2099,7 +2099,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_large_array(self):
         """Test quartiles on large array."""
         amps = np.arange(1000, dtype=np.float64)
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         # Q1 should be around 250, Q3 around 750
         assert 200 < q1 < 300
@@ -2108,7 +2108,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_single_element(self):
         """Test quartiles with single element."""
         amps = np.array([5.0])
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         assert q1 == 5.0
         assert q3 == 5.0
@@ -2116,7 +2116,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_two_elements(self):
         """Test quartiles with two elements."""
         amps = np.array([1.0, 9.0])
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         assert isinstance(q1, float)
         assert isinstance(q3, float)
@@ -2124,7 +2124,7 @@ class TestProcessorUtilsComputeQuartiles:
     def test_compute_quartiles_negative_values(self):
         """Test quartiles with negative values."""
         amps = np.array([-5.0, -3.0, -1.0, 1.0, 3.0])
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         assert q1 < q3
 
@@ -2137,7 +2137,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         np.testing.assert_array_equal(result1, arr1)
         np.testing.assert_array_equal(result2, arr2)
@@ -2148,7 +2148,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.nan, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2159,7 +2159,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, np.nan, 6.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2170,7 +2170,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.inf, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2181,7 +2181,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, -np.inf, 6.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2191,7 +2191,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([np.nan, np.inf, np.nan])
         arr2 = np.array([1.0, 2.0, 3.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         assert len(result1) == 0
         assert len(result2) == 0
@@ -2202,7 +2202,7 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.nan, 3.0, np.inf])
         arr2 = np.array([5.0, 6.0, np.nan, 8.0])
 
-        result1, result2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
 
         # Rows 1, 2, 3 have invalid values
         assert len(result1) == 1  # Only first row is valid
@@ -2327,7 +2327,7 @@ class TestProcessorUtilsIntegration:
         stats = ProcessorUtils.compute_amplitude_stats(amps)
         assert stats is not None
 
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
         assert q1 < q3
         assert stats.mean > q1
         assert stats.mean < q3
@@ -2337,7 +2337,7 @@ class TestProcessorUtilsIntegration:
         arr1 = np.array([1.0, np.nan, 3.0, 4.0])
         arr2 = np.array([5.0, 6.0, np.nan, 8.0])
 
-        filtered1, filtered2, count = ProcessorUtils.filter_finite_values(arr1, arr2)
+        filtered1, filtered2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
         assert len(filtered1) == 2
         assert count == 2
 
@@ -2352,7 +2352,7 @@ class TestProcessorUtilsIntegration:
         std_val = np.std(amps)
         q1, q3 = np.percentile(amps, [25, 75])
 
-        result = ProcessorUtils.convert_numpy_scalars_to_float(
+        result = ProcessorUtils._convert_numpy_scalars_to_float_static(
             mean_val, std_val, q1, q3
         )
 
