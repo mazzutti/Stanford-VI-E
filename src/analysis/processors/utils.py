@@ -7,6 +7,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.analysis.models import FaciesStats
+from src.analysis.strategies import (
+    ArrayStatisticsStrategy,
+    StandardArrayStatistics,
+)
 
 from .config import ProcessorConfig
 
@@ -23,10 +27,51 @@ class ProcessorUtils:
 
     Groups frequently-used helper methods for numerical computation,
     data filtering, and statistics calculation.
+
+    This is a stateless utility class designed to be used via static methods:
+    ProcessorUtils.convert_numpy_scalars_to_float(...)
+
+    Can be configured with different statistics strategies for flexible
+    computation approaches (standard vs robust, for example).
     """
 
+    # Default statistics strategy - can be overridden per instance or globally
+    _default_strategy: ArrayStatisticsStrategy = StandardArrayStatistics()
+
+    def __init__(self, strategy: Optional[ArrayStatisticsStrategy] = None):
+        """Initialize processor utils with optional strategy.
+
+        Parameters
+        ----------
+        strategy : ArrayStatisticsStrategy, optional
+            Statistics strategy to use. Defaults to StandardArrayStatistics.
+        """
+        self.strategy = strategy or self._default_strategy
+
+    @classmethod
+    def set_default_strategy(cls, strategy: ArrayStatisticsStrategy) -> None:
+        """Set default statistics strategy for all new instances.
+
+        Parameters
+        ----------
+        strategy
+            New default strategy to use.
+        """
+        cls._default_strategy = strategy
+
+    @classmethod
+    def get_default_strategy(cls) -> ArrayStatisticsStrategy:
+        """Get current default statistics strategy.
+
+        Returns
+        -------
+        ArrayStatisticsStrategy
+            Current default strategy.
+        """
+        return cls._default_strategy
+
     @staticmethod
-    def convert_numpy_scalars_to_float(
+    def _convert_numpy_scalars_to_float_static(
         *values: NDArray[np.floating[Any]] | np.floating[Any],
     ) -> Tuple[float, ...] | float:
         """Efficiently convert one or more NumPy scalars/arrays to Python floats.
@@ -59,7 +104,7 @@ class ProcessorUtils:
         return tuple(float(v.item() if hasattr(v, "item") else v) for v in values)
 
     @staticmethod
-    def compute_quartiles(amps: NDArray[np.float64]) -> Tuple[float, float]:
+    def _compute_quartiles_static(amps: NDArray[np.float64]) -> Tuple[float, float]:
         """Efficiently compute Q1 and Q3 percentiles from amplitude array.
 
         Consolidates the repeated pattern of computing first and third quartiles
@@ -80,15 +125,13 @@ class ProcessorUtils:
         >>> q1, q3 = ProcessorUtils.compute_quartiles(amplitude_array)
         >>> iqr = q3 - q1
         """
-        percentiles = np.percentile(
-            amps, [ProcessorConfig.PERCENTILE_Q1, ProcessorConfig.PERCENTILE_Q3]
-        )
-        result = ProcessorUtils.convert_numpy_scalars_to_float(*percentiles)
+        percentiles = np.percentile(amps, [25, 75])
+        result = ProcessorUtils._convert_numpy_scalars_to_float_static(*percentiles)
         q1, q3 = cast(Tuple[float, float], result)
         return q1, q3
 
     @staticmethod
-    def filter_finite_values(
+    def _filter_finite_values_static(
         arr1: NDArray[np.float64], arr2: NDArray[np.float64]
     ) -> Tuple[NDArray[np.float64], NDArray[np.float64], int]:
         """Filter out NaN and Inf values from paired arrays.
@@ -128,7 +171,7 @@ class ProcessorUtils:
         return arr1[valid_mask], arr2[valid_mask], int(n_removed)
 
     @staticmethod
-    def flatten_and_filter_finite(
+    def _flatten_and_filter_finite_static(
         arr: NDArray[np.float64], bool_mask: NDArray[np.bool_]
     ) -> Tuple[Optional[NDArray[np.float64]], Optional[NDArray[np.float64]]]:
         """Flatten array and boolean mask, then filter finite values.
@@ -158,7 +201,7 @@ class ProcessorUtils:
         arr_flat = arr.flatten()
         mask_flat = bool_mask.flatten().astype(float)
 
-        arr_filtered, mask_filtered, _ = ProcessorUtils.filter_finite_values(
+        arr_filtered, mask_filtered, _ = ProcessorUtils._filter_finite_values_static(
             arr_flat, mask_flat
         )
         return arr_filtered, mask_filtered
@@ -359,7 +402,7 @@ class ProcessorUtils:
             return FaciesStats()
 
         # Compute all statistics with single conversion call
-        result = ProcessorUtils.convert_numpy_scalars_to_float(
+        result = ProcessorUtils._convert_numpy_scalars_to_float_static(
             np.mean(amps),
             np.std(amps),
             np.median(amps),
@@ -371,7 +414,7 @@ class ProcessorUtils:
         )
 
         # Compute quartiles using consolidated helper
-        q1, q3 = ProcessorUtils.compute_quartiles(amps)
+        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
 
         stats = FaciesStats(
             count=len(amps),
