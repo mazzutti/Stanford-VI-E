@@ -1,8 +1,7 @@
 """Analysis data models package.
 
 This package organizes structured result types and configurations used by
-analysis modules. All models are re-exported here for backward compatibility
-with code that previously imported from `src.analysis.models`.
+analysis modules.
 
 Organization:
 - base: Utilities, validation, and abstract base classes
