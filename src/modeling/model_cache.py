@@ -12,18 +12,16 @@ from typing import Any, Dict, Tuple
 import logging
 
 from src.io.cache import cache_for_dir
-from src.utils.facades import LazyObjectProxy
 
 __all__ = [
     "cached_avo",
     "cached_avo_from_vm",
-    # Public API focuses on AVO cache helpers
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def _impl_cached_avo(
+def cached_avo(
     props_time: Dict[str, Any],
     angles,
     wavelet,
@@ -33,12 +31,7 @@ def _impl_cached_avo(
     snr_db: int = 20,
     noise_seed: int | None = None,
 ) -> Tuple[list, Any]:
-    """Canonical implementation: compute or load cached AVO synthetics.
-
-    Kept as an _impl_* function so facades and module-level proxies can
-    safely delegate without creating recursion.
-    """
-
+    """Compute or load cached AVO synthetics."""
     # Local imports to avoid import cycles
     from src.modeling.modeling import _hash_for_cache, create_avo_synthetics
 
@@ -87,86 +80,9 @@ def _impl_cached_avo(
     return angle_stacks, full_stack
 
 
-def _impl_cached_avo_from_vm(
-    vm, vs, rho, angles, wavelet, cache_dir: str = ".cache", **kwargs
-):
-    """Convenience implementation: build props_time from a VelocityModel and
-    delegate to the canonical cached_avo implementation.
-    """
-    props_time = {"vp": vm.vp, "vs": vs, "rho": rho}
-    return _impl_cached_avo(props_time, angles, wavelet, cache_dir=cache_dir, **kwargs)
-
-
-# Object-oriented facade for modeling cache helpers
-class ModelingCache:
-    def __init__(self):
-        # placeholder for cache configuration in future
-        pass
-
-    def cached_avo(self, *args, **kwargs):
-        return _impl_cached_avo(*args, **kwargs)
-
-    def cached_avo_from_vm(self, *args, **kwargs):
-        return _impl_cached_avo_from_vm(*args, **kwargs)
-
-
-# Module-level lazy proxy singleton for ModelingCache
-modeling_cache: ModelingCache = LazyObjectProxy(lambda: ModelingCache())
-
-
 def cached_avo_from_vm(
     vm, vs, rho, angles, wavelet, cache_dir: str = ".cache", **kwargs
 ):
-    """Convenience wrapper accepting a VelocityModel and forwarding to cached_avo.
-
-    vm: VelocityModel (contains vp and grid_spec)
-    vs, rho: numpy arrays matching vm.vp shape
-    """
+    """Convenience function: build props_time from a VelocityModel and compute cached AVO."""
     props_time = {"vp": vm.vp, "vs": vs, "rho": rho}
-    return _impl_cached_avo(props_time, angles, wavelet, cache_dir=cache_dir, **kwargs)
-
-
-__all__.extend(
-    [
-        "ModelingCache",
-        "modeling_cache",
-        "cached_avo",
-        "cached_avo_from_vm",
-    ]
-)
-
-
-def get_modeling_cache(cache: ModelingCache | None = None) -> "ModelingCache":
-    """Return the provided ModelingCache or the module-level lazy singleton.
-
-    This makes it easy to inject a test double or a configured cache instance.
-    """
-    return cache if cache is not None else modeling_cache
-
-
-__all__.append("get_modeling_cache")
-
-
-# Depth cache helpers for other per-technique caches are not part of the current API
-
-
-def cached_avo(
-    props_time: Dict[str, Any],
-    angles,
-    wavelet,
-    cache_dir: str = ".cache",
-    use_quality_weighting: bool = False,
-    add_noise: bool = False,
-    snr_db: int = 20,
-    noise_seed: int | None = None,
-) -> Tuple[list, Any]:
-    return modeling_cache.cached_avo(
-        props_time,
-        angles,
-        wavelet,
-        cache_dir=cache_dir,
-        use_quality_weighting=use_quality_weighting,
-        add_noise=add_noise,
-        snr_db=snr_db,
-        noise_seed=noise_seed,
-    )
+    return cached_avo(props_time, angles, wavelet, cache_dir=cache_dir, **kwargs)

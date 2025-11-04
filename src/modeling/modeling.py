@@ -25,30 +25,16 @@ __all__ = [
 ]
 
 
-def get_modeling_engine(config: dict | None = None, *, use_gpu: bool = True):
+def get_modeling_engine(config: dict | None = None):
     """Return the module-level `modeling_engine` when config is None.
 
     If `config` is provided, create and return a fresh `ModelingEngine`
-    instance configured according to the dict (supports 'use_gpu' key).
-    This helper centralizes the default access pattern while allowing callers
-    to obtain a configured instance when needed.
+    instance. This helper centralizes the default access pattern while
+    allowing callers to obtain a configured instance when needed.
     """
-    return _impl_get_modeling_engine(config, use_gpu=use_gpu)
-
-
-def _impl_get_modeling_engine(config: dict | None = None, *, use_gpu: bool = True):
     if config is None:
         return modeling_engine
-    me = ModelingEngine()
-    # apply simple well-known config keys
-    if "use_gpu" in config:
-        try:
-            me.use_gpu = bool(config["use_gpu"])
-        except Exception:
-            pass
-    else:
-        me.use_gpu = bool(use_gpu)
-    return me
+    return ModelingEngine()
 
 
 __all__.append("get_modeling_engine")
@@ -127,7 +113,17 @@ def add_realistic_noise(seismic, angle_deg, snr_db=20, seed=None):
     return seismic + total_noise.astype(seismic.dtype)
 
 
-def _impl_apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
+def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
+    """Apply quality weights to angle-dependent stacks.
+
+    Args:
+        angle_stacks: List of angle-dependent seismic stacks
+        angles: Corresponding angles in degrees
+        normalize: Whether to normalize weights to sum to 1
+
+    Returns:
+        Weighted stack combining all angles
+    """
     if len(angle_stacks) != len(angles):
         raise ValueError("Number of angle stacks must match number of angles")
 
@@ -143,27 +139,30 @@ def _impl_apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
     return weighted_stack
 
 
-def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
-    """Module-level wrapper delegating to the canonical implementation.
-
-    Use `modeling_engine.apply_angle_quality_weighting` for an object-oriented
-    access pattern.
-    """
-    return _impl_apply_angle_quality_weighting(
-        angle_stacks, angles, normalize=normalize
-    )
-
-
 # ============================================================================
 # END OF IMPROVEMENTS
 # ============================================================================
 
 
 def run_convolution_3d(rc_cube, wavelet, use_gpu=True):
-    return _impl_run_convolution_3d(rc_cube, wavelet, use_gpu=use_gpu)
+    """Run 3D convolution on reflectivity cube with wavelet.
+
+    Args:
+        rc_cube: Reflectivity cube
+        wavelet: Source wavelet
+        use_gpu: Whether to use GPU acceleration (currently unused)
+
+    Returns:
+        Convolved seismogram cube
+    """
+
+    def convolve_trace(trace):
+        return convolve(trace, wavelet, mode="same", method="fft")
+
+    return np.apply_along_axis(convolve_trace, axis=-1, arr=rc_cube)
 
 
-def _impl_create_avo_synthetics(
+def create_avo_synthetics(
     props_time,
     angles,
     wavelet,
@@ -243,13 +242,6 @@ def _impl_create_avo_synthetics(
     return angle_stacks, full_stack
 
 
-def _impl_run_convolution_3d(rc_cube, wavelet, use_gpu=True):
-    def convolve_trace(trace):
-        return convolve(trace, wavelet, mode="same", method="fft")
-
-    return np.apply_along_axis(convolve_trace, axis=-1, arr=rc_cube)
-
-
 class ModelingEngine:
     """Object-oriented facade for core modeling routines.
 
@@ -265,26 +257,21 @@ class ModelingEngine:
         The instance holds no mutable shared state by default.
     """
 
-    def __init__(self):
-        # Placeholder for future configuration (e.g., GPU toggle)
-        self.use_gpu = True
-
     def create_avo_synthetics(self, *args, **kwargs):
-        return _impl_create_avo_synthetics(*args, **kwargs)
+        """Create AVO synthetics using the module-level function."""
+        return create_avo_synthetics(*args, **kwargs)
 
     def run_convolution_3d(self, *args, **kwargs):
-        return _impl_run_convolution_3d(*args, **kwargs)
+        """Run 3D convolution using the module-level function."""
+        return run_convolution_3d(*args, **kwargs)
 
     def apply_angle_quality_weighting(self, *args, **kwargs):
-        return _impl_apply_angle_quality_weighting(*args, **kwargs)
-
-    def ei_to_seismogram(self, *args, **kwargs):
-        raise AttributeError("ei_to_seismogram is not supported")
+        """Apply angle quality weighting using the module-level function."""
+        return apply_angle_quality_weighting(*args, **kwargs)
 
     # Additional thin wrappers to expose more of the module API via the
     # ModelingEngine facade. This allows callers to use the
     # object-oriented proxy `modeling_engine` without changing behaviour.
-    # Property-to-seismogram functionality is not provided by the current ModelingEngine
 
     def cached_avo(self, *args, **kwargs):
         # Import locally to avoid circular imports
@@ -302,26 +289,6 @@ class ModelingEngine:
 
 # Module-level singleton used by callers that prefer an object instance.
 modeling_engine = LazyObjectProxy(lambda: ModelingEngine())
-
-
-def create_avo_synthetics(
-    props_time,
-    angles,
-    wavelet,
-    use_quality_weighting=False,
-    add_noise=False,
-    snr_db=20,
-    noise_seed=None,
-):
-    return _impl_create_avo_synthetics(
-        props_time,
-        angles,
-        wavelet,
-        use_quality_weighting=use_quality_weighting,
-        add_noise=add_noise,
-        snr_db=snr_db,
-        noise_seed=noise_seed,
-    )
 
 
 def _hash_for_cache(arrays, extras=None):
@@ -343,12 +310,3 @@ def _hash_for_cache(arrays, extras=None):
 
 # Elastic-style computations are not part of the public API. This module focuses on AVO
 # modeling helpers: create_avo_synthetics, convolution and angle weighting.
-
-
-__all__ = [
-    "create_avo_synthetics",
-    "run_convolution_3d",
-    "apply_angle_quality_weighting",
-    "ModelingEngine",
-    "modeling_engine",
-]

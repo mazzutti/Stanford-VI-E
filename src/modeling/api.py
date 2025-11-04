@@ -17,7 +17,11 @@ from src.modeling import modeling as modeling_utils
 from src.signal import wavelets
 from src.utils.quantity import Quantity
 import logging
-from src.utils.facades import LazyObjectProxy
+
+__all__ = ["run_full_modeling"]
+
+# module logger available for callers that want to tune verbosity
+logger = logging.getLogger(__name__)
 
 
 def run_full_modeling(
@@ -26,28 +30,14 @@ def run_full_modeling(
     verbose: bool = False,
     add_avo_noise: bool = False,
 ):
-    """Run the full modeling pipeline in-process and save caches.
+    """Run the full modeling pipeline from depth to time domain.
 
-    Returns a dict with keys similar to the previous pipeline output, for
-    example: {'avo_cached': True}
+    Orchestrates the complete AVO modeling workflow including:
+    - Data loading and unit normalization
+    - Depth to time resampling
+    - AVO synthesis
+    - Caching and cleanup
     """
-    # Call the canonical implementation directly. Callers that prefer an
-    # instance-based API can still use `get_modeling_api()`.
-    return _impl_run_full_modeling(
-        cache_dir=cache_dir,
-        skip_cleanup=skip_cleanup,
-        verbose=verbose,
-        add_avo_noise=add_avo_noise,
-    )
-
-
-def _impl_run_full_modeling(
-    cache_dir: str = ".cache",
-    skip_cleanup: bool = False,
-    verbose: bool = False,
-    add_avo_noise: bool = False,
-):
-    # Original implementation from run_full_modeling (kept as canonical impl)
     # Load depth data defaults (kept intentionally simple)
     DATA_PATH = "."
     FILE_MAP = {
@@ -58,12 +48,9 @@ def _impl_run_full_modeling(
     }
     # Default grid spec for standalone runs (inline to avoid module-level constants)
     grid_spec = GridSpec((150, 200, 200), dz=1.0, dt=0.001)
-    try:
-        from src.analysis.dataset_factory import DatasetManagerFactory
+    from src.analysis.types.base import DatasetManagerFactory
 
-        dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
-    except Exception:
-        dm = data_loader.DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
+    dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
     props_depth = {
         "vp": dm.vp,
         "vs": dm.vs,
@@ -137,38 +124,3 @@ def _impl_run_full_modeling(
     return {
         "avo_cached": True,
     }
-
-
-class ModelingAPI:
-    """Object-oriented facade for the modeling API.
-
-    This thin wrapper delegates to `run_full_modeling` so callers can adopt
-    an instance-based API while preserving existing function behavior.
-    """
-
-    def run_full_modeling(self, *args, **kwargs):
-        return _impl_run_full_modeling(*args, **kwargs)
-
-
-# Module-level singleton facade using shared LazyObjectProxy
-modeling_api = LazyObjectProxy(lambda: ModelingAPI())
-
-__all__ = ["run_full_modeling", "ModelingAPI", "modeling_api"]
-
-# module logger available for callers that want to tune verbosity
-logger = logging.getLogger(__name__)
-
-
-def get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":
-    """Return the provided ModelingAPI instance or the module-level lazy singleton.
-
-    Useful for dependency injection in tests.
-    """
-    return inst if inst is not None else modeling_api
-
-
-def _impl_get_modeling_api(inst: ModelingAPI | None = None) -> "ModelingAPI":
-    return inst if inst is not None else modeling_api
-
-
-__all__.append("get_modeling_api")
