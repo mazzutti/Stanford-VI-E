@@ -4,6 +4,7 @@ This subpackage provides polymorphic domain handlers for depth/time processing,
 eliminating string-based conditionals and following the Strategy pattern.
 
 Public API:
+    - Domain: Enum for depth/time domain selection
     - DomainHandler: Abstract base for domain handling
     - DepthDomainHandler: Depth-domain strategy implementation
     - TimeDomainHandler: Time-domain strategy implementation
@@ -13,12 +14,12 @@ Public API:
     - HandlerStatistics: Statistics for handler operations
 
 Example:
-    >>> from src.analysis.domain import DomainHandlerFactory
-    >>> from src.analysis.types import Domain
+    >>> from src.analysis.domain import DomainHandlerFactory, Domain
     >>> handler = DomainHandlerFactory.get_handler(Domain.DEPTH)
     >>> avo_display, facies_display = handler.prepare_display_cubes(...)
 """
 
+from .enum import Domain
 from .handlers import (
     DomainHandler,
     DepthDomainHandler,
@@ -31,6 +32,7 @@ from .handlers import (
 )
 
 __all__ = [
+    "Domain",
     "DomainHandler",
     "DepthDomainHandler",
     "TimeDomainHandler",
