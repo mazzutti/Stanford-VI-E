@@ -62,40 +62,6 @@ class GradientCorrelationResult(StatisticalResult):
         except ValidationError as e:
             raise ValidationError(f"Invalid gradient correlation result: {e}") from e
 
-    def _validate_correlation_values(self) -> None:
-        """Ensure correlation coefficients are in [-1, 1] range.
-
-        Correlation values must be normalized between -1 (perfect negative)
-        and 1 (perfect positive).
-
-        .. deprecated::
-            Use __post_init__() validation instead.
-        """
-        try:
-            RangeValidator.validate_correlation(
-                self.pearson_correlation, "pearson_correlation"
-            )
-            RangeValidator.validate_correlation(
-                self.spearman_correlation, "spearman_correlation"
-            )
-        except ValidationError as e:
-            raise ValidationError(str(e)) from e
-
-    def _validate_pvalues(self) -> None:
-        """Ensure p-values are in [0, 1] range.
-
-        P-values represent probability that results occurred by chance.
-        Valid range is [0, 1] where lower values indicate greater significance.
-
-        .. deprecated::
-            Use __post_init__() validation instead.
-        """
-        try:
-            RangeValidator.validate_pvalue(self.pearson_pvalue, "pearson_pvalue")
-            RangeValidator.validate_pvalue(self.spearman_pvalue, "spearman_pvalue")
-        except ValidationError as e:
-            raise ValidationError(str(e)) from e
-
     def is_valid(self) -> bool:
         """Check if results are statistically significant."""
         return (
