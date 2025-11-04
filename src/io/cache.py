@@ -31,7 +31,7 @@ class CacheEntry:
     valid: Optional[bool] = None
 
     @classmethod
-    def from_path(cls, p: Union[str, os.PathLike[str]]) -> "CacheEntry":
+    def from_path(cls, p: Union[str, os.PathLike]) -> "CacheEntry":
         p = Path(p)
         if not p.exists():
             raise FileNotFoundError(p)
@@ -78,7 +78,7 @@ class CacheEntry:
         )
 
     @classmethod
-    def from_path_shallow(cls, p: Union[str, os.PathLike[str]]) -> "CacheEntry":
+    def from_path_shallow(cls, p: Union[str, os.PathLike]) -> "CacheEntry":
         """Create CacheEntry without attempting to read file contents (fast)."""
         p = Path(p)
         if not p.exists():
@@ -104,7 +104,7 @@ class CacheEntry:
             f"mtime={self.mtime:.0f}, size_bytes={self.size_bytes}, valid={self.valid})"
         )
 
-    def to_dict(self) -> Dict[str, Union[str, int, float, bool, Dict[str, Any], None]]:
+    def to_dict(self) -> Dict[str, Union[str, int, float, None]]:
         return {
             "key": self.key,
             "path": str(self.path),
@@ -119,19 +119,131 @@ class CacheEntry:
 logger = logging.getLogger(__name__)
 
 
+class CacheFileIdentifier:
+    """Helper class for identifying cache files matching patterns."""
+
+    def __init__(self, cache_dir: str, logger_obj: Optional[logging.Logger] = None):
+        """Initialize identifier.
+
+        Parameters
+        ----------
+        cache_dir : str
+            Cache directory to scan.
+        logger_obj : Optional[logging.Logger]
+            Logger for messages.
+        """
+        self.cache_dir = Path(cache_dir)
+        self.logger = logger_obj or logging.getLogger(__name__)
+
+    def find_old_cache_files(self) -> List[str]:
+        """Find old cache files (avo_* without _time_ or _depth_ suffixes).
+
+        Returns
+        -------
+        List[str]
+            Paths to old cache files.
+        """
+        if not self.cache_dir.exists():
+            return []
+
+        old_files: List[str] = []
+        for file_path in self.cache_dir.glob("*.npz"):
+            filename = file_path.name
+            if filename.startswith("avo_") and not (
+                "_time_" in filename or "_depth_" in filename
+            ):
+                old_files.append(str(file_path))
+
+        return old_files
+
+
+class CacheFileCleanup:
+    """Helper class for cleaning up cache files."""
+
+    def __init__(self, logger_obj: Optional[logging.Logger] = None):
+        """Initialize cleanup helper.
+
+        Parameters
+        ----------
+        logger_obj : Optional[logging.Logger]
+            Logger for cleanup messages.
+        """
+        self.logger = logger_obj or logging.getLogger(__name__)
+
+    def cleanup_files(
+        self, files: List[str], dry_run: bool = False
+    ) -> tuple[int, float]:
+        """Remove cache files with optional dry-run mode.
+
+        Parameters
+        ----------
+        files : List[str]
+            Paths to files to remove.
+        dry_run : bool
+            If True, report what would be removed without deleting.
+
+        Returns
+        -------
+        tuple[int, float]
+            (removed_count, total_size_mb)
+        """
+        if not files:
+            self.logger.info("✓ No files to remove")
+            return 0, 0.0
+
+        total_size_bytes = sum(os.path.getsize(f) for f in files)
+        total_size_mb = total_size_bytes / (1024**2)
+
+        if dry_run:
+            self.logger.info(
+                "DRY RUN: Would remove %d files (%.1f MB)",
+                len(files),
+                total_size_mb,
+            )
+            return 0, 0.0
+
+        removed_count = 0
+        for file_path in files:
+            try:
+                os.remove(file_path)
+                removed_count += 1
+            except Exception as e:
+                self.logger.warning("Error removing %s: %s", file_path, e)
+
+        self.logger.info(
+            "✓ Removed %d/%d files (%.1f MB freed)",
+            removed_count,
+            len(files),
+            total_size_mb,
+        )
+
+        return removed_count, total_size_mb
+
+
 class CacheManager:
     """Object-oriented wrapper around cache utilities.
 
-    Provides the same functionality as the old module-level helpers but in a
-    cohesive class that can be instantiated with a default cache directory and
-    injected logger (useful for testing).
+    Provides functionality to list, inspect, and clean up cache files.
+    Uses helper classes (CacheFileIdentifier, CacheFileCleanup) for better
+    separation of concerns.
     """
 
     def __init__(
         self, cache_dir: str = ".cache", logger: Optional[logging.Logger] = None
     ):
+        """Initialize CacheManager.
+
+        Parameters
+        ----------
+        cache_dir : str
+            Cache directory path.
+        logger : Optional[logging.Logger]
+            Logger instance.
+        """
         self.cache_dir = cache_dir
         self.logger = logger or logging.getLogger(__name__)
+        self._identifier = CacheFileIdentifier(cache_dir, self.logger)
+        self._cleanup = CacheFileCleanup(self.logger)
 
     # Use select_latest_cache_entries() to obtain grouped CacheEntry objects
 
@@ -158,7 +270,7 @@ class CacheManager:
             groups.setdefault(entry.key, []).append(entry)
         return groups
 
-    def save_npz(self, fn: Union[str, os.PathLike[str]], data: Dict[str, Any]) -> None:
+    def save_npz(self, fn: Union[str, os.PathLike], data: Dict[str, Any]) -> None:
         """Save a compressed npz file ensuring parent directory exists."""
         import numpy as _np
 
@@ -203,65 +315,34 @@ class CacheManager:
         return resolved
 
     def identify_old_cache_files(self) -> List[str]:
-        p = Path(self.cache_dir)
-        if not p.exists():
-            return []
+        """Identify old cache files.
 
-        all_npz = list(p.glob("*.npz"))
-        old_files: List[str] = []
-
-        for file_path in all_npz:
-            filename = file_path.name
-
-            if filename.startswith("avo_") and not (
-                "_time_" in filename or "_depth_" in filename
-            ):
-                old_files.append(str(file_path))
-
-        return old_files
+        Returns
+        -------
+        List[str]
+            Paths to old cache files.
+        """
+        return self._identifier.find_old_cache_files()
 
     def cleanup_old_cache(self, dry_run: bool = False) -> tuple[int, float]:
-        """Remove old cache files identified by `identify_old_cache_files`.
+        """Remove old cache files.
 
-        Returns a tuple (removed_count, total_size_mb).
+        Parameters
+        ----------
+        dry_run : bool
+            If True, report what would be removed without deleting.
+
+        Returns
+        -------
+        tuple[int, float]
+            (removed_count, total_size_mb)
         """
         old_files = self.identify_old_cache_files()
         if not old_files:
             self.logger.info("✓ No old cache files found in '%s'", self.cache_dir)
-            return 0, 0.0
+        return self._cleanup.cleanup_files(old_files, dry_run=dry_run)
 
-        total_size_bytes = 0
-        for file_path in old_files:
-            total_size_bytes += os.path.getsize(file_path)
-
-        total_size_mb = total_size_bytes / (1024**2)
-
-        if dry_run:
-            self.logger.info(
-                "DRY RUN: Would remove %d files (%.1f MB)",
-                len(old_files),
-                total_size_mb,
-            )
-            return 0, 0.0
-
-        removed_count = 0
-        for file_path in old_files:
-            try:
-                os.remove(file_path)
-                removed_count += 1
-            except Exception as e:
-                self.logger.warning("Error removing %s: %s", file_path, e)
-
-        self.logger.info(
-            "✓ Removed %d/%d files (%.1f MB freed)",
-            removed_count,
-            len(old_files),
-            total_size_mb,
-        )
-
-        return removed_count, total_size_mb
-
-    def main(self, dry_run: bool = False, verbose: bool = False) -> tuple[int, float]:
+    def run(self, dry_run: bool = False, verbose: bool = False) -> tuple[int, float]:
         """Programmatic entrypoint for cache cleanup.
 
         Keeps the same behavior as the previous CLI helper. Returns a tuple
@@ -295,71 +376,63 @@ class CacheManager:
         return removed, size_mb
 
 
-class CacheManagerFactory:
-    """Factory for creating and managing CacheManager instances.
+# Default, module-level convenience singleton for simple scripts and callers
+DEFAULT_CACHE_DIR = ".cache"
 
-    Provides centralized access to cache managers with support for:
-    - Shared singleton for default cache directory
-    - Temporary instances for custom directories
-    - Lazy initialization of the default manager
+
+# Default cache_manager proxy
+cache_manager = LazyObjectProxy(lambda: CacheManager(cache_dir=DEFAULT_CACHE_DIR))
+
+
+def cache_for_dir(cache_dir: str | None) -> CacheManager:
+    """Return a CacheManager instance for `cache_dir`.
+
+    If the requested directory matches the module default, returns the
+    shared `cache_manager` singleton. Otherwise creates a lightweight
+    temporary `CacheManager` for that directory.
+
+    Parameters
+    ----------
+    cache_dir : str | None
+        Cache directory path, or None for default.
+
+    Returns
+    -------
+    CacheManager
+        Cache manager instance (shared or temporary).
     """
-
-    # Module-level defaults
-    DEFAULT_CACHE_DIR: str = ".cache"
-    _default_manager: LazyObjectProxy[CacheManager] = LazyObjectProxy(
-        lambda: CacheManager(cache_dir=CacheManagerFactory.DEFAULT_CACHE_DIR)
-    )
-
-    @staticmethod
-    def get_manager(cache_dir: str | None = None) -> CacheManager:
-        """Return a CacheManager instance for cache_dir.
-
-        If cache_dir is None or matches the default, returns the shared
-        singleton. Otherwise creates a temporary instance.
-
-        Parameters
-        ----------
-        cache_dir : str | None
-            Cache directory path. If None, uses DEFAULT_CACHE_DIR.
-
-        Returns
-        -------
-        CacheManager
-            Shared singleton for default directory, or new instance otherwise.
-        """
-        if cache_dir is None or cache_dir == CacheManagerFactory.DEFAULT_CACHE_DIR:
-            return CacheManagerFactory._default_manager  # type: ignore[return-value]
-        return CacheManager(cache_dir=str(cache_dir))
-
-    @staticmethod
-    def get_default_manager() -> CacheManager:
-        """Return the shared module-level cache manager singleton.
-
-        Returns
-        -------
-        CacheManager
-            The lazy-initialized default cache manager.
-        """
-        return CacheManagerFactory._default_manager  # type: ignore[return-value]
-
-    @staticmethod
-    def for_directory(cache_dir: str | None) -> CacheManager:
-        """Return a CacheManager instance for the specified directory.
-
-        Convenience alias for get_manager(). Provides semantic clarity
-        when obtaining a manager for a specific directory.
-
-        Parameters
-        ----------
-        cache_dir : str | None
-            Cache directory path.
-
-        Returns
-        -------
-        CacheManager
-            Cache manager for the specified directory.
-        """
-        return CacheManagerFactory.get_manager(cache_dir)
+    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
+        return cache_manager
+    return CacheManager(cache_dir=str(cache_dir))
 
 
-__all__ = ["CacheEntry", "CacheManager", "CacheManagerFactory"]
+def get_default_cache(cache_dir: str | None = None) -> CacheManager:
+    """Return a CacheManager instance.
+
+    When `cache_dir` is None, returns the shared module-level proxy.
+    Otherwise returns a CacheManager instance configured for that directory.
+
+    Parameters
+    ----------
+    cache_dir : str | None
+        Cache directory path, or None for default.
+
+    Returns
+    -------
+    CacheManager
+        Cache manager instance (shared or temporary).
+    """
+    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
+        return cache_manager
+    return CacheManager(cache_dir=str(cache_dir))
+
+
+__all__ = [
+    "CacheEntry",
+    "CacheFileIdentifier",
+    "CacheFileCleanup",
+    "CacheManager",
+    "cache_for_dir",
+    "get_default_cache",
+    "DEFAULT_CACHE_DIR",
+]
