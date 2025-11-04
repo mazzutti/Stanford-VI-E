@@ -173,7 +173,7 @@ class SeismogramAnalyzer:
                 self._logger.warning("File ready delay interrupted: %s", e)
         return ok
 
-    def main(
+    def run(
         self,
         *,
         cache_dir: str = ".cache",
