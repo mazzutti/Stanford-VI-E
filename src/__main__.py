@@ -17,7 +17,7 @@ import signal
 import multiprocessing
 
 
-from src.analysis.types import DatasetManagerFactory
+from src.analysis.types.base import DatasetManagerFactory
 from src.io import data_loader
 from src.io.grid import GridSpec
 from src.signal import wavelets
@@ -252,24 +252,16 @@ class ParserFactory:
         logging.getLogger(__name__).info("STEP 1: LOADING DATA")
         logging.getLogger(__name__).info("%s", "=" * 70)
         t0 = time.time()
-        # Create GridSpec early and prefer DatasetManager for richer API
+        # Create GridSpec early and use DatasetManagerFactory for consistency
         # (grid_spec already constructed above)
-        # Prefer the DatasetManagerFactory helper for consistency and testability
-        try:
-
-            dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
-        except Exception:
-            # Backward-compatible fallback to the legacy loader
-            dm = data_loader.DatasetManager.from_stanfordsix(
-                DATA_PATH, FILE_MAP, grid_spec
-            )
-            props_depth = {
-                "vp": dm.vp,
-                "vs": dm.vs,
-                "rho": dm.rho,
-                "facies": dm.facies,
-                "full_stack": dm.full_stack,
-            }
+        dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
+        props_depth = {
+            "vp": dm.vp,
+            "vs": dm.vs,
+            "rho": dm.rho,
+            "facies": dm.facies,
+            "full_stack": dm.full_stack,
+        }
         t1 = time.time()
         logging.getLogger(__name__).info("✓ Loaded data in %.2fs", (t1 - t0))
 
@@ -612,17 +604,9 @@ def cleanup_cache(
         pass
 
     # Delegate to the programmatic main in src.io.cache (CacheManager.main)
-    try:
-        from src.io.cache import cache_for_dir
+    from src.io.cache import cache_for_dir
 
-        removed, size_mb = cache_for_dir(cache_dir).main(
-            dry_run=dry_run, verbose=verbose
-        )
-    except Exception:
-        # Fallback to the lower-level helper if something goes wrong
-        from src.io.cache import cache_for_dir as _cache_for_dir
-
-        removed, size_mb = _cache_for_dir(cache_dir).cleanup_old_cache(dry_run=dry_run)
+    removed, size_mb = cache_for_dir(cache_dir).cleanup_old_cache(dry_run=dry_run)
 
 
 # ---------------------------------------------------------------------------
