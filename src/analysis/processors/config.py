@@ -12,7 +12,6 @@ __all__ = [
     "PadConfig",
     "DilationConfig",
     "NeighborDirection",
-    "NeighborSlices",
     "ValidationResult",
     "ProcessorConfig",
     "BoundaryComputationConfig",
@@ -70,10 +69,6 @@ class NeighborDirection(Enum):
         return [cls.UP, cls.DOWN, cls.LEFT, cls.RIGHT]
 
 
-# Legacy alias for backward compatibility
-NeighborSlices = NeighborDirection
-
-
 @dataclass(frozen=True)
 class ValidationResult:
     """Result of array validation operations.
@@ -102,11 +97,6 @@ class ValidationResult:
     n_removed: int = 0
     error_message: str = ""
 
-    @property
-    def success(self) -> bool:
-        """Alias for is_valid for more intuitive API."""
-        return self.is_valid
-
 
 @dataclass(frozen=True)
 class ProcessorConfig:
@@ -116,24 +106,6 @@ class ProcessorConfig:
     type-safe, immutable object. Using frozen=True ensures configuration
     cannot be accidentally modified after creation.
     """
-
-    # Class variables for backward compatibility with legacy code
-    BOUNDARY_DILATION_DEFAULT: ClassVar[int] = 2
-    PAD_MODE: ClassVar[str] = "edge"
-    AMPLITUDE_WINDOW_RADIUS: ClassVar[int] = 2
-    AMPLITUDE_WINDOW_SIZE: ClassVar[int] = 5
-    PERCENTILE_Q1: ClassVar[int] = 25
-    PERCENTILE_Q3: ClassVar[int] = 75
-    SEPARATION_MATRIX_EPSILON: ClassVar[float] = 1e-10
-    MIN_VALID_SAMPLES: ClassVar[int] = 2
-    BOUNDARY_PAD_CONFIG: ClassVar[PadConfig] = {
-        "pad_width": ((0, 0), (1, 1), (1, 1)),
-        "mode": "edge",
-    }
-    AMPLITUDE_PAD_CONFIG: ClassVar[PadConfig] = {
-        "pad_width": (2, 2),
-        "mode": "edge",
-    }
 
     # Boundary detection settings
     boundary_dilation_default: int = 2
