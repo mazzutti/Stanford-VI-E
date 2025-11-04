@@ -354,18 +354,18 @@ class TestMain:
     def test_main_validates_cache_dir(self, analyzer):
         """Test main validates cache_dir parameter."""
         with pytest.raises(ValueError, match="cache_dir must be a non-empty string"):
-            analyzer.main(cache_dir="")
+            analyzer.run(cache_dir="")
 
     def test_main_invalid_cache_dir_type(self, analyzer):
         """Test main rejects non-string cache_dir."""
         with pytest.raises(ValueError):
-            analyzer.main(cache_dir=None)  # type: ignore
+            analyzer.run(cache_dir=None)  # type: ignore
 
     @patch("src.analysis.pipelines.seismograms.SeismogramAnalyzer.clear_cache")
     @patch("src.modeling.api.run_full_modeling")
     def test_main_clears_cache_by_default(self, mock_run, mock_clear, analyzer):
         """Test main clears cache by default."""
-        analyzer.main()
+        analyzer.run()
 
         mock_clear.assert_called_once()
 
@@ -373,14 +373,14 @@ class TestMain:
     @patch("src.modeling.api.run_full_modeling")
     def test_main_skips_cleanup_when_requested(self, mock_run, mock_clear, analyzer):
         """Test main skips cleanup when skip_cleanup=True."""
-        analyzer.main(skip_cleanup=True)
+        analyzer.run(skip_cleanup=True)
 
         mock_clear.assert_not_called()
 
     @patch("src.modeling.api.run_full_modeling")
     def test_main_runs_modeling(self, mock_run, analyzer):
         """Test main runs the modeling pipeline."""
-        result = analyzer.main(cache_dir=".cache")
+        result = analyzer.run(cache_dir=".cache")
 
         assert result is True
         mock_run.assert_called_once_with(
@@ -394,7 +394,7 @@ class TestMain:
     def test_main_enables_debug_when_verbose(self, mock_run, analyzer, caplog):
         """Test main enables debug logging when verbose=True."""
         with caplog.at_level(logging.DEBUG):
-            analyzer.main(verbose=True)
+            analyzer.run(verbose=True)
 
         assert analyzer._logger.level == logging.DEBUG
 
@@ -405,7 +405,7 @@ class TestMain:
     def test_main_handles_import_error(self, mock_run, analyzer):
         """Test main handles ImportError from modeling API."""
         with pytest.raises(RuntimeError, match="Failed to import modeling API"):
-            analyzer.main()
+            analyzer.run()
 
     @patch(
         "src.modeling.api.run_full_modeling",
@@ -414,13 +414,13 @@ class TestMain:
     def test_main_handles_general_error(self, mock_run, analyzer):
         """Test main handles general exceptions from modeling."""
         with pytest.raises(RuntimeError, match="Seismic modeling failed"):
-            analyzer.main()
+            analyzer.run()
 
     @patch("src.modeling.api.run_full_modeling")
     def test_main_logs_startup(self, mock_run, analyzer, caplog):
         """Test main logs pipeline startup."""
         with caplog.at_level(logging.INFO):
-            analyzer.main(cache_dir=".cache")
+            analyzer.run(cache_dir=".cache")
 
         assert "Starting seismic modeling pipeline" in caplog.text
 
@@ -428,7 +428,7 @@ class TestMain:
     def test_main_logs_completion(self, mock_run, analyzer, caplog):
         """Test main logs pipeline completion."""
         with caplog.at_level(logging.INFO):
-            analyzer.main()
+            analyzer.run()
 
         assert "completed successfully" in caplog.text
 
@@ -464,7 +464,7 @@ class TestIntegration:
     def test_full_pipeline_execution(self, mock_run, analyzer):
         """Test full pipeline execution with all steps."""
         # This should not raise any exceptions
-        result = analyzer.main(
+        result = analyzer.run(
             cache_dir=".cache",
             skip_cleanup=False,
             verbose=False,

@@ -827,7 +827,7 @@ class TestRockPhysicsAnalyzer:
                 side_effect=FileNotFoundError("No data"),
             ):
                 with pytest.raises(FileNotFoundError):
-                    analyzer_instance.main(cache_dir=cache_dir)
+                    analyzer_instance.run(cache_dir=cache_dir)
 
 
 class TestModuleLevelSingleton:
@@ -1177,7 +1177,7 @@ class TestExceptionHandling:
                         "numpy.savez_compressed", side_effect=IOError("Save failed")
                     ):
                         # Should still return True despite save failure
-                        result = analyzer_instance.main(
+                        result = analyzer_instance.run(
                             cache_dir=cache_dir, generate_plots=False
                         )
                         assert result is True
@@ -1218,7 +1218,7 @@ class TestExceptionHandling:
                         side_effect=Exception("Discrimination failed"),
                     ):
                         # Should not raise, discrimination is optional
-                        result = analyzer_instance.main(
+                        result = analyzer_instance.run(
                             cache_dir=cache_dir, generate_plots=False
                         )
                         # Should return path or True (not raise)
@@ -1270,7 +1270,7 @@ class TestOptionalFeatures:
                     ),
                 ):
                     # Test with generate_plots=False
-                    result = analyzer_instance.main(
+                    result = analyzer_instance.run(
                         cache_dir=cache_dir, generate_plots=False
                     )
                     assert result is not None
@@ -1306,7 +1306,7 @@ class TestOptionalFeatures:
                     ),
                 ):
                     with caplog.at_level(logging.INFO):
-                        result = analyzer_instance.main(
+                        result = analyzer_instance.run(
                             cache_dir=cache_dir,
                             generate_plots=False,
                             verbose=True,
@@ -1349,7 +1349,7 @@ class TestOptionalFeatures:
                     ),
                 ):
                     # With save_npz_only=True, plotting should be skipped
-                    result = analyzer_instance.main(
+                    result = analyzer_instance.run(
                         cache_dir=cache_dir,
                         generate_plots=True,  # Set to True but should be skipped
                         save_npz_only=True,
@@ -1471,7 +1471,7 @@ class TestFallbackPaths:
                 ):
                     # Simply test that generate_plots=True doesn't break
                     # (the exception handling in plotting is already tested indirectly)
-                    result = analyzer_instance.main(
+                    result = analyzer_instance.run(
                         cache_dir=cache_dir, generate_plots=True
                     )
                     # Should return a result even with plotting
