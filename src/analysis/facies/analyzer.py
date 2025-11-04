@@ -22,12 +22,16 @@ from matplotlib.figure import Figure
 from src.plotting.helpers.plot import PlotConfig
 from src.processing.velocity import VelocityModel
 from src.io.grid import GridSpec
-from src.analysis.types import (
+from src.analysis.base import AnalyzerInterface
+from src.analysis.pipelines.orchestrator import Pipeline
+from src.analysis.types.base import (
     ResamplerFactory,
     CacheLoaderProtocol,
     PlotterProtocol,
-    Domain,
 )
+from src.analysis.domain.enum import Domain
+from src.analysis.facies.config import FaciesAnalysisConfig
+from src.analysis.facies.stages import create_facies_analysis_pipeline
 from src.analysis.models import (
     FaciesCorrelationConfig,
     AvoResults,
@@ -61,7 +65,7 @@ DEFAULT_CACHE_DIR = ".cache"
 DEFAULT_DOMAIN = Domain.DEPTH
 
 
-class FaciesCorrelationAnalyzer:
+class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure]):
     """Orchestrator for seismic-facies correlation analysis pipeline.
 
     The analyzer groups together a sequence of analysis routines (gradient
@@ -69,6 +73,9 @@ class FaciesCorrelationAnalyzer:
     aggregation and facies discrimination) and exposes a single
     ``run(...)`` method. ``run()`` executes the pipeline and returns a
     Matplotlib :class:`Figure` with analysis summary plots.
+
+    Implements the AnalyzerInterface for polymorphic treatment and
+    integration with the high-level analysis framework.
 
     Parameters
     ----------
@@ -121,7 +128,7 @@ class FaciesCorrelationAnalyzer:
     Run the analyzer programmatically with the enum-based domain::
 
         from src.analysis.facies import FaciesCorrelationAnalyzer
-        from src.analysis.types import Domain
+        from src.analysis.domain import Domain
 
         analyzer = FaciesCorrelationAnalyzer()
         fig = analyzer.run(cache_dir=".cache", domain=Domain.DEPTH)
@@ -156,17 +163,19 @@ class FaciesCorrelationAnalyzer:
         - velocity_model_class: class to construct velocity model from dataset
         - Processor dependencies: all the specialized analysis classes
         """
+        # Simplified initialization: assign all dependencies directly
+        # Configuration object (grouped tunable parameters)
+        self._config = config or FaciesCorrelationConfig()
 
+        # Use conditional assignment for cleaner initialization
+        # (eliminates repetitive or-assignment boilerplate)
         self._resampler_factory = resampler_factory
         self._select_cache_files = select_cache_files
         self._cache_loader = cache_loader
         self._velocity_model_class = velocity_model_class or VelocityModel
         self._plotter = plotter
 
-        # Configuration object (grouped tunable parameters)
-        self._config = config or FaciesCorrelationConfig()
-
-        # Inject or create processors
+        # Inject or create processors (simplified with ternary operators)
         self._boundary_detector = boundary_detector or BoundaryDetector()
         self._cube_aligner = cube_aligner or CubeAligner()
         self._boundary_amp_extractor = (
@@ -181,6 +190,59 @@ class FaciesCorrelationAnalyzer:
             facies_discriminator or FaciesDiscriminationCalculator()
         )
         self._domain_handler_factory = domain_handler_factory or DomainHandlerFactory()
+
+    @classmethod
+    def from_builder(
+        cls,
+        builder_func: Optional[Callable[..., "FaciesCorrelationAnalyzer"]] = None,
+    ) -> "FaciesCorrelationAnalyzer":
+        """Create analyzer using fluent AnalysisBuilder pattern.
+
+        This factory method enables fluent API construction of the analyzer
+        with the AnalysisBuilder pattern for cleaner initialization code.
+
+        Parameters
+        ----------
+        builder_func : Callable, optional
+            Builder function to customize analyzer. If omitted, uses default
+            build_facies_analyzer() from builder module.
+
+        Returns
+        -------
+        FaciesCorrelationAnalyzer
+            Constructed analyzer instance
+
+        Examples
+        --------
+        Using default builder::
+
+            from src.analysis import build_facies_analyzer
+            analyzer = FaciesCorrelationAnalyzer.from_builder()
+
+        Using custom builder::
+
+            from src.analysis import AnalysisBuilder
+            analyzer = FaciesCorrelationAnalyzer.from_builder(
+                lambda: (AnalysisBuilder()
+                    .with_config(custom_config)
+                    .with_dependency("plotter", custom_plotter)
+                    .build())
+            )
+
+        Or inline fluent construction::
+
+            from src.analysis import AnalysisBuilder
+            analyzer = (AnalysisBuilder()
+                .with_config(config)
+                .with_dependency("cache_loader", loader)
+                .build())
+        """
+        from src.analysis.builder import build_facies_analyzer
+
+        if builder_func is None:
+            return build_facies_analyzer()
+
+        return builder_func()
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging.
@@ -261,6 +323,153 @@ class FaciesCorrelationAnalyzer:
             Configuration object with tunable analysis parameters.
         """
         return self._config
+
+    # ====================================================================
+    # AnalyzerInterface Implementation
+    # ====================================================================
+
+    @property
+    def name(self) -> str:
+        """Get the domain name for this analyzer.
+
+        Implements AnalyzerInterface abstract property.
+
+        Returns
+        -------
+        str
+            Domain identifier: "facies"
+        """
+        return "facies"
+
+    def validate_inputs(self, **kwargs) -> bool:
+        """Validate that required input parameters are provided.
+
+        Implements AnalyzerInterface abstract method. Validates cache_dir
+        and other critical parameters.
+
+        Parameters
+        ----------
+        **kwargs
+            Arbitrary keyword arguments. Expected keys: cache_dir, domain
+
+        Returns
+        -------
+        bool
+            True if all required parameters are valid and accessible.
+
+        Raises
+        ------
+        ValueError
+            If validation fails.
+        """
+        cache_dir = kwargs.get("cache_dir", self._config.cache_dir)
+        domain = kwargs.get("domain", DEFAULT_DOMAIN)
+
+        # Validate using existing validators
+        try:
+            DomainValidator.validate_domain(domain, self.VALID_DOMAINS)
+            PathValidator.validate_cache_dir(cache_dir)
+            self._config.validate_inputs()
+            return True
+        except (ValueError, OSError) as e:
+            logger.warning(f"Input validation failed: {e}")
+            return False
+
+    def analyze(self, **kwargs) -> Figure:
+        """Execute facies correlation analysis pipeline.
+
+        Implements AnalyzerInterface abstract method. Equivalent to calling
+        run() with the provided parameters.
+
+        Parameters
+        ----------
+        **kwargs
+            Arbitrary keyword arguments. Expected keys:
+            - cache_dir (str): Cache directory path
+            - domain (Domain): Analysis domain (DEPTH or TIME)
+            - verbose (bool): Enable verbose logging
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Summary figure with analysis results.
+
+        Raises
+        ------
+        ValueError
+            If inputs are invalid.
+        """
+        cache_dir = kwargs.get("cache_dir", DEFAULT_CACHE_DIR)
+        domain = kwargs.get("domain", DEFAULT_DOMAIN)
+        verbose = kwargs.get("verbose", False)
+
+        return self.run(cache_dir=cache_dir, domain=domain, verbose=verbose)
+
+    def get_configuration(self) -> FaciesAnalysisConfig:
+        """Get the current analysis configuration.
+
+        Implements AnalyzerInterface abstract method.
+
+        Returns
+        -------
+        FaciesAnalysisConfig
+            Current configuration object.
+        """
+        return self._config
+
+    def configure(self, config: FaciesAnalysisConfig) -> None:
+        """Update the analysis configuration.
+
+        Implements AnalyzerInterface abstract method.
+
+        Parameters
+        ----------
+        config
+            New FaciesAnalysisConfig instance.
+
+        Raises
+        ------
+        TypeError
+            If config is not FaciesAnalysisConfig.
+        """
+        if not isinstance(config, FaciesAnalysisConfig):
+            raise TypeError(
+                f"Expected FaciesAnalysisConfig, got {type(config).__name__}"
+            )
+
+        self._config = config
+
+        # Update dilation window in processors that depend on it
+        if hasattr(self._boundary_amp_extractor, "dilation_window"):
+            self._boundary_amp_extractor.dilation_window = config.dilation_window
+
+    def is_ready(self) -> bool:
+        """Check if analyzer is ready for analysis.
+
+        Implements AnalyzerInterface abstract method. Analyzer is ready
+        if configuration is valid and all processors are initialized.
+
+        Returns
+        -------
+        bool
+            True if analyzer is in valid state for analysis.
+        """
+        try:
+            return (
+                self._config.is_valid()
+                and self._boundary_detector is not None
+                and self._cube_aligner is not None
+                and self._boundary_amp_extractor is not None
+                and self._gradient_calculator is not None
+                and self._interface_analyzer is not None
+                and self._facies_discriminator is not None
+            )
+        except Exception:
+            return False
+
+    # ====================================================================
+    # End AnalyzerInterface Implementation
+    # ====================================================================
 
     def convert_time_to_depth(
         self,

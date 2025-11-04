@@ -19,11 +19,18 @@ Quick Start
 """
 
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
-from src.analysis.types import Domain
+from src.analysis.facies.config import FaciesAnalysisConfig
+from src.analysis.facies.processor_setup import register_facies_processors
+from src.analysis.domain.enum import Domain
 from src.analysis.models import FaciesCorrelationConfig
+
+# Register processors when module is imported
+register_facies_processors()
 
 __all__ = [
     "FaciesCorrelationAnalyzer",
+    "FaciesAnalysisConfig",
     "Domain",
     "FaciesCorrelationConfig",
+    "register_facies_processors",
 ]
