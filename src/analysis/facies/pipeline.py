@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from src.plotting.helpers.plot import PlotConfig
 from src.processing.velocity import VelocityModel
 from src.io import data_loader
-from src.analysis.types import Domain
+from src.analysis.domain.enum import Domain
 from src.io.data_loader import DatasetManager
 from src.analysis.models import (
     CacheLoadResult,
@@ -122,17 +122,11 @@ class AnalysisPipeline:
             avo = self.analyzer._cache_loader.load_full_stack(avo_fn)
             if avo is None:
                 raise ValueError(f"Failed to load AVO data from {avo_fn}")
-            return CacheLoadResult(avo=avo, filename=avo_fn)
+        # fall back to using CacheLoader directly
+        # Deferred import: avoid circular dependency at module load time.
+        from src.analysis.cache import CacheLoader
 
-        # fall back to the previous behavior
-        if self.analyzer._select_cache_files is not None:
-            avo_fn = self.analyzer._select_cache_files(cache_dir, str(domain))
-        else:
-            # Deferred import: avoid circular dependency at module load time.
-            # The cache loader module is only imported when actually needed.
-            from src.analysis.cache import CacheLoader
-
-            avo_fn = CacheLoader().select_cache_file(cache_dir, str(domain))
+        avo_fn = CacheLoader().select_cache_file(cache_dir, str(domain))
 
         if avo_fn is None:
             raise FileNotFoundError(f"No AVO cache file found in {cache_dir}")
