@@ -25,7 +25,8 @@ from contextlib import contextmanager
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.types import Domain, TimeResampler
+from src.analysis.domain.enum import Domain
+from src.analysis.types.base import TimeResampler
 from src.io.grid import GridSpec
 
 __all__ = [
