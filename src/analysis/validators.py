@@ -44,25 +44,112 @@ Example Usage:
 """
 
 import logging
+from abc import ABC, abstractmethod
 
 from src.analysis.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "Validator",
     "RangeValidator",
     "CountValidator",
     "QuantileValidator",
+    "ValidatorStrategy",
+    "CompositeValidator",
     "ValidationError",
 ]
 
 
-class RangeValidator:
+class Validator(ABC):
+    """Abstract base class for all data validators.
+
+    Defines the common interface for validators and provides shared
+    validation infrastructure. All concrete validators should inherit
+    from this class and implement the validate() method.
+
+    This ensures consistent validation patterns across the codebase and
+    makes it easy to extend validation capabilities.
+    """
+
+    @abstractmethod
+    def validate(self, value, name: str = "value", **kwargs) -> None:
+        """Validate a value and raise ValidationError if invalid.
+
+        Parameters
+        ----------
+        value
+            The value to validate (type depends on validator).
+        name : str, default="value"
+            Name for error messages.
+        **kwargs
+            Additional validation parameters (validator-specific).
+
+        Raises
+        ------
+        ValidationError
+            If value is invalid according to validator rules.
+        """
+        pass
+
+    @staticmethod
+    def _format_error_message(
+        name: str,
+        actual: any,
+        requirement: str,
+    ) -> str:
+        """Format a consistent validation error message.
+
+        Parameters
+        ----------
+        name : str
+            Field/value name.
+        actual : any
+            The actual value that failed validation.
+        requirement : str
+            Description of what was required.
+
+        Returns
+        -------
+        str
+            Formatted error message.
+        """
+        return f"Invalid {name}: {actual} (requirement: {requirement})"
+
+
+class RangeValidator(Validator):
     """Validates numeric values fall within expected ranges.
 
     Provides common range validation methods for correlation values,
     p-values, and generic numeric ranges.
     """
+
+    def validate(
+        self,
+        value: float,
+        name: str = "value",
+        min_val: float | None = None,
+        max_val: float | None = None,
+    ) -> None:
+        """Validate a numeric value is within specified range.
+
+        Parameters
+        ----------
+        value : float
+            The numeric value to validate.
+        name : str, default="value"
+            Name for error messages.
+        min_val : float | None
+            Minimum allowed value (inclusive). None means no minimum.
+        max_val : float | None
+            Maximum allowed value (inclusive). None means no maximum.
+
+        Raises
+        ------
+        ValidationError
+            If value is outside the specified range.
+        """
+        self.validate_range(value, min_val, max_val, name)
 
     @staticmethod
     def validate_correlation(
@@ -248,8 +335,32 @@ class RangeValidator:
         RangeValidator.validate_pvalue(value, name=name, allow_nan=allow_nan)
 
 
-class CountValidator:
+class CountValidator(Validator):
     """Validates count-like values (non-negative integers)."""
+
+    def validate(
+        self,
+        value: int,
+        name: str = "value",
+        allow_zero: bool = True,
+    ) -> None:
+        """Validate a count value (non-negative integer).
+
+        Parameters
+        ----------
+        value : int
+            Count value to validate.
+        name : str, default="value"
+            Name for error messages.
+        allow_zero : bool, default=True
+            If True, zero is accepted. If False, value must be > 0.
+
+        Raises
+        ------
+        ValidationError
+            If value is negative or is zero when not allowed.
+        """
+        self.validate_count(value, name, allow_zero=allow_zero)
 
     @staticmethod
     def validate_count(
@@ -320,8 +431,29 @@ class CountValidator:
         CountValidator.validate_count(value, name=name, allow_zero=False)
 
 
-class QuantileValidator:
+class QuantileValidator(Validator):
     """Validates quantile-related values."""
+
+    def validate(
+        self,
+        value: float,
+        name: str = "value",
+    ) -> None:
+        """Validate a quantile value [0, 1].
+
+        Parameters
+        ----------
+        value : float
+            Quantile value to validate.
+        name : str, default="value"
+            Name for error messages.
+
+        Raises
+        ------
+        ValidationError
+            If value is outside [0, 1].
+        """
+        self.validate_quantile(value, name)
 
     @staticmethod
     def validate_quantile(
@@ -403,3 +535,187 @@ class QuantileValidator:
                 )
 
         logger.debug(f"Quantile order valid: {q25} <= {q50} <= {q75}")
+
+
+# ============================================================================
+# Strategy Pattern Validators (composable validation chains)
+# ============================================================================
+
+
+class ValidatorStrategy(ABC):
+    """Abstract base for validation logic.
+
+    Validators implement specific validation rules that can be composed
+    into validation pipelines through the Strategy pattern.
+
+    Examples
+    --------
+    A custom validator:
+
+    >>> class PositiveValidator(ValidatorStrategy):
+    ...     def validate(self, data):
+    ...         if (data < 0).any():
+    ...             from src.analysis.processors.config import ValidationResult
+    ...             return ValidationResult(
+    ...                 is_valid=False,
+    ...                 error_message="Data contains negative values"
+    ...             )
+    ...         return ValidationResult(is_valid=True)
+    ...
+    ...     def describe(self) -> str:
+    ...         return "All values must be positive"
+    """
+
+    @abstractmethod
+    def validate(self, data):
+        """Execute validation logic.
+
+        Parameters
+        ----------
+        data
+            Data to validate.
+
+        Returns
+        -------
+        ValidationResult
+            Validation result with success status and error message.
+        """
+        pass
+
+    @abstractmethod
+    def describe(self) -> str:
+        """Get human-readable description of this validation.
+
+        Returns
+        -------
+        str
+            Description suitable for logging or documentation.
+        """
+        pass
+
+
+class CompositeValidator(ValidatorStrategy):
+    """Compose multiple validators in a validation pipeline.
+
+    Allows combining multiple validators with AND/OR logic to build
+    flexible validation chains. All validators are executed and results
+    are combined according to the composition mode.
+
+    Parameters
+    ----------
+    *validators
+        Variable number of validators to compose.
+    mode
+        How to combine results: 'all' (default) requires all validators pass,
+        'any' requires at least one validator pass.
+
+    Examples
+    --------
+    Chain multiple validators:
+
+    >>> pipeline = CompositeValidator(
+    ...     ShapeValidator(expected_shape=(10, 10)),
+    ...     RangeValidator(min=0, max=100),
+    ...     NonNaNValidator(),
+    ...     mode='all'
+    ... )
+    >>> result = pipeline.validate(data)
+    >>> if result.is_valid:
+    ...     print("All validations passed")
+
+    Alternative validators:
+
+    >>> backup_pipeline = CompositeValidator(
+    ...     FastValidator(),
+    ...     ThoroughValidator(),
+    ...     mode='any'
+    ... )
+    """
+
+    def __init__(
+        self,
+        *validators: ValidatorStrategy,
+        mode: str = "all",
+    ) -> None:
+        """Initialize composite validator.
+
+        Parameters
+        ----------
+        validators
+            Validators to compose.
+        mode
+            'all' (AND logic) or 'any' (OR logic).
+
+        Raises
+        ------
+        ValueError
+            If mode is not 'all' or 'any'.
+        """
+        if mode not in ("all", "any"):
+            raise ValueError(f"mode must be 'all' or 'any', got {mode}")
+        if not validators:
+            raise ValueError("At least one validator must be provided")
+
+        self.validators = list(validators)
+        self.mode = mode
+
+    def validate(self, data):
+        """Execute all validators and combine results.
+
+        Parameters
+        ----------
+        data
+            Data to validate.
+
+        Returns
+        -------
+        ValidationResult
+            Combined validation result.
+        """
+        from src.analysis.processors.config import ValidationResult
+
+        results = [v.validate(data) for v in self.validators]
+
+        if self.mode == "all":
+            return self._combine_all(results)
+        else:
+            return self._combine_any(results)
+
+    def _combine_all(self, results):
+        """Combine results with AND logic (all must pass).
+
+        Returns failure on first failed validation.
+        """
+        from src.analysis.processors.config import ValidationResult
+
+        for result in results:
+            if not result.is_valid:
+                return result
+
+        # All passed - combine data and counts
+        return ValidationResult(
+            is_valid=True,
+            arr1=results[0].arr1 if results else None,
+            arr2=results[0].arr2 if results else None,
+            n_removed=sum(r.n_removed for r in results),
+        )
+
+    def _combine_any(self, results):
+        """Combine results with OR logic (at least one must pass).
+
+        Returns success if any validation passes.
+        """
+        from src.analysis.processors.config import ValidationResult
+
+        for result in results:
+            if result.is_valid:
+                return result
+
+        # All failed - return first failure
+        return results[0] if results else ValidationResult(is_valid=False)
+
+    def describe(self) -> str:
+        """Get description of all validators."""
+        mode_word = "All of" if self.mode == "all" else "Any of"
+        descriptions = [f"  - {v.describe()}" for v in self.validators]
+        return f"{mode_word}:\n" + "\n".join(descriptions)
