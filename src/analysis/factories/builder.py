@@ -28,7 +28,7 @@ from typing import (
 from contextlib import contextmanager
 
 from src.processing.velocity import VelocityModel
-from src.analysis.types import (
+from src.analysis.types.base import (
     ResamplerFactory,
     CacheLoaderProtocol,
     PlotterProtocol,
@@ -43,11 +43,8 @@ from src.analysis.processors import (
     FaciesDiscriminationCalculator,
 )
 from src.analysis.domain import DomainHandlerFactory
-from src.analysis.factories.validators import (
-    validate_type,
-    BuilderValidationError,
-    BuilderFrozenError,
-)
+from src.analysis.factories.validators import TypeValidator
+from src.analysis.exceptions import BuilderValidationError, BuilderFrozenError
 
 if TYPE_CHECKING:
     from src.analysis.facies import FaciesCorrelationAnalyzer
@@ -297,7 +294,7 @@ class AnalyzerBuilder:
         # Perform type validation using centralized helper
         if name in type_map:
             expected_type = type_map[name]
-            validate_type(value, expected_type, name)
+            TypeValidator.validate(value, expected_type, name)
 
         old_value = getattr(self, f"_{name}", None)
         setattr(self, f"_{name}", value)

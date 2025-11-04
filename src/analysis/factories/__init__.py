@@ -7,12 +7,14 @@ Main Components
 ---------------
 - AnalyzerFactory: Namespace class with static factory methods
 - AnalyzerBuilder: Fluent builder for custom configuration
-- BuilderValidationError: Raised when builder validation fails
-- BuilderFrozenError: Raised when modifying a frozen builder
+- TypeValidator: Object-oriented type validation
+
+Note: BuilderValidationError and BuilderFrozenError have been moved to
+src.analysis.exceptions for centralized exception handling.
 
 Quick Start
 -----------
->>> from src.analysis.factories import AnalyzerFactory
+>>> from src.analysis.factories import AnalyzerFactory, TypeValidator
 >>> analyzer = AnalyzerFactory.create_default()
 >>> custom_analyzer = (AnalyzerFactory.builder()
 ...     .with_config(config)
@@ -22,16 +24,10 @@ Quick Start
 
 from src.analysis.factories.analyzer_factory import AnalyzerFactory
 from src.analysis.factories.builder import AnalyzerBuilder
-from src.analysis.factories.validators import (
-    BuilderValidationError,
-    BuilderFrozenError,
-    validate_type,
-)
+from src.analysis.factories.validators import TypeValidator
 
 __all__ = [
     "AnalyzerFactory",
     "AnalyzerBuilder",
-    "BuilderValidationError",
-    "BuilderFrozenError",
-    "validate_type",
+    "TypeValidator",
 ]
