@@ -10,7 +10,7 @@ from .exceptions import ValidationError
 from .types import ArrayNamePair
 
 if TYPE_CHECKING:
-    from src.analysis.types import Domain
+    from src.analysis.domain.enum import Domain
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +274,7 @@ class DomainValidator:
 
         Examples
         --------
-        >>> from src.analysis.types import Domain
+        >>> from src.analysis.domain.enum import Domain
         >>> DomainValidator.validate_domain(Domain.DEPTH)
         <Domain.DEPTH: 'depth'>
 
@@ -282,7 +282,7 @@ class DomainValidator:
         TypeError: Expected Domain enum, got str...
         """
         # Import here to avoid circular dependencies
-        from src.analysis.types import Domain
+        from src.analysis.domain.enum import Domain
 
         if not isinstance(domain, Domain):
             raise TypeError(
