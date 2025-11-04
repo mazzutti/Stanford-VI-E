@@ -47,6 +47,13 @@ Example
 
 # Phase 2 modules (utilities and helpers)
 from .decorators import ProcessorDecorators  # noqa: F401
+from .registry import (  # noqa: F401
+    ProcessorRegistry,
+    ProcessorMetadata,
+    get_default_processor_registry,
+    register_processor,
+    create_processor,
+)
 from .exceptions import (  # noqa: F401
     CorrelationError,
     ProcessorError,
@@ -74,7 +81,6 @@ from .types import (  # noqa: F401
 from .config import (  # noqa: F401
     BoundaryComputationConfig,
     NeighborDirection,
-    NeighborSlices,
     ProcessorConfig,
     ValidationResult,
 )
@@ -102,7 +108,6 @@ __all__ = [
     "ProcessorConfig",
     "BoundaryComputationConfig",
     "NeighborDirection",
-    "NeighborSlices",
     "ValidationResult",
     # Utilities
     "ProcessorUtils",
@@ -111,6 +116,12 @@ __all__ = [
     "Validatable",
     # Decorators
     "ProcessorDecorators",
+    # Registry
+    "ProcessorRegistry",
+    "ProcessorMetadata",
+    "get_default_processor_registry",
+    "register_processor",
+    "create_processor",
     # Exceptions
     "ProcessorError",
     "ValidationError",
