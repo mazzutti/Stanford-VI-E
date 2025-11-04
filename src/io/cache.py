@@ -31,7 +31,7 @@ class CacheEntry:
     valid: Optional[bool] = None
 
     @classmethod
-    def from_path(cls, p: Union[str, os.PathLike]) -> "CacheEntry":
+    def from_path(cls, p: Union[str, os.PathLike[str]]) -> "CacheEntry":
         p = Path(p)
         if not p.exists():
             raise FileNotFoundError(p)
@@ -78,7 +78,7 @@ class CacheEntry:
         )
 
     @classmethod
-    def from_path_shallow(cls, p: Union[str, os.PathLike]) -> "CacheEntry":
+    def from_path_shallow(cls, p: Union[str, os.PathLike[str]]) -> "CacheEntry":
         """Create CacheEntry without attempting to read file contents (fast)."""
         p = Path(p)
         if not p.exists():
@@ -104,7 +104,7 @@ class CacheEntry:
             f"mtime={self.mtime:.0f}, size_bytes={self.size_bytes}, valid={self.valid})"
         )
 
-    def to_dict(self) -> Dict[str, Union[str, int, float, None]]:
+    def to_dict(self) -> Dict[str, Union[str, int, float, bool, Dict[str, Any], None]]:
         return {
             "key": self.key,
             "path": str(self.path),
@@ -158,7 +158,7 @@ class CacheManager:
             groups.setdefault(entry.key, []).append(entry)
         return groups
 
-    def save_npz(self, fn: Union[str, os.PathLike], data: Dict[str, Any]) -> None:
+    def save_npz(self, fn: Union[str, os.PathLike[str]], data: Dict[str, Any]) -> None:
         """Save a compressed npz file ensuring parent directory exists."""
         import numpy as _np
 
@@ -295,84 +295,71 @@ class CacheManager:
         return removed, size_mb
 
 
-__all__ = ["CacheEntry", "CacheManager"]
+class CacheManagerFactory:
+    """Factory for creating and managing CacheManager instances.
 
-# Default, module-level convenience singleton for simple scripts and callers
-DEFAULT_CACHE_DIR = ".cache"
-
-
-# Default cache_manager proxy
-cache_manager = LazyObjectProxy(lambda: CacheManager(cache_dir=DEFAULT_CACHE_DIR))
-
-
-def cache_for_dir(cache_dir: str | None):
-    """Return a CacheManager instance for `cache_dir`.
-
-    If the requested directory matches the module default, returns the
-    shared `cache_manager` singleton. Otherwise creates a lightweight
-    temporary `CacheManager` for that directory.
+    Provides centralized access to cache managers with support for:
+    - Shared singleton for default cache directory
+    - Temporary instances for custom directories
+    - Lazy initialization of the default manager
     """
-    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
-        return cache_manager
-    return CacheManager(cache_dir=str(cache_dir))
+
+    # Module-level defaults
+    DEFAULT_CACHE_DIR: str = ".cache"
+    _default_manager: LazyObjectProxy[CacheManager] = LazyObjectProxy(
+        lambda: CacheManager(cache_dir=CacheManagerFactory.DEFAULT_CACHE_DIR)
+    )
+
+    @staticmethod
+    def get_manager(cache_dir: str | None = None) -> CacheManager:
+        """Return a CacheManager instance for cache_dir.
+
+        If cache_dir is None or matches the default, returns the shared
+        singleton. Otherwise creates a temporary instance.
+
+        Parameters
+        ----------
+        cache_dir : str | None
+            Cache directory path. If None, uses DEFAULT_CACHE_DIR.
+
+        Returns
+        -------
+        CacheManager
+            Shared singleton for default directory, or new instance otherwise.
+        """
+        if cache_dir is None or cache_dir == CacheManagerFactory.DEFAULT_CACHE_DIR:
+            return CacheManagerFactory._default_manager  # type: ignore[return-value]
+        return CacheManager(cache_dir=str(cache_dir))
+
+    @staticmethod
+    def get_default_manager() -> CacheManager:
+        """Return the shared module-level cache manager singleton.
+
+        Returns
+        -------
+        CacheManager
+            The lazy-initialized default cache manager.
+        """
+        return CacheManagerFactory._default_manager  # type: ignore[return-value]
+
+    @staticmethod
+    def for_directory(cache_dir: str | None) -> CacheManager:
+        """Return a CacheManager instance for the specified directory.
+
+        Convenience alias for get_manager(). Provides semantic clarity
+        when obtaining a manager for a specific directory.
+
+        Parameters
+        ----------
+        cache_dir : str | None
+            Cache directory path.
+
+        Returns
+        -------
+        CacheManager
+            Cache manager for the specified directory.
+        """
+        return CacheManagerFactory.get_manager(cache_dir)
 
 
-def _impl_cache_for_dir(cache_dir: str | None):
-    """Canonical implementation for cache_for_dir providing a single entrypoint.
-
-    Keeps the lazy `cache_manager` behaviour for the default directory and
-    returns a temporary `CacheManager` for custom directories.
-    """
-    # Backwards-compatible canonical implementation kept for tests; prefer
-    # calling `cache_for_dir(...)` above which includes the same logic.
-    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
-        return cache_manager
-    return CacheManager(cache_dir=str(cache_dir))
-
-    # Note: module-level helpers have been replaced by `CacheManager` instances
-    # or the `cache_for_dir(...)` helper which returns either the shared proxy
-    # or a temporary instance.
-
-
-__all__.extend(["CacheEntry", "CacheManager", "cache_for_dir", "DEFAULT_CACHE_DIR"])
-
-
-def get_default_cache(cache_dir: str | None = None):
-    """Return the module default `cache_manager` when `cache_dir` is None,
-    otherwise return a `CacheManager` instance configured for `cache_dir`.
-
-    This mirrors `get_default_disk_cache` in `src.io.disk_cache` and gives
-    callers a single helper to obtain either the shared lazy singleton or a
-    temporary instance for custom directories.
-    """
-    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
-        return cache_manager
-    return CacheManager(cache_dir=str(cache_dir))
-
-
-def _impl_get_default_cache(cache_dir: str | None = None):
-    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
-        return cache_manager
-    return CacheManager(cache_dir=str(cache_dir))
-
-
-__all__.append("get_default_cache")
-
-
-def get_cache_manager(cache_dir: str | None = None):
-    """Return a CacheManager instance for `cache_dir`.
-
-    When `cache_dir` is None the shared module-level proxy is returned.
-    """
-    # Return shared proxy when using the default cache dir, otherwise return a
-    # temporary CacheManager instance for the provided directory.
-    if cache_dir is None or cache_dir == DEFAULT_CACHE_DIR:
-        return cache_manager
-    return CacheManager(cache_dir=str(cache_dir))
-
-
-def _impl_get_cache_manager(cache_dir: str | None = None):
-    return _impl_get_default_cache(cache_dir)
-
-
-__all__.append("get_cache_manager")
+__all__ = ["CacheEntry", "CacheManager", "CacheManagerFactory"]
