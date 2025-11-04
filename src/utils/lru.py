@@ -5,7 +5,7 @@ import threading
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.types import CacheProtocol
+from src.analysis.types.base import CacheProtocol
 
 T = TypeVar("T")
 

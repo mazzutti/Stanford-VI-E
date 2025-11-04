@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from src.utils.facades import LazyObjectProxy
 
 
 __all__ = ["use_flag", "get_flag_value"]
@@ -50,25 +49,4 @@ def get_flag_value(name: str, default: str | None = None) -> str | None:
     return os.environ.get(name, default)
 
 
-class Flags:
-    def use_flag(self, name: str, default: bool = False) -> bool:
-        return use_flag(name, default=default)
-
-    def get_flag_value(self, name: str, default: str | None = None) -> str | None:
-        return get_flag_value(name, default=default)
-
-
-# Module-level lazy flags facade
-flags = LazyObjectProxy(lambda: Flags())
-
-
-def get_flags(instance: Flags | None = None) -> Flags:
-    return instance if instance is not None else flags
-
-
-try:
-    __all__
-except NameError:
-    __all__ = ["use_flag", "get_flag_value"]
-
-__all__.extend(["flags", "get_flags"])
+__all__ = ["use_flag", "get_flag_value"]
