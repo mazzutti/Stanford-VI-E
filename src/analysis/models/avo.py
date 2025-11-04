@@ -267,12 +267,7 @@ class AvoStats:
 
 @dataclass
 class AvoResults:
-    """Structured container for AVO analysis results with computed properties.
-
-    This mirrors the legacy :class:`AvoResults` TypedDict used by the
-    plotting helpers but provides a typed, dataclass-based API for
-    analysis routines with added behavior.
-    """
+    """Structured container for AVO analysis results with computed properties."""
 
     boundary_amps: Optional[BoundaryAmpsResult] = None
     gradient_correlation: Optional[GradientCorrelationResult] = None

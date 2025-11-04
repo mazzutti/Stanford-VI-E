@@ -24,11 +24,7 @@ __all__ = [
 @total_ordering
 @dataclass(slots=True)
 class FaciesStats:
-    """Per-facies amplitude statistics with computed properties and validation.
-
-    Fields mirror the legacy dict keys used across the codebase and provide
-    convenient methods for statistics manipulation and validation.
-    """
+    """Per-facies amplitude statistics with computed properties and validation."""
 
     count: int = 0
     mean: float = float("nan")
