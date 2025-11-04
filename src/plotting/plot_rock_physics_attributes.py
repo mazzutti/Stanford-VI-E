@@ -1,7 +1,7 @@
-"""Rock-physics attribute plotting helpers and thin facade.
+"""Rock-physics attribute plotting helpers.
 
-Place lightweight imports (logging, LazyObjectProxy) at module top to satisfy
-E402. Heavy plotting initialization remains but is safe after the small imports.
+Provides utilities for visualizing rock-physics attributes using the
+project's plotting helpers.
 """
 
 import logging
@@ -15,82 +15,61 @@ plt, np = init_plotting(backend="Agg")
 logger = logging.getLogger(__name__)
 
 __all__ = ["plot_attribute", "main"]
-"""Rock physics attribute plotting helpers and thin facade.
-
-Provides utilities and a small facade for visualizing rock-physics
-attributes using the project's plotting helpers.
-"""
-
-
-# Note: plotting modules now prefer using `PlotConfig` / `GridSpec` from
-# `src.plotting.helpers.plot.default_plot_config()` instead of module-level
-# tuple constants. Obtain a `GridSpec` from `PlotConfig.grid_spec` for
-# per-module defaults and avoid keeping separate GRID_SHAPE/DZ/DT tuples.
 
 
 def plot_attribute(ax, data, idx, slice_type, title, cmap="viridis"):
-    return _impl_plot_attribute(ax, data, idx, slice_type, title, cmap=cmap)
+    """Plot a rock-physics attribute slice."""
+    if slice_type == "inline":
+        slice_data = data[idx, :, :]
+        from src.plotting.helpers.plot import imshow_with_labels
 
+        return imshow_with_labels(
+            ax,
+            slice_data,
+            f"{title} (Inline {idx})",
+            xlabel="Crossline Index",
+            k_label="Depth",
+            k_unit="m",
+            cmap=cmap,
+            origin="upper",
+            interpolation="bilinear",
+        )
+    elif slice_type == "crossline":
+        slice_data = data[:, idx, :]
+        from src.plotting.helpers.plot import imshow_with_labels
 
-def _impl_plot_attribute(ax, data, idx, slice_type, title, cmap="viridis"):
-    """Canonical implementation for plotting a rock-physics attribute.
+        return imshow_with_labels(
+            ax,
+            slice_data,
+            f"{title} (Crossline {idx})",
+            xlabel="Inline Index",
+            k_label="Depth",
+            k_unit="m",
+            cmap=cmap,
+            origin="upper",
+            interpolation="bilinear",
+        )
+    else:
+        slice_data = data[:, :, idx]
+        from src.plotting.helpers.plot import imshow_with_labels
 
-    This delegates to the module-level `plot_rock_physics_attributes` facade
-    so callers have a single implementation point (`_impl_plot_attribute`) to
-    reference in tests or alternate APIs while preserving the lazy proxy.
-    """
-    return plot_rock_physics_attributes.plot_attribute(
-        ax, data, idx, slice_type, title, cmap=cmap
-    )
+        return imshow_with_labels(
+            ax,
+            slice_data,
+            f"{title} (Depth {idx}m)",
+            xlabel="Inline Index",
+            k_label="Crossline Index",
+            k_unit="",
+            cmap=cmap,
+            origin="upper",
+            interpolation="bilinear",
+        )
 
 
 class PlotRockPhysicsAttributes:
     def plot_attribute(self, ax, data, idx, slice_type, title, cmap="viridis"):
-        if slice_type == "inline":
-            slice_data = data[idx, :, :]
-            from src.plotting.helpers.plot import imshow_with_labels
-
-            return imshow_with_labels(
-                ax,
-                slice_data,
-                f"{title} (Inline {idx})",
-                xlabel="Crossline Index",
-                k_label="Depth",
-                k_unit="m",
-                cmap=cmap,
-                origin="upper",
-                interpolation="bilinear",
-            )
-        elif slice_type == "crossline":
-            slice_data = data[:, idx, :]
-            from src.plotting.helpers.plot import imshow_with_labels
-
-            return imshow_with_labels(
-                ax,
-                slice_data,
-                f"{title} (Crossline {idx})",
-                xlabel="Inline Index",
-                k_label="Depth",
-                k_unit="m",
-                cmap=cmap,
-                origin="upper",
-                interpolation="bilinear",
-            )
-        else:
-            slice_data = data[:, :, idx]
-            from src.plotting.helpers.plot import imshow_with_labels
-
-            return imshow_with_labels(
-                ax,
-                slice_data,
-                f"{title} (Depth {idx}m)",
-                xlabel="Inline Index",
-                k_label="Crossline Index",
-                k_unit="",
-                cmap=cmap,
-                origin="upper",
-                interpolation="bilinear",
-            )
+        # Delegate to the module-level function
+        return plot_attribute(ax, data, idx, slice_type, title, cmap=cmap)
 
 
 plot_rock_physics_attributes: PlotRockPhysicsAttributes = LazyObjectProxy(

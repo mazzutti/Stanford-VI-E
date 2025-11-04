@@ -31,25 +31,6 @@ def convert_time_to_depth(
 
 
 def plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
-    # Delegate directly to the implementation helper
-    return _impl_plot_with_units(
-        ax, cube, slice_idx, slice_orientation, title, **plot_kwargs
-    )
-
-
-def _impl_convert_time_to_depth(
-    seismogram_time, vp_depth, grid_spec: GridSpec, is_categorical=False
-):
-    from src.processing.resampler import resampler_factory
-
-    resampler = resampler_factory.get_resampler(grid_spec=grid_spec)
-    from src.processing.resample_cache import get_resample_plan_cache
-
-    plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
-    return resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
-
-
-def _impl_plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_kwargs):
     from src.plotting.helpers.plot import apply_plot_defaults
 
     plot_kwargs = apply_plot_defaults(plot_kwargs)
@@ -64,17 +45,14 @@ def _impl_plot_with_units(ax, cube, slice_idx, slice_orientation, title, **plot_
     if slice_orientation == "inline":
         slice_data = cube[slice_idx, :, :]  # [J, K]
         xlabel = "Crossline (J)"
-        # extent intentionally not used here; retained for optional use
         title_with_slice = f"{title}\n(Inline I={slice_idx})"
     elif slice_orientation == "crossline":
         slice_data = cube[:, slice_idx, :]  # [I, K]
         xlabel = "Inline (I)"
-        # extent intentionally not used here; retained for optional use
         title_with_slice = f"{title}\n(Crossline J={slice_idx})"
     elif slice_orientation in ["timeslice", "depthslice"]:
         slice_data = cube[:, :, slice_idx]  # [I, J]
         xlabel = "Crossline (J)"
-        # extent intentionally not used here; retained for optional use
         slice_label = (
             f"{k_label}={slice_idx * k_scale:.3f}{k_unit}"
             if k_unit

@@ -38,9 +38,6 @@ class FaciesPlotter:
 
         logger.debug("create_summary_plots: starting")
 
-        # The plotter expects an AvoResults dataclass; access attributes
-        # directly. Legacy callers should convert to AvoResults first.
-
         fig = plt.figure(figsize=(18, 12))
         domain_label = "Depth Domain" if domain == "depth" else "Time Domain"
         fig.suptitle(
@@ -91,25 +88,19 @@ class FaciesPlotter:
         logger.debug("create_summary_plots: plotting interface strengths")
         # 2. Reflection strength at different interface types (AVO)
         ax2 = plt.subplot(2, 3, 2)
-        # Accept either string keys (legacy) or Transition-like objects.
         rows = []
         for key, stats in (
             getattr(avo_results, "interface_stats_summary", {}) or {}
         ).items():
             if stats is None or stats.get("count", 0) <= 10:
                 continue
-            # label: use str(key) so Transition objects render as "a->b"
+            # label: use str(key) for Transition objects rendering as "a->b"
             label = str(key)
-            # attempt to derive a stable ordering key (from_facies, to_facies)
+            # derive stable ordering key (from_facies, to_facies)
             if hasattr(key, "from_facies") and hasattr(key, "to_facies"):
                 order = (int(key.from_facies), int(key.to_facies))
             else:
-                # try parsing legacy string like "0->1"
-                try:
-                    parts = label.split("->")
-                    order = (int(parts[0]), int(parts[1]))
-                except Exception:
-                    order = (0, 0)
+                order = (0, 0)
             rows.append((order, label, stats))
 
         # sort rows for stable display
@@ -144,9 +135,9 @@ class FaciesPlotter:
                 avo_facies_data.append(sampled)
 
         if avo_facies_data:
-            # Avoid the deprecated `labels=` kwarg on boxplot; set tick labels explicitly
+            # Use modern matplotlib boxplot API
             bp = ax3.boxplot(avo_facies_data, patch_artist=True)
-            # boxplot positions are 1-based indices for each dataset
+            # Set tick labels explicitly
             ax3.set_xticks(range(1, len(avo_facies_data) + 1))
             ax3.set_xticklabels(facies_labels, rotation=0, fontsize=8)
             for patch, color in zip(

@@ -1,11 +1,10 @@
-"""Plotting package grouping for all plotting scripts.
+"""Plotting package for all plotting functionality.
 
-This package contains the implementation modules formerly located at
-the top-level `src/plot_*.py`. These are the canonical locations for
-plotting utilities and scripts: import from `src.plotting.<module>`.
+This package provides canonical locations for plotting utilities and scripts.
+Import from `src.plotting.<module>`.
 
 It also initializes matplotlib/NumPy once for importers by calling
-`src.utils.plot.init_plotting` so `src.plotting.plt` and
+`src.plotting.helpers.plot.init_plotting` so `src.plotting.plt` and
 `src.plotting.np` are available to consumers.
 """
 

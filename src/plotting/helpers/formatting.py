@@ -47,10 +47,6 @@ __all__.extend(["FormattingHelper", "formatting_helper"])
 
 
 def get_formatting_helper(config: dict | None = None):
-    return _impl_get_formatting_helper(config)
-
-
-def _impl_get_formatting_helper(config: dict | None = None):
     if config is None:
         return formatting_helper
     return FormattingHelper()
@@ -60,10 +56,6 @@ __all__.append("get_formatting_helper")
 
 
 def print_header(title: str):
-    return _impl_print_header(title)
-
-
-def _impl_print_header(title: str):
     logger.info("%s", "\n" + "=" * 70)
     logger.info("%s", title)
     logger.info("%s", "=" * 70)
@@ -72,63 +64,40 @@ def _impl_print_header(title: str):
 def print_angle_summary(
     angles: Sequence[float], volumes: Sequence, stack=None, gradient=None
 ):
-    return _impl_print_angle_summary(angles, volumes, stack=stack, gradient=gradient)
-
-
-def _impl_print_angle_summary(
-    angles: Sequence[float], volumes: Sequence, stack=None, gradient=None
-):
     """Log a concise per-angle summary and optional stack/gradient stats."""
-    _impl_print_header("ANGLE-DEPENDENT SUMMARY")
+    print_header("ANGLE-DEPENDENT SUMMARY")
     for angle, vol in zip(angles, volumes):
-        try:
-            logger.info(
-                "  %5.1f° : value = [%.3e, %.3e] (mean = %.3e)",
-                angle,
-                vol.min(),
-                vol.max(),
-                vol.mean(),
-            )
-        except Exception:
-            logger.info("  %5.1f° : value = [?, ?] (stats unavailable)", angle)
+        logger.info(
+            "  %5.1f° : value = [%.3e, %.3e] (mean = %.3e)",
+            angle,
+            vol.min(),
+            vol.max(),
+            vol.mean(),
+        )
 
     if stack is not None:
-        try:
-            logger.info(
-                "\nStack   : value = [%.3e, %.3e] (mean = %.3e)",
-                stack.min(),
-                stack.max(),
-                stack.mean(),
-            )
-        except Exception:
-            logger.info("\nStack   : stats unavailable")
+        logger.info(
+            "\nStack   : value = [%.3e, %.3e] (mean = %.3e)",
+            stack.min(),
+            stack.max(),
+            stack.mean(),
+        )
 
     if gradient is not None:
-        try:
-            logger.info(
-                "Gradient: Δ = [%.3e, %.3e] (mean = %.3e)",
-                gradient.min(),
-                gradient.max(),
-                gradient.mean(),
-            )
-        except Exception:
-            logger.info("Gradient: stats unavailable")
+        logger.info(
+            "Gradient: Δ = [%.3e, %.3e] (mean = %.3e)",
+            gradient.min(),
+            gradient.max(),
+            gradient.mean(),
+        )
 
 
 def print_selected_angles(selected_angles, weights):
-    return _impl_print_selected_angles(selected_angles, weights)
-
-
-def _impl_print_selected_angles(selected_angles, weights):
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
 
 
 def print_cache_info(cache_file: Optional[str]):
-    return _impl_print_cache_info(cache_file)
-
-
-def _impl_print_cache_info(cache_file: Optional[str]):
     if not cache_file:
         return
     logger.info("\n✓ Saved multi-angle results to: %s", cache_file)
