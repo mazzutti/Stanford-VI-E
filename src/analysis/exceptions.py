@@ -146,45 +146,164 @@ class ConfigurationError(AnalysisException):
     pass
 
 
-def reraise_with_context(
-    original_error: Exception,
-    error_type: type[AnalysisException],
-    message: str,
-    *,
-    include_cause: bool = True,
-) -> AnalysisException:
-    """Convert an exception to an AnalysisException with context.
+class BuilderValidationError(ValueError):
+    """Raised when builder validation fails.
 
-    This utility function helps convert low-level exceptions (e.g., OSError,
-    ValueError) into module-specific exceptions while preserving the
-    original error information.
+    Indicates that a value provided to the builder does not meet
+    type or constraint requirements.
 
-    Parameters
-    ----------
-    original_error : Exception
-        The original exception that occurred.
-    error_type : type[AnalysisException]
-        The target exception type to raise.
-    message : str
-        A description of what was being attempted when the error occurred.
-    include_cause : bool, default=True
-        If True, set the original error as __cause__ (enables traceback with `from`).
-
-    Returns
-    -------
-    AnalysisException
-        Configured exception ready to raise.
-
-    Examples
-    --------
-    >>> try:
-    ...     data = np.load("cache.npz")
-    ... except (OSError, ValueError) as e:
-    ...     raise reraise_with_context(
-    ...         e, CacheLoadingError, "loading NPZ archive"
-    ...     ) from e
+    Examples:
+        - Incorrect type for processor
+        - Invalid configuration parameter
+        - Missing required dependency
     """
-    error = error_type(message)
-    if include_cause:
-        error.__cause__ = original_error
-    return error
+
+    def __init__(self, message: str, missing_deps: list[str] | None = None) -> None:
+        """Initialize validation error.
+
+        Parameters
+        ----------
+        message
+            Error message describing what failed.
+        missing_deps
+            List of missing dependencies (optional).
+        """
+        super().__init__(message)
+        self.missing_deps = missing_deps or []
+
+
+class BuilderFrozenError(RuntimeError):
+    """Raised when attempting to modify a frozen builder.
+
+    Indicates an attempt to modify a builder after it has been
+    frozen (locked) to prevent further changes.
+
+    Examples:
+        - Setting processor after freeze()
+        - Setting config after freeze()
+    """
+
+    pass
+
+
+class ComputationError(AnalysisException):
+    """Raised when computational operations fail.
+
+    Base class for computation-related errors (alignment, detection,
+    extraction, interpolation).
+
+    Examples:
+        - Alignment quality insufficient
+        - Feature detection failed
+        - Amplitude extraction failed
+        - Interpolation produced invalid values
+    """
+
+    pass
+
+
+class AlignmentError(ComputationError):
+    """Raised when cube alignment fails."""
+
+    pass
+
+
+class DetectionError(ComputationError):
+    """Raised when boundary detection fails."""
+
+    pass
+
+
+class ExtractionError(ComputationError):
+    """Raised when amplitude extraction fails."""
+
+    pass
+
+
+class InterpolationError(ComputationError):
+    """Raised when interpolation fails."""
+
+    pass
+
+
+class StateError(AnalysisException):
+    """Raised when object state is invalid for operation.
+
+    Indicates an operation was attempted on an object in an invalid state,
+    or an invalid state transition was requested.
+
+    Examples:
+        - Processor not initialized
+        - Invalid state transition
+        - Required setup not completed
+    """
+
+    pass
+
+
+class ExceptionContextBuilder:
+    """Builder for creating AnalysisExceptions with proper error context.
+
+    This class helps convert low-level exceptions (e.g., OSError, ValueError)
+    into module-specific exceptions while preserving the original error
+    information and maintaining proper exception chaining.
+
+    Example Usage:
+        >>> try:
+        ...     data = np.load("cache.npz")
+        ... except (OSError, ValueError) as e:
+        ...     raise ExceptionContextBuilder(e).build(
+        ...         CacheLoadingError, "loading NPZ archive"
+        ...     )
+    """
+
+    def __init__(self, original_error: Exception) -> None:
+        """Initialize with the original exception.
+
+        Parameters
+        ----------
+        original_error : Exception
+            The exception that occurred and should be contextualized.
+        """
+        self._original_error = original_error
+        self._include_cause = True
+
+    def with_cause(self, include_cause: bool) -> "ExceptionContextBuilder":
+        """Configure whether to attach original error as __cause__.
+
+        Parameters
+        ----------
+        include_cause : bool
+            If True, sets original error as __cause__ for exception chaining.
+
+        Returns
+        -------
+        ExceptionContextBuilder
+            Self for method chaining.
+        """
+        self._include_cause = include_cause
+        return self
+
+    def build(
+        self,
+        error_type: type[AnalysisException],
+        message: str,
+    ) -> AnalysisException:
+        """Build and return the contextualized exception.
+
+        Parameters
+        ----------
+        error_type : type[AnalysisException]
+            The target exception type to instantiate.
+        message : str
+            A description of what was being attempted when the error occurred.
+
+        Returns
+        -------
+        AnalysisException
+            Configured exception ready to raise.
+        """
+        error = error_type(message)
+        if self._include_cause:
+            error.__cause__ = self._original_error
+        return error
