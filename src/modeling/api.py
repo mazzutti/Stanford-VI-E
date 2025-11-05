@@ -1,29 +1,16 @@
 """Programmatic API for the modeling pipeline.
 
-Orchestrates the complete AVO modeling workflow: data loading, resampling,
-and AVO synthesis with sensible defaults.
+High-level convenience functions for AVO modeling.
+Uses ModelingPipeline for orchestration.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
-
 import numpy as np
 import logging
 
-from src.io.grid import GridSpec
-from src.modeling.modeling import (
-    AVOSynthesizer,
-    AngleModel,
-    SynthesisConfig,
-    _unwrap_quantity,
-)
-from src.modeling.model_cache import CacheManager
-from src.signal import wavelets
-from src.utils.quantity import Quantity
-
-if TYPE_CHECKING:
-    from src.processing.rock_physics import RockPhysicsModel
+from src.modeling.pipeline import ModelingPipeline
+from src.modeling.config import ModelingConfig, ModelingDefaults
 
 __all__ = ["run_full_modeling"]
 
@@ -38,121 +25,32 @@ def run_full_modeling(
 
     Orchestrates: data loading, depth-to-time resampling, and AVO synthesis.
 
+    This is a convenience wrapper around ModelingPipeline with sensible defaults.
+
     Args:
         cache_dir: Cache directory for synthetics
         add_avo_noise: Add realistic angle-dependent noise
 
     Returns:
-        Dictionary with modeling results
+        Dictionary with modeling results:
+        - 'avo_cached': bool - whether result came from cache
+        - 'angle_stacks': list[np.ndarray] - per-angle seismic stacks
+        - 'full_stack': np.ndarray - combined seismic stack
+
+    Example:
+        >>> result = run_full_modeling(cache_dir=".cache", add_avo_noise=True)
+        >>> full_stack = result['full_stack']
     """
-    # Configuration
-    data_path = "."
-    file_map: dict[str, str] = {
-        "vp": "P-wave Velocity",
-        "vs": "S-wave Velocity",
-        "rho": "Density",
-        "facies": "Facies",
-    }
-    grid_spec = GridSpec((150, 200, 200), dz=1.0, dt=0.001)
-
-    # Load and prepare properties
-    dm = _load_dataset(data_path, file_map, grid_spec)
-    props_depth = dm.to_props_dict()
-
-    # Resample to time domain
-    props_time = _resample_to_time(props_depth, grid_spec)
-
-    # Generate synthetics
-    angle_model = AngleModel()
-    synthesizer = AVOSynthesizer(angle_model)
-    cache_manager = CacheManager(cache_dir)
-
-    config = SynthesisConfig(
-        use_quality_weighting=True,
+    # Create config with standard settings
+    defaults = ModelingDefaults(cache_dir=cache_dir)
+    config = ModelingConfig(
+        defaults=defaults,
         add_noise=add_avo_noise,
-        snr_db=20,
+        use_quality_weighting=True,
+        snr_db=20.0,
+        cache_enabled=True,
     )
 
-    wavelet_avo = wavelets.ricker_wavelet(f_peak=26, dt=grid_spec.dt)
-    angles: list[float] = [0.0, 5.0, 10.0, 15.0]
-
-    def create_synthetics_wrapper(
-        props_unwrapped: dict[str, np.ndarray],
-        angles_in: list[float],
-        wavelet_in: np.ndarray,
-        config_in: SynthesisConfig | None,
-    ) -> tuple[list[np.ndarray], np.ndarray]:
-        """Wrapper that satisfies callable signature for cache manager."""
-        return synthesizer.create_synthetics(
-            cast(dict[str, np.ndarray | Quantity], props_unwrapped),
-            angles_in,
-            wavelet_in,
-            config_in,
-        )
-
-    angle_stacks, full_stack = cache_manager.get_avo_synthetics(
-        props_time,
-        angles,
-        wavelet_avo,
-        create_fn=create_synthetics_wrapper,
-        config=config,
-    )
-
-    return {
-        "avo_cached": True,
-        "angle_stacks": angle_stacks,
-        "full_stack": full_stack,
-    }
-
-
-def _load_dataset(
-    data_path: str, file_map: dict[str, str], grid_spec: GridSpec
-) -> "RockPhysicsModel":
-    """Load dataset and prepare rock physics model."""
-    from src.io.data_loader import DatasetManager
-    from src.processing.rock_physics import RockPhysicsModel
-
-    dm = DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
-    props_depth: dict[str, np.ndarray | None] = {
-        "vp": dm.vp,
-        "vs": dm.vs,
-        "rho": dm.rho,
-        "facies": dm.facies,
-        "full_stack": dm.full_stack,
-    }
-
-    rpm = RockPhysicsModel.from_props(props_depth, grid_spec)
-    rpm.ensure_units()
-    return rpm
-
-
-def _resample_to_time(
-    props_depth: dict[str, np.ndarray | Quantity], grid_spec: GridSpec
-) -> dict[str, np.ndarray | Quantity]:
-    """Resample rock properties from depth to time domain."""
-    from src.processing.resampler import resampler_factory
-    from src.processing.resample_cache import get_resample_plan_cache
-
-    resampler = resampler_factory.get_resampler(grid_spec)
-    vp_val = _unwrap_quantity(props_depth["vp"])
-
-    plan_cache = get_resample_plan_cache()
-    plan = plan_cache.get_plan(grid_spec, vp_val, target_dt=grid_spec.dt)
-
-    props_time: dict[str, np.ndarray | Quantity] = {}
-    for k, v in props_depth.items():
-        if isinstance(v, Quantity):
-            v_qty = v
-            data_arr = v_qty.array
-            data_time, dt = resampler.depth_to_time_cube(
-                data_arr, vp_val, target_dt=grid_spec.dt, plan=plan
-            )
-            props_time[k] = Quantity(data_time, v_qty.unit)
-        else:
-            v_arr = v
-            data_time, dt = resampler.depth_to_time_cube(
-                v_arr, vp_val, target_dt=grid_spec.dt, plan=plan
-            )
-            props_time[k] = data_time
-
-    return props_time
+    # Run pipeline
+    pipeline = ModelingPipeline(config=config)
+    return pipeline.run()

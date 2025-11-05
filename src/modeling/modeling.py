@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import numpy as np
 from dataclasses import dataclass
-from scipy.signal import convolve
 from tqdm.auto import tqdm
 import sys
 import logging
 from typing import TypeAlias
 from src.utils.quantity import Quantity
+from src.modeling.processors import ReflectivityComputer, WaveletConvolver
 
 
 logger = logging.getLogger(__name__)
@@ -26,9 +26,6 @@ PropsUnwrapped: TypeAlias = dict[str, np.ndarray]
 # Configuration constants
 CONVOLUTION_BLOCK_SIZE: int = 10
 """Number of depth samples to process per convolution block"""
-
-CALIBRATION_ANGLES: list[int] = [0, 5, 10, 15, 30, 45]
-"""Angles at which quality weights and noise levels are calibrated"""
 
 __all__ = [
     "AngleModel",
@@ -164,42 +161,24 @@ class AVOSynthesizer:
     angle-dependent processing including weighting and noise.
     """
 
-    def __init__(self, angle_model: AngleModel | None = None):
-        """Initialize with optional custom angle model.
+    def __init__(
+        self,
+        angle_model: AngleModel | None = None,
+        reflectivity_computer: ReflectivityComputer | None = None,
+        wavelet_convolver: WaveletConvolver | None = None,
+    ):
+        """Initialize with optional custom components.
 
         Args:
             angle_model: AngleModel instance for weights/noise; uses default if None
+            reflectivity_computer: ReflectivityComputer instance; uses default if None
+            wavelet_convolver: WaveletConvolver instance; uses default if None
         """
         self.angle_model = angle_model or AngleModel()
-
-    def run_convolution_3d(
-        self,
-        rc_cube: np.ndarray,
-        wavelet: np.ndarray,
-    ) -> np.ndarray:
-        """Apply 3D convolution on reflectivity cube with wavelet.
-
-        Vectorized convolution across all traces (more efficient than
-        apply_along_axis). Preserves trace length using 'same' mode.
-
-        Args:
-            rc_cube: Reflectivity cube (nz, nx, ny)
-            wavelet: Source wavelet (1D)
-
-        Returns:
-            Convolved seismogram cube same shape as rc_cube
-        """
-        nz, nx, ny = rc_cube.shape
-        result = np.zeros_like(rc_cube, dtype=np.float32)
-
-        for ix in range(nx):
-            for iy in range(ny):
-                trace = rc_cube[:, ix, iy]
-                result[:, ix, iy] = convolve(
-                    trace, wavelet, mode="same", method="fft"
-                ).astype(np.float32)
-
-        return result
+        self.reflectivity_computer = reflectivity_computer or ReflectivityComputer(
+            block_size=CONVOLUTION_BLOCK_SIZE
+        )
+        self.wavelet_convolver = wavelet_convolver or WaveletConvolver()
 
     def create_synthetics(
         self,
@@ -279,29 +258,10 @@ class AVOSynthesizer:
         block_i: int,
     ) -> np.ndarray:
         """Process a single angle: compute reflectivity and convolve."""
-        from src.signal.reflectivity import zoeppritz_solver
+        # Compute reflectivity using dedicated processor
+        rc_pad = self.reflectivity_computer.compute_reflectivity(vp, vs, rho, angle)
 
-        angle_stack_full = np.zeros((ni, nj, nk), dtype=np.float32)
-
-        for i0 in range(0, ni, block_i):
-            i1 = min(ni, i0 + block_i)
-
-            vp_block = vp[i0:i1]
-            vs_block = vs[i0:i1]
-            rho_block = rho[i0:i1]
-
-            vp1b, vp2b = vp_block[..., :-1], vp_block[..., 1:]
-            vs1b, vs2b = vs_block[..., :-1], vs_block[..., 1:]
-            rho1b, rho2b = rho_block[..., :-1], rho_block[..., 1:]
-
-            rc_values = zoeppritz_solver.solve(
-                vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle
-            )
-            rc_real = np.real(rc_values).astype(np.float32)
-            rc_pad = np.zeros((i1 - i0, nj, nk), dtype=np.float32)
-            rc_pad[..., 1:] = rc_real
-
-            angle_block = self.run_convolution_3d(rc_pad, wavelet)
-            angle_stack_full[i0:i1] = angle_block
+        # Apply wavelet convolution using dedicated processor
+        angle_stack_full = self.wavelet_convolver.convolve_3d(rc_pad, wavelet)
 
         return angle_stack_full
