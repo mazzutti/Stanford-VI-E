@@ -503,9 +503,9 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         else:
             # Deferred import: avoid circular dependency at module load time.
             # The resampler module is only imported when actually needed.
-            from src.processing.resampler import resampler_factory
+            from src.processing.resampler import get_resampler_factory
 
-            resampler = resampler_factory.get_resampler(grid_spec)
+            resampler = get_resampler_factory().get_resampler(grid_spec)
 
         # Deferred import: avoid circular dependency at module load time.
         # The resample cache module is only imported when actually needed.

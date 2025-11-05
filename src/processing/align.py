@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from typing import Tuple
 from numpy.typing import ArrayLike
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 
 __all__ = ["align_cubes"]
 
@@ -32,22 +32,13 @@ class Aligner:
         return align_cubes(cube_a, cube_b)
 
 
-# Module-level lazy proxy using shared LazyObjectProxy
-aligner = LazyObjectProxy(lambda: Aligner())
-__all__.extend(["Aligner", "aligner"])
+# Module-level lazy factory for aligner
+_aligner_factory: SingletonFactory[Aligner] = SingletonFactory(lambda: Aligner())
 
 
-def get_aligner(config: dict | None = None):
-    """Return the module-level `aligner` proxy when `config` is None,
-    otherwise return a new `Aligner` instance.
-    """
-    return _impl_get_aligner(config)
+def get_aligner(aligner_inst: Aligner | None = None) -> Aligner:
+    """Return the module-level aligner singleton or a custom instance."""
+    return _aligner_factory.get(aligner_inst)
 
 
-def _impl_get_aligner(config: dict | None = None):
-    if config is None:
-        return aligner
-    return Aligner()
-
-
-__all__.append("get_aligner")
+__all__.extend(["Aligner", "get_aligner"])

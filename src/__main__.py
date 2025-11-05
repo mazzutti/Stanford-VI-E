@@ -336,9 +336,9 @@ class ParserFactory:
         # STEP 3: DEPTH-TO-TIME
         _t0 = time.time()
         # Use DepthTimeResampler to compute TWT and resample properties
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampler import get_resampler_factory
 
-        resampler = resampler_factory.get_resampler(grid_spec)
+        resampler = get_resampler_factory().get_resampler(grid_spec)
         vp_for_twt = (
             props_depth["vp"].array
             if hasattr(props_depth["vp"], "array")

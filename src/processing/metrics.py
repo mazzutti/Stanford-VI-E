@@ -12,6 +12,7 @@ from typing import Dict, Tuple
 import hashlib
 
 from src.processing.resample_plan import ResamplePlan
+from src.processing._singleton import SingletonFactory
 
 
 @dataclass(frozen=True)
@@ -78,22 +79,10 @@ class BackendMetrics:
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
 
 
-# Export a module-level proxy instance for convenience.
-from src.utils.facades import LazyObjectProxy
-
-__all__ = [
-    "PlanFingerprint",
-    "BackendMetrics",
-    "global_metrics",
-    "MetricsCollector",
-    "metrics_collector",
-    "get_metrics_collector",
-    "get_global_metrics",
-]
-
-
 # Object-oriented facade for the metrics collector
 class MetricsCollector:
+    """Facade for accessing BackendMetrics."""
+
     def __init__(self):
         self._metrics = BackendMetrics()
 
@@ -112,31 +101,46 @@ class MetricsCollector:
         return self._metrics.get_runtime(backend_name, fingerprint)
 
 
-# Module-level lazy proxies
-global_metrics = LazyObjectProxy(lambda: BackendMetrics())
-metrics_collector = LazyObjectProxy(lambda: MetricsCollector())
+# Module-level factories for metrics
+_global_metrics_factory: SingletonFactory[BackendMetrics] = SingletonFactory(
+    lambda: BackendMetrics()
+)
+_metrics_collector_factory: SingletonFactory[MetricsCollector] = SingletonFactory(
+    lambda: MetricsCollector()
+)
 
 
 def get_metrics_collector(
     collector: MetricsCollector | None = None,
-) -> "MetricsCollector":
+) -> MetricsCollector:
     """Return the provided collector or the module-level lazy singleton.
 
     If `collector` is provided, it is returned unchanged (useful for
-    dependency injection). Otherwise the module-level lazy
-    `metrics_collector` is returned.
+    dependency injection). Otherwise the module-level lazy singleton
+    is returned.
     """
-    # Return provided collector or the module-level lazy proxy directly.
-    return collector if collector is not None else metrics_collector
+    return _metrics_collector_factory.get(collector)
 
 
-__all__.extend(["MetricsCollector", "metrics_collector", "get_metrics_collector"])
-
-
-def get_global_metrics(inst: BackendMetrics | None = None) -> "BackendMetrics":
+def get_global_metrics(inst: BackendMetrics | None = None) -> BackendMetrics:
     """Return the provided BackendMetrics instance or the module-level lazy proxy.
 
     Provides a single helper consistent with the rest of the codebase.
     """
-    # Return provided BackendMetrics or the module-level lazy proxy directly.
-    return inst if inst is not None else global_metrics
+    return _global_metrics_factory.get(inst)
+
+
+# Convenience accessors for the global metrics
+def get_metrics() -> BackendMetrics:
+    """Get the global metrics instance."""
+    return get_global_metrics()
+
+
+__all__ = [
+    "PlanFingerprint",
+    "BackendMetrics",
+    "MetricsCollector",
+    "get_metrics_collector",
+    "get_global_metrics",
+    "get_metrics",
+]

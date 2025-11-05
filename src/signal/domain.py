@@ -125,13 +125,13 @@ class DepthTimeConverter:
         # Fallback: CPU implementation using centralized helper that accepts
         # twt_irregular
         logger.info("Resampling properties onto regular time grid (CPU fallback)")
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampler import get_resampler_factory
 
         for key, cube in properties_depth.items():
             logger.info("  Resampling %s...", key)
             cube_arr = cube.array if isinstance(cube, Quantity) else cube
             # Use DepthTimeResampler's helper method on numeric arrays
-            resampler = resampler_factory.get_resampler(grid_spec=self.grid_spec)
+            resampler = get_resampler_factory().get_resampler(grid_spec=self.grid_spec)
             # Reuse the plan so the resampler can take fast paths when possible.
             out = resampler.depth_to_time_from_twt(
                 cube_arr,

@@ -36,10 +36,10 @@ class ResamplingService:
         Returns:
             Time-domain properties dictionary with same keys
         """
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampler import get_resampler_factory
         from src.processing.resample_cache import get_resample_plan_cache
 
-        resampler = resampler_factory.get_resampler(grid_spec)
+        resampler = get_resampler_factory().get_resampler(grid_spec)
         vp_val = _unwrap_quantity(props_depth["vp"])
 
         plan_cache = get_resample_plan_cache()

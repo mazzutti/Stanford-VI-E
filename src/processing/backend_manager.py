@@ -12,9 +12,9 @@ from dataclasses import dataclass
 
 from src.processing._backend_base import ResamplerBackend
 from src.processing.resample_plan import ResamplePlan
-from src.processing.metrics import global_metrics, PlanFingerprint
+from src.processing.metrics import get_global_metrics, PlanFingerprint
 from typing import Tuple
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 
 
 @dataclass
@@ -49,8 +49,8 @@ class BackendManager:
         # simple linear scan and supports check is the default behavior.
         # If metrics are available, prefer backends with historic usage and
         # lower runtimes for plans similar to the provided plan.
-        # use the canonical module-level proxy
-        metrics = global_metrics
+        # use the module-level metrics
+        metrics = get_global_metrics()
 
         candidates: list[Tuple[str, ResamplerBackend]] = []
         for name, backend in self._registry.items():
@@ -101,53 +101,44 @@ class BackendManager:
         return self._verbose
 
 
-# module-level singleton for ease-of-use (lazy proxy)
-_manager: BackendManager = LazyObjectProxy(lambda: BackendManager())
+# Module-level singleton for the BackendManager
+_manager_factory: SingletonFactory[BackendManager] = SingletonFactory(
+    lambda: BackendManager()
+)
 
 
-def get_backend_manager() -> BackendManager:
-    # Return the module-level lazy BackendManager proxy directly.
-    return _manager
-
-
-def _impl_get_backend_manager() -> BackendManager:
-    """Canonical implementation returning the module-level BackendManager proxy."""
-    return _manager
+def get_backend_manager(manager: BackendManager | None = None) -> BackendManager:
+    """Get the backend manager, optionally providing an override."""
+    return _manager_factory.get(manager)
 
 
 def register_backend(name: str, backend: ResamplerBackend) -> None:
-    _manager.register(name, backend)
+    """Register a backend with the global manager."""
+    get_backend_manager().register(name, backend)
 
 
 def list_backends() -> List[str]:
-    return _manager.list_backends()
+    """List all registered backends."""
+    return get_backend_manager().list_backends()
 
 
 def get_best_backend(plan: ResamplePlan) -> Optional[ResamplerBackend]:
-    return _manager.get_best(plan)
+    """Get the best backend for the given resampling plan."""
+    return get_backend_manager().get_best(plan)
 
 
 def set_backend_verbose(on: bool) -> None:
-    _manager.set_verbose(on)
+    """Set backend manager verbosity."""
+    get_backend_manager().set_verbose(on)
 
 
 def is_backend_verbose() -> bool:
-    return _manager.is_verbose()
-
-
-# Canonical _impl_* entrypoints
-# The canonical implementations were thin wrappers delegating to the
-# module-level `_manager` proxy; they were inlined above to reduce
-# unnecessary indirection.
-
-
-# Module-level alias for convenience (parity with other facades)
-backend_manager = _manager
+    """Check if backend manager is verbose."""
+    return get_backend_manager().is_verbose()
 
 
 __all__ = [
     "BackendManager",
-    "backend_manager",
     "get_backend_manager",
     "register_backend",
     "list_backends",

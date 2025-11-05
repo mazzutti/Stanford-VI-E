@@ -16,7 +16,7 @@ from src.processing.resample_plan import ResamplePlan
 from numba import njit, prange
 import logging
 import os
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 
 from src.processing._backend_base import BackendResult, BackendError
 
@@ -705,20 +705,24 @@ class ResamplerFactory:
 
 
 # Module-level singleton factory for callers to obtain resamplers
-resampler_factory = LazyObjectProxy(lambda: ResamplerFactory())
-
-__all__.extend(["ResamplerFactory", "resampler_factory"])
+_resampler_factory = SingletonFactory(lambda: ResamplerFactory())
 
 
-# Delegate wrappers and facades for resampler factory/service
+def get_resampler_factory(factory: ResamplerFactory | None = None) -> ResamplerFactory:
+    """Get the resampler factory, optionally providing an override."""
+    return _resampler_factory.get(factory)
+
+
+__all__.extend(["ResamplerFactory", "get_resampler_factory"])
+
+
+# Factory and service accessors
 __all__.extend(
     [
         "ResamplerFactory",
-        "resampler_factory",
-        "ResamplerService",
-        "resampler_service",
-        "get_resampler_service",
         "get_resampler_factory",
+        "ResamplerService",
+        "get_resampler_service",
     ]
 )
 
@@ -731,15 +735,23 @@ class ResamplerService:
     """
 
     def get_resampler(self, grid_spec: GridSpec) -> DepthTimeResampler:
-        return resampler_factory.get_resampler(grid_spec)
+        return get_resampler_factory().get_resampler(grid_spec)
 
     def compute_one_way_time(
         self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
     ):
-        return resampler_factory.get_resampler(grid_spec).compute_one_way_time(vp_trace)
+        return (
+            get_resampler_factory()
+            .get_resampler(grid_spec)
+            .compute_one_way_time(vp_trace)
+        )
 
     def compute_one_way_times(self, grid_spec: GridSpec, vp_arr: np.ndarray | Quantity):
-        return resampler_factory.get_resampler(grid_spec).compute_one_way_times(vp_arr)
+        return (
+            get_resampler_factory()
+            .get_resampler(grid_spec)
+            .compute_one_way_times(vp_arr)
+        )
 
     def depth_to_time_cube(
         self,
@@ -750,8 +762,16 @@ class ResamplerService:
         target_nt=None,
         plan: ResamplePlan | None = None,
     ):
-        return resampler_factory.get_resampler(grid_spec).depth_to_time_cube(
-            data_depth, vp_depth, target_dt=target_dt, target_nt=target_nt, plan=plan
+        return (
+            get_resampler_factory()
+            .get_resampler(grid_spec)
+            .depth_to_time_cube(
+                data_depth,
+                vp_depth,
+                target_dt=target_dt,
+                target_nt=target_nt,
+                plan=plan,
+            )
         )
 
     def time_to_depth_cube(
@@ -761,8 +781,10 @@ class ResamplerService:
         vp_depth,
         plan: ResamplePlan | None = None,
     ):
-        return resampler_factory.get_resampler(grid_spec).time_to_depth_cube(
-            seismogram_time, vp_depth, plan=plan
+        return (
+            get_resampler_factory()
+            .get_resampler(grid_spec)
+            .time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
         )
 
     def resample_time_cube(
@@ -775,46 +797,34 @@ class ResamplerService:
         progress_every: Optional[int] = 30,
         prefix: str = "",
     ):
-        return resampler_factory.get_resampler(grid_spec).resample_time_cube(
-            data_time,
-            src_time_axis,
-            target_time_axis,
-            kind=kind,
-            progress_every=progress_every,
-            prefix=prefix,
+        return (
+            get_resampler_factory()
+            .get_resampler(grid_spec)
+            .resample_time_cube(
+                data_time,
+                src_time_axis,
+                target_time_axis,
+                kind=kind,
+                progress_every=progress_every,
+                prefix=prefix,
+            )
         )
 
 
-# Use the generic LazyObjectProxy to reduce local boilerplate
-resampler_service: ResamplerService = LazyObjectProxy(lambda: ResamplerService())
+# Module-level singleton for the resampler service
+_resampler_service = SingletonFactory(lambda: ResamplerService())
 
 
-def get_resampler_service(
-    service: ResamplerService | None = None,
-) -> "ResamplerService":
-    return service if service is not None else resampler_service
+def get_resampler_service(service: ResamplerService | None = None) -> ResamplerService:
+    """Get the resampler service, optionally providing an override."""
+    return _resampler_service.get(service)
 
 
-__all__.extend(["ResamplerService", "resampler_service", "get_resampler_service"])
-
-
-def get_resampler_factory(config: dict | None = None):
-    if config is None:
-        return resampler_factory
-    return ResamplerFactory()
-
-
-# Canonical _impl_* entrypoints
-def _impl_get_resampler_service(
-    service: ResamplerService | None = None,
-) -> ResamplerService:
-    return service if service is not None else resampler_service
-
-
-def _impl_get_resampler_factory(config: dict | None = None):
-    if config is None:
-        return resampler_factory
-    return ResamplerFactory()
-
-
-__all__.append("get_resampler_factory")
+__all__.extend(
+    [
+        "ResamplerFactory",
+        "get_resampler_factory",
+        "ResamplerService",
+        "get_resampler_service",
+    ]
+)

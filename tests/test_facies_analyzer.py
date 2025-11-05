@@ -13,6 +13,7 @@ This module consolidates all tests covering:
 - Cache management
 - Display cube preparation
 """
+
 # mypy: ignore-errors
 
 
@@ -841,11 +842,15 @@ class TestConvertTimeToDepth:
         """Test conversion with default resampler factory."""
         analyzer = FaciesCorrelationAnalyzer()
 
-        with mock.patch("src.processing.resampler.resampler_factory") as mock_factory:
+        with mock.patch(
+            "src.processing.resampler.get_resampler_factory"
+        ) as mock_get_factory:
             with mock.patch("src.processing.resample_cache.get_resample_plan_cache"):
+                mock_factory = mock.MagicMock()
                 mock_resampler = mock.MagicMock()
                 mock_result = np.random.randn(2, 3, 4)
 
+                mock_get_factory.return_value = mock_factory
                 mock_factory.get_resampler.return_value = mock_resampler
                 mock_resampler.time_to_depth_cube.return_value = mock_result
 
@@ -857,6 +862,7 @@ class TestConvertTimeToDepth:
                     seismogram_time, vp_depth, grid_spec
                 )
 
+                mock_get_factory.assert_called_once()
                 mock_factory.get_resampler.assert_called_once()
                 assert np.array_equal(result, mock_result)
 

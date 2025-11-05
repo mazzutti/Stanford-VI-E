@@ -18,7 +18,7 @@ from typing import Optional
 import numpy as np
 import os
 import logging
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 
 from src.processing.resample_plan import ResamplePlan
 from src.io.grid import GridSpec
@@ -161,9 +161,15 @@ def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
 __all__.extend(["get_resample_plan_cache", "set_resample_plan_cache"])
 
 
-# Convenience alias for OOP-style access backed by the shared cache
-resample_plan_cache = LazyObjectProxy(lambda: get_resample_plan_cache())
-__all__.append("resample_plan_cache")
+# Module-level factory for the resample plan cache
+_cache_factory: SingletonFactory[ResamplePlanCache] = SingletonFactory(
+    lambda: ResamplePlanCache()
+)
+
+
+def get_cache() -> ResamplePlanCache:
+    """Get the module-level resample plan cache."""
+    return _cache_factory.get(None)
 
 
 def get_plan(
@@ -186,29 +192,7 @@ def get_plan(
 
 def set_cache(cache: ResamplePlanCache) -> None:
     """Alias to set_resample_plan_cache for caller convenience."""
-    return _impl_set_resample_plan_cache(cache)
+    return set_resample_plan_cache(cache)
 
 
-# Canonical _impl_* entrypoints
-def _impl_get_plan(
-    grid_spec: GridSpec,
-    vp_arr: np.ndarray,
-    target_dt: Optional[float] = None,
-    target_nt: Optional[int] = None,
-    block_size: int = 65536,
-) -> ResamplePlan:
-    cache = get_resample_plan_cache()
-    return cache.get_plan(
-        grid_spec,
-        vp_arr,
-        target_dt=target_dt,
-        target_nt=target_nt,
-        block_size=block_size,
-    )
-
-
-def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
-    set_resample_plan_cache(cache)
-
-
-__all__.extend(["get_plan", "set_cache"])
+__all__.extend(["get_cache", "get_plan", "set_cache"])

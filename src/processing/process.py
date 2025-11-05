@@ -8,7 +8,7 @@ dependencies.
 from pathlib import Path
 import logging
 from typing import List, Optional
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 
 __all__ = []
 
@@ -52,20 +52,23 @@ class ProcessManager:
         )
 
 
-# Module-level lazy proxy for convenience
-process_manager = LazyObjectProxy(lambda: ProcessManager())
+# Module-level factory for the process manager
+_process_manager_factory: SingletonFactory[ProcessManager] = SingletonFactory(
+    lambda: ProcessManager()
+)
 
-__all__.extend(["ProcessManager", "process_manager"])
 
-
-def get_process_manager(manager: ProcessManager | None = None) -> "ProcessManager":
+def get_process_manager(manager: ProcessManager | None = None) -> ProcessManager:
     """Return the provided ProcessManager or the module-level lazy singleton.
 
     This helper follows the repository convention of providing get_* accessors
     for module-level lazy singletons to simplify dependency injection in
     tests and client code.
     """
-    return manager if manager is not None else process_manager
+    return _process_manager_factory.get(manager)
+
+
+__all__.extend(["ProcessManager", "get_process_manager"])
 
 
 __all__.append("get_process_manager")

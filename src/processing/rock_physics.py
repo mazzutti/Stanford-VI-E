@@ -15,12 +15,12 @@ from src.processing.velocity import VelocityModel
 from src.processing.materials import VsModel, DensityModel
 from src.io.disk_cache import DiskCache
 from src.utils.quantity import Quantity
-from src.utils.facades import LazyObjectProxy
+from src.processing._singleton import SingletonFactory
 import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["RockPhysicsModel", "rock_physics_model"]
+__all__ = ["RockPhysicsModel", "get_rock_physics_model"]
 
 
 @dataclass
@@ -132,66 +132,21 @@ def _create_placeholder_rock_physics_model() -> RockPhysicsModel:
     )
 
 
-class RockPhysicsModelProxy(LazyObjectProxy[RockPhysicsModel]):
-    """Specialized proxy that preserves the previous replacement and
-    attribute-forwarding semantics used by callers.
-
-    - Setting attributes with names starting with '_' operates on the proxy
-      itself (internal state).
-    - Assigning a RockPhysicsModel instance (or None) as a value for any
-      attribute will replace the underlying `_instance` (preserves previous
-      behaviour where callers could replace the module model in-place).
-    """
-
-    def __setattr__(self, name: str, value):
-        # Internal attributes should be stored on the proxy itself.
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-            return
-
-        # If the assigned value is a full RockPhysicsModel instance (or None),
-        # treat it as a replacement for the underlying model.
-        if isinstance(value, RockPhysicsModel) or value is None:
-            # Use the proxy lock if present, otherwise fall back to direct set
-            lock = getattr(self, "_lock", None)
-            if lock is not None:
-                with lock:
-                    object.__setattr__(self, "_instance", value)
-            else:
-                object.__setattr__(self, "_instance", value)
-            return
-
-        # Otherwise forward the attribute assignment to the wrapped instance.
-        inst = self._ensure()
-        setattr(inst, name, value)
-
-    def __repr__(self) -> str:
-        if getattr(self, "_instance", None) is None:
-            return "<LazyRockPhysicsModelProxy (uninitialized)>"
-        return "<LazyRockPhysicsModelProxy>"
-
-
-rock_physics_model = RockPhysicsModelProxy(_create_placeholder_rock_physics_model)
+# Module-level singleton for the RockPhysicsModel
+_rock_physics_factory: SingletonFactory[RockPhysicsModel] = SingletonFactory(
+    _create_placeholder_rock_physics_model
+)
 
 
 def get_rock_physics_model(
     instance: RockPhysicsModel | None = None,
-) -> "RockPhysicsModel":
+) -> RockPhysicsModel:
     """Return provided RockPhysicsModel or the module-level lazy singleton.
 
-    This routes through the canonical implementation `_impl_get_rock_physics_model`
-    so callers and tests can inject instances or use the lazy module-level
-    proxy consistently.
+    Args:
+        instance: Optional RockPhysicsModel to use instead of the singleton
+
+    Returns:
+        The provided instance or the module-level lazy singleton
     """
-    return _impl_get_rock_physics_model(instance)
-
-
-def _impl_get_rock_physics_model(
-    instance: RockPhysicsModel | None = None,
-) -> RockPhysicsModel:
-    """Canonical implementation for obtaining the module RockPhysicsModel.
-
-    Returns the provided instance when not None, otherwise returns the
-    module-level `rock_physics_model` lazy proxy.
-    """
-    return instance if instance is not None else rock_physics_model
+    return _rock_physics_factory.get(instance)

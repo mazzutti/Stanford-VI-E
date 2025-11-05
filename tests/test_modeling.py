@@ -328,9 +328,13 @@ class TestResamplingServiceCoverage:
 
     def test_resample_to_time_with_quantities(self):
         """Test resampling with Quantity objects."""
-        with patch("src.processing.resampler.resampler_factory") as mock_factory:
-            # Mock the resampler
+        with patch(
+            "src.processing.resampler.get_resampler_factory"
+        ) as mock_get_factory:
+            # Mock the factory and resampler
+            mock_factory = MagicMock()
             mock_resampler = MagicMock()
+            mock_get_factory.return_value = mock_factory
             mock_factory.get_resampler.return_value = mock_resampler
 
             with patch(
