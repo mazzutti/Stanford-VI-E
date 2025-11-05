@@ -361,19 +361,29 @@ class ParserFactory:
 
         # STEP 4: AVO
         wavelet_avo = wavelets.ricker_wavelet(f_peak=26, dt=grid_spec.dt)
-        # Use the model_cache wrappers which provide cached_* helpers
-        from src.modeling import model_cache as modeling_cache
+        from src.modeling import (
+            CacheManager,
+            AVOSynthesizer,
+            AngleModel,
+            SynthesisConfig,
+        )
 
-        angle_gathers, full_stack_avo = modeling_cache.cached_avo(
-            props_time,
-            [0, 5, 10, 15],
-            wavelet_avo,
+        config = SynthesisConfig(
             use_quality_weighting=True,
             add_noise=getattr(args, "add_avo_noise", False),
             snr_db=20,
         )
 
-        # AVO depth caching removed from centralized cache wrapper
+        cache_manager = CacheManager()
+        synthesizer = AVOSynthesizer(AngleModel())
+
+        angle_gathers, full_stack_avo = cache_manager.get_avo_synthetics(
+            props_time,
+            [0, 5, 10, 15],
+            wavelet_avo,
+            create_fn=synthesizer.create_synthetics,
+            config=config,
+        )
 
         return {
             "props_depth": props_depth,

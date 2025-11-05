@@ -1,209 +1,291 @@
 """Core modeling routines.
 
-This module contains the heavy compute functions for AVO (convolutions and
-noise models). These implementations provide canonical modeling helpers
-used by higher-level tooling and scripts.
+Object-oriented AVO modeling with angle handling, convolution, and caching.
+Synthesizes angle-dependent seismograms using Zoeppritz approximations and
+wavelet convolution.
 """
 
-import hashlib
+from __future__ import annotations
+
 import numpy as np
+from dataclasses import dataclass
 from scipy.signal import convolve
 from tqdm.auto import tqdm
 import sys
 import logging
+from typing import TypeAlias
 from src.utils.quantity import Quantity
-from src.utils.facades import LazyObjectProxy
+
 
 logger = logging.getLogger(__name__)
 
+# Type aliases
+PropsDict: TypeAlias = dict[str, np.ndarray | Quantity]
+PropsUnwrapped: TypeAlias = dict[str, np.ndarray]
+
+# Configuration constants
+CONVOLUTION_BLOCK_SIZE: int = 10
+"""Number of depth samples to process per convolution block"""
+
+CALIBRATION_ANGLES: list[int] = [0, 5, 10, 15, 30, 45]
+"""Angles at which quality weights and noise levels are calibrated"""
+
 __all__ = [
-    "create_avo_synthetics",
-    "run_convolution_3d",
-    "apply_angle_quality_weighting",
-    "ModelingEngine",
-    "modeling_engine",
+    "AngleModel",
+    "AVOSynthesizer",
+    "SynthesisConfig",
 ]
 
 
-def get_modeling_engine(config: dict | None = None):
-    """Return the module-level `modeling_engine` when config is None.
+def _unwrap_quantity(value: Quantity | np.ndarray) -> np.ndarray:
+    """Extract array from Quantity or return as ndarray."""
+    if isinstance(value, Quantity):
+        return value.array
+    return np.asarray(value)
 
-    If `config` is provided, create and return a fresh `ModelingEngine`
-    instance. This helper centralizes the default access pattern while
-    allowing callers to obtain a configured instance when needed.
+
+@dataclass
+class SynthesisConfig:
+    """Configuration for AVO synthesis parameters."""
+
+    use_quality_weighting: bool = False
+    add_noise: bool = False
+    snr_db: float = 20
+    noise_seed: int | None = None
+
+
+class AngleModel:
+    """Manages angle-dependent quality weights and noise characteristics.
+
+    Provides interpolated weights and noise levels for arbitrary angles
+    based on calibrated reference values from the inversion study.
     """
-    if config is None:
-        return modeling_engine
-    return ModelingEngine()
 
+    # Calibrated parameters from AVO modeling improvements (Oct 2025)
+    QUALITY_WEIGHTS: dict[int, float] = {
+        0: 0.90,
+        5: 0.95,
+        10: 0.98,
+        15: 1.00,
+        30: 0.70,
+        45: 0.40,
+    }
 
-__all__.append("get_modeling_engine")
+    NOISE_SIGMA: dict[int, float] = {
+        0: 0.011,
+        5: 0.007,
+        10: 0.004,
+        15: 0.002,
+        30: 0.033,
+        45: 0.023,
+    }
 
+    def quality_weight(self, angle_deg: float) -> float:
+        """Get interpolated quality weight for given angle."""
+        return self._interpolate(angle_deg, self.QUALITY_WEIGHTS)
 
-# ============================================================================
-# AVO MODELING IMPROVEMENTS (Based on Inversion Study - Oct 2025)
-# ============================================================================
+    def noise_level(self, angle_deg: float) -> float:
+        """Get interpolated noise sigma for given angle."""
+        return self._interpolate(angle_deg, self.NOISE_SIGMA)
 
-ANGLE_QUALITY_WEIGHTS = {
-    0: 0.90,
-    5: 0.95,
-    10: 0.98,
-    15: 1.00,
-    30: 0.70,
-    45: 0.40,
-}
+    def _interpolate(self, angle_deg: float, lookup: dict[int, float]) -> float:
+        """Linear interpolation for arbitrary angles from lookup table.
 
-ANGLE_NOISE_SIGMA = {
-    0: 0.011,
-    5: 0.007,
-    10: 0.004,
-    15: 0.002,
-    30: 0.033,
-    45: 0.023,
-}
+        Uses numpy.interp for robust handling of boundary cases and
+        linearly interpolates between calibrated angles.
+        """
+        angles_sorted = np.array(sorted(lookup.keys()), dtype=float)
+        values = np.array([lookup[a] for a in angles_sorted.astype(int)])
+        return float(np.interp(angle_deg, angles_sorted, values))
 
+    def add_noise(
+        self,
+        seismic: np.ndarray,
+        angle: float,
+        snr_db: float,
+        seed: int | None = None,
+    ) -> np.ndarray:
+        """Add realistic angle-dependent noise to seismic data.
 
-def get_angle_weight(angle_deg):
-    angles_sorted = sorted(ANGLE_QUALITY_WEIGHTS.keys())
+        Combines systematic (angle-dependent) and random (SNR-dependent) noise.
+        """
+        if seed is not None:
+            np.random.seed(seed)
 
-    if angle_deg <= angles_sorted[0]:
-        return ANGLE_QUALITY_WEIGHTS[angles_sorted[0]]
-    if angle_deg >= angles_sorted[-1]:
-        return ANGLE_QUALITY_WEIGHTS[angles_sorted[-1]]
+        sigma_systematic = self.noise_level(angle)
+        signal_power = float(np.var(seismic))
+        target_snr_linear = 10 ** (snr_db / 10)
+        noise_power = signal_power / target_snr_linear
 
-    for i in range(len(angles_sorted) - 1):
-        a1, a2 = angles_sorted[i], angles_sorted[i + 1]
-        if a1 <= angle_deg <= a2:
-            w1, w2 = ANGLE_QUALITY_WEIGHTS[a1], ANGLE_QUALITY_WEIGHTS[a2]
-            t = (angle_deg - a1) / (a2 - a1)
-            return w1 + t * (w2 - w1)
+        random_data_1 = np.random.randn(*seismic.shape)
+        random_data_2 = np.random.randn(*seismic.shape)
+        noise_random: np.ndarray = np.asarray(
+            random_data_1, dtype=np.float64
+        ) * np.sqrt(noise_power)
+        noise_systematic: np.ndarray = (
+            np.asarray(random_data_2, dtype=np.float64) * sigma_systematic
+        )
+        total_noise: np.ndarray = noise_random + noise_systematic
 
-    return 1.0
+        noisy_seismic: np.ndarray = seismic + total_noise.astype(seismic.dtype)
+        return noisy_seismic.astype(np.float32)
 
+    def weighted_stack(
+        self,
+        angle_stacks: list[np.ndarray],
+        angles: list[float],
+    ) -> np.ndarray:
+        """Combine angle stacks using quality weights.
 
-def get_noise_level(angle_deg):
-    angles_sorted = sorted(ANGLE_NOISE_SIGMA.keys())
+        Args:
+            angle_stacks: List of angle-dependent seismic stacks
+            angles: Corresponding angles in degrees
 
-    if angle_deg <= angles_sorted[0]:
-        return ANGLE_NOISE_SIGMA[angles_sorted[0]]
-    if angle_deg >= angles_sorted[-1]:
-        return ANGLE_NOISE_SIGMA[angles_sorted[-1]]
+        Returns:
+            Weighted combination of all angle stacks
+        """
+        if len(angle_stacks) != len(angles):
+            raise ValueError("Number of angle stacks must match number of angles")
 
-    for i in range(len(angles_sorted) - 1):
-        a1, a2 = angles_sorted[i], angles_sorted[i + 1]
-        if a1 <= angle_deg <= a2:
-            s1, s2 = ANGLE_NOISE_SIGMA[a1], ANGLE_NOISE_SIGMA[a2]
-            t = (angle_deg - a1) / (a2 - a1)
-            return s1 + t * (s2 - s1)
-
-    return 0.01
-
-
-def add_realistic_noise(seismic, angle_deg, snr_db=20, seed=None):
-    if seed is not None:
-        np.random.seed(seed)
-
-    sigma_systematic = get_noise_level(angle_deg)
-    signal_power = np.var(seismic)
-    target_snr_linear = 10 ** (snr_db / 10)
-    noise_power = signal_power / target_snr_linear
-    noise_random = np.random.randn(*seismic.shape) * np.sqrt(noise_power)
-    noise_systematic = np.random.randn(*seismic.shape) * sigma_systematic
-    total_noise = noise_random + noise_systematic
-    return seismic + total_noise.astype(seismic.dtype)
-
-
-def apply_angle_quality_weighting(angle_stacks, angles, normalize=True):
-    """Apply quality weights to angle-dependent stacks.
-
-    Args:
-        angle_stacks: List of angle-dependent seismic stacks
-        angles: Corresponding angles in degrees
-        normalize: Whether to normalize weights to sum to 1
-
-    Returns:
-        Weighted stack combining all angles
-    """
-    if len(angle_stacks) != len(angles):
-        raise ValueError("Number of angle stacks must match number of angles")
-
-    weights = np.array([get_angle_weight(a) for a in angles])
-
-    if normalize:
+        weights = np.array([self.quality_weight(a) for a in angles])
         weights = weights / weights.sum()
 
-    weighted_stack = np.zeros_like(angle_stacks[0])
-    for stack, weight in zip(angle_stacks, weights):
-        weighted_stack += stack * weight
+        weighted_stack = np.zeros_like(angle_stacks[0])
+        for stack, weight in zip(angle_stacks, weights):
+            weighted_stack += stack * weight
 
-    return weighted_stack
-
-
-# ============================================================================
-# END OF IMPROVEMENTS
-# ============================================================================
+        return weighted_stack
 
 
-def run_convolution_3d(rc_cube, wavelet, use_gpu=True):
-    """Run 3D convolution on reflectivity cube with wavelet.
+class AVOSynthesizer:
+    """Synthesizes angle-dependent AVO seismograms from rock properties.
 
-    Args:
-        rc_cube: Reflectivity cube
-        wavelet: Source wavelet
-        use_gpu: Whether to use GPU acceleration (currently unused)
-
-    Returns:
-        Convolved seismogram cube
+    Handles Zoeppritz reflectivity computation, wavelet convolution, and
+    angle-dependent processing including weighting and noise.
     """
 
-    def convolve_trace(trace):
-        return convolve(trace, wavelet, mode="same", method="fft")
+    def __init__(self, angle_model: AngleModel | None = None):
+        """Initialize with optional custom angle model.
 
-    return np.apply_along_axis(convolve_trace, axis=-1, arr=rc_cube)
+        Args:
+            angle_model: AngleModel instance for weights/noise; uses default if None
+        """
+        self.angle_model = angle_model or AngleModel()
 
+    def run_convolution_3d(
+        self,
+        rc_cube: np.ndarray,
+        wavelet: np.ndarray,
+    ) -> np.ndarray:
+        """Apply 3D convolution on reflectivity cube with wavelet.
 
-def create_avo_synthetics(
-    props_time,
-    angles,
-    wavelet,
-    use_quality_weighting=False,
-    add_noise=False,
-    snr_db=20,
-    noise_seed=None,
-):
-    # Support Quantity inputs for vp/vs/rho by unwrapping to numeric arrays
-    vp_val = props_time["vp"]
-    vs_val = props_time["vs"]
-    rho_val = props_time["rho"]
-    vp = vp_val.array if isinstance(vp_val, Quantity) else np.asarray(vp_val)
-    vs = vs_val.array if isinstance(vs_val, Quantity) else np.asarray(vs_val)
-    rho = rho_val.array if isinstance(rho_val, Quantity) else np.asarray(rho_val)
+        Vectorized convolution across all traces (more efficient than
+        apply_along_axis). Preserves trace length using 'same' mode.
 
-    ni, nj, nk = vp.shape
-    angle_stacks = []
-    full_stack = np.zeros((ni, nj, nk), dtype=np.float32)
-    n_angles = len(angles)
-    bar = tqdm(
-        total=len(angles),
-        desc="Processing Angles",
-        leave=True,
-        dynamic_ncols=True,
-        file=sys.stderr,
-    )
-    debug_mode = sys.gettrace() is not None
-    block_i = 10
-    for idx, angle in enumerate(angles):
-        bar.update(1)
-        bar.refresh()
-        try:
-            sys.stderr.flush()
-        except Exception:
-            pass
+        Args:
+            rc_cube: Reflectivity cube (nz, nx, ny)
+            wavelet: Source wavelet (1D)
+
+        Returns:
+            Convolved seismogram cube same shape as rc_cube
+        """
+        nz, nx, ny = rc_cube.shape
+        result = np.zeros_like(rc_cube, dtype=np.float32)
+
+        for ix in range(nx):
+            for iy in range(ny):
+                trace = rc_cube[:, ix, iy]
+                result[:, ix, iy] = convolve(
+                    trace, wavelet, mode="same", method="fft"
+                ).astype(np.float32)
+
+        return result
+
+    def create_synthetics(
+        self,
+        props_time: PropsDict,
+        angles: list[float],
+        wavelet: np.ndarray,
+        config: SynthesisConfig | None = None,
+    ) -> tuple[list[np.ndarray], np.ndarray]:
+        """Create angle-dependent AVO synthetics from time-domain properties.
+
+        Args:
+            props_time: Dict with 'vp', 'vs', 'rho' as arrays or Quantity
+            angles: List of incidence angles in degrees
+            wavelet: Source wavelet for convolution
+            config: SynthesisConfig with weighting, noise, and SNR settings
+
+        Returns:
+            (angle_stacks, full_stack): List of angle-dependent stacks and combined stack
+        """
+        config = config or SynthesisConfig()
+
+        # Unwrap Quantity objects to numeric arrays
+        vp = _unwrap_quantity(props_time["vp"])
+        vs = _unwrap_quantity(props_time["vs"])
+        rho = _unwrap_quantity(props_time["rho"])
+
+        ni, nj, nk = vp.shape
+        angle_stacks = []
+        full_stack = np.zeros((ni, nj, nk), dtype=np.float32)
+        n_angles = len(angles)
+
+        debug_mode = sys.gettrace() is not None
+
+        with tqdm(
+            total=n_angles,
+            desc="Processing Angles",
+            leave=True,
+            dynamic_ncols=True,
+            file=sys.stderr,
+        ) as bar:
+            for idx, angle in enumerate(angles):
+                angle_stack_full = self._process_angle(
+                    vp, vs, rho, angle, wavelet, ni, nj, nk, CONVOLUTION_BLOCK_SIZE
+                )
+
+                if config.add_noise:
+                    angle_stack_full = self.angle_model.add_noise(
+                        angle_stack_full,
+                        angle,
+                        snr_db=config.snr_db,
+                        seed=config.noise_seed,
+                    )
+
+                angle_stacks.append(angle_stack_full)
+                full_stack += angle_stack_full / float(n_angles)
+
+                bar.update(1)
+
+                if debug_mode:
+                    logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, n_angles)
+
+        if config.use_quality_weighting:
+            full_stack = self.angle_model.weighted_stack(angle_stacks, angles)
+
+        return angle_stacks, full_stack
+
+    def _process_angle(
+        self,
+        vp: np.ndarray,
+        vs: np.ndarray,
+        rho: np.ndarray,
+        angle: float,
+        wavelet: np.ndarray,
+        ni: int,
+        nj: int,
+        nk: int,
+        block_i: int,
+    ) -> np.ndarray:
+        """Process a single angle: compute reflectivity and convolve."""
+        from src.signal.reflectivity import zoeppritz_solver
 
         angle_stack_full = np.zeros((ni, nj, nk), dtype=np.float32)
 
         for i0 in range(0, ni, block_i):
             i1 = min(ni, i0 + block_i)
+
             vp_block = vp[i0:i1]
             vs_block = vs[i0:i1]
             rho_block = rho[i0:i1]
@@ -212,101 +294,14 @@ def create_avo_synthetics(
             vs1b, vs2b = vs_block[..., :-1], vs_block[..., 1:]
             rho1b, rho2b = rho_block[..., :-1], rho_block[..., 1:]
 
-            from src.signal.reflectivity import zoeppritz_solver
-
             rc_values = zoeppritz_solver.solve(
                 vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle
             )
             rc_real = np.real(rc_values).astype(np.float32)
             rc_pad = np.zeros((i1 - i0, nj, nk), dtype=np.float32)
             rc_pad[..., 1:] = rc_real
-            angle_block = modeling_engine.run_convolution_3d(rc_pad, wavelet)
+
+            angle_block = self.run_convolution_3d(rc_pad, wavelet)
             angle_stack_full[i0:i1] = angle_block
-            full_stack[i0:i1] += angle_block / float(n_angles)
 
-        if add_noise:
-            angle_stack_full = add_realistic_noise(
-                angle_stack_full, angle, snr_db=snr_db, seed=noise_seed
-            )
-
-        angle_stacks.append(angle_stack_full)
-
-        if debug_mode:
-            logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, n_angles)
-
-    bar.close()
-
-    if use_quality_weighting:
-        full_stack = modeling_engine.apply_angle_quality_weighting(angle_stacks, angles)
-
-    return angle_stacks, full_stack
-
-
-class ModelingEngine:
-    """Object-oriented facade for core modeling routines.
-
-    This class provides a minimal, stable API that wraps the existing
-    module-level functions. It is intentionally a thin facade so callers
-    can adopt an OOP access pattern without changing behaviour.
-
-        Methods mirror the top-level functions in this module:
-            - create_avo_synthetics(props_time, angles, wavelet, ...)
-            - run_convolution_3d(rc_cube, wavelet, ...)
-            - apply_angle_quality_weighting(angle_stacks, angles, ...)
-
-        The instance holds no mutable shared state by default.
-    """
-
-    def create_avo_synthetics(self, *args, **kwargs):
-        """Create AVO synthetics using the module-level function."""
-        return create_avo_synthetics(*args, **kwargs)
-
-    def run_convolution_3d(self, *args, **kwargs):
-        """Run 3D convolution using the module-level function."""
-        return run_convolution_3d(*args, **kwargs)
-
-    def apply_angle_quality_weighting(self, *args, **kwargs):
-        """Apply angle quality weighting using the module-level function."""
-        return apply_angle_quality_weighting(*args, **kwargs)
-
-    # Additional thin wrappers to expose more of the module API via the
-    # ModelingEngine facade. This allows callers to use the
-    # object-oriented proxy `modeling_engine` without changing behaviour.
-
-    def cached_avo(self, *args, **kwargs):
-        # Import locally to avoid circular imports
-        from src.modeling import model_cache
-
-        return model_cache.cached_avo(*args, **kwargs)
-
-    def cached_avo_depth(self, *args, **kwargs):
-        from src.modeling import model_cache
-
-        return model_cache.cached_avo_depth(*args, **kwargs)
-
-    # Technique-specific caching is not part of the current API
-
-
-# Module-level singleton used by callers that prefer an object instance.
-modeling_engine = LazyObjectProxy(lambda: ModelingEngine())
-
-
-def _hash_for_cache(arrays, extras=None):
-    h = hashlib.sha256()
-    for a in arrays:
-        h.update(str(a.shape).encode())
-        h.update(str(a.dtype).encode())
-        h.update(a.tobytes())
-    if extras:
-        for e in extras:
-            if isinstance(e, (list, tuple)):
-                h.update(str(list(e)).encode())
-            elif isinstance(e, np.ndarray):
-                h.update(e.tobytes())
-            else:
-                h.update(str(e).encode())
-    return h.hexdigest()[:20]
-
-
-# Elastic-style computations are not part of the public API. This module focuses on AVO
-# modeling helpers: create_avo_synthetics, convolution and angle weighting.
+        return angle_stack_full
