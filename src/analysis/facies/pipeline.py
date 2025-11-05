@@ -14,9 +14,8 @@ from matplotlib.figure import Figure
 
 from src.plotting.helpers.plot import PlotConfig
 from src.processing.velocity import VelocityModel
-from src.io import data_loader
 from src.analysis.domain.enum import Domain
-from src.io.data_loader import DatasetManager
+from src.io.loader import DatasetManager
 from src.analysis.models import (
     CacheLoadResult,
     DisplayCubesResult,
@@ -159,9 +158,7 @@ class AnalysisPipeline:
             plot_cfg.grid_spec,
         )
         # Construct the canonical DatasetManager using the loader.
-        return data_loader.DatasetManager.from_stanfordsix(
-            DATA_PATH, FILE_MAP, grid_spec
-        )
+        return DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
 
     def _stage_prepare_cubes(
         self,

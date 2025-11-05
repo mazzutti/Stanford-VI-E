@@ -11,7 +11,6 @@ Key abstractions:
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional, Protocol
-import logging
 
 __all__ = ["FileSystemOps", "CacheStore"]
 

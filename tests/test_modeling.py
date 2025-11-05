@@ -362,7 +362,7 @@ class TestModelingPipelineExecutionCoverage:
 
     def test_pipeline_run_with_mock_data(self):
         """Test full pipeline run with mocked data loading."""
-        with patch("src.io.data_loader.DatasetManager") as mock_dm_class:
+        with patch("src.io.loader.DatasetManager") as mock_dm_class:
             with patch(
                 "src.processing.rock_physics.RockPhysicsModel"
             ) as mock_rpm_class:

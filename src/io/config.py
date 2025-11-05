@@ -51,7 +51,9 @@ class CachePolicy:
         return cls(cache_dir=Path(), max_cache_bytes=0)
 
     @classmethod
-    def with_ttl(cls, ttl_seconds: int, cache_dir: Path = None) -> "CachePolicy":
+    def with_ttl(
+        cls, ttl_seconds: int, cache_dir: Optional[Path] = None
+    ) -> "CachePolicy":
         """Create policy with TTL expiration."""
         return cls(
             cache_dir=cache_dir or Path(".cache"),

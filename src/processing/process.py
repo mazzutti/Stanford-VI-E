@@ -93,32 +93,18 @@ def _impl_clear_cache(
 
     - If `patterns` is provided, perform simple glob-based removals under
       `cache_dir` (or the default cache directory).
-    - If no patterns are provided, delegate to the shared `CacheManager`
-      cleanup/main entrypoint which implements the repository-wide cleanup
-      heuristics.
     Returns the number of removed files (int).
     """
-    try:
-        from src.io.cache import cache_for_dir
-    except Exception:
-        logger.warning("%sCache utilities are unavailable", prefix)
+    import os
+    from pathlib import Path
+
+    target_dir = str(cache_dir) if cache_dir is not None else ".cache"
+    p = Path(target_dir)
+    if not p.exists():
         return 0
 
-    # Normalize cache_dir to a string that cache_for_dir understands
-    cache_dir_str = str(cache_dir) if cache_dir is not None else None
-    cm = cache_for_dir(cache_dir_str)
-
-    # If explicit patterns are supplied, perform a simple pattern-based cleanup
+    removed = 0
     if patterns:
-        removed = 0
-        import os
-        from pathlib import Path
-
-        target_dir = cache_dir_str or getattr(cm, "cache_dir", ".cache")
-        p = Path(target_dir)
-        if not p.exists():
-            return 0
-
         for pat in patterns:
             try:
                 for fn in p.glob(pat):
@@ -129,17 +115,20 @@ def _impl_clear_cache(
                         logger.warning("%sError removing %s: %s", prefix, fn, e)
             except Exception:
                 logger.warning("%sPattern %s evaluation failed", prefix, pat)
+    else:
+        # Use modern pruning API
+        from src.io.pruning import Pruner, PruneStrategy
 
-        logger.info("%sRemoved %d files from %s", prefix, removed, str(p))
-        return removed
+        try:
+            strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
+            pruner = Pruner(strategy)
+            result = pruner.prune(p)
+            removed = result.count_removed
+        except Exception as e:
+            logger.warning("%sCache pruning failed: %s", prefix, e)
 
-    # Otherwise delegate to CacheManager.main which returns (removed_count, size_mb)
-    try:
-        removed, _size_mb = cm.main(dry_run=False, verbose=False)
-        return int(removed)
-    except Exception as e:
-        logger.warning("%sCache cleanup failed: %s", prefix, e)
-        return 0
+    logger.info("%sRemoved %d files from %s", prefix, removed, str(p))
+    return removed
 
 
 def open_file(
@@ -200,35 +189,45 @@ def summarize_cache_files(
 def _impl_summarize_cache_files(
     cache_dir: str = ".cache", keys: Optional[List[str]] = None, prefix: str = ""
 ):
-    try:
-        pass
-    except Exception:
-        logger.warning("%sCache utilities not available", prefix)
+    from pathlib import Path
+
+    p = Path(cache_dir)
+    if not p.exists():
+        logger.info("%sCache directory not found: %s", prefix, cache_dir)
         return
 
-    from src.io.cache import cache_for_dir
-
-    groups = cache_for_dir(cache_dir).select_latest_cache_entries()
-    if keys is None:
-        keys = ["avo_depth", "rock_physics_attributes"]
     logger.info("%sCache summary (%s):", prefix, cache_dir)
+
+    # List all .npz files in the cache directory
+    npz_files = sorted(p.glob("*.npz"), key=lambda x: x.stat().st_mtime, reverse=True)
+
+    if not npz_files:
+        logger.info("%s  (empty cache)", prefix)
+        return
+
+    # Group by key prefix
+    groups = {}
+    for f in npz_files:
+        key = f.name.split("_")[0]
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(f)
+
+    # Show summary for requested keys
+    if keys is None:
+        keys = ["avo", "rock_physics"]
+
     for k in keys:
-        candidates = groups.get(k + "_", groups.get(k, []))
+        candidates = groups.get(k, [])
         if candidates:
-            entry = candidates[-1]
-            try:
-                size_mb = entry.size_bytes / (1024**2)
-                cfg = entry.config or {}
-                cfg_summary = f" cfg_keys={list(cfg.keys())}" if cfg else ""
-                logger.info(
-                    "%s  %s: %s (%.1f MB)%s",
-                    prefix,
-                    k,
-                    entry.path.name,
-                    size_mb,
-                    cfg_summary,
-                )
-            except Exception:
-                logger.info("%s  %s: %s", prefix, k, entry.path.name)
+            latest = candidates[0]
+            size_mb = latest.stat().st_size / (1024**2)
+            logger.info(
+                "%s  %s: %s (%.1f MB)",
+                prefix,
+                k,
+                latest.name,
+                size_mb,
+            )
         else:
             logger.info("%s  %s: <none>", prefix, k)

@@ -167,14 +167,24 @@ def main(argv=None):
     cache_dir = args.cache_dir
     # Only an AVO cache is required for interactive plotting
     key = "avo_depth" if args.domain != "time" else "avo_time"
-    from src.io.cache import cache_for_dir
 
-    resolved = cache_for_dir(cache_dir).resolve_latest_paths(keys=[key])
+    from pathlib import Path
 
-    avo_fn = resolved.get(key)
+    # Find the latest AVO cache file
+    p = Path(cache_dir)
+    if not p.exists():
+        raise SystemExit(f"Cache directory not found: {cache_dir}")
 
-    if not avo_fn:
-        raise SystemExit("Missing required AVO cache file for 3D interactive plotting")
+    # Search for matching files
+    pattern = f"{key.split('_')[0]}_*"
+    candidates = sorted(
+        p.glob(f"{pattern}.npz"), key=lambda x: x.stat().st_mtime, reverse=True
+    )
+
+    if not candidates:
+        raise SystemExit(f"Missing required cache file matching pattern: {pattern}")
+
+    avo_fn = str(candidates[0])
 
     return {key: avo_fn}
 

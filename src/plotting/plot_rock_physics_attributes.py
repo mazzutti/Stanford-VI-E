@@ -129,15 +129,22 @@ def main(argv=None):
 
     cache_dir = args.cache_dir
 
-    from src.io.cache import cache_for_dir
+    from pathlib import Path
 
-    groups = cache_for_dir(cache_dir).select_latest_cache_entries()
-    hybrid_entries = groups.get("rock_physics_", []) or groups.get("rock_physics", [])
+    # Find the latest rock physics cache file
+    p = Path(cache_dir)
+    if not p.exists():
+        raise SystemExit(f"Cache directory not found: {cache_dir}")
 
-    if len(hybrid_entries) == 0:
+    # Search for rock physics cache files
+    candidates = sorted(
+        p.glob("rock_physics*.npz"), key=lambda x: x.stat().st_mtime, reverse=True
+    )
+
+    if not candidates:
         raise SystemExit("No rock physics cache file found")
 
-    hybrid_fn = str(hybrid_entries[-1].path)
+    hybrid_fn = str(candidates[0])
     logger = logging.getLogger(__name__)
     logger.info("Selected rock physics cache: %s", hybrid_fn)
 

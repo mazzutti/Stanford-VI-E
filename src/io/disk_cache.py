@@ -1,41 +1,33 @@
-"""Disk-backed cache helper for numpy-backed artifacts.
+"""Disk-backed cache with async operations and pruning.
 
-Implements a simple compressed-NPZ disk cache keyed by content hash (SHA1).
-Provides get/save helpers and optional TTL/pruning behaviour.
+Provides a high-level cache interface with:
+- Persistent NPZ storage
+- Async background saves
+- TTL and size-based pruning
+- Background pruning thread
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import numpy as np
-
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
-import time
 import logging
 import atexit
 from src.utils.facades import LazyObjectProxy
-from src.io.cache_backend import PruneStrategy, TTLAndSizePruner
+from src.io.storage import DiskStore
+from src.io.pruning import PruneStrategy, Pruner
 
-__all__ = ["DiskCache", "_hash_for_obj"]
+__all__ = [
+    "DiskCache",
+    "make_disk_cache",
+    "default_disk_cache",
+    "get_default_disk_cache",
+]
 
 logger = logging.getLogger(__name__)
-
-
-def _hash_for_obj(obj: Any) -> str:
-    """Create a SHA1 hex digest for JSON-serializable objects or raw bytes."""
-    if isinstance(obj, (bytes, bytearray)):
-        data = bytes(obj)
-    else:
-        try:
-            data = json.dumps(obj, sort_keys=True, default=str).encode("utf8")
-        except Exception:
-            data = str(obj).encode("utf8")
-    return hashlib.sha1(data).hexdigest()
 
 
 class DiskCache:
@@ -55,9 +47,7 @@ class DiskCache:
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        from src.io.cache import cache_for_dir
-
-        self.cm = cache_for_dir(str(self.cache_dir))
+        self.store = DiskStore(cache_dir=self.cache_dir, logger_obj=logger)
         self.max_cache_bytes = int(max_cache_bytes)
         self.ttl_seconds = int(ttl_seconds) if ttl_seconds is not None else None
         self.periodic_prune_interval_seconds = (
@@ -71,7 +61,7 @@ class DiskCache:
             max_cache_bytes=self.max_cache_bytes,
             ttl_seconds=self.ttl_seconds,
         )
-        self._pruner = TTLAndSizePruner(self._prune_strategy, logger_obj=logger)
+        self._pruner = Pruner(self._prune_strategy, logger_obj=logger)
 
         # Thread pool for background saves
         self._executor = ThreadPoolExecutor(max_workers=2)
@@ -102,63 +92,72 @@ class DiskCache:
             pass
 
     def make_key(self, prefix: str, meta: Dict[str, Any]) -> str:
-        h = _hash_for_obj(meta)
-        return f"{prefix}_{h}"
+        """Create a cache key from prefix and metadata.
+
+        Parameters
+        ----------
+        prefix : str
+            Key prefix (e.g., 'avo').
+        meta : Dict[str, Any]
+            Metadata dictionary to hash for uniqueness.
+
+        Returns
+        -------
+        str
+            Cache key.
+        """
+        return self.store.make_key(prefix, meta)
 
     def get_path_for_key(self, key: str) -> Optional[str]:
         # look for files under cache_dir starting with key
-        now = time.time()
-        for p in sorted(self.cache_dir.iterdir()):
-            if p.name.startswith(key):
-                if self.ttl_seconds is not None:
-                    # check TTL
-                    try:
-                        if now - p.stat().st_mtime > self.ttl_seconds:
-                            # stale
-                            continue
-                    except Exception:
-                        pass
-                return str(p)
-        return None
+        path = self.store.get_path_for_key(key)
+        return str(path) if path else None
 
     def load_npz(self, key: str) -> Optional[Dict[str, Any]]:
-        path = self.get_path_for_key(key)
-        if not path:
-            return None
-        try:
-            with np.load(path, allow_pickle=True) as npz:
-                return dict(npz)
-        except Exception:
-            return None
+        return self.store.get(key)
 
     def _prune_cache_if_needed(self) -> None:
         """Prune oldest files until total size <= max_cache_bytes or TTL satisfied."""
         self._pruner.prune(self.cache_dir)
 
     def save_npz(self, key: str, data: Dict[str, Any], blocking: bool = False) -> str:
-        # filename includes key and short hash for uniqueness and readability
-        short = key.split("_")[-1][:20]
-        fn = self.cache_dir / f"{key}_{short}.npz"
+        """Save data to NPZ cache with optional async execution.
+
+        Parameters
+        ----------
+        key : str
+            Cache key.
+        data : Dict[str, Any]
+            Data to save.
+        blocking : bool
+            If True, save synchronously. If False, save in background.
+
+        Returns
+        -------
+        str
+            Path to saved file.
+        """
 
         # helper sync save
-        def _do_save(path, payload):
+        def _do_save(payload: Dict[str, Any]) -> None:
             try:
-                self.cm.save_npz(str(path), payload)
+                self.store.set(key, payload)
             except Exception:
                 # best-effort; do not raise
                 pass
 
         # synchronous (blocking) path for critical saves
         if blocking:
-            _do_save(fn, data)
+            _do_save(data)
             # pruning is best-effort
             self._prune_cache_if_needed()
-            return str(fn)
+            path = self.store.get_path_for_key(key)
+            return str(path) if path else ""
 
         # perform save in background to avoid blocking large IO
-        def _save(path, payload, key_inner):
+        def _save(payload: Dict[str, Any], key_inner: str) -> None:
             try:
-                _do_save(path, payload)
+                _do_save(payload)
                 # pruning is best-effort
                 self._prune_cache_if_needed()
             finally:
@@ -170,41 +169,23 @@ class DiskCache:
                         pass
 
         with self._lock:
-            fut = self._executor.submit(_save, fn, data, key)
+            fut = self._executor.submit(_save, data, key)
             self._futures[key] = fut
 
-        return str(fn)
+        path = self.store.get_path_for_key(key)
+        return str(path) if path else ""
 
     def total_size_bytes(self) -> int:
         """Return total size of cache directory in bytes (best-effort)."""
-        try:
-            files = list(self.cache_dir.glob("*.npz"))
-            return sum(f.stat().st_size for f in files)
-        except Exception:
-            return 0
+        return self.store.total_size_bytes()
 
     def entry_count(self) -> int:
         """Return number of .npz entries in the cache (best-effort)."""
-        try:
-            return len(list(self.cache_dir.glob("*.npz")))
-        except Exception:
-            return 0
+        return self.store.entry_count()
 
-    def list_entries(self):
+    def list_entries(self) -> list[Dict[str, Any]]:
         """Return a list of dicts with metadata for each cache entry (name, size, mtime)."""
-        out = []
-        try:
-            for f in sorted(self.cache_dir.glob("*.npz")):
-                try:
-                    st = f.stat()
-                    out.append(
-                        {"name": f.name, "size": st.st_size, "mtime": st.st_mtime}
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        return out
+        return self.store.list_entries()
 
     def pending_saves_count(self) -> int:
         """Return number of pending async save futures (best-effort)."""
@@ -214,7 +195,7 @@ class DiskCache:
         except Exception:
             return 0
 
-    def pending_save_keys(self):
+    def pending_save_keys(self) -> list[str]:
         """Return a list of pending save keys (best-effort)."""
         try:
             with self._lock:
@@ -281,15 +262,12 @@ def make_disk_cache(
 default_disk_cache = LazyObjectProxy(lambda: make_disk_cache())
 
 
-__all__.extend(["make_disk_cache", "default_disk_cache"])
-
-
 def get_default_disk_cache(
     cache_dir: str | None = None,
     max_cache_bytes: int = 10 * 1024**3,
     ttl_seconds: Optional[int] = None,
     periodic_prune_interval_seconds: Optional[int] = None,
-):
+) -> DiskCache | Any:
     """Return the module's default DiskCache instance when cache_dir is None
     or the configured DiskCache for a custom directory.
 
@@ -305,22 +283,3 @@ def get_default_disk_cache(
         ttl_seconds=ttl_seconds,
         periodic_prune_interval_seconds=periodic_prune_interval_seconds,
     )
-
-
-def _impl_get_default_disk_cache(
-    cache_dir: str | None = None,
-    max_cache_bytes: int = 10 * 1024**3,
-    ttl_seconds: Optional[int] = None,
-    periodic_prune_interval_seconds: Optional[int] = None,
-) -> DiskCache:
-    if cache_dir is None:
-        return default_disk_cache
-    return DiskCache(
-        cache_dir=cache_dir,
-        max_cache_bytes=max_cache_bytes,
-        ttl_seconds=ttl_seconds,
-        periodic_prune_interval_seconds=periodic_prune_interval_seconds,
-    )
-
-
-__all__.append("get_default_disk_cache")

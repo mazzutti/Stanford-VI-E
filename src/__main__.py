@@ -18,7 +18,6 @@ import multiprocessing
 
 
 from src.analysis.types.base import DatasetManagerFactory
-from src.io import data_loader
 from src.io.grid import GridSpec
 from src.signal import wavelets
 from src.utils.quantity import Quantity
@@ -218,16 +217,26 @@ class ParserFactory:
         import logging
 
         logging.getLogger(__name__).info("%s", "\n" + "=" * 70)
-        logging.getLogger(__name__).info("CLEANING UP OLD CACHE FILES")
+        logging.getLogger(__name__).info("PRUNING CACHE FILES")
         logging.getLogger(__name__).info("%s", "=" * 70)
-        from src.io.cache import cache_for_dir
+        from pathlib import Path
+        from src.io.pruning import Pruner, PruneStrategy
 
-        # prefer explicit cache_for_dir to obtain a CacheManager for the requested dir
-        removed, size_mb = cache_for_dir(cache_dir).cleanup_old_cache(dry_run=False)
-        if removed > 0:
-            logging.getLogger(__name__).info(
-                "✓ Removed %d old files (%.1f MB freed)", removed, size_mb
+        cache_path = Path(cache_dir)
+        if cache_path.exists():
+            # Create a pruning strategy and run pruning
+            strategy = PruneStrategy.by_size_only(
+                max_cache_bytes=10 * 1024**3  # 10GB default
             )
+            pruner = Pruner(strategy)
+            result = pruner.prune(cache_path)
+            logging.getLogger(__name__).info(
+                "✓ Removed %d files (%.1f MB freed)",
+                result.count_removed,
+                result.total_bytes_removed / (1024**2),
+            )
+        else:
+            logging.getLogger(__name__).info("Cache directory does not exist")
         logging.getLogger(__name__).info("%s", "=" * 70)
 
     @staticmethod
@@ -613,10 +622,17 @@ def cleanup_cache(
     except Exception:
         pass
 
-    # Delegate to the programmatic main in src.io.cache (CacheManager.main)
-    from src.io.cache import cache_for_dir
+    # Prune cache using modern API
+    from pathlib import Path
+    from src.io.pruning import Pruner, PruneStrategy
 
-    removed, size_mb = cache_for_dir(cache_dir).cleanup_old_cache(dry_run=dry_run)
+    cache_path = Path(cache_dir)
+    if cache_path.exists():
+        strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
+        pruner = Pruner(strategy)
+        result = pruner.prune(cache_path)
+        return result.count_removed, result.total_bytes_removed / (1024**2)
+    return 0, 0.0
 
 
 # ---------------------------------------------------------------------------

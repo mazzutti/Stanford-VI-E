@@ -34,7 +34,7 @@ from numpy.lib.npyio import NpzFile
 from matplotlib.figure import Figure
 
 from src.io.grid import GridSpec
-from src.io.data_loader import DatasetManager
+from src.io.loader import DatasetManager
 
 if TYPE_CHECKING:
     from src.analysis.models import AvoResults

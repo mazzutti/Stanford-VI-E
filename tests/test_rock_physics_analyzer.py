@@ -1353,7 +1353,7 @@ class TestFallbackPaths:
             )
 
             with patch(
-                "src.io.data_loader.DatasetManager.from_stanfordsix"
+                "src.io.loader.DatasetManager.from_stanfordsix"
             ) as mock_fallback:
                 mock_fallback.return_value = Mock(spec=["get"])
                 result = analyzer_instance._load_dataset_manager(

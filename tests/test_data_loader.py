@@ -16,13 +16,12 @@ from typing import Tuple
 
 import numpy as np
 
-from src.io.data_loader import (
-    GSLibConfig,
-    GSLibReader,
-    FileLocator,
+from src.io.loader import (
     DatasetManager,
     GslibLoader,
 )
+from src.io.gslib_reader import GSLibConfig, GSLibReader
+from src.io.file_locator import FileLocator
 from src.io.grid import GridSpec
 
 

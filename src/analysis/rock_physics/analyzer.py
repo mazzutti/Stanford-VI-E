@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, Sequence, cast, TypeVar
 
 import numpy as np
 from src.io.grid import GridSpec
-from src.io.data_loader import DatasetManager
+from src.io.loader import DatasetManager
 
 from src.analysis.processors.types import (
     FloatingArray,
@@ -273,7 +273,6 @@ class RockPhysicsAnalyzer:
     ) -> DatasetManager:
         """Load dataset using DatasetManagerFactory with fallback."""
         from src.analysis.types.base import DatasetManagerFactory
-        from src.io import data_loader
         from typing import cast
 
         try:
@@ -283,9 +282,7 @@ class RockPhysicsAnalyzer:
             return cast(DatasetManager, factory.create(data_path, file_map, grid_spec))
         except Exception as e:
             logger.debug(f"DatasetManagerFactory failed: {e}, using fallback")
-            return data_loader.DatasetManager.from_stanfordsix(
-                data_path, file_map, grid_spec
-            )
+            return DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
 
     def _build_attribute_results(
         self,

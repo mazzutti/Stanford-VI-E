@@ -13,7 +13,6 @@ import numpy as np
 from typing import Callable
 import logging
 
-from src.io.cache import cache_for_dir
 from src.modeling.modeling import SynthesisConfig, _unwrap_quantity
 from src.utils.quantity import Quantity
 
@@ -99,7 +98,7 @@ class CacheManager:
                 save_dict[f"angle_{i}"] = angle_stack
 
         filepath = Path(self.cache_dir) / filename
-        cache_for_dir(self.cache_dir).save_npz(filepath, save_dict)
+        np.savez_compressed(filepath, **save_dict)
         logger.info("Saved AVO synthetics to cache: %s", filename)
 
     def load_avo_synthetics(

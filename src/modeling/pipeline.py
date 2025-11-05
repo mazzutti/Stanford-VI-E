@@ -70,7 +70,7 @@ class ModelingPipeline:
         Returns:
             Dictionary with 'avo_cached', 'angle_stacks', and 'full_stack' keys
         """
-        from src.io.data_loader import DatasetManager
+        from src.io.loader import DatasetManager
         from src.processing.rock_physics import RockPhysicsModel
 
         cfg = self.config.defaults
