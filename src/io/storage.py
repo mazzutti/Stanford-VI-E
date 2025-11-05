@@ -15,17 +15,19 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional, TypeVar
 import numpy as np
 
 from src.io.backends import CacheStore
+
+T = TypeVar("T")  # Type variable for generic cached values
 
 __all__ = ["DiskStore", "MemoryStore"]
 
 logger = logging.getLogger(__name__)
 
 
-def _hash_for_obj(obj: Any) -> str:
+def _hash_for_obj(obj: dict[str, str | int | float | bool] | bytes | bytearray) -> str:
     """Create a SHA1 hex digest for JSON-serializable objects or raw bytes."""
     if isinstance(obj, (bytes, bytearray)):
         data = bytes(obj)
@@ -37,7 +39,7 @@ def _hash_for_obj(obj: Any) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
-class DiskStore(CacheStore):
+class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     """Persistent disk-based cache storage using NPZ format.
 
     Stores serialized objects as compressed NPZ files with content-addressable
@@ -69,14 +71,14 @@ class DiskStore(CacheStore):
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logger_obj or logger
 
-    def make_key(self, prefix: str, meta: Dict[str, Any]) -> str:
+    def make_key(self, prefix: str, meta: dict[str, str | int | float | bool]) -> str:
         """Create a cache key from prefix and metadata.
 
         Parameters
         ----------
         prefix : str
             Key prefix (e.g., 'avo', 'rockphysics').
-        meta : Dict[str, Any]
+        meta : dict[str, str | int | float | bool]
             Metadata dictionary to hash for uniqueness.
 
         Returns
@@ -109,7 +111,7 @@ class DiskStore(CacheStore):
 
         return None
 
-    def _get_impl(self, key: str) -> Optional[Any]:
+    def _get_impl(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve and deserialize cached object.
 
         Parameters
@@ -119,7 +121,7 @@ class DiskStore(CacheStore):
 
         Returns
         -------
-        Optional[Any]
+        Optional[dict[str, str | int | float | bool] | bytes]
             Deserialized cached data or None if not found.
         """
         path = self.get_path_for_key(key)
@@ -133,7 +135,7 @@ class DiskStore(CacheStore):
             self.logger.debug(f"Error loading cache from {path}: {e}")
             return None
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve item from cache.
 
         Parameters
@@ -143,7 +145,7 @@ class DiskStore(CacheStore):
 
         Returns
         -------
-        Optional[Any]
+        Optional[dict[str, str | int | float | bool] | bytes]
             Cached value or None if not found.
         """
         try:
@@ -152,14 +154,14 @@ class DiskStore(CacheStore):
             self.logger.debug(f"Error retrieving key '{key}': {e}")
             return None
 
-    def _set_impl(self, key: str, value: Any) -> None:
+    def _set_impl(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Serialize and store object in cache.
 
         Parameters
         ----------
         key : str
             Cache key.
-        value : Any
+        value : dict[str, str | int | float | bool] | bytes
             Object to cache (should be dict-like or convertible to dict).
 
         Raises
@@ -182,14 +184,14 @@ class DiskStore(CacheStore):
         np.savez_compressed(path, **value)
         self.logger.debug(f"Saved cache to {path}")
 
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Store item in cache.
 
         Parameters
         ----------
         key : str
             Cache key.
-        value : Any
+        value : dict[str, str | int | float | bool] | bytes
             Value to cache.
         """
         try:
@@ -306,29 +308,28 @@ class DiskStore(CacheStore):
             self.logger.debug(f"Error counting cache entries: {e}")
             return 0
 
-    def list_entries(self) -> list[dict[str, Any]]:
+    def list_entries(self) -> list[dict[str, str | int | float]]:
         """List metadata for all cache entries.
 
         Returns
         -------
-        list[dict[str, Any]]
+        list[dict[str, str | int | float]]
             List of dicts with 'name', 'size', 'mtime' keys.
         """
         if not self.cache_dir.exists():
             return []
 
-        entries = []
+        entries: list[dict[str, str | int | float]] = []
         try:
             for path in sorted(self.cache_dir.glob("*.npz")):
                 try:
                     stat = path.stat()
-                    entries.append(
-                        {
-                            "name": path.name,
-                            "size": stat.st_size,
-                            "mtime": stat.st_mtime,
-                        }
-                    )
+                    entry: dict[str, str | int | float] = {
+                        "name": path.name,
+                        "size": stat.st_size,
+                        "mtime": stat.st_mtime,
+                    }
+                    entries.append(entry)
                 except Exception as e:
                     self.logger.debug(f"Error stat'ing {path}: {e}")
         except Exception as e:
@@ -363,7 +364,7 @@ class DiskStore(CacheStore):
             self.logger.debug(f"Error clearing cache: {e}")
 
 
-class MemoryStore(CacheStore):
+class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     """In-memory cache storage for testing and lightweight use.
 
     Stores objects directly in a dictionary with no persistence.
@@ -373,7 +374,7 @@ class MemoryStore(CacheStore):
     ----------
     logger : logging.Logger
         Logger instance.
-    _store : Dict[str, Any]
+    _store : dict[str, dict[str, str | int | float | bool] | bytes]
         Internal storage dictionary.
     """
 
@@ -386,9 +387,9 @@ class MemoryStore(CacheStore):
             Logger instance.
         """
         self.logger = logger_obj or logger
-        self._store: Dict[str, Any] = {}
+        self._store: dict[str, dict[str, str | int | float | bool] | bytes] = {}
 
-    def _get_impl(self, key: str) -> Optional[Any]:
+    def _get_impl(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve object from memory.
 
         Parameters
@@ -398,7 +399,7 @@ class MemoryStore(CacheStore):
 
         Returns
         -------
-        Optional[Any]
+        Optional[dict[str, str | int | float | bool] | bytes]
             Cached value or None if not found.
         """
         result = self._store.get(key)
@@ -406,7 +407,7 @@ class MemoryStore(CacheStore):
             self.logger.debug(f"Memory cache hit: {key}")
         return result
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve item from cache.
 
         Parameters
@@ -416,7 +417,7 @@ class MemoryStore(CacheStore):
 
         Returns
         -------
-        Optional[Any]
+        Optional[dict[str, str | int | float | bool] | bytes]
             Cached value or None if not found.
         """
         try:
@@ -425,27 +426,27 @@ class MemoryStore(CacheStore):
             self.logger.debug(f"Error retrieving key '{key}': {e}")
             return None
 
-    def _set_impl(self, key: str, value: Any) -> None:
+    def _set_impl(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Store object in memory.
 
         Parameters
         ----------
         key : str
             Cache key.
-        value : Any
+        value : dict[str, str | int | float | bool] | bytes
             Value to cache.
         """
         self._store[key] = value
         self.logger.debug(f"Memory cache set: {key}")
 
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Store item in cache.
 
         Parameters
         ----------
         key : str
             Cache key.
-        value : Any
+        value : dict[str, str | int | float | bool] | bytes
             Value to cache.
         """
         try:

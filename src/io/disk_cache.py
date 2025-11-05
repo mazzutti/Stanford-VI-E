@@ -10,7 +10,7 @@ Provides a high-level cache interface with:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
@@ -91,14 +91,14 @@ class DiskCache:
             # best-effort; never raise from __init__
             pass
 
-    def make_key(self, prefix: str, meta: Dict[str, Any]) -> str:
+    def make_key(self, prefix: str, meta: dict[str, str | int | float | bool]) -> str:
         """Create a cache key from prefix and metadata.
 
         Parameters
         ----------
         prefix : str
             Key prefix (e.g., 'avo').
-        meta : Dict[str, Any]
+        meta : dict[str, str | int | float | bool]
             Metadata dictionary to hash for uniqueness.
 
         Returns
@@ -113,21 +113,21 @@ class DiskCache:
         path = self.store.get_path_for_key(key)
         return str(path) if path else None
 
-    def load_npz(self, key: str) -> Optional[Dict[str, Any]]:
+    def load_npz(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         return self.store.get(key)
 
     def _prune_cache_if_needed(self) -> None:
         """Prune oldest files until total size <= max_cache_bytes or TTL satisfied."""
         self._pruner.prune(self.cache_dir)
 
-    def save_npz(self, key: str, data: Dict[str, Any], blocking: bool = False) -> str:
+    def save_npz(self, key: str, data: dict[str, str | int | float | bool] | bytes, blocking: bool = False) -> str:
         """Save data to NPZ cache with optional async execution.
 
         Parameters
         ----------
         key : str
             Cache key.
-        data : Dict[str, Any]
+        data : dict[str, str | int | float | bool] | bytes
             Data to save.
         blocking : bool
             If True, save synchronously. If False, save in background.
@@ -139,7 +139,7 @@ class DiskCache:
         """
 
         # helper sync save
-        def _do_save(payload: Dict[str, Any]) -> None:
+        def _do_save(payload: dict[str, str | int | float | bool] | bytes) -> None:
             try:
                 self.store.set(key, payload)
             except Exception:
@@ -155,7 +155,7 @@ class DiskCache:
             return str(path) if path else ""
 
         # perform save in background to avoid blocking large IO
-        def _save(payload: Dict[str, Any], key_inner: str) -> None:
+        def _save(payload: dict[str, str | int | float | bool] | bytes, key_inner: str) -> None:
             try:
                 _do_save(payload)
                 # pruning is best-effort
@@ -183,7 +183,7 @@ class DiskCache:
         """Return number of .npz entries in the cache (best-effort)."""
         return self.store.entry_count()
 
-    def list_entries(self) -> list[Dict[str, Any]]:
+    def list_entries(self) -> list[dict[str, str | int | float]]:
         """Return a list of dicts with metadata for each cache entry (name, size, mtime)."""
         return self.store.list_entries()
 
@@ -267,7 +267,7 @@ def get_default_disk_cache(
     max_cache_bytes: int = 10 * 1024**3,
     ttl_seconds: Optional[int] = None,
     periodic_prune_interval_seconds: Optional[int] = None,
-) -> DiskCache | Any:
+) -> DiskCache | LazyObjectProxy:
     """Return the module's default DiskCache instance when cache_dir is None
     or the configured DiskCache for a custom directory.
 

@@ -10,7 +10,9 @@ Key abstractions:
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Optional, Protocol
+from typing import Optional, Protocol, TypeVar, Generic
+
+T = TypeVar("T")  # Generic type for cached values
 
 __all__ = ["FileSystemOps", "CacheStore"]
 
@@ -68,7 +70,7 @@ class FileSystemOps(Protocol):
         ...
 
 
-class CacheStore(ABC):
+class CacheStore(ABC, Generic[T]):
     """Abstract base class for cache storage implementations.
 
     Defines the common interface that all cache backends (in-memory,
@@ -77,11 +79,17 @@ class CacheStore(ABC):
     This is a Protocol-like interface for all cache implementations.
     Subclasses should implement the get/set/has/delete/clear contract.
 
+    Type Parameters
+    ---------------
+    T
+        Type of objects stored in the cache (typically dict[str, Any] for
+        serialized data or bytes for binary content).
+
     Methods
     -------
-    get(key: str) -> Optional[Any]
+    get(key: str) -> Optional[T]
         Retrieve item from cache.
-    set(key: str, value: Any) -> None
+    set(key: str, value: T) -> None
         Store item in cache.
     has(key: str) -> bool
         Check if key exists in cache.
@@ -92,7 +100,7 @@ class CacheStore(ABC):
     """
 
     @abstractmethod
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[T]:
         """Retrieve item from cache.
 
         Parameters
@@ -102,20 +110,20 @@ class CacheStore(ABC):
 
         Returns
         -------
-        Optional[Any]
+        Optional[T]
             Cached value or None if not found or expired.
         """
         pass
 
     @abstractmethod
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: T) -> None:
         """Store item in cache.
 
         Parameters
         ----------
         key : str
             Cache key.
-        value : Any
+        value : T
             Value to cache.
         """
         pass
