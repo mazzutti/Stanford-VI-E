@@ -19,7 +19,7 @@ import numpy as np
 from numpy.typing import NDArray
 from matplotlib.figure import Figure
 
-from src.plotting.helpers.plot import PlotConfig
+from src.plotting.helpers.config import PlotConfig
 from src.processing.velocity import VelocityModel
 from src.io.grid import GridSpec
 from src.analysis.base import AnalyzerInterface

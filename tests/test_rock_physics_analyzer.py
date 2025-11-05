@@ -742,12 +742,9 @@ class TestRockPhysicsAnalyzer:
         self,
         analyzer_instance: RockPhysicsAnalyzer,
     ) -> None:
-        """Test grid configuration fallback when plotting config unavailable."""
-        with patch(
-            "src.plotting.helpers.plot.default_plot_config",
-            side_effect=ImportError("Not available"),
-        ):
-            data_path, file_map, grid_spec = analyzer_instance._get_grid_configuration()
+        """Test grid configuration returns sensible defaults."""
+        # The method now always uses defaults (legacy method)
+        data_path, file_map, grid_spec = analyzer_instance._get_grid_configuration()
 
         # Should use defaults
         assert isinstance(data_path, str)

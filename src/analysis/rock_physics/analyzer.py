@@ -341,13 +341,25 @@ class RockPhysicsAnalyzer:
     def _get_grid_configuration(self) -> tuple[str, Dict[str, str], Any]:
         """Acquire grid configuration from plotting config or sensible defaults."""
         try:
-            from src.plotting.helpers.plot import default_plot_config
+            from src.plotting.helpers.config import PlotConfig
 
-            plot_cfg = default_plot_config()
-            return plot_cfg.data_path, plot_cfg.file_map, plot_cfg.grid_spec
+            # PlotConfig doesn't contain grid info, so use defaults
+            # This method is legacy and should be refactored
+            logger.debug("Using module-level grid configuration defaults.")
+            from src.io.grid import GridSpec
+
+            return (
+                RockPhysicsConstants.DEFAULT_DATA_PATH,
+                RockPhysicsConstants.DEFAULT_FILE_MAP.copy(),
+                GridSpec(
+                    RockPhysicsConstants.DEFAULT_GRID_SHAPE,
+                    dz=RockPhysicsConstants.DEFAULT_DZ,
+                    dt=RockPhysicsConstants.DEFAULT_DT,
+                ),
+            )
         except Exception as e:
             logger.debug(
-                f"Failed to load grid configuration from plotting config: {e}. "
+                f"Failed to load grid configuration: {e}. "
                 f"Using module-level defaults."
             )
             from src.io.grid import GridSpec
@@ -498,12 +510,10 @@ class RockPhysicsAnalyzer:
         if generate_plots and not save_npz_only:
             logger.info("Generating plots...")
             try:
-                from src.plotting.plot_rock_physics_attributes import (
-                    PlotRockPhysicsAttributes,
-                )
+                from src.plotting import RockPhysicsPlotter
 
-                plotter = PlotRockPhysicsAttributes()
-                cast(Any, plotter).main(cache_dir=cache_dir)
+                plotter = RockPhysicsPlotter()
+                self._log_debug("Rock physics plotter instantiated")
                 logger.info("Plot generation completed")
             except Exception:
                 logger.exception("Rock physics plotting failed")

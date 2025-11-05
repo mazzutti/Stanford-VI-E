@@ -7,7 +7,7 @@ commands.
 from typing import Optional, Sequence
 from pathlib import Path
 import logging
-from src.utils.facades import LazyObjectProxy
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -16,54 +16,68 @@ __all__ = [
     "print_angle_summary",
     "print_selected_angles",
     "print_cache_info",
+    "FormattingHelper",
+    "get_formatting_helper",
 ]
 
 
 # Thin facade for formatting helpers
 class FormattingHelper:
-    def print_header(self, title: str):
+    """Helper class for formatting output."""
+
+    def print_header(self, title: str) -> None:
+        """Print a formatted header."""
         return print_header(title)
 
     def print_angle_summary(
         self,
         angles: Sequence[float],
-        volumes: Sequence,
-        stack=None,
-        gradient=None,
-    ):
+        volumes: Sequence[np.ndarray],
+        stack: np.ndarray | None = None,
+        gradient: np.ndarray | None = None,
+    ) -> None:
+        """Print a concise per-angle summary."""
         return print_angle_summary(angles, volumes, stack=stack, gradient=gradient)
 
-    def print_selected_angles(self, selected_angles, weights):
+    def print_selected_angles(
+        self, selected_angles: np.ndarray, weights: np.ndarray
+    ) -> None:
+        """Print selected angles and weights."""
         return print_selected_angles(selected_angles, weights)
 
-    def print_cache_info(self, cache_file: Optional[str]):
+    def print_cache_info(self, cache_file: Optional[str]) -> None:
+        """Print cache file information."""
         return print_cache_info(cache_file)
 
 
-# Module-level lazy proxy using the shared LazyObjectProxy
-formatting_helper = LazyObjectProxy(lambda: FormattingHelper())
-
-__all__.extend(["FormattingHelper", "formatting_helper"])
+# Module-level instance
+_formatting_helper = FormattingHelper()
 
 
-def get_formatting_helper(config: dict | None = None):
-    if config is None:
-        return formatting_helper
-    return FormattingHelper()
+def get_formatting_helper() -> FormattingHelper:
+    """Get the formatting helper instance.
+
+    Returns:
+        FormattingHelper instance
+    """
+    return _formatting_helper
 
 
 __all__.append("get_formatting_helper")
 
 
-def print_header(title: str):
+def print_header(title: str) -> None:
     logger.info("%s", "\n" + "=" * 70)
     logger.info("%s", title)
     logger.info("%s", "=" * 70)
 
 
 def print_angle_summary(
-    angles: Sequence[float], volumes: Sequence, stack=None, gradient=None
-):
+    angles: Sequence[float],
+    volumes: Sequence[np.ndarray],
+    stack: np.ndarray | None = None,
+    gradient: np.ndarray | None = None,
+) -> None:
     """Log a concise per-angle summary and optional stack/gradient stats."""
     print_header("ANGLE-DEPENDENT SUMMARY")
     for angle, vol in zip(angles, volumes):
@@ -92,12 +106,12 @@ def print_angle_summary(
         )
 
 
-def print_selected_angles(selected_angles, weights):
+def print_selected_angles(selected_angles: np.ndarray, weights: np.ndarray) -> None:
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
 
 
-def print_cache_info(cache_file: Optional[str]):
+def print_cache_info(cache_file: Optional[str]) -> None:
     if not cache_file:
         return
     logger.info("\n✓ Saved multi-angle results to: %s", cache_file)

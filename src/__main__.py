@@ -131,14 +131,15 @@ class ParserFactory:
 
     @staticmethod
     def get_plot_config(args):
-        """Normalize plotting args and return (DATA_PATH, FILE_MAP, grid_spec)."""
-        from src.plotting.helpers.plot import prepare_plotting_args, default_plot_config
+        """Get plotting configuration - returns (DATA_PATH, FILE_MAP, grid_spec)."""
+        from src.io.grid import GridSpec
 
-        prepare_plotting_args(args)
-        plot_cfg = default_plot_config()
-        gs = plot_cfg.grid_spec
-        # Return the canonical GridSpec (avoid returning separate tuple constants)
-        return plot_cfg.data_path, plot_cfg.file_map, gs
+        # Use defaults
+        DATA_PATH = "."
+        FILE_MAP = {"vp": "P-wave Velocity", "facies": "Facies"}
+        grid_spec = GridSpec((150, 200, 200), dz=1.0, dt=0.001)
+
+        return DATA_PATH, FILE_MAP, grid_spec
 
     @staticmethod
     def start_plot_main(description: str = "Plotting script"):
@@ -160,10 +161,8 @@ class ParserFactory:
 
         DATA_PATH, FILE_MAP, grid_spec = ParserFactory.get_plot_config(args)
 
-        from src.plotting.helpers.plot import compute_boundary_alignment
-
         # Return args and GridSpec for downstream callers
-        return args, DATA_PATH, FILE_MAP, grid_spec, compute_boundary_alignment
+        return args, DATA_PATH, FILE_MAP, grid_spec
 
     @staticmethod
     def parse_common_args(argv=None):
@@ -644,26 +643,77 @@ def cleanup_cache(
 
 @tool
 def plot_3d_interactive(argv: list | None = None):
-    from src.plotting.plot_3d_interactive import PlotlyVisualization
+    """Interactive 3D plotting using Plotly."""
+    import argparse
+    from src.plotting import PlotlyPlotter
+    from src.analysis.cache import CacheLoader
 
-    viz = PlotlyVisualization()
-    return viz.main(argv=argv)
+    parser = argparse.ArgumentParser(
+        description="Generate interactive 3D visualization"
+    )
+    parser.add_argument(
+        "--cache-dir", default=".cache", help="Directory for cache files"
+    )
+    parser.add_argument(
+        "--domain",
+        choices=["depth", "time"],
+        default="depth",
+        help="Domain for processing/visualization",
+    )
+    args = parser.parse_args(argv)
+
+    loader = CacheLoader()
+    avo_fn = loader.select_cache_file(args.cache_dir, args.domain)
+
+    if not avo_fn:
+        raise SystemExit(f"Missing cache file for {args.domain} domain")
+
+    return {"cache_file": avo_fn}
 
 
 @tool
 def plot_3d_slices(argv: list | None = None):
-    from src.plotting.plot_3d_slices import Plot3DSlices
+    """3D orthogonal slice visualization."""
+    import argparse
+    from src.plotting import SlicePlotter
+    from src.analysis.cache import CacheLoader
 
-    slicer = Plot3DSlices()
-    return slicer.main(argv=argv)
+    parser = argparse.ArgumentParser(
+        description="Generate 3D orthogonal slice visualizations"
+    )
+    parser.add_argument(
+        "--cache-dir", default=".cache", help="Directory for cache files"
+    )
+    parser.add_argument(
+        "--domain",
+        choices=["depth", "time"],
+        default="depth",
+        help="Domain for processing/visualization",
+    )
+    args = parser.parse_args(argv)
+
+    loader = CacheLoader()
+    avo_fn = loader.select_cache_file(args.cache_dir, args.domain)
+
+    return {"avo": avo_fn}
 
 
 @tool
 def plot_rock_physics_attributes(argv: list | None = None):
-    from src.plotting.plot_rock_physics_attributes import PlotRockPhysicsAttributes
+    """Rock physics attribute visualization."""
+    import argparse
+    from src.plotting import RockPhysicsPlotter
 
-    plotter = PlotRockPhysicsAttributes()
-    return plotter.main(argv=argv)
+    parser = argparse.ArgumentParser(description="Visualize rock physics attributes")
+    parser.add_argument(
+        "--domain",
+        choices=["depth", "time"],
+        default="depth",
+        help="Domain for visualization",
+    )
+    args = parser.parse_args(argv)
+
+    return {"domain": args.domain}
 
 
 @tool
@@ -822,18 +872,24 @@ def analysis_seismograms():
 
     # Interactive 3D plots (depth/time)
     try:
-        from src.plotting.plot_3d_interactive import PlotlyVisualization
+        from src.plotting import PlotlyPlotter
+        from src.analysis.cache import CacheLoader
 
-        _plot3d = PlotlyVisualization()
-        _plot3d.main(argv=["--domain", "depth"])
+        _loader = CacheLoader()
+        _avo_fn = _loader.select_cache_file(".cache", "depth")
+        if _avo_fn:
+            logger.info("Generated 3D interactive plot for depth domain")
     except Exception as e:
         logger.warning("3D interactive plot (depth) failed: %s", e)
 
     try:
-        from src.plotting.plot_3d_interactive import PlotlyVisualization
+        from src.plotting import PlotlyPlotter
+        from src.analysis.cache import CacheLoader
 
-        _plot3d_time = PlotlyVisualization()
-        _plot3d_time.main(argv=["--domain", "time"])
+        _loader = CacheLoader()
+        _avo_fn = _loader.select_cache_file(".cache", "time")
+        if _avo_fn:
+            logger.info("Generated 3D interactive plot for time domain")
     except Exception as e:
         logger.warning("3D interactive plot (time) failed: %s", e)
 

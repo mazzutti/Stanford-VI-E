@@ -1,32 +1,30 @@
-import os
-import time
-import tempfile
+"""Facies correlation summary figure plotting.
 
-import matplotlib
+Provides FaciesPlotter class for creating summary plots of facies-seismic correlations.
+Inherits from BasePlotter for consistency and shared utilities.
+"""
 
-# Force Agg backend immediately to avoid font/config discovery hangs on macOS
-try:
-    matplotlib.use("Agg")
-except Exception:
-    pass
-from typing import Any, Dict, Optional, TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING
+
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+import numpy as np
+
+from src.plotting.helpers.base import BasePlotter
 
 if TYPE_CHECKING:
     # Only import for type checking to avoid circular imports at runtime
     from src.analysis.models import AvoResults
 
-import logging
-import matplotlib.pyplot as plt
-import numpy as np
-
 logger = logging.getLogger(__name__)
 
 
-class FaciesPlotter:
+class FaciesPlotter(BasePlotter):
     """Plotter for facies-correlation summary figures.
 
     This class isolates plotting code from the analysis logic so it can be
-    swapped or mocked in tests.
+    swapped or mocked in tests. Inherits common utilities from BasePlotter.
     """
 
     def create_summary_plots(
@@ -34,9 +32,9 @@ class FaciesPlotter:
         avo_results: "AvoResults",
         cache_dir: str,
         domain: str = "depth",
-    ) -> Any:
+    ) -> Figure:
 
-        logger.debug("create_summary_plots: starting")
+        self._log_debug("create_summary_plots: starting")
 
         fig = plt.figure(figsize=(18, 12))
         domain_label = "Depth Domain" if domain == "depth" else "Time Domain"
@@ -47,7 +45,7 @@ class FaciesPlotter:
             y=0.995,
         )
 
-        logger.debug("create_summary_plots: plotting boundary distributions")
+        self._log_debug("create_summary_plots: plotting boundary distributions")
         # 1. AVO amplitude distribution (at boundaries vs away)
         ax1 = plt.subplot(2, 3, 1)
         boundary_amps = getattr(avo_results, "boundary_amps", None)
@@ -85,7 +83,7 @@ class FaciesPlotter:
             ax1.legend(fontsize=8)
         ax1.grid(True, alpha=0.3)
 
-        logger.debug("create_summary_plots: plotting interface strengths")
+        self._log_debug("create_summary_plots: plotting interface strengths")
         # 2. Reflection strength at different interface types (AVO)
         ax2 = plt.subplot(2, 3, 2)
         rows = []
@@ -120,7 +118,7 @@ class FaciesPlotter:
         ax2.set_title("AVO: Reflection Strength at Interfaces")
         ax2.grid(True, alpha=0.3, axis="y")
 
-        logger.debug("create_summary_plots: plotting facies discrimination")
+        self._log_debug("create_summary_plots: plotting facies discrimination")
         # 3. Facies discrimination - amplitude by facies type (AVO)
         ax3 = plt.subplot(2, 3, 3)
         facies_labels = []
@@ -141,7 +139,8 @@ class FaciesPlotter:
             ax3.set_xticks(range(1, len(avo_facies_data) + 1))
             ax3.set_xticklabels(facies_labels, rotation=0, fontsize=8)
             for patch, color in zip(
-                bp["boxes"], plt.cm.tab10(np.linspace(0, 0.4, len(bp["boxes"])))
+                bp["boxes"],
+                plt.get_cmap("tab10")(np.linspace(0, 0.4, len(bp["boxes"]))),
             ):
                 patch.set_facecolor(color)
         ax3.set_ylabel("AVO Amplitude")
@@ -193,5 +192,5 @@ class FaciesPlotter:
                             fontsize=8,
                         )
 
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.tight_layout(rect=(0, 0, 1, 0.96))
         return fig
