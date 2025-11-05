@@ -4,7 +4,6 @@ Helpers to convert depth-domain property cubes into irregular two-way time
 (TWT) cubes and to resample properties onto a regular time grid.
 """
 
-import os
 import numpy as np
 from numba import njit, prange
 
@@ -20,14 +19,12 @@ import logging
 from src.io.grid import GridSpec
 
 from src.utils.quantity import Quantity
-from src.utils.facades import LazyObjectProxy
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "convert_depth_to_twt",
-    "resample_properties_to_time",
     "DepthTimeConverter",
+    "get_depth_time_converter",
 ]
 
 
@@ -154,33 +151,27 @@ class DepthTimeConverter:
         return resampled_properties, time_axis
 
 
-def convert_depth_to_twt(vp_depth, grid_spec: GridSpec):
-    """Convert depth to two-way time."""
-    converter = get_depth_time_converter(grid_spec=grid_spec)
-    return converter.convert_depth_to_twt(vp_depth)
-
-
-def resample_properties_to_time(properties_depth, twt_irregular, grid_spec: GridSpec):
-    """Resample properties from depth to time."""
-    converter = get_depth_time_converter(grid_spec=grid_spec)
-    return converter.resample_properties_to_time(properties_depth, twt_irregular)
-
-
-# Module-level lazy converter
-depth_time_converter = LazyObjectProxy(lambda gs: DepthTimeConverter(gs))
-
-
 def get_depth_time_converter(
     grid_spec: GridSpec | None = None, instance: DepthTimeConverter | None = None
 ) -> DepthTimeConverter:
-    """Return provided DepthTimeConverter instance or a module-level lazy one.
+    """Return provided DepthTimeConverter instance or create a new one.
 
-    If `instance` is provided it is returned directly. Otherwise a new
-    DepthTimeConverter is created for the provided `grid_spec` or the
-    module-level lazy proxy is returned when `grid_spec` is None.
+    Args:
+        grid_spec: GridSpec to use for creating a new converter. If provided,
+                   a new instance is created.
+        instance: If provided, return this instance directly.
+
+    Returns:
+        DepthTimeConverter instance.
     """
     if instance is not None:
         return instance
     if grid_spec is not None:
         return DepthTimeConverter(grid_spec)
-    return depth_time_converter
+    # Return cached instance or create a new one with a minimal default GridSpec
+    global _depth_time_converter_instance
+    if _depth_time_converter_instance is None:
+        from src.io.grid import GridSpec as GS
+
+        _depth_time_converter_instance = DepthTimeConverter(GS((100, 100, 100)))
+    return _depth_time_converter_instance

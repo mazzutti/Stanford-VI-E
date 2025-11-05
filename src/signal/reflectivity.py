@@ -5,12 +5,9 @@ signal/math helpers are used by modeling and analysis pipelines.
 """
 
 import numpy as np
-from src.utils.quantity import Quantity
 import os
 import logging
 from numba import njit, prange
-
-from src.utils.facades import LazyObjectProxy
 
 __all__ = [
     "ReflectivityCalculator",
@@ -193,8 +190,46 @@ def _numba_solve_zoeppritz(
 
 
 # Module-level singletons for reuse across the package
-reflectivity_calc = LazyObjectProxy(lambda: ReflectivityCalculator())
-zoeppritz_solver = LazyObjectProxy(lambda: ZoeppritzSolver())
+# Use a simple initialization approach that avoids the broken LazyObjectProxy
+_reflectivity_calc_instance: ReflectivityCalculator | None = None
+_zoeppritz_solver_instance: ZoeppritzSolver | None = None
+
+
+def _get_reflectivity_calc_instance() -> ReflectivityCalculator:
+    """Lazy initialize reflectivity_calc singleton."""
+    global _reflectivity_calc_instance
+    if _reflectivity_calc_instance is None:
+        _reflectivity_calc_instance = ReflectivityCalculator()
+    return _reflectivity_calc_instance
+
+
+def _get_zoeppritz_solver_instance() -> ZoeppritzSolver:
+    """Lazy initialize zoeppritz_solver singleton."""
+    global _zoeppritz_solver_instance
+    if _zoeppritz_solver_instance is None:
+        _zoeppritz_solver_instance = ZoeppritzSolver()
+    return _zoeppritz_solver_instance
+
+
+# Provide backward-compatible module-level access
+# These are initialized on first use to avoid breaking existing code
+class _LazyReflectivityProxy:
+    """Lazy proxy for backward compatibility."""
+
+    def __getattr__(self, name):
+        return getattr(_get_reflectivity_calc_instance(), name)
+
+
+class _LazyZoeppritzProxy:
+    """Lazy proxy for backward compatibility."""
+
+    def __getattr__(self, name):
+        return getattr(_get_zoeppritz_solver_instance(), name)
+
+
+# Create module-level proxies that initialize on first access
+reflectivity_calc = _LazyReflectivityProxy()
+zoeppritz_solver = _LazyZoeppritzProxy()
 
 
 def configure_reflectivity(
@@ -210,38 +245,33 @@ def configure_reflectivity(
     (`reflectivity_calc`, `zoeppritz_solver`) so callers can centrally tune
     performance without constructing new objects.
     """
-    global reflectivity_calc, zoeppritz_solver
-    if use_numba is not None:
-        # Update zoeppritz solver preference (Numba is always available)
-        zoeppritz_solver.use_numba = bool(use_numba)
     if cpu_batch is not None:
+        solver = _get_zoeppritz_solver_instance()
         try:
-            zoeppritz_solver.cpu_batch = int(cpu_batch)
+            solver.cpu_batch = int(cpu_batch)
         except Exception:
             pass
 
 
 def get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator":
-    """Return the module-level reflectivity_calc proxy when `config` is None,
+    """Return the module-level reflectivity_calc singleton when `config` is None,
     otherwise return a new ReflectivityCalculator instance.
 
     This follows the repository convention of providing `get_*` helpers for
     module-level lazy singletons to simplify testing and dependency injection.
     """
     if config is None:
-        return reflectivity_calc
+        return _get_reflectivity_calc_instance()
     return ReflectivityCalculator()
 
 
 def get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
-    """Return the module-level zoeppritz_solver proxy when `config` is None,
+    """Return the module-level zoeppritz_solver singleton when `config` is None,
     otherwise return a new ZoeppritzSolver instance with optional config.
     """
     if config is None:
-        return zoeppritz_solver
-    use_numba = None
+        return _get_zoeppritz_solver_instance()
     cpu_batch = None
     if isinstance(config, dict):
-        use_numba = config.get("use_numba", None)
         cpu_batch = config.get("cpu_batch", None)
-    return ZoeppritzSolver(use_numba=use_numba, cpu_batch=cpu_batch)
+    return ZoeppritzSolver(cpu_batch=cpu_batch)
