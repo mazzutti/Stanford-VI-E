@@ -111,7 +111,9 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
 
         return None
 
-    def _get_impl(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    def _get_impl(
+        self, key: str
+    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve and deserialize cached object.
 
         Parameters
@@ -154,7 +156,9 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             self.logger.debug(f"Error retrieving key '{key}': {e}")
             return None
 
-    def _set_impl(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
+    def _set_impl(
+        self, key: str, value: dict[str, str | int | float | bool] | bytes
+    ) -> None:
         """Serialize and store object in cache.
 
         Parameters
@@ -389,7 +393,9 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         self.logger = logger_obj or logger
         self._store: dict[str, dict[str, str | int | float | bool] | bytes] = {}
 
-    def _get_impl(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    def _get_impl(
+        self, key: str
+    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve object from memory.
 
         Parameters
@@ -426,7 +432,9 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             self.logger.debug(f"Error retrieving key '{key}': {e}")
             return None
 
-    def _set_impl(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
+    def _set_impl(
+        self, key: str, value: dict[str, str | int | float | bool] | bytes
+    ) -> None:
         """Store object in memory.
 
         Parameters

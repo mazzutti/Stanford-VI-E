@@ -113,14 +113,21 @@ class DiskCache:
         path = self.store.get_path_for_key(key)
         return str(path) if path else None
 
-    def load_npz(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    def load_npz(
+        self, key: str
+    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
         return self.store.get(key)
 
     def _prune_cache_if_needed(self) -> None:
         """Prune oldest files until total size <= max_cache_bytes or TTL satisfied."""
         self._pruner.prune(self.cache_dir)
 
-    def save_npz(self, key: str, data: dict[str, str | int | float | bool] | bytes, blocking: bool = False) -> str:
+    def save_npz(
+        self,
+        key: str,
+        data: dict[str, str | int | float | bool] | bytes,
+        blocking: bool = False,
+    ) -> str:
         """Save data to NPZ cache with optional async execution.
 
         Parameters
@@ -155,7 +162,9 @@ class DiskCache:
             return str(path) if path else ""
 
         # perform save in background to avoid blocking large IO
-        def _save(payload: dict[str, str | int | float | bool] | bytes, key_inner: str) -> None:
+        def _save(
+            payload: dict[str, str | int | float | bool] | bytes, key_inner: str
+        ) -> None:
             try:
                 _do_save(payload)
                 # pruning is best-effort
