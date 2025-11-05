@@ -6,7 +6,7 @@ processing module, centralizing lazy initialization and dependency injection.
 
 from __future__ import annotations
 
-from typing import TypeVar, Generic, Optional, Dict, Callable, Any
+from typing import TypeVar, Generic, Optional, Callable
 
 T = TypeVar("T")
 
@@ -50,8 +50,8 @@ class ServiceRegistry:
     """
 
     def __init__(self) -> None:
-        self._services: Dict[str, Any] = {}
-        self._factories: Dict[str, SingletonFactory] = {}
+        self._services: dict[str, object] = {}
+        self._factories: dict[str, SingletonFactory[object]] = {}
 
     def register_singleton(self, name: str, factory_fn: Callable[[], T]) -> None:
         """Register a singleton factory.
@@ -67,7 +67,7 @@ class ServiceRegistry:
             raise KeyError(f"Service '{name}' already registered")
         self._factories[name] = SingletonFactory(factory_fn)
 
-    def get_service(self, name: str, instance: Optional[Any] = None) -> Any:
+    def get_service(self, name: str, instance: object | None = None) -> object:
         """Get a service by name, optionally providing an override instance.
 
         Args:

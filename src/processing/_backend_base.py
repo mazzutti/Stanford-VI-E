@@ -24,12 +24,12 @@ class ResamplerBackend(Protocol):
     def supports(self, plan: ResamplePlan) -> bool: ...
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
-    ) -> "BackendResult": ...
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: object
+    ) -> BackendResult: ...
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
-    ) -> "BackendResult": ...
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: object
+    ) -> BackendResult: ...
 
 
 @dataclass

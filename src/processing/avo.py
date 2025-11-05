@@ -3,7 +3,6 @@
 Contains AVO linearization checks and reporting helpers.
 """
 
-from typing import Dict, Any
 import numpy as np
 from numpy.typing import ArrayLike
 import logging
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def check_linearization_validity(
     vp: ArrayLike, vs: ArrayLike, rho: ArrayLike, *, max_angle: float = 30.0
-) -> Dict[str, Any]:
+) -> dict[str, float | list[int] | bool | None]:
     vp = np.asarray(vp)
     vs = np.asarray(vs)
     rho = np.asarray(rho)
@@ -54,7 +53,7 @@ def check_linearization_validity(
     }
 
 
-def print_validity_report(report: Dict[str, Any]) -> None:
+def print_validity_report(report: dict[str, float | list[int] | bool | None]) -> None:
     if not isinstance(report, dict):
         logger.error("Validity report: <invalid format>")
         return
