@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from src.processing.core.abstracts import Manager
 
@@ -15,7 +15,7 @@ class BaseManager(Manager):
     Provides consistent initialization, logging, and error handling.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         """Initialize manager.
 
         Args:
@@ -24,23 +24,23 @@ class BaseManager(Manager):
         self.logger = logger or logging.getLogger(self.__class__.__name__)
 
     @abstractmethod
-    def clear(self, *args, **kwargs) -> int:
+    def clear(self, *args: Any, **kwargs: Any) -> int:
         """Clear managed resources."""
         pass
 
     @abstractmethod
-    def summarize(self, *args, **kwargs) -> None:
+    def summarize(self, *args: Any, **kwargs: Any) -> None:
         """Print summary of managed resources."""
         pass
 
-    def _log_info(self, message: str, *args) -> None:
+    def _log_info(self, message: str, *args: Any) -> None:
         """Log info message."""
         self.logger.info(message, *args)
 
-    def _log_warning(self, message: str, *args) -> None:
+    def _log_warning(self, message: str, *args: Any) -> None:
         """Log warning message."""
         self.logger.warning(message, *args)
 
-    def _log_error(self, message: str, *args) -> None:
+    def _log_error(self, message: str, *args: Any) -> None:
         """Log error message."""
         self.logger.error(message, *args)

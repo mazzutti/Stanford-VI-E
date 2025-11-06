@@ -31,7 +31,7 @@ class VelocityModel:
     vp: Union[Quantity, np.ndarray]
     grid_spec: GridSpec
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Wrap raw arrays into Quantity if needed
         if not isinstance(self.vp, Quantity):
             # assume unitless numeric array (likely m/s or km/s) — store without unit metadata

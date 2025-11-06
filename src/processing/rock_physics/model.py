@@ -35,9 +35,9 @@ class RockPhysicsModel:
         disk_cache: Optional shared disk cache
     """
 
-    vp: Optional[np.ndarray]
-    vs: Optional[np.ndarray]
-    rho: Optional[np.ndarray]
+    vp: Optional[Quantity | np.ndarray]
+    vs: Optional[Quantity | np.ndarray]
+    rho: Optional[Quantity | np.ndarray]
     facies: Optional[np.ndarray]
     grid_spec: GridSpec
     disk_cache: Optional[DiskCache] = field(default=None, init=True, repr=False)

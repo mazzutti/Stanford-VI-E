@@ -23,7 +23,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Dict, Any, TYPE_CHECKING, Callable
 import logging
 
 if TYPE_CHECKING:
@@ -76,7 +76,7 @@ class ServiceRegistry:
         self._instances: Dict[str, Any] = {}
         self._logger = logger or logging.getLogger(self.__class__.__name__)
 
-    def _get_or_create(self, key: str, factory: callable) -> Any:
+    def _get_or_create(self, key: str, factory: Callable[[], Any]) -> Any:
         """Get cached instance or create new one via factory.
 
         Args:
@@ -221,7 +221,7 @@ class ServiceRegistry:
 
         return self._get_or_create("avo_validator", factory)
 
-    def get_rock_physics_model(self):
+    def get_rock_physics_model(self) -> type:
         """Get RockPhysicsModel class (factory, not singleton).
 
         Returns the class itself for direct instantiation with custom parameters.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any, Optional, Union, Type
 import numpy as np
 
 import logging
@@ -13,7 +14,8 @@ from src.processing.resampling.backends._manager import BackendManager
 
 
 try:
-    from src.processing.interpolator import BatchedInterpolator
+    from src.processing.interpolator import BatchedInterpolator as _BatchedInterpolator
+    BatchedInterpolator: Optional[Type[Any]] = _BatchedInterpolator
 except Exception:  # pragma: no cover - optional import
     BatchedInterpolator = None
 
@@ -34,7 +36,7 @@ class VectorizedBackend:
         return plan.uniform_twt
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         # For uniform_twt, we can call the resampler's fast path directly.
         from src.processing.resampling._resampler import resampler_factory
@@ -44,7 +46,7 @@ class VectorizedBackend:
         return BackendResult(array=out, dt=dt)
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         from src.processing.resampling._resampler import resampler_factory
 
@@ -71,7 +73,7 @@ class BatchedInterpolatorBackend:
         return BatchedInterpolator is not None
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         if BatchedInterpolator is None:
             raise BackendError("BatchedInterpolator not available")
@@ -88,7 +90,7 @@ class BatchedInterpolatorBackend:
         return BackendResult(array=out_arr, dt=plan.dt)
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
+        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         # Not implemented in this simple backend; fall back to resampler
         from src.processing.resampling._resampler import resampler_factory
@@ -103,7 +105,7 @@ class BatchedInterpolatorBackend:
 
 
 # Register default backends
-def _register_default_backends():
+def _register_default_backends() -> None:
     """Register the default backend implementations with the global BackendManager."""
     manager = BackendManager()
 

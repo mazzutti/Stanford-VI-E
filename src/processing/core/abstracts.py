@@ -28,7 +28,7 @@ class Processor(ABC):
     """
 
     @abstractmethod
-    def process(self, data: Any, **kwargs) -> Any:
+    def process(self, data: Any, **kwargs: Any) -> Any:
         """Process input data.
 
         Args:
@@ -48,7 +48,7 @@ class Manager(ABC):
     """
 
     @abstractmethod
-    def clear(self, *args, **kwargs) -> int:
+    def clear(self, *args: Any, **kwargs: Any) -> int:
         """Clear managed resources.
 
         Returns:
@@ -57,7 +57,7 @@ class Manager(ABC):
         pass
 
     @abstractmethod
-    def summarize(self, *args, **kwargs) -> None:
+    def summarize(self, *args: Any, **kwargs: Any) -> None:
         """Print summary of managed resources."""
         pass
 
@@ -137,7 +137,7 @@ class Validator(ABC):
     """
 
     @abstractmethod
-    def validate(self, *args, **kwargs) -> Dict[str, Any]:
+    def validate(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Validate input and return report.
 
         Returns:
@@ -146,7 +146,7 @@ class Validator(ABC):
         pass
 
     @abstractmethod
-    def is_valid(self, *args, **kwargs) -> bool:
+    def is_valid(self, *args: Any, **kwargs: Any) -> bool:
         """Quick validity check.
 
         Returns:
