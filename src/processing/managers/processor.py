@@ -13,10 +13,10 @@ __all__ = ["ProcessManager", "ManagerHub"]
 
 class ProcessManager(BaseManager):
     """Facade for process-related utilities with simpler API.
-    
+
     Composes CacheManager and FileManager to provide unified process management,
     without duplicating method names.
-    
+
     Attributes:
         cache: CacheManager instance
         files: FileManager instance
@@ -29,7 +29,7 @@ class ProcessManager(BaseManager):
         logger: Optional[logging.Logger] = None,
     ):
         """Initialize process manager with dependencies.
-        
+
         Args:
             cache_manager: Cache manager instance (auto-created if None)
             file_manager: File manager instance (auto-created if None)
@@ -46,12 +46,12 @@ class ProcessManager(BaseManager):
         prefix: str = "",
     ) -> int:
         """Clear cache files matching patterns or using size-based pruning.
-        
+
         Args:
             patterns: Optional glob patterns to match
             cache_dir: Cache directory (defaults to ".cache")
             prefix: Prefix for log messages
-            
+
         Returns:
             Number of files removed
         """
@@ -63,12 +63,12 @@ class ProcessManager(BaseManager):
         self, filepath: str, description: Optional[str] = None, prefix: str = ""
     ) -> bool:
         """Open a file using the FileManager.
-        
+
         Args:
             filepath: Path to file to open
             description: Optional description of file
             prefix: Prefix for log messages
-            
+
         Returns:
             True if file opened successfully
         """
@@ -83,7 +83,7 @@ class ProcessManager(BaseManager):
         prefix: str = "",
     ) -> None:
         """Print summary of cache files.
-        
+
         Args:
             cache_dir: Cache directory to summarize
             keys: Optional keys to filter cache entries
@@ -96,12 +96,12 @@ class ProcessManager(BaseManager):
 
 class ManagerHub(BaseManager):
     """Unified facade for all resource managers.
-    
+
     Provides single entry point for managing cache, files, and processes.
-    
+
     Attributes:
         cache: CacheManager instance
-        files: FileManager instance  
+        files: FileManager instance
         processes: ProcessManager instance
     """
 
@@ -113,7 +113,7 @@ class ManagerHub(BaseManager):
         logger: Optional[logging.Logger] = None,
     ):
         """Initialize manager hub with dependencies.
-        
+
         Args:
             cache_manager: Cache manager (auto-created if None)
             file_manager: File manager (auto-created if None)
@@ -136,12 +136,12 @@ class ManagerHub(BaseManager):
         prefix: str = "",
     ) -> int:
         """Clear all managed resources.
-        
+
         Args:
             patterns: Glob patterns to match
             cache_dir: Cache directory
             prefix: Log message prefix
-            
+
         Returns:
             Total number of resources cleared
         """
@@ -156,7 +156,7 @@ class ManagerHub(BaseManager):
         prefix: str = "",
     ) -> None:
         """Print summary of all managed resources.
-        
+
         Args:
             cache_dir: Cache directory to summarize
             keys: Optional cache entry keys to filter

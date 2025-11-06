@@ -16,7 +16,6 @@ import hashlib
 from typing import Optional
 
 import numpy as np
-import os
 import logging
 
 from src.processing.resampling._plan import ResamplePlan
@@ -65,7 +64,7 @@ class ResamplePlanCache:
             step = max(1, nbytes // chunks)
             buf = arr.ravel().view(np.uint8)
             for start in range(0, min(nbytes, step * chunks), step):
-                h.update(buf[start : start + min(step, nbytes - start)])
+                h.update(buf[start:start + min(step, nbytes - start)])
         return h.hexdigest()
 
     def _make_key(

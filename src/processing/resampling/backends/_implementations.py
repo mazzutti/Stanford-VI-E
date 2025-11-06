@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 import logging
 
 from src.processing.resampling.backends._base import (
     BackendError,
-    ResamplerBackend,
     BackendResult,
 )
 from src.processing.resampling._plan import ResamplePlan

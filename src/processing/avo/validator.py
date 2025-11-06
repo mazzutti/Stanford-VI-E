@@ -69,7 +69,7 @@ class AVOValidityReport:
             )
         if self.angle_flag:
             logger.warning(
-                "  ⚠️  Large maximum angle requested; AVO linearization accuracy decreases with angle."
+                "  ⚠️  Large maximum angle; AVO linearization accuracy decreases with angle."
             )
 
         if self.suggested_angles:
