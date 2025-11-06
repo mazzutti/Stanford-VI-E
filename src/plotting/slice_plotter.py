@@ -53,7 +53,7 @@ class SlicePlotter(BasePlotter):
         config = config or PlotConfig.default()
 
         # Extract inline slice
-        idx_i, idx_j, idx_k = slice_indices
+        idx_i, _, _ = slice_indices
         slice_data = cube[idx_i, :, :]
 
         # Update config with slice information
@@ -90,7 +90,7 @@ class SlicePlotter(BasePlotter):
         """
         config = config or PlotConfig.default()
 
-        idx_i, idx_j, idx_k = slice_indices
+        _, idx_j, _ = slice_indices
         slice_data = cube[:, idx_j, :]
 
         config = config.update(
@@ -127,7 +127,7 @@ class SlicePlotter(BasePlotter):
         """
         config = config or PlotConfig.default()
 
-        idx_i, idx_j, idx_k = slice_indices
+        _, _, idx_k = slice_indices
         slice_data = cube[:, :, idx_k]
 
         config = config.update(

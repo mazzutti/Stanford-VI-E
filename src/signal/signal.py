@@ -91,7 +91,7 @@ class SeismicSignalProcessor:
         # Import here to allow graceful failure if scipy unavailable
         from scipy.signal import fftconvolve
 
-        ni, nj, nk = reflectivity.shape
+        ni, nj, _ = reflectivity.shape
         seismogram = np.zeros_like(reflectivity, dtype=np.float64)
 
         # Apply wavelet to each trace

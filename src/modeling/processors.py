@@ -107,7 +107,7 @@ class WaveletConvolver:
         Returns:
             Convolved cube same shape as input
         """
-        nz, nx, ny = cube.shape
+        _, nx, ny = cube.shape
         result = np.zeros_like(cube, dtype=np.float32)
 
         for ix in range(nx):

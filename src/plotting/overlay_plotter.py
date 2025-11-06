@@ -72,7 +72,7 @@ class OverlayPlotter(BasePlotter):
         """
         config = config or PlotConfig.for_seismic()
 
-        nj, nk = seismic_slice.shape
+        _, _ = seismic_slice.shape
 
         # Plot seismic base image
         config = config.update(

@@ -243,7 +243,7 @@ class DiskCache:
 
         if wait:
             with self._lock:
-                for k, f in list(self._futures.items()):
+                for _, f in list(self._futures.items()):
                     try:
                         f.result(timeout=30)
                     except Exception:

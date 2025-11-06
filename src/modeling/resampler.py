@@ -50,13 +50,13 @@ class ResamplingService:
             if isinstance(v, Quantity):
                 v_qty = v
                 data_arr = v_qty.array
-                data_time, dt = resampler.depth_to_time_cube(
+                data_time, _ = resampler.depth_to_time_cube(
                     data_arr, vp_val, target_dt=grid_spec.dt, plan=plan
                 )
                 props_time[k] = Quantity(data_time, v_qty.unit)
             else:
                 v_arr = v
-                data_time, dt = resampler.depth_to_time_cube(
+                data_time, _ = resampler.depth_to_time_cube(
                     v_arr, vp_val, target_dt=grid_spec.dt, plan=plan
                 )
                 props_time[k] = data_time
