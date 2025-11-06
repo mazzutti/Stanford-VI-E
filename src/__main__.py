@@ -344,7 +344,6 @@ class ParserFactory:
             if hasattr(props_depth["vp"], "array")
             else props_depth["vp"]
         )
-        _, _, _ = vp_for_twt.shape
 
         # Create a shared ResamplePlan to drive all resampling in this run.
         from src.processing.resampling.cache import get_resample_plan_cache
