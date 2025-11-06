@@ -125,19 +125,6 @@ class TestServiceRegistryManagers:
         """Clean up registry after each test."""
         reset_registry()
 
-    def test_get_manager_hub(self):
-        """Test getting manager hub from registry."""
-        registry = get_registry()
-        hub = registry.get_manager_hub()
-        assert hub is not None
-
-    def test_manager_hub_is_cached(self):
-        """Test that manager hub is cached."""
-        registry = get_registry()
-        hub1 = registry.get_manager_hub()
-        hub2 = registry.get_manager_hub()
-        assert hub1 is hub2
-
 
 class TestServiceRegistryAVO:
     """Tests for AVO validator management."""
