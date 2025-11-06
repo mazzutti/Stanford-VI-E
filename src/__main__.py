@@ -26,9 +26,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-__all__ = ["ParserFactory", "main"]
-
-
 class ParserFactory:
     @staticmethod
     def common_parser(add_help: bool = True):

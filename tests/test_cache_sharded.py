@@ -20,24 +20,24 @@ def test_inject_custom_cache():
 
     class DummyCache:
         def __init__(self):
-            self._d = {}
+            self._storage = {}
 
         def get(self, k):
             events.append(("get", k))
-            return self._d.get(k)
+            return self._storage.get(k)
 
         def set(self, k, v):
             events.append(("set", k, v))
-            self._d[k] = v
+            self._storage[k] = v
 
         def keys(self):
-            return list(self._d.keys())
+            return list(self._storage.keys())
 
         def clear(self):
-            self._d.clear()
+            self._storage.clear()
 
         def info(self):
-            return {"maxsize": 0, "currsize": len(self._d)}
+            return {"maxsize": 0, "currsize": len(self._storage)}
 
     dummy = DummyCache()
     loader = CacheLoader(selector=None, cache=dummy)
@@ -91,22 +91,22 @@ def test_cacheloader_injection_and_extractor(tmp_path):
     # fake cache that records set/get calls
     class SimpleCache:
         def __init__(self):
-            self._d = {}
+            self._storage = {}
 
         def get(self, k):
-            return self._d.get(k)
+            return self._storage.get(k)
 
         def set(self, k, v):
-            self._d[k] = v
+            self._storage[k] = v
 
         def keys(self):
-            return list(self._d.keys())
+            return list(self._storage.keys())
 
         def clear(self):
-            self._d.clear()
+            self._storage.clear()
 
         def info(self):
-            return {"maxsize": 0, "currsize": len(self._d)}
+            return {"maxsize": 0, "currsize": len(self._storage)}
 
     cache = SimpleCache()
 

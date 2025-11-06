@@ -1,4 +1,5 @@
 """Tests for HeaderPrinter formatting and configuration."""
+
 # mypy: ignore-errors
 
 
@@ -53,11 +54,15 @@ class TestHeaderPrinterConfiguration:
         assert hp.separator_width == 80
         assert hp.separator_char == "-"
 
-    def test_custom_logger(self):
+    def test_custom_logger(self, caplog):
         """Verify custom logger is used."""
         custom_logger = logging.getLogger("custom")
-        hp = HeaderPrinter(logger_obj=custom_logger)
-        assert hp._logger is custom_logger
+        hp = HeaderPrinter(logger_obj=custom_logger, separator_width=5)
+        with caplog.at_level(logging.INFO, logger="custom"):
+            hp.print_analysis_header("TEST")
+        # Verify log was captured from the custom logger
+        assert len(caplog.records) > 0
+        assert "TEST" in caplog.text
 
     def test_invalid_separator_width_zero(self):
         """Verify ValueError for separator_width=0."""
@@ -130,17 +135,21 @@ class TestHeaderPrinterFactories:
         assert hp.separator_char == "-"
         assert hp.separator_width == 50
 
-    def test_error_header_with_custom_logger(self):
+    def test_error_header_with_custom_logger(self, caplog):
         """Verify factory methods accept custom logger."""
         custom_logger = logging.getLogger("error_logger")
         hp = HeaderPrinter.error_header(logger_obj=custom_logger)
-        assert hp._logger is custom_logger
+        with caplog.at_level(logging.WARNING, logger="error_logger"):
+            hp("ERROR", ["test"])
+        assert "ERROR" in caplog.text
 
-    def test_section_header_with_custom_logger(self):
+    def test_section_header_with_custom_logger(self, caplog):
         """Verify section_header accepts custom logger."""
         custom_logger = logging.getLogger("section_logger")
         hp = HeaderPrinter.section_header(logger_obj=custom_logger)
-        assert hp._logger is custom_logger
+        with caplog.at_level(logging.INFO, logger="section_logger"):
+            hp("SECTION", ["test"])
+        assert "SECTION" in caplog.text
 
     def test_info_header_factory(self):
         """Verify info_header factory creates correct configuration."""
@@ -171,12 +180,16 @@ class TestHeaderPrinterFormatting:
     def test_separator_generation(self):
         """Verify separator generation."""
         hp = HeaderPrinter(separator_width=5, separator_char="-")
-        assert hp._make_separator() == "-----"
+        lines = list(hp.format_lines("TEST"))
+        assert lines[0] == "-----"
+        assert lines[2] == "-----"
 
     def test_separator_generation_custom_char(self):
         """Verify separator with custom character."""
         hp = HeaderPrinter(separator_width=3, separator_char="*")
-        assert hp._make_separator() == "***"
+        lines = list(hp.format_lines("TEST"))
+        assert lines[0] == "***"
+        assert lines[2] == "***"
 
     def test_print_header_with_title_only(self, caplog):
         """Verify header printing with title only."""
@@ -361,17 +374,23 @@ class TestHeaderPrinterFormatString:
         assert "----------" in messages
         assert "********************" in messages
 
-    def test_different_printers_different_loggers(self):
+    def test_different_printers_different_loggers(self, caplog):
         """Verify instances with different loggers."""
         logger1 = logging.getLogger("printer1")
         logger2 = logging.getLogger("printer2")
 
-        hp1 = HeaderPrinter(logger_obj=logger1)
-        hp2 = HeaderPrinter(logger_obj=logger2)
+        hp1 = HeaderPrinter(logger_obj=logger1, separator_width=5)
+        hp2 = HeaderPrinter(logger_obj=logger2, separator_width=5)
 
-        assert hp1._logger is logger1
-        assert hp2._logger is logger2
-        assert hp1._logger is not hp2._logger
+        # Verify each logger produces output at the right level
+        with caplog.at_level(logging.INFO, logger="printer1"):
+            hp1("TITLE1")
+        assert "TITLE1" in caplog.text
+
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="printer2"):
+            hp2("TITLE2")
+        assert "TITLE2" in caplog.text
 
     def test_mixing_factories_and_custom(self, caplog):
         """Verify factories can be mixed with custom instances."""

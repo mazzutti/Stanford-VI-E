@@ -21,9 +21,6 @@ from src.io.pruning import PruneStrategy, Pruner
 
 __all__ = [
     "DiskCache",
-    "make_disk_cache",
-    "default_disk_cache",
-    "get_default_disk_cache",
 ]
 
 logger = logging.getLogger(__name__)
