@@ -111,8 +111,9 @@ class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
         logger.info("Computing AVO attributes from rock physics...")
 
         # Local import to avoid heavy dependencies at module import time
-        from src.signal.reflectivity import zoeppritz_solver as solver
+        from src.signal.reflectivity import ZoeppritzSolver
 
+        solver = ZoeppritzSolver()
         angles_rad = np.deg2rad(angles_deg)
 
         ni, nj, nk = vp.shape
@@ -195,16 +196,14 @@ class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
             ni: Number of rows
             nj: Number of columns
         """
-        # Check each spatial position (i, j) at layer k
-        for i in range(ni):
-            for j in range(nj):
-                # If either intercept or gradient is not finite at layer k,
-                # mark entire trace (all layers) as NaN
-                if not np.isfinite(intercept[i, j, k]) or not np.isfinite(
-                    gradient[i, j, k]
-                ):
-                    intercept[i, j, :] = np.nan
-                    gradient[i, j, :] = np.nan
+        # Vectorized approach: find invalid traces at layer k
+        invalid_mask = ~np.isfinite(intercept[:, :, k]) | ~np.isfinite(
+            gradient[:, :, k]
+        )
+
+        # Mark entire traces (all layers) as NaN for invalid traces
+        intercept[invalid_mask, :] = np.nan
+        gradient[invalid_mask, :] = np.nan
 
     @staticmethod
     def _build_design_matrix(

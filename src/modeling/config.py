@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from src.io.grid import GridSpec
-from src.signal import wavelets
+from src.signal import RickerWavelet
 
 __all__ = ["ModelingDefaults", "ModelingConfig"]
 
@@ -60,10 +60,8 @@ class ModelingDefaults:
     @property
     def wavelet(self) -> np.ndarray:
         """Create default Ricker wavelet."""
-        wavelet_array = wavelets.ricker_wavelet(
-            f_peak=self.peak_frequency, dt=self.grid_dt
-        )
-        return np.asarray(wavelet_array, dtype=np.float64)
+        ricker = RickerWavelet(f_peak=self.peak_frequency, dt=self.grid_dt)
+        return np.asarray(ricker.samples, dtype=np.float64)
 
 
 @dataclass

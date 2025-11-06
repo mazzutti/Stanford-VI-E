@@ -39,9 +39,9 @@ from src.analysis.rock_physics import (
 
 @pytest.fixture
 def mock_zoeppritz_solver():
-    """Fixture that mocks the Zoeppritz solver for testing.
+    """Fixture that mocks the ZoeppritzSolver class for testing.
 
-    Returns a Mock object that simulates the zoeppritz_solver module.
+    Returns a Mock object that simulates the ZoeppritzSolver class.
     The solve method returns realistic reflection coefficients.
     """
     mock_solver = Mock()
@@ -71,8 +71,10 @@ def mock_zoeppritz_solver():
 
 @pytest.fixture
 def mock_zoeppritz_import(mock_zoeppritz_solver):
-    """Fixture that patches the zoeppritz_solver import for all tests in a class."""
-    with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+    """Fixture that patches the ZoeppritzSolver class for all tests in a class."""
+    with patch(
+        "src.signal.reflectivity.ZoeppritzSolver", return_value=mock_zoeppritz_solver
+    ):
         yield mock_zoeppritz_solver
 
 
@@ -91,7 +93,10 @@ class TestAVOAttributesComputer:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver):
         """Auto-use fixture to mock Zoeppritz solver for this test class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_compute_basic(self, sample_rock_properties: tuple) -> None:
@@ -548,7 +553,10 @@ class TestRockPhysicsAnalyzer:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver):
         """Auto-use fixture to mock Zoeppritz solver for this test class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     @pytest.fixture
@@ -800,7 +808,10 @@ class TestEdgeCases:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver):
         """Auto-use fixture to mock Zoeppritz solver for this test class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_avo_with_single_layer(self) -> None:
@@ -858,7 +869,10 @@ class TestCoverageEdgeCases:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver):
         """Auto-use fixture to mock Zoeppritz solver for this test class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_pearson_correlation_exception_handling(self) -> None:
@@ -979,7 +993,10 @@ class TestExceptionHandling:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver: Mock):
         """Auto-apply Zoeppritz mock to all tests in this class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_avo_computation_with_invalid_angles(
@@ -1180,7 +1197,10 @@ class TestOptionalFeatures:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver: Mock):
         """Auto-apply Zoeppritz mock to all tests in this class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_main_pipeline_with_plotting_disabled(
@@ -1312,7 +1332,10 @@ class TestFallbackPaths:
     @pytest.fixture(autouse=True)
     def _mock_zoeppritz(self, mock_zoeppritz_solver: Mock):
         """Auto-apply Zoeppritz mock to all tests in this class."""
-        with patch("src.signal.reflectivity.zoeppritz_solver", mock_zoeppritz_solver):
+        with patch(
+            "src.signal.reflectivity.ZoeppritzSolver",
+            return_value=mock_zoeppritz_solver,
+        ):
             yield
 
     def test_get_grid_configuration_fallback(

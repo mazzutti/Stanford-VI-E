@@ -8,7 +8,7 @@ other modules that delegate to the process manager.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Protocol, runtime_checkable
 from pathlib import Path
 
 from src.utils.constants import CACHE_DIR_DEFAULT
@@ -17,8 +17,6 @@ from src.utils.constants import CACHE_DIR_DEFAULT
 ClearCacheType = Callable[[Optional[List[str]], Optional[Path], str], int]
 OpenFileType = Callable[[str, Optional[str], str], bool]
 SummarizeType = Callable[[str, Optional[List[str]], str], None]
-
-from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable

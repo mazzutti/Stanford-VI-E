@@ -16,7 +16,6 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 import logging
 import atexit
-from src.utils.facades import LazyObjectProxy
 from src.io.storage import DiskStore
 from src.io.pruning import PruneStrategy, Pruner
 
@@ -267,8 +266,8 @@ def make_disk_cache(
     )
 
 
-# Module-level lazy proxy instance to preserve the symbol `default_disk_cache`.
-default_disk_cache = LazyObjectProxy(lambda: make_disk_cache())
+# Module-level singleton instance for the default disk cache.
+default_disk_cache: DiskCache = make_disk_cache()
 
 
 def get_default_disk_cache(
@@ -276,11 +275,11 @@ def get_default_disk_cache(
     max_cache_bytes: int = 10 * 1024**3,
     ttl_seconds: Optional[int] = None,
     periodic_prune_interval_seconds: Optional[int] = None,
-) -> DiskCache | LazyObjectProxy:
+) -> DiskCache:
     """Return the module's default DiskCache instance when cache_dir is None
     or the configured DiskCache for a custom directory.
 
-    This preserves the lazy `default_disk_cache` behavior while providing a
+    This preserves the singleton `default_disk_cache` behavior while providing a
     single helper callers can use when they may or may not want the module
     default.
     """

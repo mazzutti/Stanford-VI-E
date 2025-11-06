@@ -65,9 +65,8 @@ class BackendsRegistry:
         return manager_is_backend_verbose()
 
 
-# Module-level lazy proxy using shared LazyObjectProxy
-
-
+# Module-level singleton registry instance
+backends_registry: BackendsRegistry = BackendsRegistry()
 
 
 def get_backends_registry(config: dict | None = None):

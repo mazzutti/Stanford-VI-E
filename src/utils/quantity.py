@@ -1,159 +1,159 @@
-"""Lightweight Quantity (unit-aware array) helper.
+"""Lightweight Quantity (unit-aware array) helper using OOP composition.
 
-Provides a small wrapper around numpy arrays that carries a unit string and
-offers safe conversions to common geophysical units used in this project
-(m/s, km/s, kg/m3, g/cc). The goal is to make unit conversions explicit and
-easy to test while remaining lightweight.
+Provides a simple wrapper around numpy arrays that carries a unit string and
+offers safe conversions to common geophysical units via converter strategies.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import overload
 from numpy.typing import ArrayLike
 
 import numpy as np
 import logging
 
-from src.utils.units import UnitRegistry
+from src.utils.units import UnitRegistry, get_unit_registry
+
+logger = logging.getLogger(__name__)
 
 
 class Quantity:
-    """A minimal unit-aware array wrapper.
+    """Unit-aware array wrapper with conversion support.
+
+    Uses composition with UnitRegistry converters to handle unit conversions
+    in a clean, extensible OOP manner.
 
     Usage:
         q = Quantity(np.array([1.5, 2.0]), 'km/s')
         q_m = q.to('m/s')
     """
 
-    def __init__(self, array: ArrayLike, unit: str):
+    def __init__(
+        self, array: ArrayLike, unit: str, registry: UnitRegistry | None = None
+    ):
+        """Initialize Quantity with array, unit, and optional registry.
+
+        Args:
+            array: Array-like data
+            unit: Unit string (e.g., 'm/s', 'kg/m3')
+            registry: Optional UnitRegistry; uses singleton if not provided
+        """
         self._array = np.asarray(array)
-        # normalize unit aliases
-        unit = unit.strip()
-
-        # common velocity aliases
-        if unit in ("m_per_s", "m/s"):
-            unit = "m/s"
-        if unit in ("km_per_s", "km/s"):
-            unit = "km/s"
-
-        # density aliases
-        if unit in ("g/cc", "g/cm3", "g/cm^3"):
-            unit = "g/cc"
-        if unit in ("kg/m3", "kg/m^3", "kg/m³"):
-            unit = "kg/m3"
-
-        self.unit = unit
+        self.unit = unit.strip()
+        self._registry = registry or get_unit_registry()
 
     @property
     def array(self) -> np.ndarray:
+        """Get underlying numpy array."""
         return self._array
 
-    def copy(self) -> "Quantity":
-        return Quantity(self._array.copy(), self.unit)
+    def copy(self) -> Quantity:
+        """Create an independent copy with same registry."""
+        return Quantity(self._array.copy(), self.unit, self._registry)
 
-    def to(self, unit: str, copy: bool = True) -> "Quantity":
-        """Return a Quantity converted to `unit`.
+    def to(self, unit: str, copy: bool = True) -> Quantity:
+        """Convert to target unit using registry converters.
 
-        Supports conversions between m/s <-> km/s and kg/m3 <-> g/cc. If an
-        unknown combination is requested, best-effort conversions via
-        `UnitRegistry` are attempted.
+        Args:
+            unit: Target unit string
+            copy: Whether to copy the array
+
+        Returns:
+            New Quantity in target unit
+
+        Raises:
+            ValueError: If conversion is not supported
         """
         unit = unit.strip()
         if unit == self.unit:
             return self.copy() if copy else self
 
-        # Velocity conversions
-        if unit in ("m/s", "m_per_s") or self.unit in ("m/s", "m_per_s"):
-            # If target is m/s, try to coerce from km/s or via UnitRegistry
-            if unit in ("m/s", "m_per_s"):
-                if self.unit in ("km/s", "km_per_s"):
-                    return Quantity(self._array * 1000.0, "m/s")
-                # Best-effort: let UnitRegistry handle heuristics
-                arr, _ = UnitRegistry.ensure_m_per_s(self._array, copy_on_convert=True)
-                return Quantity(arr, "m/s")
-            else:  # target is km/s
-                if self.unit in ("m/s", "m_per_s"):
-                    return Quantity(self._array / 1000.0, "km/s")
-                arr, _ = UnitRegistry.ensure_m_per_s(self._array, copy_on_convert=True)
-                return Quantity(arr / 1000.0, "km/s")
-
-        # Density conversions
-        if unit in ("kg/m3", "kg/m^3", "kg/m³") or self.unit in (
-            "kg/m3",
-            "kg/m^3",
-            "kg/m³",
-        ):
-            if unit in ("kg/m3", "kg/m^3", "kg/m³"):
-                if self.unit in ("g/cc", "g/cm3", "g/cm^3"):
-                    return Quantity(self._array * 1000.0, "kg/m3")
-                arr, _ = UnitRegistry.ensure_kg_per_m3(
-                    self._array, copy_on_convert=True
-                )
-                return Quantity(arr, "kg/m3")
-            else:
-                # convert to g/cc
-                if self.unit in ("kg/m3", "kg/m^3", "kg/m³"):
-                    return Quantity(self._array / 1000.0, "g/cc")
-                arr, _ = UnitRegistry.ensure_kg_per_m3(
-                    self._array, copy_on_convert=True
-                )
-                return Quantity(arr / 1000.0, "g/cc")
-
-        # Fallback: if UnitRegistry can help, prefer it and mark unit as target
-        if unit in ("m/s", "km/s"):
-            arr, _ = UnitRegistry.ensure_m_per_s(self._array, copy_on_convert=True)
-            if unit == "m/s":
-                return Quantity(arr, "m/s")
-            return Quantity(arr / 1000.0, "km/s")
-
-        if unit in ("kg/m3", "g/cc"):
-            arr, _ = UnitRegistry.ensure_kg_per_m3(self._array, copy_on_convert=True)
-            if unit == "kg/m3":
-                return Quantity(arr, "kg/m3")
-            return Quantity(arr / 1000.0, "g/cc")
-
-        raise ValueError(f"Unsupported target unit: {unit}")
+        # Delegate to registry
+        try:
+            converted_array = self._registry.convert(self._array, self.unit, unit)
+            return Quantity(converted_array, unit, self._registry)
+        except ValueError as e:
+            raise ValueError(f"Cannot convert from {self.unit} to {unit}") from e
 
     def to_numpy(self) -> np.ndarray:
+        """Export as numpy array."""
         return self._array
 
-    def __array__(self):
-        # Support numpy's array protocol
+    def __array__(self) -> np.ndarray:
+        """Support numpy's array protocol."""
         return self._array
 
     @property
-    def shape(self):
-        return self._array.shape
+    def shape(self) -> tuple[int, ...]:
+        """Array shape."""
+        return tuple(self._array.shape)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """Length of first dimension."""
         try:
             return len(self._array)
         except Exception:
             return 0
 
     def __repr__(self) -> str:
+        """String representation."""
         return f"Quantity(shape={self._array.shape}, unit='{self.unit}')"
 
-    # Basic arithmetic helpers
-    def __add__(self, other: Any) -> "Quantity":
-        if isinstance(other, Quantity):
-            if other.unit == self.unit:
-                return Quantity(self._array + other._array, self.unit)
-            other_conv = other.to(self.unit)
-            return Quantity(self._array + other_conv._array, self.unit)
-        return Quantity(self._array + other, self.unit)
+    # Arithmetic operations
+    @overload
+    def __add__(self, other: Quantity) -> Quantity: ...
 
-    def __mul__(self, other: Any):
+    @overload
+    def __add__(self, other: float | int | np.ndarray) -> Quantity: ...
+
+    def __add__(self, other: Quantity | float | int | np.ndarray) -> Quantity:
+        """Addition with automatic unit conversion."""
+        if isinstance(other, Quantity):
+            if other.unit != self.unit:
+                other = other.to(self.unit)
+            return Quantity(self._array + other._array, self.unit, self._registry)
+        return Quantity(self._array + other, self.unit, self._registry)
+
+    def __radd__(self, other: float | int | np.ndarray) -> Quantity:
+        """Right addition."""
+        return self.__add__(other)  # type: ignore[misc]
+
+    @overload
+    def __mul__(self, other: float | int) -> Quantity: ...
+
+    @overload
+    def __mul__(self, other: Quantity) -> np.ndarray: ...
+
+    @overload
+    def __mul__(self, other: np.ndarray) -> Quantity | np.ndarray: ...
+
+    def __mul__(
+        self, other: Quantity | float | int | np.ndarray
+    ) -> Quantity | np.ndarray:
+        """Multiplication."""
         if isinstance(other, (int, float)):
-            return Quantity(self._array * other, self.unit)
+            return Quantity(self._array * other, self.unit, self._registry)
         if isinstance(other, Quantity):
-            # ambiguous unit result — return raw ndarray product
-            return self._array * other._array
-        return Quantity(self._array * other, self.unit)
+            # Ambiguous unit result; return raw product
+            arr_result = self._array * other._array
+            return (
+                arr_result
+                if isinstance(arr_result, np.ndarray)
+                else np.asarray(arr_result)
+            )
+        # Multiply by ndarray - result is still a Quantity with same unit
+        result = self._array * other
+        return Quantity(result, self.unit, self._registry)
 
-    __rmul__ = __mul__
+    @overload
+    def __rmul__(self, other: float | int) -> Quantity: ...
+
+    @overload
+    def __rmul__(self, other: np.ndarray) -> Quantity | np.ndarray: ...
+
+    def __rmul__(self, other: float | int | np.ndarray) -> Quantity | np.ndarray:
+        """Right multiplication."""
+        return self.__mul__(other)  # type: ignore[misc]
 
 
 __all__ = ["Quantity"]
-# Module logger
-logger = logging.getLogger(__name__)

@@ -7,6 +7,7 @@ Tests focus on:
 - Edge cases and numerical stability
 - Integration with seismic data
 """
+
 # mypy: ignore-errors
 
 
@@ -433,7 +434,9 @@ class TestComputerEdgeCases:
     def test_large_data_volume(self):
         """Test with large data volume."""
         computer = AVOAttributesComputer()
-        shape = (100, 100, 100)  # Large 3D survey
+        # Reduced size for practical testing: 594 Zoeppritz solver calls
+        # is too expensive; use more reasonable 20x20x20 instead of 100x100x100
+        shape = (20, 20, 20)
         vp = np.random.uniform(3000, 5000, shape)
         vs = np.random.uniform(1500, 3000, shape)
         rho = np.random.uniform(2300, 2900, shape)

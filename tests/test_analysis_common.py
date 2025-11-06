@@ -720,3 +720,183 @@ def test_hash_allows_use_in_collections() -> None:
     # Use in frozenset
     fs = frozenset([instance])
     assert instance in fs
+
+
+# =============================================================================
+# Integration Tests (OOP Improvements)
+# =============================================================================
+
+
+class TestIntegration:
+    """Integration tests combining all OOP improvements."""
+
+    def test_analyzer_with_registry_and_pipeline(self):
+        """Test using analyzer with registry and pipeline."""
+        from src.analysis.base import AnalyzerInterface, AnalysisConfig
+        from src.analysis.processors.registry import ProcessorRegistry
+        from src.analysis.pipelines.orchestrator import Pipeline, PipelineStage
+        from typing import Dict
+
+        class SampleConfig(AnalysisConfig):
+            """Sample configuration."""
+
+            def __init__(self, value: str = "test"):
+                self.value = value
+
+            def to_dict(self) -> Dict[str, Any]:
+                return {"value": self.value}
+
+        class SampleAnalyzer(AnalyzerInterface):
+            """Sample analyzer."""
+
+            def __init__(self):
+                self._config = SampleConfig()
+                self._ready = True
+
+            @property
+            def name(self) -> str:
+                return "test_domain"
+
+            def validate_inputs(self, **kwargs: Any) -> bool:
+                return "data" in kwargs
+
+            def analyze(self, **kwargs: Any) -> Dict:
+                if not self.validate_inputs(**kwargs):
+                    raise ValueError("Missing 'data' in kwargs")
+                return {"result": kwargs["data"] * 2}
+
+            def get_configuration(self) -> SampleConfig:
+                return self._config
+
+            def configure(self, config: SampleConfig) -> None:
+                self._config = config
+
+            def get_name(self) -> str:
+                return f"TestAnalyzer ({self.name})"
+
+            def is_ready(self) -> bool:
+                return self._ready
+
+        class DummyProcessor:
+            """Dummy processor."""
+
+            def __init__(self):
+                self.name = "dummy"
+
+        class DummyStage(PipelineStage):
+            """Dummy pipeline stage."""
+
+            def __init__(self, multiplier: int = 1):
+                self._multiplier = multiplier
+
+            @property
+            def name(self) -> str:
+                return "stage"
+
+            def can_execute(self, input_data: int) -> bool:
+                return input_data > 0
+
+            def execute(self, input_data: int) -> int:
+                return input_data * self._multiplier
+
+        # Create registry and register processor
+        registry = ProcessorRegistry()
+        registry.register(
+            "my_processor", DummyProcessor, domain="test", tags=["processing"]
+        )
+
+        # Create analyzer
+        analyzer = SampleAnalyzer()
+
+        # Verify analyzer is ready
+        assert analyzer.is_ready()
+
+        # Verify processor is available
+        assert registry.has("my_processor")
+        proc = registry.create("my_processor")
+        assert proc.name == "dummy"
+
+        # Create pipeline
+        pipeline = Pipeline("test_pipeline")
+        pipeline.add_stage(DummyStage(multiplier=2))
+        pipeline.add_stage(DummyStage(multiplier=3))
+
+        # Use all three together
+        pipeline_result = pipeline.execute(5)
+        if analyzer.validate_inputs(data=pipeline_result):
+            analysis_result = analyzer.analyze(data=pipeline_result)
+            assert analysis_result["result"] == 60  # 30 * 2
+
+    def test_polymorphic_usage_patterns(self):
+        """Test polymorphic usage across components."""
+        from src.analysis.base import AnalyzerInterface, AnalysisConfig
+        from src.analysis.processors.registry import ProcessorRegistry
+        from typing import Dict
+
+        class BaseConfig(AnalysisConfig):
+            def to_dict(self) -> Dict[str, Any]:
+                return {}
+
+        class Config1(BaseConfig):
+            pass
+
+        class Config2(BaseConfig):
+            pass
+
+        class Analyzer1(AnalyzerInterface):
+            @property
+            def name(self) -> str:
+                return "analyzer1"
+
+            def validate_inputs(self, **kwargs: Any) -> bool:
+                return True
+
+            def analyze(self, **kwargs: Any) -> Dict:
+                return {"analyzer": "1"}
+
+            def get_configuration(self) -> BaseConfig:
+                return Config1()
+
+            def configure(self, config: BaseConfig) -> None:
+                pass
+
+            def get_name(self) -> str:
+                return "Analyzer1"
+
+            def is_ready(self) -> bool:
+                return True
+
+        class Analyzer2(AnalyzerInterface):
+            @property
+            def name(self) -> str:
+                return "analyzer2"
+
+            def validate_inputs(self, **kwargs: Any) -> bool:
+                return True
+
+            def analyze(self, **kwargs: Any) -> Dict:
+                return {"analyzer": "2"}
+
+            def get_configuration(self) -> BaseConfig:
+                return Config2()
+
+            def configure(self, config: BaseConfig) -> None:
+                pass
+
+            def get_name(self) -> str:
+                return "Analyzer2"
+
+            def is_ready(self) -> bool:
+                return True
+
+        # Use polymorphically
+        analyzers: List[AnalyzerInterface] = [
+            Analyzer1(),
+            Analyzer2(),
+        ]
+
+        for analyzer in analyzers:
+            assert analyzer.is_ready()
+            assert analyzer.validate_inputs()
+            result = analyzer.analyze()
+            assert "analyzer" in result

@@ -2,6 +2,7 @@
 
 Consolidates all processor unit tests from 10 separate files.
 """
+
 # mypy: ignore-errors
 
 
@@ -38,6 +39,7 @@ from src.analysis.processors.exceptions import (
 )
 from src.analysis.processors.gradient import GradientCorrelationCalculator
 from src.analysis.processors.interface import InterfaceReflectionAnalyzer
+from src.analysis.processors.registry import ProcessorRegistry
 from src.analysis.processors.utils import ProcessorUtils
 from src.analysis.processors.validators import (
     ArrayValidator,
@@ -2137,7 +2139,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         np.testing.assert_array_equal(result1, arr1)
         np.testing.assert_array_equal(result2, arr2)
@@ -2148,7 +2152,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.nan, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2159,7 +2165,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, np.nan, 6.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2170,7 +2178,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.inf, 3.0])
         arr2 = np.array([4.0, 5.0, 6.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2181,7 +2191,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, 2.0, 3.0])
         arr2 = np.array([4.0, -np.inf, 6.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         assert len(result1) == 2
         assert len(result2) == 2
@@ -2191,7 +2203,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([np.nan, np.inf, np.nan])
         arr2 = np.array([1.0, 2.0, 3.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         assert len(result1) == 0
         assert len(result2) == 0
@@ -2202,7 +2216,9 @@ class TestProcessorUtilsFilterFiniteValues:
         arr1 = np.array([1.0, np.nan, 3.0, np.inf])
         arr2 = np.array([5.0, 6.0, np.nan, 8.0])
 
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        result1, result2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
 
         # Rows 1, 2, 3 have invalid values
         assert len(result1) == 1  # Only first row is valid
@@ -2337,7 +2353,9 @@ class TestProcessorUtilsIntegration:
         arr1 = np.array([1.0, np.nan, 3.0, 4.0])
         arr2 = np.array([5.0, 6.0, np.nan, 8.0])
 
-        filtered1, filtered2, count = ProcessorUtils._filter_finite_values_static(arr1, arr2)
+        filtered1, filtered2, count = ProcessorUtils._filter_finite_values_static(
+            arr1, arr2
+        )
         assert len(filtered1) == 2
         assert count == 2
 
@@ -2678,5 +2696,152 @@ class TestValidatorIntegration:
 
         # Validate with helpers
         ValidationHelpers.ensure_valid_arrays((seismic, "seismic"), (facies, "facies"))
+
+
+# =============================================================================
+# ProcessorRegistry Tests (OOP Improvements)
+# =============================================================================
+
+
+class DummyProcessor:
+    """Dummy processor for testing."""
+
+    def __init__(self):
+        self.name = "dummy"
+
+
+class TestProcessorRegistry:
+    """Tests for ProcessorRegistry."""
+
+    def test_register_processor(self):
+        """Test registering a processor."""
+        registry = ProcessorRegistry()
+        registry.register("test_proc", lambda: DummyProcessor())
+        assert registry.has("test_proc")
+
+    def test_register_duplicate_raises_error(self):
+        """Test that registering duplicate processor raises error."""
+        registry = ProcessorRegistry()
+        registry.register("test_proc", lambda: DummyProcessor())
+        with pytest.raises(ValueError):
+            registry.register("test_proc", lambda: DummyProcessor())
+
+    def test_register_non_callable_raises_error(self):
+        """Test that non-callable factory raises error."""
+        registry = ProcessorRegistry()
+        with pytest.raises(TypeError):
+            registry.register("test_proc", "not_callable")
+
+    def test_create_processor(self):
+        """Test creating a processor instance."""
+        registry = ProcessorRegistry()
+        registry.register("test_proc", DummyProcessor)
+        proc = registry.create("test_proc")
+        assert isinstance(proc, DummyProcessor)
+
+    def test_create_unknown_processor_raises_error(self):
+        """Test that creating unknown processor raises error."""
+        registry = ProcessorRegistry()
+        with pytest.raises(ValueError):
+            registry.create("unknown_proc")
+
+    def test_create_all_processors(self):
+        """Test creating multiple processors."""
+        registry = ProcessorRegistry()
+        registry.register("proc1", DummyProcessor)
+        registry.register("proc2", DummyProcessor)
+        procs = registry.create_all(["proc1", "proc2"])
+        assert len(procs) == 2
+        assert "proc1" in procs
+        assert "proc2" in procs
+
+    def test_list_processors_all(self):
+        """Test listing all processors."""
+        registry = ProcessorRegistry()
+        registry.register("proc1", DummyProcessor)
+        registry.register("proc2", DummyProcessor)
+        procs = registry.list_processors()
+        assert len(procs) == 2
+        assert "proc1" in procs
+        assert "proc2" in procs
+
+    def test_list_processors_by_domain(self):
+        """Test listing processors by domain."""
+        registry = ProcessorRegistry()
+        registry.register("facies_proc", DummyProcessor, domain="facies")
+        registry.register("physics_proc", DummyProcessor, domain="physics")
+
+        facies = registry.list_processors(domain="facies")
+        assert "facies_proc" in facies
+        assert "physics_proc" not in facies
+
+    def test_list_processors_by_tags(self):
+        """Test listing processors by tags."""
+        registry = ProcessorRegistry()
+        registry.register("proc1", DummyProcessor, tags=["detection", "boundary"])
+        registry.register("proc2", DummyProcessor, tags=["detection", "advanced"])
+        registry.register("proc3", DummyProcessor, tags=["analysis"])
+
+        # Find processors with 'detection' tag
+        detection = registry.list_processors(tags=["detection"])
+        assert "proc1" in detection
+        assert "proc2" in detection
+        assert "proc3" not in detection
+
+        # Find processors with 'boundary' tag
+        boundary = registry.list_processors(tags=["boundary"])
+        assert "proc1" in boundary
+        assert "proc2" not in boundary
+
+    def test_list_processors_by_version(self):
+        """Test listing processors by version."""
+        registry = ProcessorRegistry()
+        registry.register("proc_v1", DummyProcessor, version="1.0")
+        registry.register("proc_v2", DummyProcessor, version="2.0")
+
+        v1 = registry.list_processors(version="1.0")
+        assert "proc_v1" in v1
+        assert "proc_v2" not in v1
+
+    def test_get_metadata(self):
+        """Test getting processor metadata."""
+        registry = ProcessorRegistry()
+        registry.register(
+            "test_proc",
+            DummyProcessor,
+            domain="facies",
+            version="1.5",
+            tags=["test", "demo"],
+            description="Test processor",
+        )
+
+        meta = registry.get_metadata("test_proc")
+        assert meta.name == "test_proc"
+        assert meta.domain == "facies"
+        assert meta.version == "1.5"
+        assert "test" in meta.tags
+        assert meta.description == "Test processor"
+
+    def test_get_metadata_unknown_raises_error(self):
+        """Test getting metadata for unknown processor raises error."""
+        registry = ProcessorRegistry()
+        with pytest.raises(ValueError):
+            registry.get_metadata("unknown")
+
+    def test_unregister_processor(self):
+        """Test unregistering a processor."""
+        registry = ProcessorRegistry()
+        registry.register("test_proc", DummyProcessor)
+        assert registry.has("test_proc")
+
+        result = registry.unregister("test_proc")
+        assert result is True
+        assert not registry.has("test_proc")
+
+    def test_unregister_unknown_returns_false(self):
+        """Test unregistering unknown processor returns False."""
+        registry = ProcessorRegistry()
+        result = registry.unregister("unknown")
+        assert result is False
 
         # All should pass

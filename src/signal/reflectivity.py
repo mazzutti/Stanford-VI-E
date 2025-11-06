@@ -1,37 +1,18 @@
 """Reflectivity helpers.
 
-Canonical implementation for reflectivity and Zoeppritz routines. These
-signal/math helpers are used by modeling and analysis pipelines.
+Canonical implementation for Zoeppritz equations used by modeling and analysis
+pipelines. Provides optimized reflection coefficient calculations with Numba
+JIT compilation.
 """
 
 import numpy as np
-import os
 import logging
 from numba import njit, prange
 
-__all__ = [
-    "ReflectivityCalculator",
-    "ZoeppritzSolver",
-    "reflectivity_calc",
-    "zoeppritz_solver",
-    "get_reflectivity_calc",
-    "get_zoeppritz_solver",
-    "configure_reflectivity",
-]
+__all__ = ["ZoeppritzSolver"]
 
 # Module logger
 logger = logging.getLogger(__name__)
-
-
-class ReflectivityCalculator:
-    """Calculate reflectivity-related quantities.
-
-    Encapsulates reflectivity routines and accepts Quantity or ndarray
-    inputs, returning a `Quantity` when possible for semantic consistency.
-    """
-
-    def __init__(self, pad_width=((0, 0), (0, 0), (1, 0))):
-        self.pad_width = pad_width
 
 
 class ZoeppritzSolver:
@@ -44,6 +25,8 @@ class ZoeppritzSolver:
     def __init__(self, cpu_batch: int = None):
         if cpu_batch is None:
             try:
+                import os
+
                 self.cpu_batch = int(os.environ.get("ZOEPPRITZ_CPU_BATCH", "1024"))
             except Exception:
                 self.cpu_batch = 1024
@@ -93,10 +76,7 @@ class ZoeppritzSolver:
             phi1_flat,
             phi2_flat,
         )
-        return rp_flat.reshape(spatial_shape)
-
-
-# Numba-compiled Gaussian solver is always available (Numba is a required dependency)
+        return np.asarray(rp_flat.reshape(spatial_shape), dtype=np.complex128)
 
 
 @njit
@@ -187,91 +167,3 @@ def _numba_solve_zoeppritz(
         out[i] = x[0]
 
     return out.reshape((vp1f.shape[0],))
-
-
-# Module-level singletons for reuse across the package
-# Use a simple initialization approach that avoids the broken LazyObjectProxy
-_reflectivity_calc_instance: ReflectivityCalculator | None = None
-_zoeppritz_solver_instance: ZoeppritzSolver | None = None
-
-
-def _get_reflectivity_calc_instance() -> ReflectivityCalculator:
-    """Lazy initialize reflectivity_calc singleton."""
-    global _reflectivity_calc_instance
-    if _reflectivity_calc_instance is None:
-        _reflectivity_calc_instance = ReflectivityCalculator()
-    return _reflectivity_calc_instance
-
-
-def _get_zoeppritz_solver_instance() -> ZoeppritzSolver:
-    """Lazy initialize zoeppritz_solver singleton."""
-    global _zoeppritz_solver_instance
-    if _zoeppritz_solver_instance is None:
-        _zoeppritz_solver_instance = ZoeppritzSolver()
-    return _zoeppritz_solver_instance
-
-
-# Provide backward-compatible module-level access
-# These are initialized on first use to avoid breaking existing code
-class _LazyReflectivityProxy:
-    """Lazy proxy for backward compatibility."""
-
-    def __getattr__(self, name):
-        return getattr(_get_reflectivity_calc_instance(), name)
-
-
-class _LazyZoeppritzProxy:
-    """Lazy proxy for backward compatibility."""
-
-    def __getattr__(self, name):
-        return getattr(_get_zoeppritz_solver_instance(), name)
-
-
-# Create module-level proxies that initialize on first access
-reflectivity_calc = _LazyReflectivityProxy()
-zoeppritz_solver = _LazyZoeppritzProxy()
-
-
-def configure_reflectivity(
-    use_numba: bool | None = None, cpu_batch: int | None = None
-) -> None:
-    """Configure module-level reflectivity singletons.
-
-    Args:
-        use_numba: If True/False, set solver numba usage. If None, leave unchanged.
-        cpu_batch: If provided, set the CPU batch size for the Zoeppritz solver.
-
-    This convenience function updates the two module-level singletons
-    (`reflectivity_calc`, `zoeppritz_solver`) so callers can centrally tune
-    performance without constructing new objects.
-    """
-    if cpu_batch is not None:
-        solver = _get_zoeppritz_solver_instance()
-        try:
-            solver.cpu_batch = int(cpu_batch)
-        except Exception:
-            pass
-
-
-def get_reflectivity_calc(config: dict | None = None) -> "ReflectivityCalculator":
-    """Return the module-level reflectivity_calc singleton when `config` is None,
-    otherwise return a new ReflectivityCalculator instance.
-
-    This follows the repository convention of providing `get_*` helpers for
-    module-level lazy singletons to simplify testing and dependency injection.
-    """
-    if config is None:
-        return _get_reflectivity_calc_instance()
-    return ReflectivityCalculator()
-
-
-def get_zoeppritz_solver(config: dict | None = None) -> "ZoeppritzSolver":
-    """Return the module-level zoeppritz_solver singleton when `config` is None,
-    otherwise return a new ZoeppritzSolver instance with optional config.
-    """
-    if config is None:
-        return _get_zoeppritz_solver_instance()
-    cpu_batch = None
-    if isinstance(config, dict):
-        cpu_batch = config.get("cpu_batch", None)
-    return ZoeppritzSolver(cpu_batch=cpu_batch)

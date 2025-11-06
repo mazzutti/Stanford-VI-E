@@ -1,111 +1,221 @@
-"""Unit conversion helpers and simple registry for common geophysical units.
+"""Unit conversion helpers with OOP design using converter strategies.
 
-This module centralizes heuristics used across the project to detect and
-convert common units (velocity in km/s -> m/s, density in g/cc -> kg/m3, etc.).
-Functions return a tuple (array, converted_bool) so callers can log or decide
-whether to persist conversions.
+This module provides a clean object-oriented interface for unit conversions
+through converter classes that handle specific unit types (velocity, density, etc.).
 """
 
 from __future__ import annotations
 
-from typing import Tuple
+from abc import ABC, abstractmethod
+from typing import Tuple, Union
 from numpy.typing import ArrayLike
 
 import numpy as np
 import logging
+import warnings
 
-from src.utils.facades import LazyObjectProxy
+logger = logging.getLogger(__name__)
 
 
 def _nanmax_abs(a: np.ndarray) -> float:
+    """Helper to safely compute max absolute value."""
     try:
-        return float(np.nanmax(np.abs(a)))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            return float(np.nanmax(np.abs(a)))
     except Exception:
-        # if array is empty or not numeric, return large sentinel to avoid conversion
         return float("inf")
 
 
-class UnitRegistry:
-    """Small helper class with conversion heuristics.
+class Converter(ABC):
+    """Abstract base class for unit converters.
 
-    Methods are intentionally conservative and non-destructive:
-    - They accept array-like input and return either the original array (no copy)
-      when no conversion was needed, or a new numpy array when conversion applied.
-    - They return a boolean flag indicating whether a conversion took place.
+    Defines the interface that all converters must implement.
     """
 
-    @staticmethod
-    def ensure_m_per_s(
-        arr: ArrayLike, *, copy_on_convert: bool = True
-    ) -> Tuple[np.ndarray, bool]:
-        """Ensure a velocity array is in meters/second.
+    @abstractmethod
+    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+        """Convert array from one unit to another.
 
-        Heuristic: if max(abs(arr)) < 100, treat as km/s and multiply by 1000.
+        Args:
+            array: Input numpy array
+            from_unit: Source unit string
+            to_unit: Target unit string
 
-        Returns (array_in_m_per_s, converted_flag)
+        Returns:
+            Converted array
+
+        Raises:
+            ValueError: If conversion is not supported
         """
-        if arr is None:
-            raise ValueError("arr is None")
-        a = np.asarray(arr)
-        # preserve object for non-numeric arrays
-        if not np.issubdtype(a.dtype, np.number):
-            # try to coerce to float
-            a = a.astype(float)
+        pass
 
-        maxabs = _nanmax_abs(a)
-        if maxabs == float("inf"):
-            return a, False
+    @abstractmethod
+    def can_convert(self, from_unit: str, to_unit: str) -> bool:
+        """Check if this converter can handle the conversion."""
+        pass
 
-        # If max is small (e.g., 0-10) it's likely km/s or similar
-        if maxabs < 100:
-            if copy_on_convert:
-                return (a.astype(float) * 1000.0, True)
-            else:
-                a[...] = a * 1000.0
-                return a, True
 
-        # already in m/s (or other large unit) — do nothing
-        return a, False
+class VelocityConverter(Converter):
+    """Converts between velocity units (m/s <-> km/s)."""
 
-    @staticmethod
-    def ensure_kg_per_m3(
-        arr: ArrayLike, *, copy_on_convert: bool = True
-    ) -> Tuple[np.ndarray, bool]:
-        """Ensure a density array is in kg/m3.
+    def __init__(self) -> None:
+        self.canonical_units = ("m/s", "km/s")
+        self.conversion_factor = 1000.0
 
-        Heuristic: if max(abs(arr)) < 100, treat as g/cc and multiply by 1000.
+    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+        """Convert velocity between m/s and km/s."""
+        if from_unit == to_unit:
+            return array
 
-        Returns (array_in_kg_per_m3, converted_flag)
+        if not self.can_convert(from_unit, to_unit):
+            raise ValueError(f"Cannot convert velocity from {from_unit} to {to_unit}")
+
+        if from_unit == "km/s" and to_unit == "m/s":
+            return array * self.conversion_factor
+        elif from_unit == "m/s" and to_unit == "km/s":
+            return array / self.conversion_factor
+
+        raise ValueError(f"Unsupported velocity conversion: {from_unit} -> {to_unit}")
+
+    def can_convert(self, from_unit: str, to_unit: str) -> bool:
+        """Check if both units are supported velocity units."""
+        return from_unit in self.canonical_units and to_unit in self.canonical_units
+
+
+class DensityConverter(Converter):
+    """Converts between density units (kg/m3 <-> g/cc)."""
+
+    def __init__(self) -> None:
+        self.canonical_units = ("kg/m3", "g/cc")
+        self.conversion_factor = 1000.0
+
+    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+        """Convert density between kg/m3 and g/cc."""
+        if from_unit == to_unit:
+            return array
+
+        if not self.can_convert(from_unit, to_unit):
+            raise ValueError(f"Cannot convert density from {from_unit} to {to_unit}")
+
+        if from_unit == "g/cc" and to_unit == "kg/m3":
+            return array * self.conversion_factor
+        elif from_unit == "kg/m3" and to_unit == "g/cc":
+            return array / self.conversion_factor
+
+        raise ValueError(f"Unsupported density conversion: {from_unit} -> {to_unit}")
+
+    def can_convert(self, from_unit: str, to_unit: str) -> bool:
+        """Check if both units are supported density units."""
+        return from_unit in self.canonical_units and to_unit in self.canonical_units
+
+
+class TimeConverter(Converter):
+    """Converts time values with heuristic detection."""
+
+    def __init__(
+        self,
+        convert_threshold_low: float = 0.01,
+        convert_threshold_high: float = 100.0,
+    ) -> None:
+        self.threshold_low = convert_threshold_low
+        self.threshold_high = convert_threshold_high
+
+    def convert(  # type: ignore[override]
+        self,
+        value: Union[np.ndarray, float],
+        from_unit: str = "unknown",
+        to_unit: str = "s",
+    ) -> Union[np.ndarray, Tuple[float, bool]]:
+        """Convert time to seconds with heuristic detection.
+
+        Returns (converted_value, was_converted) for scalar or array for ndarray
         """
-        if arr is None:
-            raise ValueError("arr is None")
-        a = np.asarray(arr)
-        if not np.issubdtype(a.dtype, np.number):
-            a = a.astype(float)
+        if isinstance(value, np.ndarray):
+            raise TypeError("TimeConverter expects scalar values")
 
-        maxabs = _nanmax_abs(a)
-        if maxabs == float("inf"):
-            return a, False
+        try:
+            v = float(value)
+        except Exception:
+            raise ValueError("Value must be numeric")
 
-        if maxabs < 100:
-            if copy_on_convert:
-                return (a.astype(float) * 1000.0, True)
-            else:
-                a[...] = a * 1000.0
-                return a, True
+        if self.threshold_low <= v < self.threshold_high:
+            # Likely milliseconds
+            return v / 1000.0, True
+        return v, False
 
-        return a, False
+    def can_convert(self, from_unit: str, to_unit: str) -> bool:
+        """Time converter works with any time-like units."""
+        return to_unit in ("s", "seconds")
 
-    @staticmethod
-    def is_likely_in_unit(arr: ArrayLike, unit: str) -> bool:
-        """Best-effort check whether an array is likely already in the requested unit.
 
-        Supported units: 'm/s', 'kg/m3', 'km/s', 'g/cc'
+class LengthConverter(Converter):
+    """Converts length values with heuristic detection."""
+
+    def __init__(self, convert_threshold: float = 0.1) -> None:
+        self.threshold = convert_threshold
+
+    def convert(  # type: ignore[override]
+        self,
+        value: Union[np.ndarray, float],
+        from_unit: str = "unknown",
+        to_unit: str = "m",
+    ) -> Union[np.ndarray, Tuple[float, bool]]:
+        """Convert length to meters with heuristic detection.
+
+        Returns (converted_value, was_converted) for scalar or array for ndarray
         """
+        if isinstance(value, np.ndarray):
+            raise TypeError("LengthConverter expects scalar values")
+
+        try:
+            v = float(value)
+        except Exception:
+            raise ValueError("Value must be numeric")
+
+        if v < self.threshold:
+            # Likely kilometers
+            return v * 1000.0, True
+        return v, False
+
+    def can_convert(self, from_unit: str, to_unit: str) -> bool:
+        """Length converter works with any length-like units."""
+        return to_unit in ("m", "meters")
+
+
+class UnitRegistry:
+    """Central registry managing all unit conversions.
+
+    Uses converter strategy pattern for clean, extensible design.
+    """
+
+    def __init__(self) -> None:
+        self.converters: list[Converter] = [
+            VelocityConverter(),
+            DensityConverter(),
+            TimeConverter(),
+            LengthConverter(),
+        ]
+
+    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+        """Convert array from one unit to another using registered converters."""
+        if from_unit == to_unit:
+            return array
+
+        for converter in self.converters:
+            if converter.can_convert(from_unit, to_unit):
+                return converter.convert(array, from_unit, to_unit)
+
+        raise ValueError(f"No converter found for {from_unit} -> {to_unit}")
+
+    def is_likely_in_unit(self, arr: ArrayLike, unit: str) -> bool:
+        """Heuristic check whether array is likely in the requested unit."""
         if arr is None:
             return False
+
         a = np.asarray(arr)
         maxabs = _nanmax_abs(a)
+
         if unit in ("km/s",):
             return maxabs < 100
         if unit in ("m/s",):
@@ -116,64 +226,22 @@ class UnitRegistry:
             return maxabs >= 100
         return False
 
-    @staticmethod
-    def ensure_seconds(
-        value: float,
-        *,
-        convert_threshold_low: float = 0.01,
-        convert_threshold_high: float = 100.0,
-    ) -> tuple[float, bool]:
-        """Ensure a time value is in seconds.
 
-        Heuristic: if the value is between `convert_threshold_low` and
-        `convert_threshold_high` it's likely expressed in milliseconds (ms)
-        as a small integer (e.g., 1, 2, ...). In that case divide by 1000.
+__all__ = [
+    "Converter",
+    "VelocityConverter",
+    "DensityConverter",
+    "TimeConverter",
+    "LengthConverter",
+    "UnitRegistry",
+]
 
-        Returns (seconds, converted_bool).
-        """
-        try:
-            v = float(value)
-        except Exception:
-            raise ValueError("value must be numeric")
-
-        if convert_threshold_low <= v < convert_threshold_high:
-            # treat as milliseconds
-            return v / 1000.0, True
-        return v, False
-
-    @staticmethod
-    def ensure_meters(
-        value: float, *, convert_threshold: float = 0.1
-    ) -> tuple[float, bool]:
-        """Ensure a length value is in meters.
-
-        Heuristic: if the provided value is smaller than `convert_threshold`
-        it's likely in kilometers (e.g., 0.001 -> 1m); multiply by 1000.
-
-        Returns (meters, converted_bool).
-        """
-        try:
-            v = float(value)
-        except Exception:
-            raise ValueError("value must be numeric")
-
-        if v < convert_threshold:
-            return v * 1000.0, True
-        return v, False
-
-
-__all__ = ["UnitRegistry"]
-
-# Module logger
-logger = logging.getLogger(__name__)
-
-
-# Module-level lazy registry
-unit_registry: UnitRegistry = LazyObjectProxy(lambda: UnitRegistry())
+# Module-level registry singleton (eagerly initialized)
+unit_registry: UnitRegistry = UnitRegistry()
 
 
 def get_unit_registry(instance: UnitRegistry | None = None) -> UnitRegistry:
-    """Return provided UnitRegistry or the module-level lazy singleton."""
+    """Return provided UnitRegistry or the module-level singleton."""
     return instance if instance is not None else unit_registry
 
 

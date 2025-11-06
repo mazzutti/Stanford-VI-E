@@ -8,16 +8,19 @@ Tests the AnalyzerBuilder and AnalyzerFactory classes with coverage for:
 - State management (freezing, copying, resetting)
 - Factory presets
 - Debug functionality
+- AnalyzerInterface OOP pattern tests
 """
 
 # mypy: ignore-errors
 
 
 import logging
+from typing import Any, Dict
 from unittest.mock import Mock
 
 import pytest
 
+from src.analysis.base import AnalysisConfig
 from src.analysis.factories import (
     AnalyzerBuilder,
     AnalyzerFactory,
@@ -354,6 +357,113 @@ class TestBuilderIntegration:
 
         # Processor should still be None (lazy init happens internally)
         # but analyzer should work with default processors
+
+
+# =============================================================================
+# AnalyzerInterface Pattern Tests (OOP Improvements)
+# =============================================================================
+
+
+class SampleAnalyzerConfig(AnalysisConfig):
+    """Sample test configuration implementing AnalysisConfig."""
+
+    def __init__(self, value: str = "test"):
+        self.value = value
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"value": self.value}
+
+
+class SampleAnalyzerImpl:
+    """Sample test analyzer implementing AnalyzerInterface."""
+
+    def __init__(self):
+        self._config = SampleAnalyzerConfig()
+        self._ready = True
+
+    @property
+    def name(self) -> str:
+        return "test_domain"
+
+    def validate_inputs(self, **kwargs):
+        return "data" in kwargs
+
+    def analyze(self, **kwargs):
+        if not self.validate_inputs(**kwargs):
+            raise ValueError("Missing 'data' in kwargs")
+        return {"result": kwargs["data"] * 2}
+
+    def get_configuration(self):
+        return self._config
+
+    def configure(self, config):
+        self._config = config
+
+    def get_name(self) -> str:
+        return f"SampleAnalyzer ({self.name})"
+
+    def is_ready(self) -> bool:
+        return self._ready
+
+
+class TestAnalyzerInterfacePattern:
+    """Tests for AnalyzerInterface OOP pattern."""
+
+    def test_analyzer_interface_name_property(self):
+        """Test that analyzer has name property."""
+        analyzer = SampleAnalyzerImpl()
+        assert analyzer.name == "test_domain"
+
+    def test_analyzer_interface_validate_inputs_success(self):
+        """Test input validation with valid inputs."""
+        analyzer = SampleAnalyzerImpl()
+        assert analyzer.validate_inputs(data=42) is True
+
+    def test_analyzer_interface_validate_inputs_failure(self):
+        """Test input validation with invalid inputs."""
+        analyzer = SampleAnalyzerImpl()
+        assert analyzer.validate_inputs(other=42) is False
+
+    def test_analyzer_interface_analyze_success(self):
+        """Test analysis with valid inputs."""
+        analyzer = SampleAnalyzerImpl()
+        result = analyzer.analyze(data=21)
+        assert result["result"] == 42
+
+    def test_analyzer_interface_analyze_invalid_inputs(self):
+        """Test analysis raises error with invalid inputs."""
+        analyzer = SampleAnalyzerImpl()
+        with pytest.raises(ValueError):
+            analyzer.analyze(other=21)
+
+    def test_analyzer_interface_get_configuration(self):
+        """Test getting configuration."""
+        analyzer = SampleAnalyzerImpl()
+        config = analyzer.get_configuration()
+        assert isinstance(config, SampleAnalyzerConfig)
+        assert config.value == "test"
+
+    def test_analyzer_interface_configure(self):
+        """Test updating configuration."""
+        analyzer = SampleAnalyzerImpl()
+        new_config = SampleAnalyzerConfig(value="updated")
+        analyzer.configure(new_config)
+        assert analyzer.get_configuration().value == "updated"
+
+    def test_analyzer_interface_get_name(self):
+        """Test getting human-readable name."""
+        analyzer = SampleAnalyzerImpl()
+        name = analyzer.get_name()
+        assert "SampleAnalyzer" in name
+        assert "test_domain" in name
+
+    def test_analyzer_interface_is_ready(self):
+        """Test readiness check."""
+        analyzer = SampleAnalyzerImpl()
+        assert analyzer.is_ready() is True
+
+        analyzer._ready = False
+        assert analyzer.is_ready() is False
 
 
 if __name__ == "__main__":

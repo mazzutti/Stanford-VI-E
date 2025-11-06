@@ -26,6 +26,12 @@ import pytest
 
 from src.analysis.common import AnalysisCommon
 from src.analysis.pipelines import SeismogramAnalyzer
+from src.analysis.pipelines.orchestrator import (
+    Pipeline,
+    PipelineStage,
+    StageResult,
+    ConditionalStage,
+)
 
 
 @pytest.fixture
@@ -472,3 +478,234 @@ class TestIntegration:
 
         assert result is True
         mock_run.assert_called_once()
+
+
+# =============================================================================
+# Pipeline Orchestrator Tests (OOP Improvements)
+# =============================================================================
+
+
+class DummyStage(PipelineStage):
+    """Dummy stage for testing."""
+
+    def __init__(self, name: str = "dummy", multiplier: int = 1):
+        self._name = name
+        self._multiplier = multiplier
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def can_execute(self, input_data: int) -> bool:
+        return input_data > 0
+
+    def execute(self, input_data: int) -> int:
+        return input_data * self._multiplier
+
+
+class FailingStage(PipelineStage):
+    """Stage that always fails for testing error handling."""
+
+    @property
+    def name(self) -> str:
+        return "failing_stage"
+
+    def can_execute(self, input_data: int) -> bool:
+        return True
+
+    def execute(self, input_data: int) -> int:
+        raise RuntimeError("Intentional failure for testing")
+
+
+class ConditionalStageImpl(ConditionalStage):
+    """Concrete implementation of ConditionalStage for testing."""
+
+    def __init__(self, inner_stage, condition):
+        self._inner_stage = inner_stage
+        self._condition = condition
+
+    @property
+    def name(self) -> str:
+        return f"conditional_{self._inner_stage.name}"
+
+    def can_execute(self, input_data: int) -> bool:
+        return self._condition(input_data)
+
+    def execute(self, input_data: int) -> int:
+        if self.can_execute(input_data):
+            return self._inner_stage.execute(input_data)
+        return input_data
+
+
+class TestPipeline:
+    """Tests for Pipeline."""
+
+    def test_pipeline_add_stage(self):
+        """Test adding stages to pipeline."""
+        pipeline = Pipeline("test")
+        stage = DummyStage()
+        result = pipeline.add_stage(stage)
+
+        # Should return self for fluent API
+        assert result is pipeline
+
+    def test_pipeline_fluent_api(self):
+        """Test fluent API for adding stages."""
+        pipeline = (
+            Pipeline("test")
+            .add_stage(DummyStage("stage1"))
+            .add_stage(DummyStage("stage2"))
+            .add_stage(DummyStage("stage3"))
+        )
+        assert len(pipeline._stages) == 3
+
+    def test_pipeline_execute_success(self):
+        """Test pipeline executes stages successfully."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        result = pipeline.execute(5)
+        # 5 * 2 * 3 = 30
+        assert result == 30
+
+    def test_pipeline_skips_stage_if_cannot_execute(self):
+        """Test pipeline skips stages that cannot execute."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(
+            DummyStage("stage1", multiplier=2)
+        )  # Can't execute if input <= 0
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        # With input -1, first stage can't execute (can_execute returns False)
+        # So it's skipped, and pipeline passes -1 to stage2
+        # stage2 also can't execute with -1, so it's skipped too
+        # Pipeline completes with output -1
+        result = pipeline.execute(-1)
+        assert result == -1  # No stages executed
+
+    def test_pipeline_handles_stage_failure(self):
+        """Test pipeline handles stage failures."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(FailingStage())
+        pipeline.add_stage(DummyStage("stage3", multiplier=3))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            pipeline.execute(5)
+
+        assert "failing_stage" in str(exc_info.value)
+
+    def test_pipeline_tracks_stage_results(self):
+        """Test pipeline tracks results from each stage."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        result = pipeline.execute(5)
+
+        results = pipeline.get_all_results()
+        assert "stage1" in results
+        assert "stage2" in results
+        assert results["stage1"].success is True
+        assert results["stage2"].success is True
+
+    def test_pipeline_get_stage_result(self):
+        """Test retrieving individual stage result."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        pipeline.execute(5)
+
+        stage1_result = pipeline.get_stage_result("stage1")
+        assert stage1_result is not None
+        assert stage1_result.success is True
+        assert stage1_result.output == 10
+
+    def test_pipeline_get_stage_output(self):
+        """Test retrieving stage output directly."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        pipeline.execute(5)
+
+        output = pipeline.get_stage_output("stage1")
+        assert output == 10
+
+    def test_pipeline_get_execution_summary(self):
+        """Test getting human-readable execution summary."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+        pipeline.add_stage(DummyStage("stage2", multiplier=3))
+
+        pipeline.execute(5)
+
+        summary = pipeline.get_execution_summary()
+        assert "test" in summary
+        assert "stage1" in summary
+        assert "stage2" in summary
+
+    def test_conditional_stage_executes_when_condition_true(self):
+        """Test conditional stage executes when condition is true."""
+        inner_stage = DummyStage("inner", multiplier=5)
+        condition_stage = ConditionalStageImpl(
+            inner_stage=inner_stage,
+            condition=lambda x: x > 10,
+        )
+
+        # Condition is true (15 > 10)
+        result = condition_stage.execute(15)
+        assert result == 75  # 15 * 5
+
+    def test_conditional_stage_skips_when_condition_false(self):
+        """Test conditional stage skips when condition is false."""
+        pipeline = Pipeline("test")
+        pipeline.add_stage(DummyStage("stage1", multiplier=2))
+
+        inner_stage = DummyStage("inner", multiplier=5)
+        condition_stage = ConditionalStageImpl(
+            inner_stage=inner_stage,
+            condition=lambda x: x > 100,
+        )
+        pipeline.add_stage(condition_stage)
+
+        # Condition is false (10 < 100), so conditional stage should be skipped
+        # But stage1 will multiply by 2: 5 * 2 = 10
+        # Then conditional stage won't run because condition is false
+        # Pipeline completes with output 10
+        result = pipeline.execute(5)
+        assert result == 10  # Only stage1 executed
+
+    def test_stage_result_properties(self):
+        """Test StageResult has correct properties."""
+        stage = DummyStage()
+        output = stage.execute(10)
+
+        result = StageResult(
+            stage_name="test_stage",
+            success=True,
+            output=output,
+            duration_ms=123.45,
+            metadata={"items": 5},
+        )
+
+        assert result.stage_name == "test_stage"
+        assert result.success is True
+        assert result.output == 10
+        assert result.duration_ms == 123.45
+        assert result.metadata["items"] == 5
+
+    def test_stage_result_string_representation(self):
+        """Test StageResult string representation."""
+        result = StageResult(
+            stage_name="test",
+            success=True,
+            output=42,
+            duration_ms=99.9,
+        )
+
+        str_repr = str(result)
+        assert "test" in str_repr
+        assert "99.9" in str_repr

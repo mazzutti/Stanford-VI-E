@@ -51,8 +51,9 @@ class ReflectivityComputer:
         Returns:
             Reflectivity cube (nz, nx, ny) with zeros at top level
         """
-        from src.signal.reflectivity import zoeppritz_solver
+        from src.signal.reflectivity import ZoeppritzSolver
 
+        solver = ZoeppritzSolver()
         ni, nj, nk = vp.shape
         rc_full = np.zeros((ni, nj, nk), dtype=np.float32)
 
@@ -70,9 +71,7 @@ class ReflectivityComputer:
             rho1b, rho2b = rho_block[..., :-1], rho_block[..., 1:]
 
             # Zoeppritz approximation
-            rc_values = zoeppritz_solver.solve(
-                vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle
-            )
+            rc_values = solver.solve(vp1b, vs1b, rho1b, vp2b, vs2b, rho2b, angle)
             rc_real = np.real(rc_values).astype(np.float32)
 
             # Pad to match input depth dimension (first level = 0)

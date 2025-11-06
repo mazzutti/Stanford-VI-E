@@ -19,7 +19,7 @@ import multiprocessing
 
 from src.analysis.types.base import DatasetManagerFactory
 from src.io.grid import GridSpec
-from src.signal import wavelets
+from src.signal import RickerWavelet
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
 import logging
@@ -368,7 +368,8 @@ class ParserFactory:
         nx, ny, nt_samples = props_time["vp"].shape
 
         # STEP 4: AVO
-        wavelet_avo = wavelets.ricker_wavelet(f_peak=26, dt=grid_spec.dt)
+        ricker = RickerWavelet(f_peak=26, dt=grid_spec.dt)
+        wavelet_avo = ricker.samples
         from src.modeling import (
             CacheManager,
             AVOSynthesizer,

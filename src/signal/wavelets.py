@@ -1,45 +1,123 @@
-"""Wavelet helpers.
+"""Wavelet generation and manipulation.
 
-Utilities for generating common seismic wavelets.
+Provides a clean OOP interface for creating and working with seismic wavelets.
 """
 
 import numpy as np
 import logging
-from src.utils.facades import LazyObjectProxy
 
-__all__ = ["Wavelet", "WaveletHelper", "wavelet_helper", "get_wavelet_helper"]
+__all__ = [
+    "Wavelet",
+    "RickerWavelet",
+]
 
 # Module logger
 logger = logging.getLogger(__name__)
 
 
 class Wavelet:
-    """Simple container for wavelet samples and metadata.
+    """Base class representing a seismic wavelet.
 
-    The class is intentionally small — it provides a named object to carry
-    wavelet samples, sampling interval, and convenience methods for common
-    conversions.
+    Encapsulates wavelet samples and metadata with convenient access methods.
+
+    Attributes:
+        samples: Wavelet amplitude samples (numpy array)
+        dt: Sampling interval in seconds
     """
 
     def __init__(self, samples: np.ndarray, dt: float):
-        self.samples = np.asarray(samples)
+        """Initialize a wavelet.
+
+        Args:
+            samples: Array of wavelet amplitudes
+            dt: Sampling interval in seconds
+
+        Raises:
+            ValueError: If dt is not positive
+        """
+        self.samples = np.asarray(samples, dtype=np.float64)
+        if dt <= 0:
+            raise ValueError(f"dt must be positive, got {dt}")
         self.dt = float(dt)
 
     @property
     def nsamples(self) -> int:
-        return self.samples.shape[0]
+        """Number of samples in the wavelet."""
+        return int(self.samples.shape[0])
 
-    def as_array(self) -> np.ndarray:
-        return self.samples
+    @property
+    def duration(self) -> float:
+        """Duration of the wavelet in seconds."""
+        return self.dt * self.nsamples
+
+    def __len__(self) -> int:
+        """Return number of samples."""
+        return self.nsamples
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"{self.__class__.__name__}("
+            f"nsamples={self.nsamples}, dt={self.dt:.6f}s, "
+            f"duration={self.duration:.6f}s)"
+        )
 
 
-# Thin facade helper for callers that prefer an OO API
-class WaveletHelper:
-    def ricker_wavelet(
-        self, f_peak: float, length: float = 0.128, dt: float = 0.002
-    ) -> np.ndarray:
-        # time axis centered at zero
-        t = np.arange(-length / 2, length / 2, dt, dtype=float)
+class RickerWavelet(Wavelet):
+    """A Ricker (zero-phase) wavelet.
+
+    A commonly used wavelet in seismic modeling with known analytical properties.
+
+    Attributes:
+        f_peak: Peak frequency in Hz
+        length: Total wavelet length in seconds
+    """
+
+    def __init__(
+        self,
+        f_peak: float,
+        length: float = 0.128,
+        dt: float = 0.002,
+    ):
+        """Generate a Ricker wavelet.
+
+        Args:
+            f_peak: Peak frequency in Hz (must be positive)
+            length: Wavelet length in seconds (default 0.128)
+            dt: Sampling interval in seconds (default 0.002)
+
+        Raises:
+            ValueError: If f_peak or length are not positive
+        """
+        if f_peak <= 0:
+            raise ValueError(f"f_peak must be positive, got {f_peak}")
+        if length <= 0:
+            raise ValueError(f"length must be positive, got {length}")
+
+        self.f_peak = float(f_peak)
+        self.length = float(length)
+
+        # Generate Ricker wavelet samples
+        samples = self._compute_samples(f_peak, length, dt)
+        super().__init__(samples, dt)
+
+    @staticmethod
+    def _compute_samples(f_peak: float, length: float, dt: float) -> np.ndarray:
+        """Compute Ricker wavelet samples.
+
+        Uses the analytical formula:
+        $ \\psi(t) = (1 - 2\\pi^2 f^2 t^2) \\exp(-\\pi^2 f^2 t^2) $
+
+        Args:
+            f_peak: Peak frequency in Hz
+            length: Wavelet length in seconds
+            dt: Sampling interval in seconds
+
+        Returns:
+            Array of wavelet samples
+        """
+        # Time axis centered at zero
+        t = np.arange(-length / 2, length / 2, dt, dtype=np.float64)
         pi_sq = np.pi**2
         f_sq = f_peak**2
         t_sq = t**2
@@ -47,37 +125,11 @@ class WaveletHelper:
         # Ricker wavelet formula
         term1 = 1 - 2 * pi_sq * f_sq * t_sq
         term2 = np.exp(-pi_sq * f_sq * t_sq)
+        return np.asarray(term1 * term2, dtype=np.float64)
 
-        samples = term1 * term2
-        return samples
-
-
-# Module-level lazy proxy using the shared LazyObjectProxy
-wavelet_helper = LazyObjectProxy(lambda: WaveletHelper())
-
-__all__.extend(["WaveletHelper", "wavelet_helper"])
-
-
-def get_wavelet_helper(config: dict | None = None):
-    """Return the module-level `wavelet_helper` proxy when `config` is None,
-    otherwise return a new `WaveletHelper` instance. This mirrors the
-    `get_default_*` helpers used elsewhere and centralizes access patterns.
-    """
-    if config is None:
-        return wavelet_helper
-    return WaveletHelper()
-
-
-__all__.append("get_wavelet_helper")
-
-
-# A simple function-level `ricker_wavelet(...)` helper is provided for convenience.
-def ricker_wavelet(f_peak: float, length: float = 0.128, dt: float = 0.002):
-    """Return Ricker wavelet samples.
-
-    This delegates to the `WaveletHelper` facade via the `wavelet_helper` proxy.
-    """
-    return wavelet_helper.ricker_wavelet(f_peak=f_peak, length=length, dt=dt)
-
-
-__all__.append("ricker_wavelet")
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"RickerWavelet(f_peak={self.f_peak:.2f}Hz, "
+            f"nsamples={self.nsamples}, dt={self.dt:.6f}s)"
+        )

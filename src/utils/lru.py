@@ -2,9 +2,6 @@ from collections import OrderedDict
 from typing import List, Optional, Generic, TypeVar
 import threading
 
-import numpy as np
-from numpy.typing import NDArray
-
 from src.analysis.types.base import CacheProtocol
 
 T = TypeVar("T")
@@ -53,53 +50,6 @@ class LRUCache(Generic[T], CacheProtocol[T]):
     def info(self) -> dict:
         with self._lock:
             return {"maxsize": self.maxsize, "currsize": len(self._data)}
-
-
-class ShardedLRUCache(CacheProtocol[T]):
-    """A sharded LRU cache composed of multiple LRUCache shards.
-
-    Keys are assigned to shards by hashing. This reduces lock contention under
-    concurrent access compared to a single global lock.
-    """
-
-    def __init__(self, maxsize: int = 0, shards: int = 4) -> None:
-        self.shards = max(1, int(shards))
-        # Distribute maxsize evenly across shards (some shards may have one extra)
-        base = int(maxsize) // self.shards if maxsize > 0 else 0
-        extras = int(maxsize) % self.shards if maxsize > 0 else 0
-        self._shard_list: List[LRUCache[T]] = []
-        for i in range(self.shards):
-            sz = base + (1 if i < extras else 0)
-            self._shard_list.append(LRUCache[T](sz))
-
-    def _shard_for(self, key: str) -> LRUCache[T]:
-        idx = (hash(key) & 0x7FFFFFFF) % self.shards
-        return self._shard_list[idx]
-
-    def get(self, key: str) -> Optional[T]:
-        return self._shard_for(key).get(key)
-
-    def set(self, key: str, value: T) -> None:
-        self._shard_for(key).set(key, value)
-
-    def keys(self) -> List[str]:
-        keys: List[str] = []
-        for s in self._shard_list:
-            keys.extend(s.keys())
-        return keys
-
-    def clear(self) -> None:
-        for s in self._shard_list:
-            s.clear()
-
-    def info(self) -> dict:
-        total = 0
-        maxsize = 0
-        for s in self._shard_list:
-            inf = s.info()
-            total += inf.get("currsize", 0)
-            maxsize += inf.get("maxsize", 0)
-        return {"maxsize": maxsize, "currsize": total}
 
 
 class ShardedLRUCache(Generic[T], CacheProtocol[T]):
