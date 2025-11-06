@@ -28,7 +28,7 @@ from typing import (
 from contextlib import contextmanager
 
 from src.processing.materials.velocity import VelocityModel
-from src.analysis.types.base import (
+from src.analysis.types.protocols import (
     ResamplerFactory,
     CacheLoaderProtocol,
     PlotterProtocol,

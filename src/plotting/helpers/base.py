@@ -10,6 +10,8 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 
+from src.plotting.helpers.config import setup_matplotlib
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,29 +38,7 @@ class BasePlotter(ABC):
 
     def _setup_matplotlib(self) -> None:
         """Initialize matplotlib with the configured backend."""
-        import matplotlib
-
-        if self.backend:
-            try:
-                matplotlib.use(self.backend)
-            except Exception:
-                pass
-        self._configure_matplotlib_defaults()
-
-    @staticmethod
-    def _configure_matplotlib_defaults() -> None:
-        """Apply standard matplotlib defaults once."""
-        logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
-        plt.rcParams["font.family"] = "sans-serif"
-        plt.rcParams["font.sans-serif"] = [
-            "DejaVu Sans",
-            "Arial",
-            "Helvetica",
-            "sans-serif",
-        ]
-        plt.rcParams["image.interpolation"] = "bilinear"
-        plt.rcParams["image.resample"] = True
-        plt.rcParams["image.composite_image"] = True
+        setup_matplotlib(self.backend)
 
     def _log_debug(self, msg: str) -> None:
         """Log a debug message."""

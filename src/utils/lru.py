@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import List, Optional, Generic, TypeVar
 import threading
 
-from src.analysis.types.base import CacheProtocol
+from src.analysis.types.protocols import CacheProtocol
 
 T = TypeVar("T")
 

@@ -17,6 +17,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from src.processing.interpolator import BatchedInterpolator
 from src.processing.resampling._plan import ResamplePlan
+from src.processing.resampling._interpolation import linear_interpolate_value
 from numba import njit, prange
 import logging
 import os
@@ -352,13 +353,9 @@ class DepthTimeResampler:
                                     t1 = twt[k]
                                     v0 = trace[k - 1]
                                     v1 = trace[k]
-                                    if t1 == t0:
-                                        out_arr[ii, jj, ti] = v0
-                                    else:
-                                        frac = (t - t0) / (t1 - t0)
-                                        out_arr[ii, jj, ti] = (
-                                            v0 * (1 - frac) + v1 * frac
-                                        )
+                                    out_arr[ii, jj, ti] = linear_interpolate_value(
+                                        t, t0, t1, v0, v1
+                                    )
 
                 _linear_resample_numba(plan.one_way * 2.0, data_arr, time_axis, out)
         else:
@@ -674,11 +671,9 @@ class DepthTimeResampler:
                                     t1 = twt[k]
                                     v0 = trace[k - 1]
                                     v1 = trace[k]
-                                    if t1 == t0:
-                                        out_a[ii, jj, ti] = v0
-                                    else:
-                                        frac = (t - t0) / (t1 - t0)
-                                        out_a[ii, jj, ti] = v0 * (1 - frac) + v1 * frac
+                                    out_a[ii, jj, ti] = linear_interpolate_value(
+                                        t, t0, t1, v0, v1
+                                    )
 
                 _linear_resample_from_twt(
                     twt_irregular, data_depth, time_axis, data_time

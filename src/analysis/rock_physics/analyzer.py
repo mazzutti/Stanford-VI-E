@@ -263,7 +263,7 @@ class RockPhysicsAnalyzer:
         self, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
         """Load dataset using DatasetManagerFactory with fallback."""
-        from src.analysis.types.base import DatasetManagerFactory
+        from src.analysis.types.protocols import DatasetManagerFactory
 
         try:
             # Type ignore: DatasetManagerFactory is a Protocol, but at runtime

@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from src.analysis.base import AnalysisConfig
+from src.analysis.config_mixins import ValidatableConfigMixin
 
 
 @dataclass
-class FaciesAnalysisConfig(AnalysisConfig):
+class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
     """Configuration for facies correlation analysis pipeline.
 
     Implements the unified AnalysisConfig interface to enable polymorphic
@@ -133,12 +134,10 @@ class FaciesAnalysisConfig(AnalysisConfig):
         -------
         bool
             True if all parameters pass validation, False otherwise.
+
+        Note: Inherited from ValidatableConfigMixin
         """
-        try:
-            self._validate_params()
-            return True
-        except ValueError:
-            return False
+        return super().is_valid()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary.

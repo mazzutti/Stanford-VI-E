@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Any
 
+from src.analysis.config_mixins import ValidatableConfigMixin
+
 __all__ = [
     "Transition",
     "FaciesCorrelationConfig",
@@ -116,7 +118,7 @@ class Transition:
 
 
 @dataclass
-class FaciesCorrelationConfig:
+class FaciesCorrelationConfig(ValidatableConfigMixin):
     """Configuration for facies correlation analysis with validation."""
 
     facies_count: int = 4
@@ -137,12 +139,11 @@ class FaciesCorrelationConfig:
             raise ValueError("dilation_window must be at least 1")
 
     def is_valid(self) -> bool:
-        """Check if configuration is valid."""
-        try:
-            self._validate_params()
-            return True
-        except ValueError:
-            return False
+        """Check if configuration is valid.
+
+        Note: Inherited from ValidatableConfigMixin
+        """
+        return super().is_valid()
 
     def to_dict(self) -> Dict[str, int | float]:
         """Convert configuration to dictionary."""

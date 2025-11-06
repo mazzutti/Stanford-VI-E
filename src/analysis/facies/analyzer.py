@@ -18,7 +18,7 @@ from src.processing.materials.velocity import VelocityModel
 from src.io.grid import GridSpec
 from src.analysis.base import AnalyzerInterface
 
-from src.analysis.types.base import (
+from src.analysis.types.protocols import (
     ResamplerFactory,
     CacheLoaderProtocol,
     PlotterProtocol,

@@ -18,6 +18,7 @@ import logging
 from src.modeling.config import ModelingConfig
 from src.modeling.modeling import AVOSynthesizer, SynthesisConfig
 from src.modeling.model_cache import CacheManager
+from src.io.utilities import load_depth_properties
 from src.modeling.resampler import ResamplingService
 from src.utils.quantity import Quantity
 
@@ -86,13 +87,7 @@ class ModelingPipeline:
         # Load dataset
         logger.info("Loading dataset from %s...", cfg.data_path)
         dm = DatasetManager.from_stanfordsix(cfg.data_path, cfg.file_map, cfg.grid_spec)
-        props_depth: dict[str, NDArray[np.floating[Any]] | None] = {
-            "vp": dm.vp,
-            "vs": dm.vs,
-            "rho": dm.rho,
-            "facies": dm.facies,
-            "full_stack": dm.full_stack,
-        }
+        props_depth: dict[str, NDArray[np.floating[Any]] | None] = load_depth_properties(dm)
         rpm = RockPhysicsModel.from_props(props_depth, cfg.grid_spec)
         rpm.ensure_units()
 

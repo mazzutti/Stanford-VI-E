@@ -13,6 +13,8 @@ from numpy.typing import NDArray
 
 from numba import njit, prange
 
+from src.processing.resampling._interpolation import linear_interpolate_value
+
 
 # ============================================================================
 # Depth-to-Time Resampling Kernels
@@ -107,12 +109,9 @@ def resample_depth_to_time_linear(
                     t1 = twt[k]
                     v0 = trace[k - 1]
                     v1 = trace[k]
-
-                    if t1 == t0:
-                        out_array[ii, jj, ti] = v0
-                    else:
-                        frac = (t - t0) / (t1 - t0)
-                        out_array[ii, jj, ti] = v0 * (1 - frac) + v1 * frac
+                    out_array[ii, jj, ti] = linear_interpolate_value(
+                        t, t0, t1, v0, v1
+                    )
 
 
 # ============================================================================

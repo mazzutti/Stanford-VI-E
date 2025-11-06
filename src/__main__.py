@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     import argparse
 
 from src.io.loader import DatasetManager
+from src.io.utilities import load_depth_properties
 from src.io.grid import GridSpec
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
@@ -269,13 +270,7 @@ class ParserFactory:
         # Create GridSpec early and use DatasetManager for consistency
         # (grid_spec already constructed above)
         dm = DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
-        props_depth = {
-            "vp": dm.vp,
-            "vs": dm.vs,
-            "rho": dm.rho,
-            "facies": dm.facies,
-            "full_stack": dm.full_stack,
-        }
+        props_depth = load_depth_properties(dm)
         t1 = time.time()
         logging.getLogger(__name__).info("✓ Loaded data in %.2fs", (t1 - t0))
         # Use VelocityModel to centralize vp unit conversion and validation

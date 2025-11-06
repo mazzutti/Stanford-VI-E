@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "T",
     "ResamplePlan",
     "Resampler",
     "ResamplerFactory",

@@ -34,7 +34,7 @@ from numpy.lib.npyio import NpzFile
 import numpy as np
 import logging
 
-from src.analysis.types.base import (
+from src.analysis.types.protocols import (
     CacheProtocol,
     SelectorProtocol,
     ArchiveExtractorProtocol,

@@ -3,16 +3,15 @@
 This package consolidates type contracts and computational abstractions used
 throughout the analysis system, including:
 
-- Type variables and generic constraints
-- Protocols for domain abstraction (resampling, caching, factories)
-- Base computational components (Computer, AnalysisSchema, ComputationResult)
+- Type variables and generic constraints (from protocols.py)
+- Protocols for domain abstraction (from protocols.py)
+- Base computational components (from base.py)
+- Domain enumeration (from domain.enum)
 """
 
-# Re-export commonly-used types and protocols
-from src.analysis.types.base import (
+# Import protocols from canonical module
+from src.analysis.types.protocols import (
     T,
-    T_In,
-    T_Out,
     ResamplePlan,
     Resampler,
     ResamplerFactory,
@@ -23,11 +22,18 @@ from src.analysis.types.base import (
     ArchiveExtractorProtocol,
     DatasetManagerFactory,
     PlotterProtocol,
+)
+
+# Import computational abstractions from canonical module
+from src.analysis.types.base import (
+    T_In,
+    T_Out,
     Computer,
     AnalysisSchema,
     ComputationResult,
 )
 
+# Import domain from canonical location
 from src.analysis.domain.enum import Domain
 
 __all__ = [
