@@ -830,7 +830,7 @@ class TestConvertTimeToDepth:
         vp_depth = np.ones((2, 3, 4)) * 3000
         grid_spec = mock.MagicMock()
 
-        with mock.patch("src.processing.resample_cache.get_resample_plan_cache"):
+        with mock.patch("src.processing.resampling.cache.get_resample_plan_cache"):
             result = analyzer.convert_time_to_depth(
                 seismogram_time, vp_depth, grid_spec
             )
@@ -843,9 +843,9 @@ class TestConvertTimeToDepth:
         analyzer = FaciesCorrelationAnalyzer()
 
         with mock.patch(
-            "src.processing.resampler.get_resampler_factory"
+            "src.processing.resampling.resampler.get_resampler_factory"
         ) as mock_get_factory:
-            with mock.patch("src.processing.resample_cache.get_resample_plan_cache"):
+            with mock.patch("src.processing.resampling.cache.get_resample_plan_cache"):
                 mock_factory = mock.MagicMock()
                 mock_resampler = mock.MagicMock()
                 mock_result = np.random.randn(2, 3, 4)

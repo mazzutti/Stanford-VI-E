@@ -155,7 +155,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             if cls._instance is None:
                 if proc_manager is None:
                     # Lazy import to avoid cycles
-                    from src.processing.process import get_process_manager
+                    from src.processing.managers import get_process_manager
 
                     proc: ProcessManagerProtocol = cast(
                         ProcessManagerProtocol, get_process_manager()

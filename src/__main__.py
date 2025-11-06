@@ -274,7 +274,7 @@ class ParserFactory:
         logging.getLogger(__name__).info("✓ Loaded data in %.2fs", (t1 - t0))
 
         # Use VelocityModel to centralize vp unit conversion and validation
-        from src.processing.velocity import VelocityModel
+        from src.processing.materials.velocity import VelocityModel
 
         try:
             vm = VelocityModel.from_dataset(dm, vp_key="vp")
@@ -336,7 +336,7 @@ class ParserFactory:
         # STEP 3: DEPTH-TO-TIME
         _t0 = time.time()
         # Use DepthTimeResampler to compute TWT and resample properties
-        from src.processing.resampler import get_resampler_factory
+        from src.processing.resampling.resampler import get_resampler_factory
 
         resampler = get_resampler_factory().get_resampler(grid_spec)
         vp_for_twt = (
@@ -347,7 +347,7 @@ class ParserFactory:
         ni, nj, nz = vp_for_twt.shape
 
         # Create a shared ResamplePlan to drive all resampling in this run.
-        from src.processing.resample_cache import get_resample_plan_cache
+        from src.processing.resampling.cache import get_resample_plan_cache
 
         plan_cache = get_resample_plan_cache()
         plan = plan_cache.get_plan(grid_spec, vp_for_twt, target_dt=grid_spec.dt)

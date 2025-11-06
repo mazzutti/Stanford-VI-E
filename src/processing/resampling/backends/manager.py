@@ -10,11 +10,11 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
-from src.processing._backend_base import ResamplerBackend
-from src.processing.resample_plan import ResamplePlan
+from src.processing.resampling.backends.base import ResamplerBackend
+from src.processing.resampling.plan import ResamplePlan
 from src.processing.metrics import get_global_metrics, PlanFingerprint
 from typing import Tuple
-from src.processing._singleton import SingletonFactory
+from src.processing.core.singleton import SingletonFactory
 
 
 @dataclass

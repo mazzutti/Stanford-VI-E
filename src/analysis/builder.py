@@ -33,7 +33,6 @@ from typing import (
     Optional,
     Dict,
     Any,
-    Callable,
     Type,
     TYPE_CHECKING,
 )

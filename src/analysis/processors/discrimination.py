@@ -6,13 +6,10 @@ from typing import Dict, List, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.models import (
-    FaciesDiscriminationResult,
-    FaciesStats,
-)
+from src.analysis.models import FaciesDiscriminationResult, FaciesStats
 
 from .base import BaseProcessor
-from .config import ProcessorConfig
+
 from .decorators import ProcessorDecorators
 from .utils import ProcessorUtils
 
@@ -88,7 +85,7 @@ class FaciesDiscriminationCalculator(BaseProcessor):
     ) -> Tuple[Dict[int, NDArray[np.float64]], List[int]]:
         """Extract amplitude arrays for each observed facies.
 
-        Groups seismic amplitudes by their corresponding facies labels,
+        Groups seismic amplitudes by their corresponding facies labels
         creating an efficiency-optimized dictionary for downstream statistics.
 
         Parameters
@@ -120,9 +117,7 @@ class FaciesDiscriminationCalculator(BaseProcessor):
                 amp_count = np.count_nonzero(mask)
                 facies_amplitudes[facies_val] = seismic_aligned[mask]
                 logger.debug(
-                    "Facies %d: extracted %d amplitude samples",
-                    facies_val,
-                    amp_count,
+                    "Facies %d: extracted %d amplitude samples", facies_val, amp_count
                 )
 
         return facies_amplitudes, label_order
@@ -182,7 +177,7 @@ class FaciesDiscriminationCalculator(BaseProcessor):
         Returns
         -------
         numpy.ndarray
-            Separation matrix indexed by label_order. Diagonal is zero,
+            Separation matrix indexed by label_order. Diagonal is zero
             off-diagonal [i,j] is the standardized separation from facies i to j.
         """
         n_fac = len(label_order)

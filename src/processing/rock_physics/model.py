@@ -1,7 +1,4 @@
-"""Rock physics convenience model.
-
-Small wrapper to hold vp/vs/rho/facies together and centralize unit handling.
-"""
+"""Rock physics data model."""
 
 from __future__ import annotations
 
@@ -11,36 +8,62 @@ from typing import Optional
 import numpy as np
 
 from src.io.grid import GridSpec
-from src.processing.velocity import VelocityModel
-from src.processing.materials import VsModel, DensityModel
 from src.io.disk_cache import DiskCache
 from src.utils.quantity import Quantity
-from src.processing._singleton import SingletonFactory
+from src.processing.rock_physics.cache import ModelCache
+
+__all__ = ["RockPhysicsModel"]
+
 import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["RockPhysicsModel", "get_rock_physics_model"]
-
 
 @dataclass
 class RockPhysicsModel:
+    """Core data model for rock physics properties.
+
+    Holds vp, vs, rho, and facies along with grid spec and manages unit
+    conversion. Caching is delegated to ModelCache.
+
+    Attributes:
+        vp: P-wave velocity (optional)
+        vs: S-wave velocity (optional)
+        rho: Density (optional)
+        facies: Facies classification (optional)
+        grid_spec: Grid specification
+        disk_cache: Optional shared disk cache
+    """
+
     vp: Optional[np.ndarray]
     vs: Optional[np.ndarray]
     rho: Optional[np.ndarray]
     facies: Optional[np.ndarray]
     grid_spec: GridSpec
-    # Caches for derived attributes (LRU via OrderedDict)
-    _derived_cache: Optional[np.ndarray] = field(default=None, init=False, repr=False)
-    _refl_cache: Optional[np.ndarray] = field(default=None, init=False, repr=False)
-    # Technique-specific caches are not part of this module's public API
-    # Optional disk cache (shared) for expensive results
     disk_cache: Optional[DiskCache] = field(default=None, init=True, repr=False)
+    _cache: ModelCache = field(default_factory=ModelCache, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Initialize cache after dataclass construction."""
+        if self.disk_cache is not None:
+            self._cache = ModelCache(disk_cache=self.disk_cache)
+        else:
+            self._cache = ModelCache()
 
     @classmethod
     def from_props(cls, props: dict, grid_spec: GridSpec) -> "RockPhysicsModel":
-        # Wrap numeric arrays in Quantity when available. Default unit guesses
-        # are conservative; Quantity.to() can be used by callers to normalize.
+        """Create model from properties dictionary.
+
+        Wraps numeric arrays in Quantity with conservative unit guesses.
+        Callers can use Quantity.to() to normalize units.
+
+        Args:
+            props: Dictionary with keys 'vp', 'vs', 'rho', 'facies' (optional)
+            grid_spec: Grid specification
+
+        Returns:
+            New RockPhysicsModel instance
+        """
         vp = props.get("vp")
         vs = props.get("vs")
         rho = props.get("rho")
@@ -61,11 +84,13 @@ class RockPhysicsModel:
     def ensure_units(self) -> None:
         """Ensure vp/vs/rho are in SI units (m/s, kg/m^3).
 
-        This delegates to the small helper wrappers so the heuristics live in one
-        place and callers remain concise.
+        Delegates to small helper wrappers so heuristics live in one place.
+        Invalidates cache after any changes.
         """
+        from src.processing.materials.velocity import VelocityModel
+        from src.processing.materials.properties import VsModel, DensityModel
+
         if self.vp is not None:
-            # ensure Quantity is in m/s
             if not isinstance(self.vp, Quantity):
                 self.vp = Quantity(self.vp, "m/s")
             self.vp = self.vp.to("m/s", copy=True)
@@ -79,7 +104,6 @@ class RockPhysicsModel:
             self.vs = self.vs.to("m/s", copy=True)
             vsm = VsModel(self.vs.array)
             vsm.validate()
-            # keep as Quantity
             self.vs = Quantity(vsm.vs, "m/s")
 
         if self.rho is not None:
@@ -90,25 +114,15 @@ class RockPhysicsModel:
             drm.validate()
             self.rho = Quantity(drm.rho, "kg/m3")
 
-        # Any change to underlying properties invalidates derived caches
-        self.invalidate_cache()
-
-    def compute_ai(self) -> np.ndarray:
-        raise AttributeError("compute_ai is not available")
-
-    def reflectivity_from_props(self) -> np.ndarray:
-        """Compute reflectivity from current rock properties.
-
-        Use `src.signal.reflectivity` helpers for reflectivity calculations.
-        """
+        # Invalidate derived caches after unit changes
+        self._cache.invalidate()
 
     def invalidate_cache(self) -> None:
         """Invalidate internal caches for derived attributes."""
-        self._derived_cache = None
-        self._refl_cache = None
-        # keep only caches used by current codepaths
+        self._cache.invalidate()
 
     def to_props_dict(self) -> dict:
+        """Export properties as a dictionary of numpy arrays."""
         out = {}
         if self.vp is not None:
             out["vp"] = self.vp.array if isinstance(self.vp, Quantity) else self.vp
@@ -119,34 +133,3 @@ class RockPhysicsModel:
         if self.facies is not None:
             out["facies"] = self.facies
         return out
-
-
-# Create a convenient module-level default model lazily (preserve assignability)
-def _create_placeholder_rock_physics_model() -> RockPhysicsModel:
-    # Build a minimal placeholder RockPhysicsModel similar to the previous
-    # proxy's behavior. Keep the GridSpec construction local to avoid
-    # import-time side-effects.
-    _placeholder_grid = GridSpec((0, 0, 0), dz=1.0, dt=0.001)
-    return RockPhysicsModel(
-        vp=None, vs=None, rho=None, facies=None, grid_spec=_placeholder_grid
-    )
-
-
-# Module-level singleton for the RockPhysicsModel
-_rock_physics_factory: SingletonFactory[RockPhysicsModel] = SingletonFactory(
-    _create_placeholder_rock_physics_model
-)
-
-
-def get_rock_physics_model(
-    instance: RockPhysicsModel | None = None,
-) -> RockPhysicsModel:
-    """Return provided RockPhysicsModel or the module-level lazy singleton.
-
-    Args:
-        instance: Optional RockPhysicsModel to use instead of the singleton
-
-    Returns:
-        The provided instance or the module-level lazy singleton
-    """
-    return _rock_physics_factory.get(instance)

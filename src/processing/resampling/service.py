@@ -1,13 +1,11 @@
-"""ResamplerService
+"""ResamplerService - High-level resampling service.
 
-Lightweight service that composes the existing DepthTimeResampler, the
-ResamplePlanCache and the BackendManager to provide a single entrypoint
-for depth<->time resampling used by higher-level code (CLI, notebooks,
-APIs).
+Lightweight service that composes DepthTimeResampler, ResamplePlanCache,
+and BackendManager to provide a single entrypoint for depth<->time resampling.
 
-The service is intentionally thin: it delegates heavy work to
-DepthTimeResampler and to the registered backends while ensuring the
-shared plan cache is used when possible.
+The service is intentionally thin: it delegates heavy work to DepthTimeResampler
+and to the registered backends while ensuring the shared plan cache is used when
+possible.
 """
 
 from __future__ import annotations
@@ -21,13 +19,14 @@ from numpy.typing import ArrayLike
 import logging
 
 from src.io.grid import GridSpec
-from src.processing.resample_plan import ResamplePlan
-from src.processing.resample_cache import get_resample_plan_cache
-from src.processing.backend_manager import get_backend_manager
+from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling.cache import get_resample_plan_cache
+from src.processing.resampling.backends.manager import get_backend_manager
 from src.utils.quantity import Quantity
-from src.processing.metrics import BackendMetrics, PlanFingerprint, global_metrics
+from src.processing.metrics import BackendMetrics, PlanFingerprint, get_global_metrics
+from src.processing.core.singleton import SingletonFactory
 
-__all__ = ["ResamplerService"]
+__all__ = ["ResamplerService", "get_resampler_service"]
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -51,13 +50,13 @@ class ResamplerService:
     def __post_init__(self) -> None:
         if self.cache is None:
             self.cache = get_resample_plan_cache()
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampling.resampler import get_resampler_factory
 
-        self._inner = resampler_factory.get_resampler(self.grid_spec)
+        self._inner = get_resampler_factory().get_resampler(self.grid_spec)
         self._backend_mgr = get_backend_manager()
         if self.metrics is None:
             # use the shared global metrics collector by default
-            self.metrics = global_metrics
+            self.metrics = get_global_metrics()
 
     def depth_to_time(
         self,
@@ -97,7 +96,7 @@ class ResamplerService:
         )
         # Record selection into the global metrics collector so all services
         # and components share the same statistics.
-        gm = global_metrics
+        gm = get_global_metrics()
         if gm is not None and backend_name != "none":
             gm.record_selection(backend_name)
 
@@ -132,7 +131,7 @@ class ResamplerService:
         backend_name = (
             getattr(backend, "name", "none") if backend is not None else "none"
         )
-        gm = global_metrics
+        gm = get_global_metrics()
         if gm is not None and backend_name != "none":
             gm.record_selection(backend_name)
         start = time.time()
@@ -142,3 +141,19 @@ class ResamplerService:
             fingerprint = PlanFingerprint.from_plan(plan)
             gm.record_runtime(backend_name, fingerprint, elapsed)
         return out
+
+
+# Module-level lazy singleton for the resampler service
+_resampler_service_factory: SingletonFactory[ResamplerService] = SingletonFactory(
+    lambda: ResamplerService(grid_spec=GridSpec())
+)
+
+
+def get_resampler_service(service: ResamplerService | None = None) -> ResamplerService:
+    """Return the provided ResamplerService or the module-level lazy singleton.
+
+    This helper follows the repository convention of providing get_* accessors
+    for module-level lazy singletons to simplify dependency injection in
+    tests and client code.
+    """
+    return _resampler_service_factory.get(service)

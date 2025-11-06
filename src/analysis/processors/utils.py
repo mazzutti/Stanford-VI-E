@@ -12,7 +12,6 @@ from src.analysis.strategies import (
     StandardArrayStatistics,
 )
 
-from .config import ProcessorConfig
 
 if TYPE_CHECKING:
     from .boundary import CubeAligner
@@ -25,7 +24,7 @@ __all__ = ["ProcessorUtils"]
 class ProcessorUtils:
     """Utility class providing common operations for processors.
 
-    Groups frequently-used helper methods for numerical computation,
+    Groups frequently-used helper methods for numerical computation
     data filtering, and statistics calculation.
 
     This is a stateless utility class designed to be used via static methods:
@@ -87,7 +86,7 @@ class ProcessorUtils:
         Returns
         -------
         float | tuple of float
-            Converted Python float values. Returns single float if one argument,
+            Converted Python float values. Returns single float if one argument
             tuple of floats if multiple arguments.
 
         Examples
@@ -189,7 +188,7 @@ class ProcessorUtils:
         Returns
         -------
         tuple
-            (flattened_arr, flattened_mask) if sufficient valid samples exist,
+            (flattened_arr, flattened_mask) if sufficient valid samples exist
             else (None, None).
 
         Examples
@@ -259,7 +258,7 @@ class ProcessorUtils:
         """Align 3D cubes and reshape to 2D trace-sample format.
 
         Consolidates repeated "align then reshape" pattern used across multiple
-        processors. This is a common workflow: first align cubes to common shape,
+        processors. This is a common workflow: first align cubes to common shape
         then reshape (ni, nj, nk) → (ni*nj, nk) for trace-based analysis.
 
         Parameters
@@ -372,7 +371,7 @@ class ProcessorUtils:
     def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
         """Compute statistical summary of amplitude array.
 
-        Efficiently computes all standard statistical measures (mean, std, median,
+        Efficiently computes all standard statistical measures (mean, std, median
         percentiles, min, max) from an amplitude array in a single pass where possible.
 
         Parameters
@@ -403,11 +402,7 @@ class ProcessorUtils:
 
         # Compute all statistics with single conversion call
         result = ProcessorUtils._convert_numpy_scalars_to_float_static(
-            np.mean(amps),
-            np.std(amps),
-            np.median(amps),
-            np.min(amps),
-            np.max(amps),
+            np.mean(amps), np.std(amps), np.median(amps), np.min(amps), np.max(amps)
         )
         mean_val, std_val, median_val, min_val, max_val = cast(
             Tuple[float, float, float, float, float], result

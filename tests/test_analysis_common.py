@@ -25,7 +25,7 @@ from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
 
 from src.analysis.common import AnalysisCommon
-from src.processing.process import ProcessManager
+from src.processing.managers import ProcessManager
 
 
 # Test constants
@@ -155,7 +155,7 @@ def test_singleton_reset_creates_new_instance() -> None:
 
 def test_instance_without_manager_auto_initializes() -> None:
     """Test that instance() auto-initializes with default process manager."""
-    with patch("src.processing.process.get_process_manager") as mock_get_pm:
+    with patch("src.processing.managers.get_process_manager") as mock_get_pm:
         mock_get_pm.return_value = DummyProcessManager()
         instance = AnalysisCommon.instance()
         assert instance.is_initialized, "Should auto-initialize with default manager"

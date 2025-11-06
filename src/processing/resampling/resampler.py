@@ -12,13 +12,13 @@ from typing import Tuple, Optional
 import numpy as np
 from scipy.interpolate import interp1d
 from src.processing.interpolator import BatchedInterpolator
-from src.processing.resample_plan import ResamplePlan
+from src.processing.resampling.plan import ResamplePlan
 from numba import njit, prange
 import logging
 import os
-from src.processing._singleton import SingletonFactory
+from src.processing.core.singleton import SingletonFactory
 
-from src.processing._backend_base import BackendResult, BackendError
+from src.processing.resampling.backends.base import BackendResult, BackendError
 
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
@@ -186,7 +186,7 @@ class DepthTimeResampler:
             )
 
         # Try to consult a pluggable backend for potential optimized paths.
-        from src.processing.backend_manager import get_backend_manager
+        from src.processing.resampling.backends.manager import get_backend_manager
 
         backend = get_backend_manager().get_best(plan)
         logger = logging.getLogger(__name__)
@@ -434,7 +434,7 @@ class DepthTimeResampler:
             plan = ResamplePlan.create(self.grid_spec, vp_arr)
 
         # Try backend first (consult the BackendManager singleton)
-        from src.processing.backend_manager import get_backend_manager
+        from src.processing.resampling.backends.manager import get_backend_manager
 
         backend = get_backend_manager().get_best(plan)
         logger = logging.getLogger(__name__)
@@ -714,117 +714,3 @@ def get_resampler_factory(factory: ResamplerFactory | None = None) -> ResamplerF
 
 
 __all__.extend(["ResamplerFactory", "get_resampler_factory"])
-
-
-# Factory and service accessors
-__all__.extend(
-    [
-        "ResamplerFactory",
-        "get_resampler_factory",
-        "ResamplerService",
-        "get_resampler_service",
-    ]
-)
-
-
-# --- Simplified OO facade -------------------------------------------------
-class ResamplerService:
-    """A thin OO facade that forwards common resampling helpers to the
-    ResamplerFactory. This provides a convenient single object to call from
-    client code while keeping the original top-level functions available.
-    """
-
-    def get_resampler(self, grid_spec: GridSpec) -> DepthTimeResampler:
-        return get_resampler_factory().get_resampler(grid_spec)
-
-    def compute_one_way_time(
-        self, grid_spec: GridSpec, vp_trace: np.ndarray | Quantity
-    ):
-        return (
-            get_resampler_factory()
-            .get_resampler(grid_spec)
-            .compute_one_way_time(vp_trace)
-        )
-
-    def compute_one_way_times(self, grid_spec: GridSpec, vp_arr: np.ndarray | Quantity):
-        return (
-            get_resampler_factory()
-            .get_resampler(grid_spec)
-            .compute_one_way_times(vp_arr)
-        )
-
-    def depth_to_time_cube(
-        self,
-        grid_spec: GridSpec,
-        data_depth,
-        vp_depth,
-        target_dt=None,
-        target_nt=None,
-        plan: ResamplePlan | None = None,
-    ):
-        return (
-            get_resampler_factory()
-            .get_resampler(grid_spec)
-            .depth_to_time_cube(
-                data_depth,
-                vp_depth,
-                target_dt=target_dt,
-                target_nt=target_nt,
-                plan=plan,
-            )
-        )
-
-    def time_to_depth_cube(
-        self,
-        grid_spec: GridSpec,
-        seismogram_time,
-        vp_depth,
-        plan: ResamplePlan | None = None,
-    ):
-        return (
-            get_resampler_factory()
-            .get_resampler(grid_spec)
-            .time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
-        )
-
-    def resample_time_cube(
-        self,
-        grid_spec: GridSpec,
-        data_time,
-        src_time_axis,
-        target_time_axis,
-        kind: str = "linear",
-        progress_every: Optional[int] = 30,
-        prefix: str = "",
-    ):
-        return (
-            get_resampler_factory()
-            .get_resampler(grid_spec)
-            .resample_time_cube(
-                data_time,
-                src_time_axis,
-                target_time_axis,
-                kind=kind,
-                progress_every=progress_every,
-                prefix=prefix,
-            )
-        )
-
-
-# Module-level singleton for the resampler service
-_resampler_service = SingletonFactory(lambda: ResamplerService())
-
-
-def get_resampler_service(service: ResamplerService | None = None) -> ResamplerService:
-    """Get the resampler service, optionally providing an override."""
-    return _resampler_service.get(service)
-
-
-__all__.extend(
-    [
-        "ResamplerFactory",
-        "get_resampler_factory",
-        "ResamplerService",
-        "get_resampler_service",
-    ]
-)

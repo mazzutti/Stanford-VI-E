@@ -27,7 +27,7 @@ from typing import (
 )
 from contextlib import contextmanager
 
-from src.processing.velocity import VelocityModel
+from src.processing.materials.velocity import VelocityModel
 from src.analysis.types.base import (
     ResamplerFactory,
     CacheLoaderProtocol,

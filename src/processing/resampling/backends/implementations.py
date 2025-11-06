@@ -6,9 +6,13 @@ import numpy as np
 
 import logging
 
-from src.processing._backend_base import BackendError, ResamplerBackend, BackendResult
-from src.processing.resample_plan import ResamplePlan
-from src.processing.backend_manager import (
+from src.processing.resampling.backends.base import (
+    BackendError,
+    ResamplerBackend,
+    BackendResult,
+)
+from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling.backends.manager import (
     get_backend_manager,
     register_backend as manager_register_backend,
     list_backends as manager_list_backends,
@@ -96,7 +100,7 @@ class VectorizedBackend:
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
         # For uniform_twt, we can call the resampler's fast path directly.
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampling.resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out, dt = resampler.depth_to_time_cube(data, vp, plan=plan)
@@ -105,7 +109,7 @@ class VectorizedBackend:
     def time_to_depth(
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampling.resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)
@@ -150,7 +154,7 @@ class BatchedInterpolatorBackend:
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
         # Not implemented in this simple backend; fall back to resampler
-        from src.processing.resampler import resampler_factory
+        from src.processing.resampling.resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)

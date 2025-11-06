@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 from matplotlib.figure import Figure
 
 from src.plotting.helpers.config import PlotConfig
-from src.processing.velocity import VelocityModel
+from src.processing.materials.velocity import VelocityModel
 from src.analysis.domain.enum import Domain
 from src.io.loader import DatasetManager
 from src.analysis.models import (

@@ -104,3 +104,5 @@ class ServiceRegistry:
 
 # Global service registry instance
 _global_registry = ServiceRegistry()
+
+__all__ = ["SingletonFactory", "ServiceRegistry"]

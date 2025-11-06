@@ -121,7 +121,7 @@ class RockPhysicsAnalyzer:
     """Orchestrates rock physics attribute computation and analysis.
 
     This class uses composition with domain-specific analyzers to provide
-    a unified interface for computing AVO attributes, Lamé parameters,
+    a unified interface for computing AVO attributes, Lamé parameters
     fluid factors, and discrimination analysis.
     """
 
@@ -133,10 +133,7 @@ class RockPhysicsAnalyzer:
         self._discrimination_analyzer = AttributeDiscriminationAnalyzer()
 
     @classmethod
-    def from_builder(
-        cls,
-        builder_func: Optional[Any] = None,
-    ) -> "RockPhysicsAnalyzer":
+    def from_builder(cls, builder_func: Optional[Any] = None) -> "RockPhysicsAnalyzer":
         """Create analyzer using fluent AnalysisBuilder pattern.
 
         This factory method enables fluent API construction of the analyzer
@@ -199,10 +196,7 @@ class RockPhysicsAnalyzer:
         return self._avo_computer.compute(vp, vs, rho, angles_deg=angles_deg)
 
     def compute_lambda_mu_rho(
-        self,
-        vp: FloatingArray,
-        vs: FloatingArray,
-        rho: FloatingArray,
+        self, vp: FloatingArray, vs: FloatingArray, rho: FloatingArray
     ) -> Dict[str, FloatingArray]:
         """Compute Lamé parameters (lambda_rho, mu_rho, and their ratio).
 
@@ -235,10 +229,7 @@ class RockPhysicsAnalyzer:
         return self._fluid_computer.compute(lambda_rho, mu_rho, k=k)
 
     def analyze_attribute_discrimination(
-        self,
-        attribute: FloatingArray,
-        facies: IntegerArray,
-        name: str = "Attribute",
+        self, attribute: FloatingArray, facies: IntegerArray, name: str = "Attribute"
     ) -> DiscriminationResult:
         """Analyze how well a single attribute discriminates facies classes.
 
@@ -273,7 +264,6 @@ class RockPhysicsAnalyzer:
     ) -> DatasetManager:
         """Load dataset using DatasetManagerFactory with fallback."""
         from src.analysis.types.base import DatasetManagerFactory
-        from typing import cast
 
         try:
             # Type ignore: DatasetManagerFactory is a Protocol, but at runtime
@@ -381,9 +371,7 @@ class RockPhysicsAnalyzer:
         rho: FloatingArray,
         angles_deg: Sequence[float],
     ) -> tuple[
-        Dict[str, FloatingArray],
-        Dict[str, FloatingArray],
-        Optional[FloatingArray],
+        Dict[str, FloatingArray], Dict[str, FloatingArray], Optional[FloatingArray]
     ]:
         """Compute all rock physics attributes in sequence."""
         # ====== CRITICAL: AVO Attributes ======

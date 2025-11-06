@@ -7,23 +7,17 @@ injection and composition.
 
 import logging
 from types import TracebackType
-from typing import (
-    Callable,
-    Optional,
-    Type,
-    Dict,
-    cast,
-)
+from typing import Callable, Optional, Type, Dict, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from matplotlib.figure import Figure
 
 from src.plotting.helpers.config import PlotConfig
-from src.processing.velocity import VelocityModel
+from src.processing.materials.velocity import VelocityModel
 from src.io.grid import GridSpec
 from src.analysis.base import AnalyzerInterface
-from src.analysis.pipelines.orchestrator import Pipeline
+
 from src.analysis.types.base import (
     ResamplerFactory,
     CacheLoaderProtocol,
@@ -31,7 +25,7 @@ from src.analysis.types.base import (
 )
 from src.analysis.domain.enum import Domain
 from src.analysis.facies.config import FaciesAnalysisConfig
-from src.analysis.facies.stages import create_facies_analysis_pipeline
+
 from src.analysis.models import (
     FaciesCorrelationConfig,
     AvoResults,
@@ -52,10 +46,7 @@ from src.analysis.processors import (
     InterfaceReflectionAnalyzer,
     FaciesDiscriminationCalculator,
 )
-from src.analysis.processors.validators import (
-    DomainValidator,
-    PathValidator,
-)
+from src.analysis.processors.validators import DomainValidator, PathValidator
 from src.analysis.domain import DomainHandlerFactory
 
 logger = logging.getLogger(__name__)
@@ -193,8 +184,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
 
     @classmethod
     def from_builder(
-        cls,
-        builder_func: Optional[Callable[..., "FaciesCorrelationAnalyzer"]] = None,
+        cls, builder_func: Optional[Callable[..., "FaciesCorrelationAnalyzer"]] = None
     ) -> "FaciesCorrelationAnalyzer":
         """Create analyzer using fluent AnalysisBuilder pattern.
 
@@ -479,7 +469,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
     ) -> NDArray[np.float64]:
         """Convert a time-domain seismogram to the depth domain.
 
-        This helper uses the injected ``resampler_factory`` when provided,
+        This helper uses the injected ``resampler_factory`` when provided
         otherwise it falls back to the package default resampler factory.
 
         Parameters
@@ -503,13 +493,13 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         else:
             # Deferred import: avoid circular dependency at module load time.
             # The resampler module is only imported when actually needed.
-            from src.processing.resampler import get_resampler_factory
+            from src.processing.resampling.resampler import get_resampler_factory
 
             resampler = get_resampler_factory().get_resampler(grid_spec)
 
         # Deferred import: avoid circular dependency at module load time.
         # The resample cache module is only imported when actually needed.
-        from src.processing.resample_cache import get_resample_plan_cache
+        from src.processing.resampling.cache import get_resample_plan_cache
 
         plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
         return resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
@@ -650,9 +640,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         return self._facies_discriminator.calculate(seismic_cube, facies_cube)
 
     def compare_techniques(
-        self,
-        avo_stats: "AvoStats",
-        metric_name: str,
+        self, avo_stats: "AvoStats", metric_name: str
     ) -> TechniqueComparison:
         """Return a concise AVO-only comparison for the requested metric.
 
@@ -683,10 +671,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         return TechniqueComparison(avo=avo_stats, winner="AVO", difference=0.0)
 
     def create_summary_plots(
-        self,
-        avo_results: AvoResults,
-        cache_dir: str,
-        domain: Domain = Domain.DEPTH,
+        self, avo_results: AvoResults, cache_dir: str, domain: Domain = Domain.DEPTH
     ) -> Figure:
         """Create and return summary Figure for AVO analysis results.
 
@@ -945,7 +930,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
     ) -> AvoAnalysisResult:
         """Execute the AVO analysis sequence and return aggregated results.
 
-        This helper runs gradient correlation, boundary amplitude extraction,
+        This helper runs gradient correlation, boundary amplitude extraction
         interface reflection aggregation and facies discrimination and
         packages the results into an :class:`AvoAnalysisResult`.
         """

@@ -44,7 +44,6 @@ from typing import (
     List,
     Protocol,
     Union,
-    cast,
 )
 from datetime import datetime
 import logging

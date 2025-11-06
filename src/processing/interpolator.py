@@ -32,7 +32,7 @@ class BatchedInterpolator:
 
         Returns: array shaped (nt, ntraces)
         """
-        nzp1, ntr = depth_padded_flat.shape
+        _, ntr = depth_padded_flat.shape
         nt = len(self.time_axis)
 
         # If twt_padded is 1D (shared across traces) we can use the fast

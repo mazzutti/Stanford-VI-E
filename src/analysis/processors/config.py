@@ -2,19 +2,19 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import ClassVar, Optional, TYPE_CHECKING, TypedDict
+from typing import Optional, TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
 
 __all__ = [
-    "PadConfig",
-    "DilationConfig",
-    "NeighborDirection",
-    "ValidationResult",
-    "ProcessorConfig",
-    "BoundaryComputationConfig",
+    "PadConfig"
+    "DilationConfig"
+    "NeighborDirection"
+    "ValidationResult"
+    "ProcessorConfig"
+    "BoundaryComputationConfig"
 ]
 
 
@@ -102,7 +102,7 @@ class ValidationResult:
 class ProcessorConfig:
     """Immutable configuration for processor operations.
 
-    Consolidates all processor configuration parameters into a single,
+    Consolidates all processor configuration parameters into a single
     type-safe, immutable object. Using frozen=True ensures configuration
     cannot be accidentally modified after creation.
     """
@@ -159,41 +159,35 @@ class ProcessorConfig:
     @property
     def boundary_pad_config(self) -> PadConfig:
         """Standard padding configuration for 3D boundary detection (pad j and k axes)."""
-        return {
-            "pad_width": ((0, 0), (1, 1), (1, 1)),
-            "mode": self.pad_mode,
-        }
+        return {"pad_width": ((0, 0), (1, 1), (1, 1)), "mode": self.pad_mode}
 
     @property
     def amplitude_pad_config(self) -> PadConfig:
         """Get amplitude padding configuration based on current window radius."""
         return {
-            "pad_width": (
-                self.amplitude_window_radius,
-                self.amplitude_window_radius,
-            ),
+            "pad_width": (self.amplitude_window_radius, self.amplitude_window_radius),
             "mode": self.pad_mode,
         }
 
     def __str__(self) -> str:
         """Return human-readable string representation of processor configuration."""
         lines = [
-            "ProcessorConfig:",
-            f"  boundary_dilation: {self.boundary_dilation_default}",
-            f"  amplitude_window_radius: {self.amplitude_window_radius}",
-            f"  amplitude_window_size: {self.amplitude_window_size}",
-            f"  q1_percentile: {self.percentile_q1}%",
-            f"  q3_percentile: {self.percentile_q3}%",
-            f"  epsilon: {self.separation_matrix_epsilon:.2e}",
-            f"  min_valid_samples: {self.min_valid_samples}",
-            f"  pad_mode: '{self.pad_mode}'",
-            "  Timing thresholds (ms):",
-            f"    boundary_detection: {self.boundary_detection_threshold_ms}",
-            f"    cube_alignment: {self.cube_alignment_threshold_ms}",
-            f"    boundary_amplitude_extraction: {self.boundary_amplitude_extraction_threshold_ms}",
-            f"    gradient_correlation: {self.gradient_correlation_threshold_ms}",
-            f"    interface_reflection_analysis: {self.interface_reflection_analysis_threshold_ms}",
-            f"    facies_discrimination: {self.facies_discrimination_threshold_ms}",
+            "ProcessorConfig:"
+            f"  boundary_dilation: {self.boundary_dilation_default}"
+            f"  amplitude_window_radius: {self.amplitude_window_radius}"
+            f"  amplitude_window_size: {self.amplitude_window_size}"
+            f"  q1_percentile: {self.percentile_q1}%"
+            f"  q3_percentile: {self.percentile_q3}%"
+            f"  epsilon: {self.separation_matrix_epsilon:.2e}"
+            f"  min_valid_samples: {self.min_valid_samples}"
+            f"  pad_mode: '{self.pad_mode}'"
+            "  Timing thresholds (ms):"
+            f"    boundary_detection: {self.boundary_detection_threshold_ms}"
+            f"    cube_alignment: {self.cube_alignment_threshold_ms}"
+            f"    boundary_amplitude_extraction: {self.boundary_amplitude_extraction_threshold_ms}"
+            f"    gradient_correlation: {self.gradient_correlation_threshold_ms}"
+            f"    interface_reflection_analysis: {self.interface_reflection_analysis_threshold_ms}"
+            f"    facies_discrimination: {self.facies_discrimination_threshold_ms}"
         ]
         return "\n".join(lines)
 
@@ -221,10 +215,7 @@ class BoundaryComputationConfig:
     @property
     def pad_config(self) -> PadConfig:
         """Standard padding: no padding on i-axis, 1 pixel on j and k axes."""
-        return {
-            "pad_width": ((0, 0), (1, 1), (1, 1)),
-            "mode": self.pad_mode,
-        }
+        return {"pad_width": ((0, 0), (1, 1), (1, 1)), "mode": self.pad_mode}
 
     def get_dilation_config(self, iterations: Optional[int] = None) -> DilationConfig:
         """Get binary dilation configuration with specified iterations.
@@ -246,10 +237,10 @@ class BoundaryComputationConfig:
     def __str__(self) -> str:
         """Return human-readable string representation of boundary configuration."""
         lines = [
-            "BoundaryComputationConfig:",
-            f"  connectivity: {self.connectivity}",
-            f"  dilation_iterations: {self.dilation_iterations}",
-            f"  pad_mode: '{self.pad_mode}'",
-            f"  pad_width: {self.pad_config['pad_width']}",
+            "BoundaryComputationConfig:"
+            f"  connectivity: {self.connectivity}"
+            f"  dilation_iterations: {self.dilation_iterations}"
+            f"  pad_mode: '{self.pad_mode}'"
+            f"  pad_width: {self.pad_config['pad_width']}"
         ]
         return "\n".join(lines)

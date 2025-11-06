@@ -11,12 +11,28 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 import hashlib
 
-from src.processing.resample_plan import ResamplePlan
-from src.processing._singleton import SingletonFactory
+from src.processing.resampling.plan import ResamplePlan
 
 
 @dataclass(frozen=True)
 class PlanFingerprint:
+    """Immutable fingerprint of a resample plan for metrics tracking.
+
+    Captures key plan parameters and a hash of the Vp array to enable
+    identification of similar plans across multiple invocations.
+
+    Attributes
+    ----------
+    ni, nj, nz, nt : int
+        Dimensions of the plan.
+    dt : float
+        Time sample interval.
+    uniform_twt : bool
+        Whether uniform TWT sampling is used.
+    vp_hash : str
+        MD5 hash of the velocity array (or dimension signature if too large).
+    """
+
     ni: int
     nj: int
     nz: int
@@ -27,20 +43,33 @@ class PlanFingerprint:
 
     @classmethod
     def from_plan(cls, plan: ResamplePlan) -> "PlanFingerprint":
-        # plan is expected to have ni,nj,nz,nt,dt,uniform_twt and vp_arr
-        # compute a short hash from vp_arr sample
+        """Create a fingerprint from a ResamplePlan.
+
+        Parameters
+        ----------
+        plan : ResamplePlan
+            The plan to fingerprint (must have ni, nj, nz, nt, dt, uniform_twt, vp_arr).
+
+        Returns
+        -------
+        PlanFingerprint
+            Fingerprint of the plan.
+        """
         arr = plan.vp_arr
         h = hashlib.md5()
         try:
             buf = arr.ravel().view("uint8")
             if buf.nbytes <= 1024 * 1024:
+                # Hash entire array if small enough
                 h.update(buf.tobytes())
             else:
-                # sample first/last chunks
+                # For large arrays, hash first and last chunks to reduce overhead
                 h.update(buf[:1024].tobytes())
                 h.update(buf[-1024:].tobytes())
         except Exception:
+            # Fallback: hash plan dimensions
             h.update(str((plan.ni, plan.nj, plan.nz)).encode())
+
         return cls(
             ni=plan.ni,
             nj=plan.nj,
@@ -53,15 +82,31 @@ class PlanFingerprint:
 
 
 class BackendMetrics:
-    """In-memory metrics collector for backend selection and runtimes."""
+    """In-memory metrics collector for backend selection and runtimes.
+
+    Tracks how many times each backend was selected and cumulative runtime
+    per backend/plan combination.
+
+    Attributes
+    ----------
+    selection_counts : dict[str, int]
+        Number of times each backend was selected.
+    runtimes : dict[tuple[str, str], float]
+        Cumulative runtime in seconds per (backend_name, vp_hash) pair.
+    """
 
     def __init__(self) -> None:
-        # counts: {backend_name: int}
         self.selection_counts: Dict[str, int] = {}
-        # runtimes: {(backend_name, vp_hash): cumulative_seconds}
         self.runtimes: Dict[Tuple[str, str], float] = {}
 
     def record_selection(self, backend_name: str) -> None:
+        """Record that a backend was selected.
+
+        Parameters
+        ----------
+        backend_name : str
+            Name of the backend selected.
+        """
         self.selection_counts[backend_name] = (
             self.selection_counts.get(backend_name, 0) + 1
         )
@@ -69,78 +114,75 @@ class BackendMetrics:
     def record_runtime(
         self, backend_name: str, fingerprint: PlanFingerprint, seconds: float
     ) -> None:
+        """Record runtime for a backend on a specific plan.
+
+        Parameters
+        ----------
+        backend_name : str
+            Name of the backend.
+        fingerprint : PlanFingerprint
+            Fingerprint of the plan.
+        seconds : float
+            Runtime in seconds.
+        """
         key = (backend_name, fingerprint.vp_hash)
         self.runtimes[key] = self.runtimes.get(key, 0.0) + float(seconds)
 
     def get_selection_count(self, backend_name: str) -> int:
+        """Get number of times a backend was selected.
+
+        Parameters
+        ----------
+        backend_name : str
+            Name of the backend.
+
+        Returns
+        -------
+        int
+            Number of selections (0 if never selected).
+        """
         return int(self.selection_counts.get(backend_name, 0))
 
     def get_runtime(self, backend_name: str, fingerprint: PlanFingerprint) -> float:
+        """Get cumulative runtime for a backend on a plan.
+
+        Parameters
+        ----------
+        backend_name : str
+            Name of the backend.
+        fingerprint : PlanFingerprint
+            Fingerprint of the plan.
+
+        Returns
+        -------
+        float
+            Cumulative runtime in seconds (0.0 if no prior runs).
+        """
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
 
 
-# Object-oriented facade for the metrics collector
-class MetricsCollector:
-    """Facade for accessing BackendMetrics."""
-
-    def __init__(self):
-        self._metrics = BackendMetrics()
-
-    def record_selection(self, backend_name: str) -> None:
-        return self._metrics.record_selection(backend_name)
-
-    def record_runtime(
-        self, backend_name: str, fingerprint: PlanFingerprint, seconds: float
-    ) -> None:
-        return self._metrics.record_runtime(backend_name, fingerprint, seconds)
-
-    def get_selection_count(self, backend_name: str) -> int:
-        return self._metrics.get_selection_count(backend_name)
-
-    def get_runtime(self, backend_name: str, fingerprint: PlanFingerprint) -> float:
-        return self._metrics.get_runtime(backend_name, fingerprint)
-
-
-# Module-level factories for metrics
-_global_metrics_factory: SingletonFactory[BackendMetrics] = SingletonFactory(
-    lambda: BackendMetrics()
-)
-_metrics_collector_factory: SingletonFactory[MetricsCollector] = SingletonFactory(
-    lambda: MetricsCollector()
-)
-
-
-def get_metrics_collector(
-    collector: MetricsCollector | None = None,
-) -> MetricsCollector:
-    """Return the provided collector or the module-level lazy singleton.
-
-    If `collector` is provided, it is returned unchanged (useful for
-    dependency injection). Otherwise the module-level lazy singleton
-    is returned.
-    """
-    return _metrics_collector_factory.get(collector)
-
-
 def get_global_metrics(inst: BackendMetrics | None = None) -> BackendMetrics:
-    """Return the provided BackendMetrics instance or the module-level lazy proxy.
+    """Return the provided BackendMetrics instance or create a new one.
 
-    Provides a single helper consistent with the rest of the codebase.
+    Supports dependency injection: if `inst` is provided, it is returned unchanged.
+    Otherwise a new BackendMetrics instance is created (useful for testing or
+    when no global metrics are needed).
+
+    Parameters
+    ----------
+    inst : BackendMetrics, optional
+        Metrics instance to return. If None, a new BackendMetrics is created.
+
+    Returns
+    -------
+    BackendMetrics
+        The provided instance or a new BackendMetrics instance.
     """
-    return _global_metrics_factory.get(inst)
-
-
-# Convenience accessors for the global metrics
-def get_metrics() -> BackendMetrics:
-    """Get the global metrics instance."""
-    return get_global_metrics()
+    return inst if inst is not None else BackendMetrics()
 
 
 __all__ = [
     "PlanFingerprint",
     "BackendMetrics",
-    "MetricsCollector",
-    "get_metrics_collector",
     "get_global_metrics",
-    "get_metrics",
 ]

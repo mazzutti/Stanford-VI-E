@@ -54,7 +54,7 @@ class DepthTimeConverter:
         input_was_quantity = isinstance(vp_depth, Quantity)
         vp_arr = vp_depth.array if input_was_quantity else np.asarray(vp_depth)
 
-        from src.processing.resample_cache import get_resample_plan_cache
+        from src.processing.resampling.cache import get_resample_plan_cache
 
         # Compute TWT using cached resample plan
         plan = get_resample_plan_cache().get_plan(self.grid_spec, vp_arr)

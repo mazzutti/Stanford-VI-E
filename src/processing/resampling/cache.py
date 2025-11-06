@@ -18,9 +18,9 @@ from typing import Optional
 import numpy as np
 import os
 import logging
-from src.processing._singleton import SingletonFactory
+from src.processing.core.singleton import SingletonFactory
 
-from src.processing.resample_plan import ResamplePlan
+from src.processing.resampling.plan import ResamplePlan
 from src.io.grid import GridSpec
 
 logger = logging.getLogger(__name__)

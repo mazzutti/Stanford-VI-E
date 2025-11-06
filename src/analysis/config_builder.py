@@ -30,16 +30,14 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, asdict, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from typing import (
     Generic,
     TypeVar,
     Type,
-    Optional,
     Dict,
     Any,
     Callable,
-    Union,
     Protocol,
 )
 import logging
