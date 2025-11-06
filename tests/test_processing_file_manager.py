@@ -14,11 +14,12 @@ from src.processing.managers.base import BaseManager
 class TestFileManagerAbstractMethods:
     """Test FileManager abstract methods."""
 
-    def test_file_manager_is_abstract(self):
-        """Test that FileManager cannot be instantiated directly."""
-        # FileManager should be abstract and require clear/summarize implementation
-        with pytest.raises(TypeError):
-            FileManager()
+    def test_file_manager_is_concrete(self):
+        """Test that FileManager can be instantiated directly."""
+        # FileManager is concrete - it implements clear() and summarize()
+        fm = FileManager()
+        assert isinstance(fm, FileManager)
+        assert isinstance(fm, BaseManager)
 
     def test_file_manager_inherits_from_base_manager(self):
         """Test that FileManager inherits from BaseManager."""

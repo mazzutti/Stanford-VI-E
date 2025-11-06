@@ -128,18 +128,20 @@ class AVOValidator(Validator):
         # Extract positional or keyword arguments
         if args:
             if len(args) < 3:
-                raise ValueError("validate() requires vp, vs, rho as positional arguments")
+                raise ValueError(
+                    "validate() requires vp, vs, rho as positional arguments"
+                )
             vp = args[0]
             vs = args[1]
             rho = args[2]
         else:
             # Try to get from kwargs
-            vp = kwargs.get('vp')
-            vs = kwargs.get('vs')
-            rho = kwargs.get('rho')
+            vp = kwargs.get("vp")
+            vs = kwargs.get("vs")
+            rho = kwargs.get("rho")
             if vp is None or vs is None or rho is None:
                 raise ValueError("validate() requires vp, vs, rho arguments")
-        
+
         vp = np.asarray(vp)
         vs = np.asarray(vs)
         rho = np.asarray(rho)
@@ -187,12 +189,12 @@ class AVOValidator(Validator):
         if args and len(args) >= 3:
             vp, vs, rho = args[0], args[1], args[2]
         else:
-            vp = kwargs.get('vp')
-            vs = kwargs.get('vs')
-            rho = kwargs.get('rho')
+            vp = kwargs.get("vp")
+            vs = kwargs.get("vs")
+            rho = kwargs.get("rho")
             if vp is None or vs is None or rho is None:
                 raise ValueError("is_valid() requires vp, vs, rho arguments")
-        
+
         # The validate method returns a cast Dict but is actually an AVOValidityReport
         report = cast(AVOValidityReport, self.validate(vp, vs, rho))
         return report.is_valid(self.contrast_threshold)
