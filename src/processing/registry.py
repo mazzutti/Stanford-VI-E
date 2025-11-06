@@ -109,14 +109,15 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> ResamplerService:
             from src.processing.resampling.service import ResamplerService
             from src.io.grid import GridSpec
 
             grid = grid_spec or GridSpec((512, 512, 512))
             return ResamplerService(grid_spec=grid)
 
-        return self._get_or_create("resampler_service", factory)
+        result: ResamplerService = self._get_or_create("resampler_service", factory)  
+        return result
 
     def get_backend_manager(self) -> "BackendManager":
         """Get or create BackendManager singleton.
@@ -131,12 +132,13 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> BackendManager:
             from src.processing.resampling.backends._manager import BackendManager
 
             return BackendManager()
 
-        return self._get_or_create("backend_manager", factory)
+        result: BackendManager = self._get_or_create("backend_manager", factory)
+        return result
 
     def get_resample_cache(self) -> "ResamplePlanCache":
         """Get or create ResamplePlanCache singleton.
@@ -151,13 +153,14 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> ResamplePlanCache:
             # Import here to avoid circular dependencies
             from src.processing.resampling._cache import ResamplePlanCache
 
             return ResamplePlanCache(maxsize=16)
 
-        return self._get_or_create("resample_cache", factory)
+        result: ResamplePlanCache = self._get_or_create("resample_cache", factory)
+        return result
 
     def get_backend_metrics(self) -> "BackendMetrics":
         """Get or create BackendMetrics singleton.
@@ -172,12 +175,13 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> BackendMetrics:
             from src.processing.metrics import BackendMetrics
 
             return BackendMetrics()
 
-        return self._get_or_create("backend_metrics", factory)
+        result: BackendMetrics = self._get_or_create("backend_metrics", factory)
+        return result
 
     def get_manager_hub(self) -> "ManagerHub":
         """Get or create ManagerHub singleton.
@@ -191,12 +195,13 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> ManagerHub:
             from src.processing.managers import ManagerHub
 
             return ManagerHub()
 
-        return self._get_or_create("manager_hub", factory)
+        result: ManagerHub = self._get_or_create("manager_hub", factory)
+        return result
 
     def get_avo_validator(self, max_angle: float = 30.0) -> "AVOValidator":
         """Get or create AVOValidator singleton.
@@ -214,12 +219,13 @@ class ServiceRegistry:
             ImportError: If required dependencies are not available
         """
 
-        def factory():
+        def factory() -> AVOValidator:
             from src.processing.avo.validator import AVOValidator
 
             return AVOValidator(max_angle=max_angle)
 
-        return self._get_or_create("avo_validator", factory)
+        result: AVOValidator = self._get_or_create("avo_validator", factory)
+        return result
 
     def get_rock_physics_model(self) -> type:
         """Get RockPhysicsModel class (factory, not singleton).
