@@ -81,8 +81,6 @@ from src.processing.services import (
     get_manager_hub,
     get_avo_validator,
     get_rock_physics_service,
-    get_global_registry,
-    ServiceRegistry,
 )
 
 logger = logging.getLogger(__name__)
@@ -107,8 +105,6 @@ __all__ = [
     "get_manager_hub",
     "get_avo_validator",
     "get_rock_physics_service",
-    "get_global_registry",
-    "ServiceRegistry",
     # Managers
     "BaseManager",
     "CacheManager",

@@ -28,10 +28,6 @@ from .loader import (
     CacheLoader,
     CacheLoaderFactory,
     CacheConfig,
-    _FILE_PREFIX,
-    _FULL_STACK_KEY,
-    _NPZ_EXTENSION,
-    _NPY_EXTENSION,
 )
 from .extractors import (
     ArrayExtractor,
@@ -45,11 +41,6 @@ __all__ = [
     "CacheLoader",
     "CacheLoaderFactory",
     "CacheConfig",
-    # Private (for tests, not for public use)
-    "_FILE_PREFIX",
-    "_FULL_STACK_KEY",
-    "_NPZ_EXTENSION",
-    "_NPY_EXTENSION",
     # Extractors
     "ArrayExtractor",
     "NpzExtractor",
