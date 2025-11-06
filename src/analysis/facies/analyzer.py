@@ -493,13 +493,13 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         else:
             # Deferred import: avoid circular dependency at module load time.
             # The resampler module is only imported when actually needed.
-            from src.processing.resampling.resampler import get_resampler_factory
+            from src.processing.resampling._resampler import get_resampler_factory
 
             resampler = get_resampler_factory().get_resampler(grid_spec)
 
         # Deferred import: avoid circular dependency at module load time.
         # The resample cache module is only imported when actually needed.
-        from src.processing.resampling.cache import get_resample_plan_cache
+        from src.processing.resampling._cache import get_resample_plan_cache
 
         plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
         return resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)

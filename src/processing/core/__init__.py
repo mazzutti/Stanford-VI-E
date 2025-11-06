@@ -14,10 +14,7 @@ from src.processing.core.exceptions import (
     CacheError,
     ConfigurationError,
 )
-from src.processing.core.singleton import (
-    SingletonFactory,
-    ServiceRegistry,
-)
+
 from src.processing.core.constants import (
     DEFAULT_MAX_CACHE_BYTES,
     DEFAULT_DT_MILLISECONDS,
@@ -40,9 +37,6 @@ __all__ = [
     "ValidationError",
     "CacheError",
     "ConfigurationError",
-    # Singleton utilities
-    "SingletonFactory",
-    "ServiceRegistry",
     # Constants
     "DEFAULT_MAX_CACHE_BYTES",
     "DEFAULT_DT_MILLISECONDS",

@@ -12,13 +12,12 @@ from typing import Tuple, Optional
 import numpy as np
 from scipy.interpolate import interp1d
 from src.processing.interpolator import BatchedInterpolator
-from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling._plan import ResamplePlan
 from numba import njit, prange
 import logging
 import os
-from src.processing.core.singleton import SingletonFactory
 
-from src.processing.resampling.backends.base import BackendResult, BackendError
+from src.processing.resampling.backends._base import BackendResult, BackendError
 
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
@@ -186,7 +185,7 @@ class DepthTimeResampler:
             )
 
         # Try to consult a pluggable backend for potential optimized paths.
-        from src.processing.resampling.backends.manager import get_backend_manager
+        from src.processing.resampling.backends._manager import get_backend_manager
 
         backend = get_backend_manager().get_best(plan)
         logger = logging.getLogger(__name__)
@@ -434,7 +433,7 @@ class DepthTimeResampler:
             plan = ResamplePlan.create(self.grid_spec, vp_arr)
 
         # Try backend first (consult the BackendManager singleton)
-        from src.processing.resampling.backends.manager import get_backend_manager
+        from src.processing.resampling.backends._manager import get_backend_manager
 
         backend = get_backend_manager().get_best(plan)
         logger = logging.getLogger(__name__)
@@ -704,13 +703,8 @@ class ResamplerFactory:
         return self._cache[key]
 
 
-# Module-level singleton factory for callers to obtain resamplers
-_resampler_factory = SingletonFactory(lambda: ResamplerFactory())
+__all__.extend(["ResamplerFactory"])
 
-
-def get_resampler_factory(factory: ResamplerFactory | None = None) -> ResamplerFactory:
-    """Get the resampler factory, optionally providing an override."""
-    return _resampler_factory.get(factory)
-
-
-__all__.extend(["ResamplerFactory", "get_resampler_factory"])
+# Module-level singleton instance for convenient access
+resampler_factory = ResamplerFactory()
+__all__.append("resampler_factory")

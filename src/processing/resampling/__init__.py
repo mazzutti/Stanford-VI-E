@@ -1,67 +1,47 @@
 """Resampling package - Depth <-> Time resampling utilities.
 
+PHASE 2 REFACTORING: Internal modules now use _ prefix to mark them as internal.
+
+Public API: ResamplerService (primary interface), plus supporting types.
+Internal: _resampler, _cache, _plan, _kernels (implementation details).
+
 This package provides a unified interface for resampling seismic data between
 depth and time domains. It includes:
 
-- Resampling kernels and plans
+- Resampling kernels and plans (internal)
 - Backend management for different resampling algorithms
-- Caching for performance optimization
-- High-level service interface
+- Caching for performance optimization (internal)
+- High-level service interface (PUBLIC)
 
 Main Components:
-    - Resampler: Core resampling functionality
-    - ResamplerService: High-level service interface
-    - ResamplePlan: Resampling plan representation
-    - ResampleCache: LRU cache for plans
+    - ResamplerService: High-level service interface (PRIMARY PUBLIC API)
+    - ResamplePlan: Resampling plan representation (internal)
+    - ResampleCache: LRU cache for plans (internal)
     - Backend system: Pluggable resampling backends
-"""
 
-from .resampler import (
-    DepthTimeResampler,
-    set_backend_verbose,
-    is_backend_verbose,
-)
+RECOMMENDED USAGE:
+    from src.processing import ResamplerService
+
+    service = ResamplerService()
+    result = service.resample(data, plan)
+"""
 
 from .service import (
     ResamplerService,
-)
-
-from .plan import (
-    ResamplePlan,
-)
-
-from .cache import (
-    ResamplePlanCache,
-    get_resample_plan_cache,
 )
 
 from .backends import (
     ResamplerBackend,
     BackendError,
     BackendManager,
-    get_backend_manager,
-    register_backend,
-    list_backends,
-    get_best_backend,
 )
 
+# Public API only - no backward compatibility imports
 __all__ = [
-    # Core
-    "DepthTimeResampler",
+    # Primary public API
     "ResamplerService",
-    # Plans and caching
-    "ResamplePlan",
-    "ResamplePlanCache",
-    "get_resample_plan_cache",
-    # Backends
+    # Backend support (public)
     "ResamplerBackend",
     "BackendError",
     "BackendManager",
-    "get_backend_manager",
-    "register_backend",
-    "list_backends",
-    "get_best_backend",
-    # Utilities
-    "set_backend_verbose",
-    "is_backend_verbose",
 ]

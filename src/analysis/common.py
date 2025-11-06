@@ -158,7 +158,8 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
                     from src.processing import get_registry
 
                     proc: ProcessManagerProtocol = cast(
-                        ProcessManagerProtocol, get_registry().manager_hub().processes
+                        ProcessManagerProtocol,
+                        get_registry().get_manager_hub().processes,
                     )
                 else:
                     proc = proc_manager

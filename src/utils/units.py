@@ -226,6 +226,66 @@ class UnitRegistry:
             return maxabs >= 100
         return False
 
+    @staticmethod
+    def ensure_m_per_s(
+        arr: ArrayLike, copy_on_convert: bool = False
+    ) -> Tuple[np.ndarray, bool]:
+        """Ensure velocity array is in m/s, converting from km/s if needed.
+
+        Uses heuristic: values < 100 are likely km/s (seismic P-wave in km/s),
+        values >= 100 are likely m/s.
+
+        Args:
+            arr: Input array or array-like
+            copy_on_convert: If True, always return a copy; if False, return original if no conversion
+
+        Returns:
+            Tuple of (converted_array, was_converted)
+        """
+        a = np.asarray(arr)
+        maxabs = _nanmax_abs(a)
+
+        # If likely in km/s, convert to m/s
+        if maxabs < 100:
+            converted = a * 1000.0
+            return converted, True
+
+        # Already in m/s (or close enough)
+        if copy_on_convert:
+            return a.copy(), False
+        return a, False
+
+    @staticmethod
+    def ensure_meters(
+        arr: ArrayLike, copy_on_convert: bool = False
+    ) -> Tuple[np.ndarray, bool]:
+        """Ensure length array is in meters, converting from km if needed.
+
+        Uses heuristic: values < 0.1 are likely km, values >= 0.1 are likely meters.
+
+        Args:
+            arr: Input array or array-like
+            copy_on_convert: If True, always return a copy; if False, return original if no conversion
+
+        Returns:
+            Tuple of (converted_array, was_converted)
+        """
+        a = np.asarray(arr)
+        try:
+            maxabs = _nanmax_abs(a)
+        except Exception:
+            maxabs = float("inf")
+
+        # If likely in km, convert to meters
+        if maxabs < 0.1:
+            converted = a * 1000.0
+            return converted, True
+
+        # Already in meters (or close enough)
+        if copy_on_convert:
+            return a.copy(), False
+        return a, False
+
 
 __all__ = [
     "Converter",

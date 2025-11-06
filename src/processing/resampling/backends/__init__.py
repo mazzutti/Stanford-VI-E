@@ -13,20 +13,14 @@ Main Components:
     - BackendManager: Manages backend registration and selection
 """
 
-from .base import (
+from ._base import (
     ResamplerBackend,
     BackendResult,
     BackendError,
 )
 
-from .manager import (
+from ._manager import (
     BackendManager,
-    get_backend_manager,
-    register_backend,
-    list_backends,
-    get_best_backend,
-    set_backend_verbose,
-    is_backend_verbose,
 )
 
 __all__ = [
@@ -36,10 +30,4 @@ __all__ = [
     "BackendError",
     # Manager
     "BackendManager",
-    "get_backend_manager",
-    "register_backend",
-    "list_backends",
-    "get_best_backend",
-    "set_backend_verbose",
-    "is_backend_verbose",
 ]

@@ -7,6 +7,8 @@ High-level processing operations for seismic data transformation, including:
 - Rock physics models with caching
 - Material property models with unit handling
 
+PHASE 1 REFACTORING: Single unified entry point via ServiceRegistry.
+
 The module is organized into subpackages:
     core: Abstract base classes and core interfaces
     managers: Resource management (cache, files, processes)
@@ -15,19 +17,29 @@ The module is organized into subpackages:
     avo: AVO analysis and validation
     resampling: Depth/time resampling (backends, plans, service)
 
-Service Registry (OOP Approach):
+Service Registry (OOP Approach - Recommended):
     Use ServiceRegistry for dependency injection and service management:
-    
-        from src.processing.registry import get_registry
-        
-        registry = get_registry()
-        resampler = registry.resampler_service()
-        hub = registry.manager_hub()
-        validator = registry.avo_validator()
+
+        from src.processing import ServiceRegistry
+
+        registry = ServiceRegistry.get_default()
+        resampler = registry.get_resampler_service()
+        backends = registry.get_backend_manager()
+        cache = registry.get_resample_cache()
+        metrics = registry.get_backend_metrics()
+        hub = registry.get_manager_hub()
+        validator = registry.get_avo_validator()
+
+    Or for convenience:
+
+        service = ResamplerService()  # Uses default registry internally
 
 Key classes:
-    ServiceRegistry: OOP service registry for dependency injection
+    ServiceRegistry: OOP service registry for dependency injection (SINGLE ENTRY POINT)
     ResamplerService: High-level resampling with caching and metrics
+    BackendManager: Manages resampling backend selection
+    ResamplePlanCache: Caches resampling plans
+    BackendMetrics: Performance metrics collector
     ManagerHub: Unified interface for all resource managers
     ProcessManager: Process management facade (simplified API)
     CacheManager: Cache directory operations
@@ -86,11 +98,17 @@ from src.processing.avo.validator import (
     AVOValidityReport,
 )
 
-# New OOP service registry
+# PHASE 1: New unified OOP service registry (single entry point)
 from src.processing.registry import (
     ServiceRegistry,
     get_registry,
+    reset_registry,
 )
+
+# Resampling components (for advanced usage)
+from src.processing.resampling.backends._manager import BackendManager
+from src.processing.resampling._cache import ResamplePlanCache
+from src.processing.metrics import BackendMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -107,11 +125,15 @@ __all__ = [
     "ValidationError",
     "CacheError",
     "ConfigurationError",
-    # High-level APIs
-    "ResamplerService",
-    # OOP Service Registry
+    # PHASE 1: Unified service registry (RECOMMENDED ENTRY POINT)
     "ServiceRegistry",
     "get_registry",
+    "reset_registry",
+    # High-level services
+    "ResamplerService",
+    "BackendManager",
+    "ResamplePlanCache",
+    "BackendMetrics",
     # Managers
     "BaseManager",
     "CacheManager",
@@ -129,12 +151,4 @@ __all__ = [
     # AVO
     "AVOValidator",
     "AVOValidityReport",
-    # Subpackages
-    "core",
-    "managers",
-    "materials",
-    "rock_physics",
-    "avo",
-    "resampling",
-    "registry",
 ]

@@ -332,7 +332,7 @@ class ParserFactory:
         # STEP 3: DEPTH-TO-TIME
         _t0 = time.time()
         # Use DepthTimeResampler to compute TWT and resample properties
-        from src.processing.resampling.resampler import get_resampler_factory
+        from src.processing.resampling._resampler import get_resampler_factory
 
         resampler = get_resampler_factory().get_resampler(grid_spec)
         vp_for_twt = (
@@ -342,7 +342,7 @@ class ParserFactory:
         )
 
         # Create a shared ResamplePlan to drive all resampling in this run.
-        from src.processing.resampling.cache import get_resample_plan_cache
+        from src.processing.resampling._cache import get_resample_plan_cache
 
         plan_cache = get_resample_plan_cache()
         plan = plan_cache.get_plan(grid_spec, vp_for_twt, target_dt=grid_spec.dt)

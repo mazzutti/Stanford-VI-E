@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 import hashlib
 
-from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling._plan import ResamplePlan
 
 
 @dataclass(frozen=True)
@@ -161,28 +161,7 @@ class BackendMetrics:
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
 
 
-def get_global_metrics(inst: BackendMetrics | None = None) -> BackendMetrics:
-    """Return the provided BackendMetrics instance or create a new one.
-
-    Supports dependency injection: if `inst` is provided, it is returned unchanged.
-    Otherwise a new BackendMetrics instance is created (useful for testing or
-    when no global metrics are needed).
-
-    Parameters
-    ----------
-    inst : BackendMetrics, optional
-        Metrics instance to return. If None, a new BackendMetrics is created.
-
-    Returns
-    -------
-    BackendMetrics
-        The provided instance or a new BackendMetrics instance.
-    """
-    return inst if inst is not None else BackendMetrics()
-
-
 __all__ = [
     "PlanFingerprint",
     "BackendMetrics",
-    "get_global_metrics",
 ]

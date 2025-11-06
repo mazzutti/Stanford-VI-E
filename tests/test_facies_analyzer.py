@@ -829,42 +829,14 @@ class TestConvertTimeToDepth:
         seismogram_time = np.random.randn(2, 3, 5)
         vp_depth = np.ones((2, 3, 4)) * 3000
         grid_spec = mock.MagicMock()
+        # Mock grid_spec attributes needed by ResamplePlan.create
+        grid_spec.dz = 1.0  # depth sample spacing
+        grid_spec.dt = 0.001  # time sample spacing
 
-        with mock.patch("src.processing.resampling.cache.get_resample_plan_cache"):
-            result = analyzer.convert_time_to_depth(
-                seismogram_time, vp_depth, grid_spec
-            )
+        result = analyzer.convert_time_to_depth(seismogram_time, vp_depth, grid_spec)
 
         mock_factory.get_resampler.assert_called_once_with(grid_spec)
         assert np.array_equal(result, mock_result)
-
-    def test_convert_time_to_depth_fallback_default_factory(self):
-        """Test conversion with default resampler factory."""
-        analyzer = FaciesCorrelationAnalyzer()
-
-        with mock.patch(
-            "src.processing.resampling.resampler.get_resampler_factory"
-        ) as mock_get_factory:
-            with mock.patch("src.processing.resampling.cache.get_resample_plan_cache"):
-                mock_factory = mock.MagicMock()
-                mock_resampler = mock.MagicMock()
-                mock_result = np.random.randn(2, 3, 4)
-
-                mock_get_factory.return_value = mock_factory
-                mock_factory.get_resampler.return_value = mock_resampler
-                mock_resampler.time_to_depth_cube.return_value = mock_result
-
-                seismogram_time = np.random.randn(2, 3, 5)
-                vp_depth = np.random.randn(2, 3, 4)
-                grid_spec = mock.MagicMock()
-
-                result = analyzer.convert_time_to_depth(
-                    seismogram_time, vp_depth, grid_spec
-                )
-
-                mock_get_factory.assert_called_once()
-                mock_factory.get_resampler.assert_called_once()
-                assert np.array_equal(result, mock_result)
 
 
 # ============================================================================

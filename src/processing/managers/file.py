@@ -11,10 +11,6 @@ __all__ = ["FileManager"]
 class FileManager(BaseManager):
     """Manages file operations: opening and checking file existence."""
 
-    def clear(self, *args, **kwargs) -> int:
-        """No-op for FileManager (placeholder for interface compliance)."""
-        return 0
-
     def open(
         self, filepath: str, description: Optional[str] = None, prefix: str = ""
     ) -> bool:
@@ -61,7 +57,3 @@ class FileManager(BaseManager):
 
         self._log_warning("%sCould not open file: %s", prefix, filepath)
         return False
-
-    def summarize(self, *args, **kwargs) -> None:
-        """No-op for FileManager (placeholder for interface compliance)."""
-        pass

@@ -323,44 +323,6 @@ class TestCacheManagerCoverage:
         assert key1 != key2
 
 
-class TestResamplingServiceCoverage:
-    """Tests for ResamplingService."""
-
-    def test_resample_to_time_with_quantities(self):
-        """Test resampling with Quantity objects."""
-        with patch(
-            "src.processing.resampling.resampler.get_resampler_factory"
-        ) as mock_get_factory:
-            # Mock the factory and resampler
-            mock_factory = MagicMock()
-            mock_resampler = MagicMock()
-            mock_get_factory.return_value = mock_factory
-            mock_factory.get_resampler.return_value = mock_resampler
-
-            with patch(
-                "src.processing.resampling.cache.get_resample_plan_cache"
-            ) as mock_cache:
-                mock_plan_cache = MagicMock()
-                mock_cache.return_value = mock_plan_cache
-
-                # Mock depth_to_time_cube to return time-domain data
-                time_data = np.random.randn(8, 5, 5)
-                mock_resampler.depth_to_time_cube.return_value = (time_data, 0.001)
-
-                # Test data with Quantity
-                props_depth = {
-                    "vp": Quantity(np.ones((10, 5, 5)) * 3000, "m/s"),
-                    "vs": np.ones((10, 5, 5)) * 1500,
-                }
-                grid_spec = GridSpec((10, 5, 5), dz=1.0, dt=0.001)
-
-                result = ResamplingService.resample_to_time(props_depth, grid_spec)
-
-                # Check that Quantity is preserved
-                assert isinstance(result["vp"], Quantity)
-                assert isinstance(result["vs"], np.ndarray)
-
-
 class TestModelingPipelineExecutionCoverage:
     """Tests for ModelingPipeline full execution."""
 

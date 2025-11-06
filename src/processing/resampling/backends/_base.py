@@ -6,7 +6,7 @@ from typing import Optional, Protocol
 import numpy as np
 import logging
 
-from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling._plan import ResamplePlan
 
 
 class BackendError(RuntimeError):

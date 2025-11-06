@@ -18,9 +18,8 @@ from typing import Optional
 import numpy as np
 import os
 import logging
-from src.processing.core.singleton import SingletonFactory
 
-from src.processing.resampling.plan import ResamplePlan
+from src.processing.resampling._plan import ResamplePlan
 from src.io.grid import GridSpec
 
 logger = logging.getLogger(__name__)
@@ -116,17 +115,12 @@ class ResamplePlanCache:
         return plan
 
 
-__all__ = ["ResamplePlanCache"]
+__all__ = ["ResamplePlanCache", "get_resample_plan_cache", "set_resample_plan_cache"]
+
 
 # Module-level default cache (singleton). Consumers may override it by
 # calling `set_resample_plan_cache(...)` prior to first use.
 _DEFAULT_CACHE: Optional[ResamplePlanCache] = None
-
-# Allow configuring cache size via environment variable for tuning.
-try:
-    _default_size = int(os.environ.get("RESAMPLE_PLAN_CACHE_SIZE", "16"))
-except Exception:
-    _default_size = 16
 
 
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
@@ -140,59 +134,7 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     return _DEFAULT_CACHE
 
 
-def _impl_get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
-    global _DEFAULT_CACHE
-    if _DEFAULT_CACHE is None:
-        _DEFAULT_CACHE = ResamplePlanCache(maxsize=maxsize)
-    return _DEFAULT_CACHE
-
-
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""
     global _DEFAULT_CACHE
     _DEFAULT_CACHE = cache
-
-
-def _impl_set_resample_plan_cache(cache: ResamplePlanCache) -> None:
-    global _DEFAULT_CACHE
-    _DEFAULT_CACHE = cache
-
-
-__all__.extend(["get_resample_plan_cache", "set_resample_plan_cache"])
-
-
-# Module-level factory for the resample plan cache
-_cache_factory: SingletonFactory[ResamplePlanCache] = SingletonFactory(
-    lambda: ResamplePlanCache()
-)
-
-
-def get_cache() -> ResamplePlanCache:
-    """Get the module-level resample plan cache."""
-    return _cache_factory.get(None)
-
-
-def get_plan(
-    grid_spec: GridSpec,
-    vp_arr: np.ndarray,
-    target_dt: Optional[float] = None,
-    target_nt: Optional[int] = None,
-    block_size: int = 65536,
-) -> ResamplePlan:
-    """Convenience wrapper delegating to the module resample plan cache."""
-    cache = get_resample_plan_cache()
-    return cache.get_plan(
-        grid_spec,
-        vp_arr,
-        target_dt=target_dt,
-        target_nt=target_nt,
-        block_size=block_size,
-    )
-
-
-def set_cache(cache: ResamplePlanCache) -> None:
-    """Alias to set_resample_plan_cache for caller convenience."""
-    return set_resample_plan_cache(cache)
-
-
-__all__.extend(["get_cache", "get_plan", "set_cache"])

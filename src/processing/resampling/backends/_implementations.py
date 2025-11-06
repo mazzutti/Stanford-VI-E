@@ -1,25 +1,18 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 
 import logging
 
-from src.processing.resampling.backends.base import (
+from src.processing.resampling.backends._base import (
     BackendError,
     ResamplerBackend,
     BackendResult,
 )
-from src.processing.resampling.plan import ResamplePlan
-from src.processing.resampling.backends.manager import (
-    get_backend_manager,
-    register_backend as manager_register_backend,
-    list_backends as manager_list_backends,
-    get_best_backend as manager_get_best_backend,
-    set_backend_verbose as manager_set_backend_verbose,
-    is_backend_verbose as manager_is_backend_verbose,
-)
+from src.processing.resampling._plan import ResamplePlan
+from src.processing.resampling.backends._manager import BackendManager
 
 
 try:
@@ -28,60 +21,7 @@ except Exception:  # pragma: no cover - optional import
     BatchedInterpolator = None
 
 
-_REGISTRY: Dict[str, ResamplerBackend] = {}
-
 logger = logging.getLogger(__name__)
-
-__all__ = [
-    "BackendsRegistry",
-    "backends_registry",
-    "get_backends_registry",
-]
-
-
-# Thin OO facade for backend registry
-class BackendsRegistry:
-    """Facade around the backend manager helpers.
-
-    This thin registry delegates to the manager-level helpers imported above
-    (which in turn forward to the BackendManager singleton). Providing an
-    object facade makes it easier to inject or mock registry behavior in
-    tests or higher-level code.
-    """
-
-    def register_backend(self, name: str, impl: ResamplerBackend) -> None:
-        manager_register_backend(name, impl)
-
-    def get_backend(self, name: str) -> ResamplerBackend:
-        # Use the BackendManager singleton to retrieve the backend by name
-        return get_backend_manager().get(name)
-
-    def list_backends(self) -> List[str]:
-        return manager_list_backends()
-
-    def get_best_backend(self, plan: ResamplePlan) -> Optional[ResamplerBackend]:
-        return manager_get_best_backend(plan)
-
-    def set_backend_verbose(self, on: bool) -> None:
-        manager_set_backend_verbose(on)
-
-    def is_backend_verbose(self) -> bool:
-        return manager_is_backend_verbose()
-
-
-# Module-level singleton registry instance
-backends_registry: BackendsRegistry = BackendsRegistry()
-
-
-def get_backends_registry(config: dict | None = None):
-    if config is None:
-        return backends_registry
-    return BackendsRegistry()
-
-
-# The module now exposes the canonical BackendsRegistry facade and its
-# module-level lazy proxy. Callers should access `backends_registry` or
-# request a configured registry via `get_backends_registry`.
 
 
 class VectorizedBackend:
@@ -100,7 +40,7 @@ class VectorizedBackend:
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
         # For uniform_twt, we can call the resampler's fast path directly.
-        from src.processing.resampling.resampler import resampler_factory
+        from src.processing.resampling._resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out, dt = resampler.depth_to_time_cube(data, vp, plan=plan)
@@ -109,7 +49,7 @@ class VectorizedBackend:
     def time_to_depth(
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
-        from src.processing.resampling.resampler import resampler_factory
+        from src.processing.resampling._resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)
@@ -154,7 +94,7 @@ class BatchedInterpolatorBackend:
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs
     ) -> BackendResult:
         # Not implemented in this simple backend; fall back to resampler
-        from src.processing.resampling.resampler import resampler_factory
+        from src.processing.resampling._resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)
@@ -166,14 +106,19 @@ class BatchedInterpolatorBackend:
 
 
 # Register default backends
-try:
-    backends_registry.register_backend(VectorizedBackend.name, VectorizedBackend())
-except Exception:
-    pass
+def _register_default_backends():
+    """Register the default backend implementations with the global BackendManager."""
+    manager = BackendManager()
 
-try:
-    backends_registry.register_backend(
-        BatchedInterpolatorBackend.name, BatchedInterpolatorBackend()
-    )
-except Exception:
-    pass
+    try:
+        manager.register(VectorizedBackend.name, VectorizedBackend())
+    except Exception:
+        pass
+
+    try:
+        manager.register(BatchedInterpolatorBackend.name, BatchedInterpolatorBackend())
+    except Exception:
+        pass
+
+
+_register_default_backends()
