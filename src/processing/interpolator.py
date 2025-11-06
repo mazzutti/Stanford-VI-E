@@ -14,7 +14,8 @@ from dataclasses import dataclass
 import logging
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d  # type: ignore[import-untyped]
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,8 @@ class BatchedInterpolator:
         Returns: array shaped (nt, ntraces)
         """
         _, ntr = depth_padded_flat.shape
-        nt = len(self.time_axis)
+        time_axis_arr = np.asarray(self.time_axis)
+        nt = len(time_axis_arr)
 
         # If twt_padded is 1D (shared across traces) we can use the fast
         # vectorized path (possibly blocked on traces). If twt_padded is 2D
@@ -52,7 +54,7 @@ class BatchedInterpolator:
                     bounds_error=False,
                     fill_value=0.0,
                 )
-                return interp_func(self.time_axis)
+                return cast(np.ndarray, interp_func(time_axis_arr))
 
             out = np.zeros((nt, ntr), dtype=depth_padded_flat.dtype)
             for start in range(0, ntr, self.block_size):
@@ -66,11 +68,11 @@ class BatchedInterpolator:
                     bounds_error=False,
                     fill_value=0.0,
                 )
-                out[:, start:end] = interp_func(self.time_axis)
+                out[:, start:end] = interp_func(time_axis_arr)
             return out
 
-        # twt_padded is 2D: process in blocks and use per-block interp1d with
-        # the corresponding twt columns. depth_padded_flat shape is (nz+1, ntr)
+        # twt_padded is 2D: process in blocks and use per-block interp using the
+        # appropriate twt columns. depth_padded_flat shape is (nz+1, ntr)
         out = np.zeros((nt, ntr), dtype=depth_padded_flat.dtype)
         for start in range(0, ntr, self.block_size):
             end = min(start + self.block_size, ntr)
@@ -89,7 +91,7 @@ class BatchedInterpolator:
                     bounds_error=False,
                     fill_value=0.0,
                 )
-                out[:, start:end] = interp_func(self.time_axis)
+                out[:, start:end] = interp_func(time_axis_arr)
             else:
                 # Mixed twt: perform per-column interp using loop (small block)
                 for col in range(start, end):
@@ -103,7 +105,7 @@ class BatchedInterpolator:
                         bounds_error=False,
                         fill_value=0.0,
                     )
-                    out[:, col] = interp_func(self.time_axis)
+                    out[:, col] = interp_func(time_axis_arr)
 
         return out
 
@@ -116,7 +118,8 @@ class BatchedInterpolator:
         depth_padded_flat: (nz+1, ntr)
         returns (nt, ntr)
         """
-        nt = len(self.time_axis)
+        time_axis_arr = np.asarray(self.time_axis)
+        nt = len(time_axis_arr)
 
         # twt_padded may be 1D or 2D. If 1D, do the fast vectorized path.
         twt_is_2d = twt_padded.ndim == 2
@@ -125,14 +128,14 @@ class BatchedInterpolator:
         if not twt_is_2d:
             nzp1 = twt_padded.shape[0]
             # use searchsorted on the padded twt axis
-            idx = np.searchsorted(twt_padded, self.time_axis, side="left")
+            idx = np.searchsorted(twt_padded, time_axis_arr, side="left")
             upper = np.minimum(idx, nzp1 - 1)
             lower = np.maximum(idx - 1, 0)
 
             t_lower = twt_padded[lower]
             t_upper = twt_padded[upper]
-            choose_lower = np.abs(self.time_axis - t_lower) <= np.abs(
-                t_upper - self.time_axis
+            choose_lower = np.abs(time_axis_arr - t_lower) <= np.abs(
+                t_upper - time_axis_arr
             )
             nearest_idx = np.where(choose_lower, lower, upper)
 
@@ -166,13 +169,13 @@ class BatchedInterpolator:
             nblock = end - start
             for col in range(nblock):
                 twt_col = twt_block[:, col]
-                idx = np.searchsorted(twt_col, self.time_axis, side="left")
+                idx = np.searchsorted(twt_col, time_axis_arr, side="left")
                 upper = np.minimum(idx, nzp1 - 1)
                 lower = np.maximum(idx - 1, 0)
                 t_lower = twt_col[lower]
                 t_upper = twt_col[upper]
-                choose_lower = np.abs(self.time_axis - t_lower) <= np.abs(
-                    t_upper - self.time_axis
+                choose_lower = np.abs(time_axis_arr - t_lower) <= np.abs(
+                    t_upper - time_axis_arr
                 )
                 nearest_idx = np.where(choose_lower, lower, upper)
                 out[:, start + col] = depth_block[nearest_idx, col]

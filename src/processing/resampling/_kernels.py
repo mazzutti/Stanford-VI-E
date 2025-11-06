@@ -6,7 +6,8 @@ resampling, reducing complexity in the main DepthTimeResampler class.
 Functions are compiled once and cached by numba for subsequent calls.
 """
 
-from numba import njit, prange
+from typing import Any
+from numba import njit, prange  # type: ignore[import-untyped]
 import numpy as np
 
 
@@ -15,12 +16,12 @@ import numpy as np
 # ============================================================================
 
 
-@njit(parallel=True)
+@njit(parallel=True)  # type: ignore[misc]
 def resample_depth_to_time_nearest(
-    twt_irregular: np.ndarray,
-    data_depth: np.ndarray,
-    time_axis: np.ndarray,
-    out_array: np.ndarray,
+    twt_irregular: Any,
+    data_depth: Any,
+    time_axis: Any,
+    out_array: Any,
 ) -> None:
     """Nearest-neighbor resampling from depth to time domain (in-place).
 
@@ -60,12 +61,12 @@ def resample_depth_to_time_nearest(
                         out_array[ii, jj, ti] = prop[k]
 
 
-@njit(parallel=True)
+@njit(parallel=True)  # type: ignore[misc]
 def resample_depth_to_time_linear(
-    twt_irregular: np.ndarray,
-    data_depth: np.ndarray,
-    time_axis: np.ndarray,
-    out_array: np.ndarray,
+    twt_irregular: Any,
+    data_depth: Any,
+    time_axis: Any,
+    out_array: Any,
 ) -> None:
     """Linear interpolation from depth to time domain (in-place).
 
@@ -116,12 +117,12 @@ def resample_depth_to_time_linear(
 # ============================================================================
 
 
-@njit(parallel=True)
+@njit(parallel=True)  # type: ignore[misc]
 def resample_depth_to_time_from_irregular_nearest(
-    twt_irregular: np.ndarray,
-    data_depth: np.ndarray,
-    time_axis: np.ndarray,
-    out_array: np.ndarray,
+    twt_irregular: Any,
+    data_depth: Any,
+    time_axis: Any,
+    out_array: Any,
 ) -> None:
     """Nearest-neighbor resampling with irregular TWT (in-place).
 
@@ -158,12 +159,12 @@ def resample_depth_to_time_from_irregular_nearest(
                         out_array[ii, jj, ti] = prop[k]
 
 
-@njit(parallel=True)
+@njit(parallel=True)  # type: ignore[misc]
 def resample_depth_to_time_from_irregular_linear(
-    twt_irregular: np.ndarray,
-    data_depth: np.ndarray,
-    time_axis: np.ndarray,
-    out_array: np.ndarray,
+    twt_irregular: Any,
+    data_depth: Any,
+    time_axis: Any,
+    out_array: Any,
 ) -> None:
     """Linear interpolation with irregular TWT (in-place).
 
