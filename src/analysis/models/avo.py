@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 from .base import ModelUtilities, ValidationConfig
 from .config import Transition
 from .facies import FaciesStats
+from .formatters import FormattableModel
 
 if TYPE_CHECKING:
     from .statistics import BoundaryAmpsResult, GradientCorrelationResult
@@ -132,19 +133,22 @@ class TechniqueComparison:
 
 
 @dataclass
-class AvoStats:
+class AvoStats(FormattableModel):
     """Typed container for AVO technique statistics with validation.
 
     Fields are optional to support partial results. Extras may be provided in
     the ``extras`` mapping for non-standard metrics.
+    
+    Inherits formatting from FormattableModel for consistent __repr__/__str__
+    implementations.
     """
 
+    # generic container for other numeric metrics (optional)
+    extras: Dict[str, float] = field(default_factory=dict)
     pearson_correlation: Optional[float] = None
     pearson_pvalue: Optional[float] = None
     spearman_correlation: Optional[float] = None
     spearman_pvalue: Optional[float] = None
-    # generic container for other numeric metrics (optional)
-    extras: Dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate correlation and p-value ranges."""
@@ -255,14 +259,14 @@ class AvoStats:
             extras=data.get("extras", {}),
         )
 
-    def __str__(self) -> str:
-        """Return string representation."""
-        method, value = self.strongest_correlation
-        value_str = f"{value:.4f}" if value is not None else "N/A"
-        return (
-            f"AvoStats(strongest={method} r={value_str}, "
-            f"significant={self.is_significant()})"
-        )
+    def get_stats_dict(self) -> Dict[str, float]:
+        """Return statistics dictionary for FormattableModel formatting."""
+        return {
+            "pearson_correlation": self.pearson_correlation or 0.0,
+            "pearson_pvalue": self.pearson_pvalue or 0.0,
+            "spearman_correlation": self.spearman_correlation or 0.0,
+            "spearman_pvalue": self.spearman_pvalue or 0.0,
+        }
 
 
 @dataclass

@@ -13,7 +13,8 @@ from functools import total_ordering
 
 import numpy as np
 
-from .base import ModelUtilities, _STR_PRECISION, _STATS_REPR_PRECISION
+from .base import ModelUtilities
+from .formatters import FormattableModel
 from ..validators import CountValidator, QuantileValidator, ValidationError
 
 __all__ = [
@@ -23,8 +24,12 @@ __all__ = [
 
 @total_ordering
 @dataclass(slots=True)
-class FaciesStats:
-    """Per-facies amplitude statistics with computed properties and validation."""
+class FaciesStats(FormattableModel):
+    """Per-facies amplitude statistics with computed properties and validation.
+    
+    Inherits formatting from FormattableModel for consistent __repr__/__str__
+    implementations across all statistical model classes.
+    """
 
     count: int = 0
     mean: float = float("nan")
@@ -113,14 +118,21 @@ class FaciesStats:
         mean_val = round(self.mean, 10) if not ModelUtilities.is_nan(self.mean) else 0
         return hash(mean_val)
 
-    def __repr__(self) -> str:
-        """Return detailed representation for debugging."""
-        if self.is_empty():
-            return "FaciesStats(empty)"
-        return (
-            f"FaciesStats(count={self.count}, mean={self.mean:.{_STATS_REPR_PRECISION}f}, "
-            f"std={self.std:.{_STATS_REPR_PRECISION}f}, median={self.median:.{_STATS_REPR_PRECISION}f})"
-        )
+    def get_stats_dict(self) -> Dict[str, float]:
+        """Return statistics dictionary for FormattableModel formatting.
+        
+        Used by parent class FormattableModel for consistent __repr__/__str__.
+        """
+        return {
+            "count": float(self.count),
+            "mean": self.mean,
+            "std": self.std,
+            "median": self.median,
+            "q25": self.q25,
+            "q75": self.q75,
+            "min": self.min,
+            "max": self.max,
+        }
 
     @property
     def iqr(self) -> float:
@@ -182,15 +194,3 @@ class FaciesStats:
             for name in float_field_names
         }
         return cls(count=int(stats_dict.get("count", 0)), **float_fields)
-
-    def __str__(self) -> str:
-        """Return string representation."""
-        if self.is_empty():
-            return "FaciesStats(empty)"
-        return (
-            f"FaciesStats(n={self.count}, "
-            f"mean={self.mean:.{_STR_PRECISION}f}, "
-            f"std={self.std:.{_STR_PRECISION}f}, "
-            f"median={self.median:.{_STR_PRECISION}f}, "
-            f"range=[{self.min:.{_STR_PRECISION}f}, {self.max:.{_STR_PRECISION}f}])"
-        )

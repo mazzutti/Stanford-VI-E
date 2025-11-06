@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, Any
 
 from src.analysis.config_mixins import ValidatableConfigMixin
+from src.analysis.validators_registry import ValidatorRegistry
 
 __all__ = [
     "Transition",
@@ -131,12 +132,11 @@ class FaciesCorrelationConfig(ValidatableConfigMixin):
 
     def _validate_params(self) -> None:
         """Validate all configuration parameters."""
-        if self.facies_count < 1:
-            raise ValueError("facies_count must be at least 1")
-        if not (0.0 < self.boundary_threshold < 1.0):
-            raise ValueError("boundary_threshold must be between 0 and 1")
-        if self.dilation_window < 1:
-            raise ValueError("dilation_window must be at least 1")
+        ValidatorRegistry.validate_positive(self.facies_count, "facies_count")
+        ValidatorRegistry.validate_exclusive_range(
+            self.boundary_threshold, 0.0, 1.0, "boundary_threshold"
+        )
+        ValidatorRegistry.validate_positive(self.dilation_window, "dilation_window")
 
     def is_valid(self) -> bool:
         """Check if configuration is valid.

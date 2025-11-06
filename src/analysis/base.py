@@ -76,11 +76,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, Generic, TypeVar
+import logging
 
 __all__ = [
     "AnalyzerInterface",
     "AnalysisConfig",
 ]
+
+logger = logging.getLogger(__name__)
 
 T_Config = TypeVar("T_Config")  # Analyzer-specific configuration type
 T_Result = TypeVar("T_Result")  # Analyzer-specific result type
@@ -251,3 +254,58 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
             True if analyzer has all required state, False otherwise.
         """
         pass
+
+    def run(self, **kwargs: Any) -> T_Result:
+        """Template method orchestrating analyzer lifecycle.
+        
+        Implements the Template Method pattern to standardize analyzer execution:
+        1. Validate inputs
+        2. Check readiness
+        3. Execute analysis
+        4. Handle errors consistently
+        
+        This method should be used instead of calling analyze() directly.
+        Subclasses should override analyze(), not run().
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Input data and parameters for analysis.
+
+        Returns
+        -------
+        T_Result
+            Analysis results from analyze().
+
+        Raises
+        ------
+        ValueError
+            If input validation fails.
+        RuntimeError
+            If analyzer is not ready or analysis fails.
+        """
+        # Step 1: Validate inputs
+        if not self.validate_inputs(**kwargs):
+            raise ValueError(
+                f"{self.name}: Input validation failed. "
+                "Check input parameters and data."
+            )
+        
+        # Step 2: Check readiness
+        if not self.is_ready():
+            raise RuntimeError(
+                f"{self.name}: Analyzer not properly configured. "
+                "Call configure() before analyze()."
+            )
+        
+        # Step 3: Execute analysis
+        logger.debug(f"{self.name}: Starting analysis")
+        try:
+            result = self.analyze(**kwargs)
+            logger.debug(f"{self.name}: Analysis completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"{self.name}: Analysis failed: {e}", exc_info=True)
+            raise RuntimeError(
+                f"{self.name}: Analysis failed: {e}"
+            ) from e
