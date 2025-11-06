@@ -172,7 +172,7 @@ class DepthTimeResampler:
             data_arr = cast(Quantity, data_depth).array
         else:
             data_arr = np.asarray(data_depth)
-        
+
         if vp_was_quantity:
             vp_arr = cast(Quantity, vp_depth).array
         else:
@@ -281,7 +281,9 @@ class DepthTimeResampler:
             if np.issubdtype(data_arr.dtype, np.integer):
 
                 @njit(parallel=True)  # type: ignore[misc]
-                def _nearest_resample_numba(twt_ir: Any, data: Any, t_axis: Any, out_arr: Any) -> None:
+                def _nearest_resample_numba(
+                    twt_ir: Any, data: Any, t_axis: Any, out_arr: Any
+                ) -> None:
                     ni_, nj_, nz_ = data.shape
                     nt_ = t_axis.shape[0]
                     for ii in prange(ni_):
@@ -311,7 +313,9 @@ class DepthTimeResampler:
             else:
 
                 @njit(parallel=True)  # type: ignore[misc]
-                def _linear_resample_numba(twt_ir: Any, data: Any, t_axis: Any, out_arr: Any) -> None:
+                def _linear_resample_numba(
+                    twt_ir: Any, data: Any, t_axis: Any, out_arr: Any
+                ) -> None:
                     ni_, nj_, nz_ = data.shape
                     nt_ = t_axis.shape[0]
                     for ii in prange(ni_):
@@ -421,12 +425,12 @@ class DepthTimeResampler:
         # Unwrap
         seis_was_quantity = isinstance(seismogram_time, Quantity)
         vp_is_quantity = isinstance(vp_depth, Quantity)
-        
+
         if seis_was_quantity:
             seis_arr = cast(Quantity, seismogram_time).array
         else:
             seis_arr = np.asarray(seismogram_time)
-        
+
         if vp_is_quantity:
             vp_arr = cast(Quantity, vp_depth).array
         else:
@@ -598,7 +602,9 @@ class DepthTimeResampler:
             if is_categorical or np.issubdtype(data_depth.dtype, np.integer):
 
                 @njit(parallel=True)  # type: ignore[misc]
-                def _nearest_from_twt(twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any) -> None:
+                def _nearest_from_twt(
+                    twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any
+                ) -> None:
                     ni_, nj_, nz_ = data_d.shape
                     nt_ = t_axis.shape[0]
                     for ii in prange(ni_):
@@ -624,7 +630,9 @@ class DepthTimeResampler:
             else:
 
                 @njit(parallel=True)  # type: ignore[misc]
-                def _linear_resample_from_twt(twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any) -> None:
+                def _linear_resample_from_twt(
+                    twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any
+                ) -> None:
                     ni_, nj_, nz_ = data_d.shape
                     nt_ = t_axis.shape[0]
                     for ii in prange(ni_):
@@ -715,13 +723,18 @@ class ResamplerFactory:
         self._cache: Dict[Any, DepthTimeResampler] = {}
 
     def get_resampler(self, grid_spec: GridSpec) -> DepthTimeResampler:
-        key: tuple[Any, ...] = (tuple(grid_spec.shape), float(grid_spec.dz), float(grid_spec.dt))
+        key: tuple[Any, ...] = (
+            tuple(grid_spec.shape),
+            float(grid_spec.dz),
+            float(grid_spec.dt),
+        )
         if key not in self._cache:
             self._cache[key] = DepthTimeResampler(grid_spec=grid_spec)
         return self._cache[key]
 
 
 __all__.extend(["ResamplerFactory"])
+
 
 # Module-level singleton instance for convenient access
 def _create_resampler_factory() -> ResamplerFactory:

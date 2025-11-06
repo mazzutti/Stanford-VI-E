@@ -129,7 +129,9 @@ class ResamplePlan:
         if data_arr.shape != (self.ni, self.nj, self.nz):
             raise ValueError("data_arr shape must match vp dimensions")
         depth_padded = np.concatenate([data_arr[:, :, 0:1], data_arr], axis=2)
-        return cast(np.ndarray, depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1))
+        return cast(
+            np.ndarray, depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
+        )
 
     def blocks(self) -> List[Tuple[int, int]]:
         ntr = self.ntr

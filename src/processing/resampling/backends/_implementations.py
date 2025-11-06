@@ -16,6 +16,7 @@ from src.utils.quantity import Quantity
 
 try:
     from src.processing.interpolator import BatchedInterpolator as _BatchedInterpolator
+
     BatchedInterpolator: Optional[Type[Any]] = _BatchedInterpolator
 except Exception:  # pragma: no cover - optional import
     BatchedInterpolator = None

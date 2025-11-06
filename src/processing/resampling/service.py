@@ -83,8 +83,14 @@ class ResamplerService:
 
         # Delegate to the inner resampler
         # Cast to proper types to ensure type safety
-        data_arr = data_depth.array if isinstance(data_depth, Quantity) else np.asarray(data_depth)
-        vp_arr_resampler = vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
+        data_arr = (
+            data_depth.array
+            if isinstance(data_depth, Quantity)
+            else np.asarray(data_depth)
+        )
+        vp_arr_resampler = (
+            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
+        )
         out = self._inner.depth_to_time_cube(data_arr, vp_arr_resampler, plan=plan)
         return out
 
@@ -110,7 +116,13 @@ class ResamplerService:
             plan = ResamplePlan.create(self.grid_spec, vp_arr)
 
         # Cast to proper types to ensure type safety
-        data_arr = seismogram_time.array if isinstance(seismogram_time, Quantity) else np.asarray(seismogram_time)
-        vp_arr_resampler = vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
+        data_arr = (
+            seismogram_time.array
+            if isinstance(seismogram_time, Quantity)
+            else np.asarray(seismogram_time)
+        )
+        vp_arr_resampler = (
+            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
+        )
         out = self._inner.time_to_depth_cube(data_arr, vp_arr_resampler, plan=plan)
         return out

@@ -13,7 +13,7 @@ class FileManager(BaseManager):
 
     def clear(self, *args: Any, **kwargs: Any) -> int:
         """Clear method not applicable for FileManager (no-op).
-        
+
         Returns:
             0 (no resources cleared)
         """

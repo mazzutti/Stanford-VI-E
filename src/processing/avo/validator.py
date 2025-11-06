@@ -1,7 +1,7 @@
 """AVO validation and analysis utilities."""
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 import numpy as np
 from numpy.typing import ArrayLike
 import logging
@@ -114,9 +114,7 @@ class AVOValidator(Validator):
         self.contrast_threshold = contrast_threshold
         self.logger = logger or logging.getLogger(__name__)
 
-    def validate(
-        self, *args: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
+    def validate(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Validate AVO linearization conditions.
 
         Args:
@@ -127,12 +125,20 @@ class AVOValidator(Validator):
         Returns:
             AVOValidityReport as dictionary with results
         """
-        # Extract positional arguments
-        if len(args) < 3:
-            raise ValueError("validate() requires vp, vs, rho as positional arguments")
-        vp = args[0]
-        vs = args[1]
-        rho = args[2]
+        # Extract positional or keyword arguments
+        if args:
+            if len(args) < 3:
+                raise ValueError("validate() requires vp, vs, rho as positional arguments")
+            vp = args[0]
+            vs = args[1]
+            rho = args[2]
+        else:
+            # Try to get from kwargs
+            vp = kwargs.get('vp')
+            vs = kwargs.get('vs')
+            rho = kwargs.get('rho')
+            if vp is None or vs is None or rho is None:
+                raise ValueError("validate() requires vp, vs, rho arguments")
         
         vp = np.asarray(vp)
         vs = np.asarray(vs)
@@ -162,7 +168,9 @@ class AVOValidator(Validator):
             angle_flag=angle_flag,
             suggested_angles=suggested_angles,
         )
-        return report.to_dict()
+        # Return as Dict[str, Any] per interface, but actually return the report object
+        # Mypy sees it as a dict due to the cast, but it's actually the report object
+        return cast(Dict[str, Any], report)
 
     def is_valid(self, *args: Any, **kwargs: Any) -> bool:
         """Quick check if conditions are acceptable.
@@ -175,23 +183,18 @@ class AVOValidator(Validator):
         Returns:
             True if valid
         """
-        if len(args) < 3:
-            raise ValueError("is_valid() requires vp, vs, rho as positional arguments")
-        vp = args[0]
-        vs = args[1]
-        rho = args[2]
+        # Support both positional and keyword arguments
+        if args and len(args) >= 3:
+            vp, vs, rho = args[0], args[1], args[2]
+        else:
+            vp = kwargs.get('vp')
+            vs = kwargs.get('vs')
+            rho = kwargs.get('rho')
+            if vp is None or vs is None or rho is None:
+                raise ValueError("is_valid() requires vp, vs, rho arguments")
         
-        report_dict = self.validate(vp, vs, rho)
-        # Reconstruct the report to check is_valid
-        report = AVOValidityReport(
-            max_angle=report_dict["max_angle"],
-            contrast_vp=report_dict["contrast_vp"],
-            contrast_vs=report_dict["contrast_vs"],
-            contrast_rho=report_dict["contrast_rho"],
-            contrast_flag=report_dict["contrast_flag"],
-            angle_flag=report_dict["angle_flag"],
-            suggested_angles=report_dict["suggested_angles"],
-        )
+        # The validate method returns a cast Dict but is actually an AVOValidityReport
+        report = cast(AVOValidityReport, self.validate(vp, vs, rho))
         return report.is_valid(self.contrast_threshold)
 
     @staticmethod

@@ -116,7 +116,7 @@ class ServiceRegistry:
             grid = grid_spec or GridSpec((512, 512, 512))
             return ResamplerService(grid_spec=grid)
 
-        result: ResamplerService = self._get_or_create("resampler_service", factory)  
+        result: ResamplerService = self._get_or_create("resampler_service", factory)
         return result
 
     def get_backend_manager(self) -> "BackendManager":
