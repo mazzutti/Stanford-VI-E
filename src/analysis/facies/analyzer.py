@@ -7,7 +7,7 @@ injection and composition.
 
 import logging
 from types import TracebackType
-from typing import Callable, Optional, Type, Dict, cast
+from typing import Any, Callable, Optional, Type, Dict, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -230,9 +230,9 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         from src.analysis.builder import build_facies_analyzer
 
         if builder_func is None:
-            return build_facies_analyzer()
+            return cast("FaciesCorrelationAnalyzer", build_facies_analyzer())
 
-        return builder_func()
+        return cast("FaciesCorrelationAnalyzer", builder_func())  # type: ignore[redundant-cast]
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging.
@@ -331,7 +331,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         """
         return "facies"
 
-    def validate_inputs(self, **kwargs) -> bool:
+    def validate_inputs(self, **kwargs: Any) -> bool:
         """Validate that required input parameters are provided.
 
         Implements AnalyzerInterface abstract method. Validates cache_dir
@@ -352,20 +352,21 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         ValueError
             If validation fails.
         """
-        cache_dir = kwargs.get("cache_dir", self._config.cache_dir)
+        cache_dir = kwargs.get("cache_dir", getattr(self._config, "cache_dir", None))
         domain = kwargs.get("domain", DEFAULT_DOMAIN)
 
         # Validate using existing validators
         try:
             DomainValidator.validate_domain(domain, self.VALID_DOMAINS)
             PathValidator.validate_cache_dir(cache_dir)
-            self._config.validate_inputs()
+            if hasattr(self._config, "validate_inputs"):
+                self._config.validate_inputs()
             return True
         except (ValueError, OSError) as e:
             logger.warning(f"Input validation failed: {e}")
             return False
 
-    def analyze(self, **kwargs) -> Figure:
+    def analyze(self, **kwargs: Any) -> Figure:
         """Execute facies correlation analysis pipeline.
 
         Implements AnalyzerInterface abstract method. Equivalent to calling
@@ -405,7 +406,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         FaciesAnalysisConfig
             Current configuration object.
         """
-        return self._config
+        return cast(FaciesAnalysisConfig, self._config)
 
     def configure(self, config: FaciesAnalysisConfig) -> None:
         """Update the analysis configuration.
@@ -427,7 +428,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
                 f"Expected FaciesAnalysisConfig, got {type(config).__name__}"
             )
 
-        self._config = config
+        self._config = cast(FaciesCorrelationConfig, config)
 
         # Update dilation window in processors that depend on it
         if hasattr(self._boundary_amp_extractor, "dilation_window"):
@@ -489,20 +490,21 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         """
         logger.info("Converting seismogram from time to depth domain...")
         if self._resampler_factory is not None:
-            resampler = self._resampler_factory.get_resampler(grid_spec)
+            resampler: Any = self._resampler_factory.get_resampler(grid_spec)
         else:
             # Deferred import: avoid circular dependency at module load time.
             # The resampler module is only imported when actually needed.
-            from src.processing.resampling._resampler import get_resampler_factory
+            from src.processing.resampling._resampler import resampler_factory
 
-            resampler = get_resampler_factory().get_resampler(grid_spec)
+            resampler = resampler_factory.get_resampler(grid_spec)
 
         # Deferred import: avoid circular dependency at module load time.
         # The resample cache module is only imported when actually needed.
         from src.processing.resampling._cache import get_resample_plan_cache
 
         plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
-        return resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
+        result = resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
+        return cast(NDArray[np.float64], result)
 
     def detect_facies_boundaries(
         self, facies_cube: NDArray[np.int64]
@@ -732,36 +734,6 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
             "domain_handler_factory": self._domain_handler_factory.__class__.__name__,
         }
 
-    def is_ready(self) -> bool:
-        """Check if all critical dependencies are initialized and ready.
-
-        Returns
-        -------
-        bool
-            True if all required processors and config are ready.
-
-        Notes
-        -----
-        Optional dependencies like plotter and resampler_factory are lazily
-        initialized, so this method only checks required components.
-
-        Example
-        -------
-        >>> analyzer = FaciesCorrelationAnalyzer()
-        >>> if analyzer.is_ready():
-        ...     fig = analyzer.run(cache_dir=".cache")
-        """
-        return (
-            self._config is not None
-            and self._boundary_detector is not None
-            and self._cube_aligner is not None
-            and self._boundary_amp_extractor is not None
-            and self._gradient_calculator is not None
-            and self._interface_analyzer is not None
-            and self._facies_discriminator is not None
-            and self._domain_handler_factory is not None
-        )
-
     def get_summary(self) -> str:
         """Get a comprehensive summary of analyzer configuration and readiness.
 
@@ -917,9 +889,17 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
 
         Delegates to the appropriate domain handler strategy.
         """
+        # Get resampler from factory
+        if self._resampler_factory is not None:
+            resampler: Any = self._resampler_factory.get_resampler(grid_spec)
+        else:
+            from src.processing.resampling._resampler import resampler_factory
+
+            resampler = resampler_factory.get_resampler(grid_spec)
+
         handler = self._domain_handler_factory.get_handler(domain)
         avo_display, facies_display = handler.prepare_display_cubes(
-            vm, facies_depth, avo, grid_spec
+            resampler, facies_depth, avo, grid_spec
         )
         return DisplayCubesResult(
             avo_display=avo_display, facies_display=facies_display

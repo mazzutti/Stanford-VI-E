@@ -363,10 +363,10 @@ class AnalysisSchema:
     expects and what it produces.
     """
 
-    input_fields: Dict[str, Type]
+    input_fields: Dict[str, Type[Any]]
     """Required input field names and their types."""
 
-    output_fields: Dict[str, Type]
+    output_fields: Dict[str, Type[Any]]
     """Output field names and their types."""
 
     description: str = ""
@@ -400,11 +400,11 @@ class Computer(ABC, Generic[T_In, T_Out]):
     A concrete computer implementation:
 
     >>> class MyComputer(Computer[np.ndarray, Dict[str, np.ndarray]]):
-    ...     def compute(self, data: np.ndarray) -> Dict[str, np.ndarray]:
+    ...     def compute(self, data: NDArray[np.floating[Any]]) -> Dict[str, np.ndarray]:
     ...         # Do computation
     ...         return {"result": computed_array}
     ...
-    ...     def validate(self, data: np.ndarray) -> bool:
+    ...     def validate(self, data: NDArray[np.floating[Any]]) -> bool:
     ...         return data.shape == expected_shape
     """
 

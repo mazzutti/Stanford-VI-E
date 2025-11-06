@@ -9,7 +9,9 @@ the `main()` method, which orchestrates the full pipeline through
 
 from __future__ import annotations
 
-from src.analysis.common import time, Path, AnalysisCommon
+from src.analysis.common import AnalysisCommon
+from pathlib import Path
+import time
 
 import logging
 import subprocess
@@ -221,8 +223,6 @@ class SeismogramAnalyzer:
 
                 run_full_modeling(
                     cache_dir=cache_dir,
-                    skip_cleanup=skip_cleanup,
-                    verbose=verbose,
                     add_avo_noise=False,
                 )
             self._logger.info("✓ Seismic modeling pipeline completed successfully")

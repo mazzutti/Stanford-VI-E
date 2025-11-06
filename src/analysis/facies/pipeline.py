@@ -6,7 +6,7 @@ analysis pipeline, separating concerns and improving testability.
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -73,7 +73,21 @@ class AnalysisPipeline:
         avo = cache_res.avo
 
         # Stage 2: Load dataset
-        dm = self._stage_load_dataset(plot_cfg)
+        # Extract necessary info from plot_cfg if it has these attributes,
+        # otherwise they should be passed separately
+        if (
+            hasattr(plot_cfg, "data_path")
+            and hasattr(plot_cfg, "file_map")
+            and hasattr(plot_cfg, "grid_spec")
+        ):
+            dm = self._stage_load_dataset(
+                plot_cfg.data_path, plot_cfg.file_map, plot_cfg.grid_spec
+            )
+        else:
+            # If PlotConfig doesn't have these, they need to be provided separately
+            raise ValueError(
+                "PlotConfig must have data_path, file_map, and grid_spec attributes"
+            )
 
         # Stage 3: Align and prepare cubes
         display_res = self._stage_prepare_cubes(avo, dm, domain, plot_cfg)
@@ -139,26 +153,30 @@ class AnalysisPipeline:
             raise ValueError(f"No 'full_stack' key found in cache file: {avo_fn}")
         return CacheLoadResult(avo=avo, filename=avo_fn)
 
-    def _stage_load_dataset(self, plot_cfg: PlotConfig) -> DatasetManager:
-        """Stage 2: Load dataset and velocity model.
+    def _stage_load_dataset(
+        self,
+        data_path: Path,
+        file_map: dict[str, str],
+        grid_spec: Any,
+    ) -> DatasetManager:
+        """Load dataset from disk.
 
         Parameters
         ----------
-        plot_cfg
-            Plot configuration with data path and file map.
+        data_path
+            Root path to dataset files.
+        file_map
+            Mapping of property names to file paths.
+        grid_spec
+            Grid specification for the dataset.
 
         Returns
         -------
         DatasetManager
             Loaded dataset manager with all properties.
         """
-        DATA_PATH, FILE_MAP, grid_spec = (
-            plot_cfg.data_path,
-            plot_cfg.file_map,
-            plot_cfg.grid_spec,
-        )
         # Construct the canonical DatasetManager using the loader.
-        return DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
+        return DatasetManager.from_stanfordsix(str(data_path), file_map, grid_spec)
 
     def _stage_prepare_cubes(
         self,
@@ -209,11 +227,13 @@ class AnalysisPipeline:
         # Use DatasetManager attributes directly.
         # Cast from generic array to int64 array for type safety
         facies_depth: NDArray[np.int64] = cast(NDArray[np.int64], dm.facies)
-        vm = VelocityModel.from_dataset(dm, vp_key="vp")
+        if dm.vp is None:
+            raise ValueError("vp not loaded from dataset")
+        vm = VelocityModel(vp=dm.vp, grid_spec=dm.grid_spec)
 
         # Prepare display cubes for requested domain
         return self.analyzer._prepare_display_cubes(
-            vm, facies_depth, avo, domain, plot_cfg.grid_spec
+            vm, facies_depth, avo, domain, dm.grid_spec
         )
 
     def _stage_run_analysis(

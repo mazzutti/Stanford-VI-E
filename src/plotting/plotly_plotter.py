@@ -5,9 +5,10 @@ Replaces plot_3d_interactive.py with cleaner OOP interface.
 """
 
 import logging
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 import plotly.graph_objects as go
 
 from src.plotting.helpers.base import BasePlotter
@@ -24,7 +25,7 @@ class PlotlyPlotter(BasePlotter):
 
     def create_3d_volume(
         self,
-        cube: np.ndarray,
+        cube: NDArray[np.floating[Any]],
         slice_indices: Tuple[int, int, int],
         title: str = "",
         k_scale: float = 1.0,

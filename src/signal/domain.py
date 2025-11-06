@@ -5,7 +5,9 @@ resamples properties onto regular time grids.
 """
 
 import logging
+from typing import Any, cast
 import numpy as np
+from numpy.typing import NDArray
 from numba import njit, prange
 
 from src.io.grid import GridSpec
@@ -37,8 +39,8 @@ class DepthTimeConverter:
         self.grid_spec = grid_spec
 
     def convert_depth_to_twt(
-        self, vp_depth: np.ndarray | Quantity
-    ) -> np.ndarray | Quantity:
+        self, vp_depth: NDArray[np.floating[Any]] | Quantity
+    ) -> NDArray[np.floating[Any]] | Quantity:
         """Convert depth-domain velocity to two-way time (TWT).
 
         Computes TWT grid from a depth-domain P-wave velocity field.
@@ -52,7 +54,10 @@ class DepthTimeConverter:
         logger.info("Converting depth to two-way time (TWT)...")
 
         input_was_quantity = isinstance(vp_depth, Quantity)
-        vp_arr = vp_depth.array if input_was_quantity else np.asarray(vp_depth)
+        if input_was_quantity:
+            vp_arr = cast(Quantity, vp_depth).array
+        else:
+            vp_arr = cast(NDArray[np.floating[Any]], vp_depth)
 
         from src.processing.resampling._cache import get_resample_plan_cache
 
@@ -64,9 +69,13 @@ class DepthTimeConverter:
             return Quantity(twt_irregular, "s")
         return twt_irregular
 
-    def resample_properties_to_time(
-        self, properties_depth: dict, twt_irregular: np.ndarray | Quantity
-    ) -> tuple[dict, np.ndarray]:
+    def resample_to_time(
+        self,
+        properties_depth: dict[str, NDArray[np.floating[Any]] | Quantity],
+        twt_irregular: NDArray[np.floating[Any]] | Quantity,
+    ) -> tuple[
+        dict[str, NDArray[np.floating[Any]] | Quantity], NDArray[np.floating[Any]]
+    ]:
         """Resample depth-domain properties to regular time grid.
 
         Resamples a collection of depth-domain property cubes onto a regular
@@ -96,7 +105,7 @@ class DepthTimeConverter:
         time_axis = np.arange(0, max_twt, dt)
 
         # Initialize output dictionary
-        resampled_properties = {}
+        resampled_properties: dict[str, NDArray[np.floating[Any]] | Quantity] = {}
         for key, cube in properties_depth.items():
             cube_arr = cube.array if isinstance(cube, Quantity) else cube
             resampled_properties[key] = np.zeros(
@@ -113,7 +122,10 @@ class DepthTimeConverter:
 
     @staticmethod
     def _resample_numba_parallel(
-        properties_depth: dict, twt_arr: np.ndarray, time_axis: np.ndarray, output: dict
+        properties_depth: dict[str, NDArray[np.floating[Any]] | Quantity],
+        twt_arr: NDArray[np.floating[Any]],
+        time_axis: NDArray[np.floating[Any]],
+        output: dict[str, NDArray[np.floating[Any]] | Quantity],
     ) -> None:
         """Resample using Numba-optimized parallel kernel.
 
@@ -127,7 +139,12 @@ class DepthTimeConverter:
         """
 
         @njit(parallel=True)
-        def _kernel(twt_ir, props, t_axis, out):
+        def _kernel(
+            twt_ir: "NDArray[np.floating[Any]]",
+            props: "NDArray[np.floating[Any]]",
+            t_axis: "NDArray[np.floating[Any]]",
+            out: "NDArray[np.floating[Any]]",
+        ) -> None:
             """Numba kernel for parallel resampling."""
             ni, nj, nz = props.shape
             nt = t_axis.shape[0]
@@ -153,7 +170,12 @@ class DepthTimeConverter:
         # Apply kernel to each property
         for key, cube in properties_depth.items():
             cube_arr = cube.array if isinstance(cube, Quantity) else cube
-            out = output[key]
+            out_val = output[key]
+            # Extract NDArray from Quantity if needed
+            if isinstance(out_val, Quantity):
+                out = out_val.array
+            else:
+                out = out_val
             _kernel(twt_arr, cube_arr, time_axis, out)
             # Wrap in Quantity if input was Quantity
             if isinstance(cube, Quantity):

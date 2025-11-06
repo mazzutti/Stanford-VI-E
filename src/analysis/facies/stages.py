@@ -21,7 +21,7 @@ from src.analysis.domain.enum import Domain
 logger = logging.getLogger(__name__)
 
 
-class ValidateInputsStage(PipelineStage):
+class ValidateInputsStage(PipelineStage[Any, Any]):
     """Validates required inputs and configuration.
 
     Precondition: Input dict contains required keys.
@@ -79,7 +79,7 @@ class ValidateInputsStage(PipelineStage):
         return input_data
 
 
-class LoadAnalysisDataStage(PipelineStage):
+class LoadAnalysisDataStage(PipelineStage[Any, Any]):
     """Loads analysis data (seismic, facies, velocity) from cache.
 
     This is a placeholder stage for data loading logic that would be
@@ -116,7 +116,7 @@ class LoadAnalysisDataStage(PipelineStage):
         return input_data
 
 
-class DomainTransformationStage(PipelineStage):
+class DomainTransformationStage(PipelineStage[Any, Any]):
     """Transforms seismic data between time and depth domains as needed.
 
     Converts time-domain data to depth if analysis domain is DEPTH.
@@ -163,7 +163,7 @@ class DomainTransformationStage(PipelineStage):
         return input_data
 
 
-class BoundaryDetectionStage(PipelineStage):
+class BoundaryDetectionStage(PipelineStage[Any, Any]):
     """Detects facies boundaries in 3D facies cube.
 
     Uses BoundaryDetector processor to identify facies-boundary voxels.
@@ -203,7 +203,7 @@ class BoundaryDetectionStage(PipelineStage):
         return input_data
 
 
-class AvoAnalysisStage(PipelineStage):
+class AvoAnalysisStage(PipelineStage[Any, Any]):
     """Performs comprehensive AVO analysis.
 
     Includes gradient correlation, boundary amplitude extraction,
@@ -248,7 +248,7 @@ class AvoAnalysisStage(PipelineStage):
         return input_data
 
 
-class ResultsAggregationStage(PipelineStage):
+class ResultsAggregationStage(PipelineStage[Any, Any]):
     """Aggregates analysis results for plotting.
 
     Combines results from all analysis stages into a single
@@ -284,7 +284,7 @@ class ResultsAggregationStage(PipelineStage):
         return input_data
 
 
-class PlottingStage(PipelineStage):
+class PlottingStage(PipelineStage[Any, Any]):
     """Generates visualization plots from analysis results.
 
     Creates a Matplotlib Figure with analysis summary plots.
@@ -320,7 +320,7 @@ class PlottingStage(PipelineStage):
         return input_data
 
 
-def create_facies_analysis_pipeline() -> list[PipelineStage]:
+def create_facies_analysis_pipeline() -> list["PipelineStage[Any, Any]"]:
     """Create a sequence of pipeline stages for facies analysis.
 
     Returns

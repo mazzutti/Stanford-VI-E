@@ -7,7 +7,7 @@ Also provides matplotlib initialization utilities.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict
+from typing import Any, Optional, Dict
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
@@ -82,7 +82,7 @@ class PlotConfig:
             fontsize_title=11,
         )
 
-    def update(self, **kwargs: str | float | bool | int | Dict) -> "PlotConfig":
+    def update(self, **kwargs: str | float | bool | int | Dict[str, Any]) -> "PlotConfig":
         """Create a new PlotConfig with updated values.
 
         Args:

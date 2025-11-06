@@ -198,7 +198,7 @@ def verify_facies_processors_registered() -> bool:
         "facies_discriminator",
     }
 
-    registered_names = {proc.name for proc in registered}
+    registered_names = set(registered)
 
     if registered_names == expected_processors:
         logger.info(f"✓ All {len(expected_processors)} facies processors verified")
@@ -230,4 +230,4 @@ def list_facies_processors() -> list[str]:
     """
     registry = get_facies_processor_registry()
     registered = registry.list_processors(domain="facies")
-    return [proc.name for proc in registered]
+    return list(registered)

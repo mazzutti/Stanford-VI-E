@@ -174,7 +174,7 @@ class RockPhysicsAnalyzer:
         if builder_func is None:
             return build_rock_physics_analyzer()
 
-        return builder_func()
+        return cast(RockPhysicsAnalyzer, builder_func())
 
     def compute_avo_attributes(
         self,
@@ -312,7 +312,7 @@ class RockPhysicsAnalyzer:
         FloatingArray | None,
         FloatingArray | None,
         FloatingArray | None,
-        FloatingArray | None,
+        IntegerArray | None,
     ]:
         """Load and unwrap rock physics properties from dataset manager.
 
@@ -322,16 +322,31 @@ class RockPhysicsAnalyzer:
             Tuple of (vp, vs, rho, facies), each potentially None.
         """
         # Unwrap Quantity objects to numpy arrays if present
-        vp = dm.vp.array if hasattr(dm.vp, "array") else dm.vp
-        vs = dm.vs.array if hasattr(dm.vs, "array") else dm.vs
-        rho = dm.rho.array if hasattr(dm.rho, "array") else dm.rho
-        facies = dm.facies.array if hasattr(dm.facies, "array") else dm.facies
+        vp = (
+            dm.vp.array
+            if dm.vp is not None and hasattr(dm.vp, "array")
+            else cast(FloatingArray | None, dm.vp)
+        )
+        vs = (
+            dm.vs.array
+            if dm.vs is not None and hasattr(dm.vs, "array")
+            else cast(FloatingArray | None, dm.vs)
+        )
+        rho = (
+            dm.rho.array
+            if dm.rho is not None and hasattr(dm.rho, "array")
+            else cast(FloatingArray | None, dm.rho)
+        )
+        facies = (
+            dm.facies.array
+            if dm.facies is not None and hasattr(dm.facies, "array")
+            else cast(IntegerArray | None, dm.facies)
+        )
         return vp, vs, rho, facies
 
     def _get_grid_configuration(self) -> tuple[str, Dict[str, str], Any]:
         """Acquire grid configuration from plotting config or sensible defaults."""
         try:
-            from src.plotting.helpers.config import PlotConfig
 
             # PlotConfig doesn't contain grid info, so use defaults
             # This method is legacy and should be refactored
@@ -457,6 +472,12 @@ class RockPhysicsAnalyzer:
         logger.info("Extracting rock properties...")
         vp, vs, rho, facies = self._load_and_unwrap_properties(dm)
 
+        # Check that required properties are loaded
+        if vp is None or vs is None or rho is None:
+            raise ValueError(
+                "Required properties (vp, vs, rho) not loaded from dataset"
+            )
+
         # Compute all attributes
         logger.info("Computing rock physics attributes...")
         avo_results, lam_mu_rho, fluid = self._compute_all_attributes(
@@ -472,7 +493,11 @@ class RockPhysicsAnalyzer:
         # Analyze discrimination
         logger.info("Analyzing attribute discrimination...")
         try:
-            discrimination = self.compare_all_attributes(attribute_results, facies)
+            discrimination = (
+                self.compare_all_attributes(attribute_results, facies)
+                if facies is not None
+                else {}
+            )
         except Exception:
             logger.exception("Attribute discrimination analysis failed")
             discrimination = {}
@@ -501,7 +526,7 @@ class RockPhysicsAnalyzer:
                 from src.plotting import RockPhysicsPlotter
 
                 RockPhysicsPlotter()
-                self._log_debug("Rock physics plotter instantiated")
+                logger.debug("Rock physics plotter instantiated")
                 logger.info("Plot generation completed")
             except Exception:
                 logger.exception("Rock physics plotting failed")

@@ -6,8 +6,10 @@ Centralizes all default values, making the pipeline simpler and easier to config
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
 from src.signal import RickerWavelet
@@ -58,7 +60,7 @@ class ModelingDefaults:
         }
 
     @property
-    def wavelet(self) -> np.ndarray:
+    def wavelet(self) -> NDArray[np.floating[Any]]:
         """Create default Ricker wavelet."""
         ricker = RickerWavelet(f_peak=self.peak_frequency, dt=self.grid_dt)
         return np.asarray(ricker.samples, dtype=np.float64)

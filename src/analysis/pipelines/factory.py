@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-class StageBuilder(PipelineStage):
+class StageBuilder(PipelineStage[Any, Any]):
     """Convenience base class for building stages with common patterns."""
 
     def __init__(self, name: str):
@@ -60,7 +60,7 @@ class StageFactory:
         name: str,
         execute_fn: Callable[[Any], Any],
         can_execute_fn: Optional[Callable[[Any], bool]] = None,
-    ) -> PipelineStage:
+    ) -> "PipelineStage[Any, Any]":
         """Create a simple stage from functions.
 
         Parameters
@@ -78,9 +78,9 @@ class StageFactory:
             Simple stage wrapping the functions
         """
 
-        class SimpleStage(PipelineStage):
+        class SimpleStage(PipelineStage[Any, Any]):
             @property
-            def stage_name(self) -> str:
+            def name(self) -> str:
                 return name
 
             def can_execute(self, input_data: Any) -> bool:
@@ -102,7 +102,7 @@ class StageFactory:
         name: str,
         validator_fn: Callable[[Any], bool],
         error_msg: str = "",
-    ) -> PipelineStage:
+    ) -> "PipelineStage[Any, Any]":
         """Create a validation stage.
 
         Parameters
@@ -120,9 +120,9 @@ class StageFactory:
             Validation stage
         """
 
-        class ValidatorStage(PipelineStage):
+        class ValidatorStage(PipelineStage[Any, Any]):
             @property
-            def stage_name(self) -> str:
+            def name(self) -> str:
                 return name
 
             def can_execute(self, input_data: Any) -> bool:
@@ -139,7 +139,7 @@ class StageFactory:
     @staticmethod
     def create_transformer(
         name: str, transform_fn: Callable[[Any], Any]
-    ) -> PipelineStage:
+    ) -> "PipelineStage[Any, Any]":
         """Create a transformation stage.
 
         Parameters
@@ -155,9 +155,9 @@ class StageFactory:
             Transformation stage
         """
 
-        class TransformerStage(PipelineStage):
+        class TransformerStage(PipelineStage[Any, Any]):
             @property
-            def stage_name(self) -> str:
+            def name(self) -> str:
                 return name
 
             def can_execute(self, input_data: Any) -> bool:

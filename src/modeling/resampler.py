@@ -7,8 +7,10 @@ and keeping ModelingPipeline simpler.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
 from src.modeling.modeling import _unwrap_quantity
@@ -24,9 +26,9 @@ class ResamplingService:
 
     @staticmethod
     def resample_to_time(
-        props_depth: dict[str, np.ndarray | Quantity],
+        props_depth: dict[str, NDArray[np.floating[Any]] | Quantity],
         grid_spec: GridSpec,
-    ) -> dict[str, np.ndarray | Quantity]:
+    ) -> dict[str, NDArray[np.floating[Any]] | Quantity]:
         """Resample rock properties from depth to time domain.
 
         Args:
@@ -36,16 +38,16 @@ class ResamplingService:
         Returns:
             Time-domain properties dictionary with same keys
         """
-        from src.processing.resampling._resampler import get_resampler_factory
+        from src.processing.resampling._resampler import resampler_factory
         from src.processing.resampling._cache import get_resample_plan_cache
 
-        resampler = get_resampler_factory().get_resampler(grid_spec)
+        resampler = resampler_factory.get_resampler(grid_spec)
         vp_val = _unwrap_quantity(props_depth["vp"])
 
         plan_cache = get_resample_plan_cache()
         plan = plan_cache.get_plan(grid_spec, vp_val, target_dt=grid_spec.dt)
 
-        props_time: dict[str, np.ndarray | Quantity] = {}
+        props_time: dict[str, NDArray[np.floating[Any]] | Quantity] = {}
         for k, v in props_depth.items():
             if isinstance(v, Quantity):
                 v_qty = v

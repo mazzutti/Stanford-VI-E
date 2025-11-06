@@ -15,9 +15,15 @@ import warnings
 import atexit
 import signal
 import multiprocessing
+from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
+from numpy.typing import NDArray
 
-from src.analysis.types.base import DatasetManagerFactory
+if TYPE_CHECKING:
+    import argparse
+
+from src.io.loader import DatasetManager
 from src.io.grid import GridSpec
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
@@ -28,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 class ParserFactory:
     @staticmethod
-    def common_parser(add_help: bool = True):
+    def common_parser(add_help: bool = True) -> "argparse.ArgumentParser":
         """Return the shared argparse parser used across plotting and tools.
 
         This mirrors the original common_parser contract used elsewhere in the
@@ -53,7 +59,7 @@ class ParserFactory:
         return parser
 
     @staticmethod
-    def modeling_parser():
+    def modeling_parser() -> "argparse.ArgumentParser":
         import argparse
 
         parser = argparse.ArgumentParser(
@@ -119,14 +125,16 @@ class ParserFactory:
         return parser
 
     @staticmethod
-    def attach_common_args(parser):
+    def attach_common_args(parser: "argparse.ArgumentParser") -> None:
         """Attach the canonical common-args to an existing parser."""
         common = ParserFactory.common_parser(add_help=False)
         for action in common._actions:
             parser._add_action(action)
 
     @staticmethod
-    def get_plot_config(args):
+    def get_plot_config(
+        args: "argparse.Namespace",
+    ) -> tuple[str, dict[str, str], "GridSpec"]:
         """Get plotting configuration - returns (DATA_PATH, FILE_MAP, grid_spec)."""
         from src.io.grid import GridSpec
 
@@ -138,10 +146,12 @@ class ParserFactory:
         return DATA_PATH, FILE_MAP, grid_spec
 
     @staticmethod
-    def start_plot_main(description: str = "Plotting script"):
+    def start_plot_main(
+        description: str = "Plotting script",
+    ) -> tuple["argparse.Namespace", str, dict[str, str], "GridSpec"]:
         """Common startup for plotting scripts.
 
-        Returns: (args, DATA_PATH, FILE_MAP, grid_spec, compute_boundary_alignment)
+        Returns: (args, DATA_PATH, FILE_MAP, grid_spec)
         """
         import argparse
 
@@ -161,12 +171,12 @@ class ParserFactory:
         return args, DATA_PATH, FILE_MAP, grid_spec
 
     @staticmethod
-    def parse_common_args(argv=None):
+    def parse_common_args(argv: list[str] | None = None) -> "argparse.Namespace":
         common = ParserFactory.common_parser(add_help=False)
         return common.parse_args(args=argv)
 
     @staticmethod
-    def configure_logging(verbose: bool = False):
+    def configure_logging(verbose: bool = False) -> None:
         """Configure Python logging for the process based on verbose flag."""
         import logging as _logging
 
@@ -199,7 +209,7 @@ class ParserFactory:
                     pass
 
     @staticmethod
-    def maybe_cleanup(args):
+    def maybe_cleanup(args: "argparse.Namespace") -> None:
         """Perform optional cache cleanup based on parsed args.
 
         This centralizes the cleanup messaging and behavior so `main()` stays
@@ -227,15 +237,15 @@ class ParserFactory:
             result = pruner.prune(cache_path)
             logging.getLogger(__name__).info(
                 "✓ Removed %d files (%.1f MB freed)",
-                result.count_removed,
-                result.total_bytes_removed / (1024**2),
+                result.count,
+                result.bytes_freed / (1024**2),
             )
         else:
             logging.getLogger(__name__).info("Cache directory does not exist")
         logging.getLogger(__name__).info("%s", "=" * 70)
 
     @staticmethod
-    def load_data():
+    def load_data() -> tuple[Any, str, dict[str, str], "GridSpec"]:
         """Load static dataset used by the modeling pipeline.
 
         Returns: (props_depth, DATA_PATH, FILE_MAP, grid_spec)
@@ -256,9 +266,9 @@ class ParserFactory:
         logging.getLogger(__name__).info("STEP 1: LOADING DATA")
         logging.getLogger(__name__).info("%s", "=" * 70)
         t0 = time.time()
-        # Create GridSpec early and use DatasetManagerFactory for consistency
+        # Create GridSpec early and use DatasetManager for consistency
         # (grid_spec already constructed above)
-        dm = DatasetManagerFactory().create(DATA_PATH, FILE_MAP, grid_spec)
+        dm = DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
         props_depth = {
             "vp": dm.vp,
             "vs": dm.vs,
@@ -268,73 +278,67 @@ class ParserFactory:
         }
         t1 = time.time()
         logging.getLogger(__name__).info("✓ Loaded data in %.2fs", (t1 - t0))
-
         # Use VelocityModel to centralize vp unit conversion and validation
         from src.processing.materials.velocity import VelocityModel
 
-        try:
-            vm = VelocityModel.from_dataset(dm, vp_key="vp")
-            # from_dataset already converts and validates, but be explicit
-            converted = vm.ensure_m_per_s()
-            # vm.vp is a Quantity; store the numeric array for downstream processing
-            props_depth["vp"] = vm.vp.array if hasattr(vm.vp, "array") else vm.vp
-        except Exception:
-            # Fallback: keep existing behavior (unit heuristic)
+        if props_depth["vp"] is not None:
             try:
-                # best-effort conversion using UnitRegistry
-                out, converted = UnitRegistry.ensure_m_per_s(
-                    props_depth["vp"], copy_on_convert=True
-                )
-                if converted:
-                    props_depth["vp"] = out
+                vm = VelocityModel(vp=props_depth["vp"], grid_spec=grid_spec)
+                # Ensure velocity is in m/s
+                converted = vm.ensure_m_per_s()
+                # vm.vp is a Quantity; store the numeric array for downstream processing
+                props_depth["vp"] = vm.vp.array if hasattr(vm.vp, "array") else vm.vp
             except Exception:
-                pass
+                # Fallback: keep existing behavior (unit heuristic)
+                try:
+                    # best-effort conversion using UnitRegistry
+                    out, converted = UnitRegistry.ensure_m_per_s(
+                        props_depth["vp"], copy_on_convert=True
+                    )
+                    if converted:
+                        props_depth["vp"] = out
+                except Exception:
+                    pass
 
         # Use small helpers for vs and rho conversions for consistency
-        try:
-            from src.processing.materials import VsModel, DensityModel
-
-            vsm = VsModel(props_depth["vs"])
-            vsm.ensure_m_per_s()
-            props_depth["vs"] = vsm.vs
-
-            drm = DensityModel(props_depth["rho"])
-            drm.ensure_kg_per_m3()
-            props_depth["rho"] = drm.rho
-        except Exception:
-            # Fallback to heuristics
+        if props_depth["vs"] is not None and props_depth["rho"] is not None:
             try:
-                out, converted = UnitRegistry.ensure_m_per_s(
-                    props_depth["vs"], copy_on_convert=True
-                )
-                if converted:
-                    props_depth["vs"] = out
+                from src.processing.materials import VsModel, DensityModel
+
+                vsm = VsModel(props_depth["vs"])
+                vsm.ensure_m_per_s()
+                props_depth["vs"] = cast(NDArray[np.floating[Any]], vsm.vs)
+
+                drm = DensityModel(props_depth["rho"])
+                drm.ensure_kg_per_m3()
+                props_depth["rho"] = cast(NDArray[np.floating[Any]], drm.rho)
             except Exception:
-                pass
-            try:
-                out, converted = UnitRegistry.ensure_kg_per_m3(
-                    props_depth["rho"], copy_on_convert=True
-                )
-                if converted:
-                    props_depth["rho"] = out
-            except Exception:
-                pass
+                # Fallback to heuristics
+                try:
+                    out, converted = UnitRegistry.ensure_m_per_s(
+                        props_depth["vs"], copy_on_convert=True
+                    )
+                    if converted:
+                        props_depth["vs"] = out
+                except Exception:
+                    pass
 
         return props_depth, DATA_PATH, FILE_MAP, grid_spec
 
     @staticmethod
-    def run_modeling(props_depth, args, grid_spec: GridSpec):
+    def run_modeling(
+        props_depth: dict[str, Any], args: "argparse.Namespace", grid_spec: "GridSpec"
+    ) -> dict[str, Any]:
         """Run the core modeling steps (depth->time, AVO).
 
         Returns a dict with keys used by downstream steps.
         """
-
         # STEP 3: DEPTH-TO-TIME
         _t0 = time.time()
         # Use DepthTimeResampler to compute TWT and resample properties
-        from src.processing.resampling._resampler import get_resampler_factory
+        from src.processing.resampling._resampler import resampler_factory
 
-        resampler = get_resampler_factory().get_resampler(grid_spec)
+        resampler = resampler_factory.get_resampler(grid_spec)
         vp_for_twt = (
             props_depth["vp"].array
             if hasattr(props_depth["vp"], "array")
@@ -372,7 +376,7 @@ class ParserFactory:
     @staticmethod
     # AVO pipeline is supported via `run_modeling`.
     @staticmethod
-    def save_results():
+    def save_results() -> None:
         logger.info("%s", "\n" + "=" * 70)
         logger.info("SUMMARY - ALL MODELING COMPLETE")
         logger.info("%s", "=" * 70)
@@ -382,7 +386,7 @@ class ParserFactory:
         )
 
     @staticmethod
-    def available_tools():
+    def available_tools() -> list[str]:
         """Return the list of tool names supported by --run-tool.
 
         Uses an explicit registration list populated by the ``@ParserFactory.tool``
@@ -396,10 +400,10 @@ class ParserFactory:
     # The tool decorator registers a function in the ParserFactory registry.
     # It supports an optional alias name via `@ParserFactory.tool(name='alias')`.
     # The registry maps CLI name -> callable.
-    _registered_tools = {}
+    _registered_tools: dict[str, Any] = {}
 
     @staticmethod
-    def tool(func=None, *, name=None):
+    def tool(func: Any = None, *, name: str | list[str] | None = None) -> Any:
         """Decorator to mark a top-level callable as a CLI tool.
 
         Can be used as either:
@@ -412,7 +416,7 @@ class ParserFactory:
         """
         import warnings as _warnings
 
-        def _register(f):
+        def _register(f: Any) -> Any:
             try:
                 cli_names = []
                 if name is None:
@@ -466,7 +470,11 @@ class ParserFactory:
         return _register
 
     @staticmethod
-    def run_tool(tool_name: str, argv: list | None = None, kwargs: dict | None = None):
+    def run_tool(
+        tool_name: str,
+        argv: list[str] | None = None,
+        kwargs: dict[str, Any] | None = None,
+    ) -> Any:
         """Dispatch and run a centralized tool by name.
 
         The actual functions are top-level functions defined in this module
@@ -533,7 +541,7 @@ class ParserFactory:
 tool = ParserFactory.tool
 
 
-def _terminate_children_on_exit(timeout=1.0):
+def _terminate_children_on_exit(timeout: float = 1.0) -> None:
     """Attempt to terminate leftover multiprocessing children at exit.
 
     Best-effort cleanup to avoid resource_tracker warnings about leaked
@@ -556,7 +564,7 @@ def _terminate_children_on_exit(timeout=1.0):
 
         for p in children:
             try:
-                if p.is_alive():
+                if p.is_alive() and p.pid is not None:
                     os.kill(p.pid, signal.SIGKILL)
             except Exception:
                 pass
@@ -577,7 +585,7 @@ warnings.filterwarnings(
 @tool
 def cleanup_cache(
     cache_dir: str = ".cache", dry_run: bool = False, verbose: bool = False
-):
+) -> tuple[int, float]:
     """Clean up old cache files (CLI tool).
 
     Uses CacheManager as the primary programmatic entrypoint and falls back
@@ -597,7 +605,7 @@ def cleanup_cache(
         strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
         pruner = Pruner(strategy)
         result = pruner.prune(cache_path)
-        return result.count_removed, result.total_bytes_removed / (1024**2)
+        return result.count, result.bytes_freed / (1024**2)
     return 0, 0.0
 
 
@@ -609,10 +617,9 @@ def cleanup_cache(
 
 
 @tool
-def plot_3d_interactive(argv: list | None = None):
+def plot_3d_interactive(argv: list[str] | None = None) -> dict[str, str]:
     """Interactive 3D plotting using Plotly."""
     import argparse
-    from src.plotting import PlotlyPlotter
     from src.analysis.cache import CacheLoader
 
     parser = argparse.ArgumentParser(
@@ -639,10 +646,9 @@ def plot_3d_interactive(argv: list | None = None):
 
 
 @tool
-def plot_3d_slices(argv: list | None = None):
+def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
     """3D orthogonal slice visualization."""
     import argparse
-    from src.plotting import SlicePlotter
     from src.analysis.cache import CacheLoader
 
     parser = argparse.ArgumentParser(
@@ -662,14 +668,13 @@ def plot_3d_slices(argv: list | None = None):
     loader = CacheLoader()
     avo_fn = loader.select_cache_file(args.cache_dir, args.domain)
 
-    return {"avo": avo_fn}
+    return {"avo": avo_fn or ""}
 
 
 @tool
-def plot_rock_physics_attributes(argv: list | None = None):
+def plot_rock_physics_attributes(argv: list[str] | None = None) -> dict[str, str]:
     """Rock physics attribute visualization."""
     import argparse
-    from src.plotting import RockPhysicsPlotter
 
     parser = argparse.ArgumentParser(description="Visualize rock physics attributes")
     parser.add_argument(
@@ -686,18 +691,17 @@ def plot_rock_physics_attributes(argv: list | None = None):
 @tool
 def analysis_rock_physics(
     venv_python: str | None = None, cache_dir: str = ".cache", prompt: bool = True
-):
+) -> bool:
     from src.analysis.io import HeaderPrinter
     from src.analysis.common import AnalysisCommon
 
     # Instantiate the AnalysisCommon singleton for use in this tool.
     analysis = AnalysisCommon()
-
     long_desc = (
         "This pipeline clears caches, computes rock physics attributes and "
         "creates visualizations (AVO-focused)."
     )
-    HeaderPrinter.instance().print_analysis_header(
+    HeaderPrinter().print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
             "Compute ALL Attributes + Generate ALL Plots",
@@ -715,7 +719,7 @@ def analysis_rock_physics(
         from src.analysis.rock_physics import RockPhysicsAnalyzer
 
         rpa = RockPhysicsAnalyzer()
-        rpa.main(
+        rpa.run(
             cache_dir=cache_dir,
             generate_plots=True,
             save_npz_only=False,
@@ -745,7 +749,7 @@ def analyze_facies_correlation(
     domain: str = "depth",
     no_multiangle: bool = False,
     verbose: bool = False,
-):
+) -> Any:
     """Central delegator for facies-correlation analysis.
 
     Parses the canonical common args (domain, no-multiangle, cache-dir, verbose)
@@ -759,10 +763,12 @@ def analyze_facies_correlation(
     )
 
     analyzer = FaciesCorrelationAnalyzer()
+    from src.analysis.domain.enum import Domain
+
+    domain_enum = Domain(domain)
     return analyzer.run(
         cache_dir=cache_dir,
-        domain=domain,
-        no_multiangle=no_multiangle,
+        domain=domain_enum,
         verbose=verbose,
     )
 
@@ -770,10 +776,10 @@ def analyze_facies_correlation(
 @tool
 def seismograms(
     cache_dir: str = ".cache",
-    venv_python=None,
+    venv_python: str | None = None,
     skip_cleanup: bool = False,
     verbose: bool = False,
-):
+) -> Any:
     """Delegator for seismogram modeling pipeline.
 
     Parses the canonical common args and invokes the programmatic
@@ -783,16 +789,15 @@ def seismograms(
     from src.analysis.pipelines import SeismogramAnalyzer
 
     analyzer = SeismogramAnalyzer()
-    return analyzer.main(
+    return analyzer.run(
         cache_dir=cache_dir,
-        venv_python=venv_python,
         skip_cleanup=skip_cleanup,
         verbose=verbose,
     )
 
 
 @tool
-def analysis_seismograms():
+def analysis_seismograms() -> bool:
     from src.analysis.common import AnalysisCommon
 
     # Instantiate the AnalysisCommon singleton for use in this tool.
@@ -813,7 +818,7 @@ def analysis_seismograms():
         from src.analysis.pipelines import SeismogramAnalyzer
 
         _seis = SeismogramAnalyzer()
-        _seis.main(cache_dir=".cache", skip_cleanup=True)
+        _seis.run(cache_dir=".cache", skip_cleanup=True)
     except Exception as e:
         logger.error("Seismic modeling failed: %s", e)
         return False
@@ -822,24 +827,25 @@ def analysis_seismograms():
     # Facies correlation (depth)
     try:
         from src.analysis.facies import FaciesCorrelationAnalyzer
+        from src.analysis.domain.enum import Domain
 
         _fac = FaciesCorrelationAnalyzer()
-        _fac.run(cache_dir=".cache", domain="depth")
+        _fac.run(cache_dir=".cache", domain=Domain.DEPTH)
     except Exception as e:
         logger.warning("Facies depth analysis failed: %s", e)
 
     # Facies correlation (time)
     try:
         from src.analysis.facies import FaciesCorrelationAnalyzer
+        from src.analysis.domain.enum import Domain
 
         _fac_time = FaciesCorrelationAnalyzer()
-        _fac_time.run(cache_dir=".cache", domain="time")
+        _fac_time.run(cache_dir=".cache", domain=Domain.TIME)
     except Exception as e:
         logger.warning("Facies time analysis failed: %s", e)
 
     # Interactive 3D plots (depth/time)
     try:
-        from src.plotting import PlotlyPlotter
         from src.analysis.cache import CacheLoader
 
         _loader = CacheLoader()
@@ -850,7 +856,6 @@ def analysis_seismograms():
         logger.warning("3D interactive plot (depth) failed: %s", e)
 
     try:
-        from src.plotting import PlotlyPlotter
         from src.analysis.cache import CacheLoader
 
         _loader = CacheLoader()
@@ -864,7 +869,7 @@ def analysis_seismograms():
 
 
 @tool
-def regenerate_seismograms():
+def regenerate_seismograms() -> bool:
     from src.analysis.common import AnalysisCommon
 
     # Instantiate the AnalysisCommon singleton for use in this tool.
@@ -883,12 +888,11 @@ def regenerate_seismograms():
     # subprocesses. It clears the cache then invokes the canonical
     # modeling workflow.
     regen.clear_cache()
-
     try:
         from src.analysis.pipelines import SeismogramAnalyzer
 
         _seis = SeismogramAnalyzer()
-        _seis.main(cache_dir=".cache", skip_cleanup=True)
+        _seis.run(cache_dir=".cache", skip_cleanup=True)
     except Exception as e:
         logger.error("Seismic modeling failed: %s", e)
         return False
@@ -897,11 +901,11 @@ def regenerate_seismograms():
 
 
 @tool
-def regenerate_rock_physics():
+def regenerate_rock_physics() -> bool:
     # Try to import a specialized regenerate_common module; if it's not
     # present, fall back to the main AnalysisCommon implementation.
     try:
-        from src.analysis import regenerate_common as regen
+        from src.analysis import regenerate_common as regen  # type: ignore[attr-defined]
     except Exception:
         from src.analysis.common import AnalysisCommon
 
@@ -913,7 +917,7 @@ def regenerate_rock_physics():
         "This pipeline clears caches, computes rock physics attributes and "
         "creates visualizations."
     )
-    HeaderPrinter.instance().print_analysis_header(
+    HeaderPrinter().print_analysis_header(
         "COMPLETE ROCK PHYSICS ANALYSIS PIPELINE",
         [
             "Compute ALL Attributes + Generate ALL Plots",
@@ -927,7 +931,7 @@ def regenerate_rock_physics():
         from src.analysis.rock_physics import RockPhysicsAnalyzer
 
         rpa = RockPhysicsAnalyzer()
-        rpa.main(
+        rpa.run(
             cache_dir=".cache",
             generate_plots=True,
             save_npz_only=False,
@@ -945,9 +949,9 @@ def rock_physics_attributes(
     cache_dir: str = ".cache",
     generate_plots: bool = True,
     save_npz_only: bool = False,
-    angles_list: list | None = None,
+    angles_list: list[int] | str | None = None,
     verbose: bool = False,
-):
+) -> Any:
     """Delegator to the programmatic rock physics analysis main.
 
     Accepts explicit keyword args so callers (including ParserFactory.run_tool)
@@ -974,7 +978,7 @@ def rock_physics_attributes(
                 )
 
         rpa = RockPhysicsAnalyzer()
-        return rpa.main(
+        return rpa.run(
             cache_dir=cache_dir,
             generate_plots=generate_plots,
             save_npz_only=save_npz_only,
@@ -985,7 +989,7 @@ def rock_physics_attributes(
         raise SystemExit(f"Rock physics delegator unavailable: {exc}") from exc
 
 
-def main():
+def main() -> bool:
     # Allow forwarding arguments to a selected tool using a `--` sentinel.
     # Example:
     #   python -m src --run-tool rock_physics_attributes -- --cache-dir foo
@@ -1011,9 +1015,11 @@ def main():
     # If a single tool is requested, dispatch and exit. Forward tool_argv if present.
     if getattr(args, "run_tool", None):
         # Pass parsed args explicitly to avoid using global state
-        return ParserFactory.run_tool(
+        result = ParserFactory.run_tool(
             args.run_tool, argv=tool_argv, kwargs=dict(vars(args))
         )
+        # Assume tool returns bool or bool-like result
+        return bool(result) if result is not None else True
 
     # Optional cleanup handled by helper
     ParserFactory.maybe_cleanup(args)

@@ -44,12 +44,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast, Any, ClassVar
 
-import os
-import sys
-import time
-import shutil
 
 from src.utils.types import ProcessManagerProtocol
 from src.utils.constants import CACHE_DIR_DEFAULT
@@ -86,7 +82,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
     """
 
     # Required methods that a ProcessManager must implement
-    _REQUIRED_METHODS: tuple[str, ...] = (
+    _REQUIRED_METHODS: ClassVar[tuple[str, ...]] = (
         "clear_cache",
         "open_file",
         "summarize_cache_files",
@@ -214,18 +210,18 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
 
     def __str__(self) -> str:
         """Return a human-readable string representation."""
-        if self.is_initialized:
+        if self._is_fully_initialized:
             manager_type = type(self._proc_manager).__name__
             return f"AnalysisCommon (initialized with {manager_type})"
         return "AnalysisCommon (uninitialized)"
 
     @property
-    def is_initialized(self) -> bool:
+    def _is_fully_initialized(self) -> bool:
         """Check if the singleton has been fully initialized."""
         return getattr(self, "_initialized", False)
 
-    @is_initialized.setter
-    def is_initialized(self, value: bool) -> None:
+    @_is_fully_initialized.setter
+    def _is_fully_initialized(self, value: bool) -> None:
         """Set the initialization state."""
         self._initialized = value
 
@@ -234,12 +230,12 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         """Access the configured ProcessManager.
 
         Raises:
-            AttributeError: If accessed before initialization.
+            RuntimeError: If called before initialization.
         """
-        if not self.is_initialized:
-            raise AttributeError(
-                "ProcessManager not yet initialized. "
-                "Call AnalysisCommon.instance(proc_manager) first."
+        if not self._is_fully_initialized:
+            raise RuntimeError(
+                "ProcessManager not initialized. "
+                "Call AnalysisCommon.initialize() first."
             )
         return self._proc_manager
 
@@ -258,7 +254,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
 
     def __bool__(self) -> bool:
         """Check if fully initialized (allows: if AnalysisCommon.instance(): ...)."""
-        return self.is_initialized
+        return self._is_fully_initialized
 
     def __hash__(self) -> int:
         """Return hash of singleton instance."""
@@ -268,7 +264,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         """Support context manager protocol."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Support context manager protocol exit."""
         return None
 
@@ -345,7 +341,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             AttributeError: If the method doesn't exist on the ProcessManager.
             TypeError: If singleton is not initialized.
         """
-        if not self.is_initialized:
+        if not self._is_fully_initialized:
             raise TypeError(
                 "Cannot invoke methods before initialization. "
                 "Call AnalysisCommon.instance(proc_manager) first."

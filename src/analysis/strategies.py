@@ -10,6 +10,12 @@ For validation strategies, see src.analysis.validators instead.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any, TypeVar, Union, cast
+
+import numpy as np
+from numpy.typing import NDArray
+
+T = TypeVar("T", bound=Union[int, float, np.number[Any]])
 
 __all__ = [
     "ArrayStatisticsStrategy",
@@ -27,17 +33,17 @@ class ArrayStatisticsStrategy(ABC):
     """
 
     @abstractmethod
-    def compute_mean(self, arr):
+    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute mean of array."""
         pass
 
     @abstractmethod
-    def compute_std(self, arr):
+    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute standard deviation of array."""
         pass
 
     @abstractmethod
-    def compute_median(self, arr):
+    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute median of array."""
         pass
 
@@ -45,43 +51,31 @@ class ArrayStatisticsStrategy(ABC):
 class StandardArrayStatistics(ArrayStatisticsStrategy):
     """Standard array statistics using numpy defaults."""
 
-    def compute_mean(self, arr):
+    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute mean using numpy."""
-        import numpy as np
+        return cast(Union[int, float, np.number[Any]], np.mean(arr))
 
-        return np.mean(arr)
-
-    def compute_std(self, arr):
+    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute standard deviation using numpy."""
-        import numpy as np
+        return cast(Union[int, float, np.number[Any]], np.std(arr))
 
-        return np.std(arr)
-
-    def compute_median(self, arr):
+    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute median using numpy."""
-        import numpy as np
-
-        return np.median(arr)
+        return cast(Union[int, float, np.number[Any]], np.median(arr))
 
 
 class RobustArrayStatistics(ArrayStatisticsStrategy):
     """Robust array statistics using median and IQR."""
 
-    def compute_mean(self, arr):
+    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute robust mean (median)."""
-        import numpy as np
+        return cast(Union[int, float, np.number[Any]], np.median(arr))
 
-        return np.median(arr)
-
-    def compute_std(self, arr):
+    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute robust std (IQR)."""
-        import numpy as np
-
         q75, q25 = np.percentile(arr, [75, 25])
-        return (q75 - q25) / 1.35
+        return cast(Union[int, float, np.number[Any]], (q75 - q25) / 1.35)
 
-    def compute_median(self, arr):
+    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
         """Compute median."""
-        import numpy as np
-
-        return np.median(arr)
+        return cast(Union[int, float, np.number[Any]], np.median(arr))

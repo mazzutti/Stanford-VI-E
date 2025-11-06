@@ -6,8 +6,8 @@ offers safe conversions to common geophysical units via converter strategies.
 
 from __future__ import annotations
 
-from typing import overload
-from numpy.typing import ArrayLike
+from typing import Any, overload
+from numpy.typing import NDArray, ArrayLike
 
 import numpy as np
 import logging
@@ -43,7 +43,7 @@ class Quantity:
         self._registry = registry or get_unit_registry()
 
     @property
-    def array(self) -> np.ndarray:
+    def array(self) -> NDArray[np.floating[Any]]:
         """Get underlying numpy array."""
         return self._array
 
@@ -75,11 +75,11 @@ class Quantity:
         except ValueError as e:
             raise ValueError(f"Cannot convert from {self.unit} to {unit}") from e
 
-    def to_numpy(self) -> np.ndarray:
+    def to_numpy(self) -> NDArray[np.floating[Any]]:
         """Export as numpy array."""
         return self._array
 
-    def __array__(self) -> np.ndarray:
+    def __array__(self) -> NDArray[np.floating[Any]]:
         """Support numpy's array protocol."""
         return self._array
 
@@ -104,9 +104,11 @@ class Quantity:
     def __add__(self, other: Quantity) -> Quantity: ...
 
     @overload
-    def __add__(self, other: float | int | np.ndarray) -> Quantity: ...
+    def __add__(self, other: float | int | NDArray[np.floating[Any]]) -> Quantity: ...
 
-    def __add__(self, other: Quantity | float | int | np.ndarray) -> Quantity:
+    def __add__(
+        self, other: Quantity | float | int | NDArray[np.floating[Any]]
+    ) -> Quantity:
         """Addition with automatic unit conversion."""
         if isinstance(other, Quantity):
             if other.unit != self.unit:
@@ -114,22 +116,24 @@ class Quantity:
             return Quantity(self._array + other._array, self.unit, self._registry)
         return Quantity(self._array + other, self.unit, self._registry)
 
-    def __radd__(self, other: float | int | np.ndarray) -> Quantity:
+    def __radd__(self, other: float | int | NDArray[np.floating[Any]]) -> Quantity:
         """Right addition."""
-        return self.__add__(other)  # type: ignore[misc]
+        return self.__add__(other)
 
     @overload
     def __mul__(self, other: float | int) -> Quantity: ...
 
     @overload
-    def __mul__(self, other: Quantity) -> np.ndarray: ...
+    def __mul__(self, other: Quantity) -> NDArray[np.floating[Any]]: ...
 
     @overload
-    def __mul__(self, other: np.ndarray) -> Quantity | np.ndarray: ...
+    def __mul__(
+        self, other: NDArray[np.floating[Any]]
+    ) -> Quantity | NDArray[np.floating[Any]]: ...
 
     def __mul__(
-        self, other: Quantity | float | int | np.ndarray
-    ) -> Quantity | np.ndarray:
+        self, other: Quantity | float | int | NDArray[np.floating[Any]]
+    ) -> Quantity | NDArray[np.floating[Any]]:
         """Multiplication."""
         if isinstance(other, (int, float)):
             return Quantity(self._array * other, self.unit, self._registry)
@@ -149,11 +153,15 @@ class Quantity:
     def __rmul__(self, other: float | int) -> Quantity: ...
 
     @overload
-    def __rmul__(self, other: np.ndarray) -> Quantity | np.ndarray: ...
+    def __rmul__(
+        self, other: NDArray[np.floating[Any]]
+    ) -> Quantity | NDArray[np.floating[Any]]: ...
 
-    def __rmul__(self, other: float | int | np.ndarray) -> Quantity | np.ndarray:
+    def __rmul__(
+        self, other: float | int | NDArray[np.floating[Any]]
+    ) -> Quantity | NDArray[np.floating[Any]]:
         """Right multiplication."""
-        return self.__mul__(other)  # type: ignore[misc]
+        return self.__mul__(other)
 
 
 __all__ = ["Quantity"]

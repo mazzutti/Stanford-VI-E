@@ -7,7 +7,9 @@ Extracts concerns from AVOSynthesizer into focused, testable classes:
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import convolve
 import logging
 
@@ -33,11 +35,11 @@ class ReflectivityComputer:
 
     def compute_reflectivity(
         self,
-        vp: np.ndarray,
-        vs: np.ndarray,
-        rho: np.ndarray,
+        vp: NDArray[np.floating[Any]],
+        vs: NDArray[np.floating[Any]],
+        rho: NDArray[np.floating[Any]],
         angle: float,
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating[Any]]:
         """Compute reflectivity cube at given incidence angle.
 
         Uses block-wise processing to balance memory usage and performance.
@@ -92,9 +94,9 @@ class WaveletConvolver:
 
     @staticmethod
     def convolve_3d(
-        cube: np.ndarray,
-        wavelet: np.ndarray,
-    ) -> np.ndarray:
+        cube: NDArray[np.floating[Any]],
+        wavelet: NDArray[np.floating[Any]],
+    ) -> NDArray[np.floating[Any]]:
         """Apply 3D convolution: cube with 1D wavelet.
 
         Vectorized convolution across all traces using FFT.

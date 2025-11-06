@@ -12,9 +12,10 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Dict, Sequence, cast
+from typing import Any, Dict, Sequence, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.analysis.processors.types import FloatingArray
 from src.analysis.types.base import Computer, AnalysisSchema
@@ -27,14 +28,14 @@ DEFAULT_AVO_ANGLES_DEG = (0, 5, 10, 15, 20, 25)
 DEFAULT_FLUID_FACTOR_K = 1.0
 
 
-class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
+class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
     """Computes AVO (Amplitude Variation with Offset) attributes.
 
     Handles computation of intercept and gradient from rock property cubes
     using least-squares fitting of reflectivity values across angles.
     """
 
-    def validate(self, inputs: tuple) -> bool:
+    def validate(self, inputs: tuple[Any, ...]) -> bool:
         """Validate AVO inputs.
 
         Parameters
@@ -66,15 +67,15 @@ class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
         """
         return AnalysisSchema(
             input_fields={
-                "vp": np.ndarray,
-                "vs": np.ndarray,
-                "rho": np.ndarray,
+                "vp": NDArray[np.floating[Any]],
+                "vs": NDArray[np.floating[Any]],
+                "rho": NDArray[np.floating[Any]],
             },
             output_fields={
-                "intercept": np.ndarray,
-                "gradient": np.ndarray,
-                "product": np.ndarray,
-                "scaled_gradient": np.ndarray,
+                "intercept": NDArray[np.floating[Any]],
+                "gradient": NDArray[np.floating[Any]],
+                "product": NDArray[np.floating[Any]],
+                "scaled_gradient": NDArray[np.floating[Any]],
             },
             description="Compute AVO attributes (intercept, gradient) from rock properties",
             constraints={
@@ -83,7 +84,7 @@ class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
             },
         )
 
-    def compute(
+    def compute(  # type: ignore[override]
         self,
         vp: FloatingArray,
         vs: FloatingArray,
@@ -244,14 +245,14 @@ class AVOAttributesComputer(Computer[tuple, Dict[str, FloatingArray]]):
             )
 
 
-class LambdaMuRhoComputer(Computer[tuple, Dict[str, FloatingArray]]):
+class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
     """Computes Lamé parameters and derived rock physics attributes.
 
     Handles computation of Lambda-Rho and Mu-Rho from seismic velocities
     and density.
     """
 
-    def validate(self, inputs: tuple) -> bool:
+    def validate(self, inputs: tuple[Any, ...]) -> bool:
         """Validate Lambda-Mu-Rho inputs.
 
         Parameters
@@ -283,19 +284,19 @@ class LambdaMuRhoComputer(Computer[tuple, Dict[str, FloatingArray]]):
         """
         return AnalysisSchema(
             input_fields={
-                "vp": np.ndarray,
-                "vs": np.ndarray,
-                "rho": np.ndarray,
+                "vp": NDArray[np.floating[Any]],
+                "vs": NDArray[np.floating[Any]],
+                "rho": NDArray[np.floating[Any]],
             },
             output_fields={
-                "lambda_rho": np.ndarray,
-                "mu_rho": np.ndarray,
-                "lambda_mu_ratio": np.ndarray,
+                "lambda_rho": NDArray[np.floating[Any]],
+                "mu_rho": NDArray[np.floating[Any]],
+                "lambda_mu_ratio": NDArray[np.floating[Any]],
             },
             description="Compute Lamé parameters from rock properties",
         )
 
-    def compute(
+    def compute(  # type: ignore[override]
         self,
         vp: FloatingArray,
         vs: FloatingArray,
@@ -332,13 +333,13 @@ class LambdaMuRhoComputer(Computer[tuple, Dict[str, FloatingArray]]):
         }
 
 
-class FluidFactorComputer(Computer[tuple, FloatingArray]):
+class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
     """Computes fluid factor attribute.
 
     Derives fluid-sensitive attributes from Lambda-Rho and Mu-Rho.
     """
 
-    def validate(self, inputs: tuple) -> bool:
+    def validate(self, inputs: tuple[Any, ...]) -> bool:
         """Validate Fluid Factor inputs.
 
         Parameters
@@ -373,16 +374,16 @@ class FluidFactorComputer(Computer[tuple, FloatingArray]):
         """
         return AnalysisSchema(
             input_fields={
-                "lambda_rho": np.ndarray,
-                "mu_rho": np.ndarray,
+                "lambda_rho": NDArray[np.floating[Any]],
+                "mu_rho": NDArray[np.floating[Any]],
             },
             output_fields={
-                "fluid_factor": np.ndarray,
+                "fluid_factor": NDArray[np.floating[Any]],
             },
             description="Compute fluid-sensitive attribute from Lamé parameters",
         )
 
-    def compute(
+    def compute(  # type: ignore[override]
         self,
         lambda_rho: FloatingArray,
         mu_rho: FloatingArray,

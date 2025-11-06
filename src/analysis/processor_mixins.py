@@ -30,7 +30,7 @@ Example Usage:
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Dict, List, TypeVar
+from typing import Any, Callable, Optional, Dict, List, TypeVar, cast
 from datetime import datetime
 from enum import Enum
 
@@ -251,7 +251,7 @@ class CachingMixin:
 
         cache_key = self._make_cache_key(*args, **kwargs)
         if cache_key in self._cache:
-            return self._cache[cache_key]
+            return cast(T, self._cache[cache_key])
 
         result = func(*args, **kwargs)
         self._cache[cache_key] = result
@@ -540,7 +540,7 @@ class ErrorHandlingMixin:
         Exception
             If all retry attempts fail.
         """
-        last_error = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries):
             try:
                 return func(*args, **kwargs)
@@ -551,7 +551,9 @@ class ErrorHandlingMixin:
                         f"Retry attempt {attempt + 1}/{self._max_retries}: {e}"
                     )
 
-        raise last_error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Retry exhausted without error")
 
 
 class MetricsMixin:
@@ -577,7 +579,7 @@ class MetricsMixin:
         """Initialize metrics tracking."""
         self._metrics: Optional[ExecutionMetrics] = None
 
-    def track_metrics(self):
+    def track_metrics(self) -> "_MetricsContext":
         """Context manager for tracking execution metrics.
 
         Usage
@@ -621,9 +623,9 @@ class MetricsMixin:
         # If StateTrackingMixin is being used, get from there
         if hasattr(self, "_current_metrics"):
             if self._current_metrics:
-                return self._current_metrics
+                return cast(ExecutionMetrics | None, self._current_metrics)
             elif hasattr(self, "_last_metrics"):
-                return self._last_metrics
+                return cast(ExecutionMetrics | None, self._last_metrics)
         return self._metrics
 
     def record_error(self) -> None:

@@ -40,7 +40,8 @@ from abc import ABC, abstractmethod
 import logging
 
 if TYPE_CHECKING:
-    from src.analysis.base import AnalyzerInterface, AnalysisConfig
+    from src.analysis.base import AnalyzerInterface
+    from src.analysis.rock_physics import RockPhysicsAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +281,7 @@ class AnalysisBuilder:
                 f"dependencies. Missing required parameter? Error: {e}"
             ) from e
 
-    def build_facies_analyzer(self) -> AnalyzerInterface:
+    def build_facies_analyzer(self) -> AnalyzerInterface[Any, Any]:
         """Build a FaciesCorrelationAnalyzer (convenience method).
 
         Returns
@@ -292,12 +293,12 @@ class AnalysisBuilder:
 
         return self.build(FaciesCorrelationAnalyzer)
 
-    def build_rock_physics_analyzer(self) -> AnalyzerInterface:
+    def build_rock_physics_analyzer(self) -> RockPhysicsAnalyzer:
         """Build a RockPhysicsAnalyzer (convenience method).
 
         Returns
         -------
-        AnalyzerInterface
+        RockPhysicsAnalyzer
             Configured RockPhysicsAnalyzer instance
         """
         from src.analysis.rock_physics import RockPhysicsAnalyzer
@@ -349,7 +350,7 @@ class AnalysisBuilder:
 
 
 # Convenience factory functions for common builder patterns
-def build_facies_analyzer(**kwargs) -> AnalyzerInterface:
+def build_facies_analyzer(**kwargs: Any) -> AnalyzerInterface[Any, Any]:
     """Create a FaciesCorrelationAnalyzer quickly.
 
     Parameters
@@ -379,7 +380,7 @@ def build_facies_analyzer(**kwargs) -> AnalyzerInterface:
     return builder.build_facies_analyzer()
 
 
-def build_rock_physics_analyzer(**kwargs) -> AnalyzerInterface:
+def build_rock_physics_analyzer(**kwargs: Any) -> RockPhysicsAnalyzer:
     """Create a RockPhysicsAnalyzer quickly.
 
     Parameters
@@ -389,7 +390,7 @@ def build_rock_physics_analyzer(**kwargs) -> AnalyzerInterface:
 
     Returns
     -------
-    AnalyzerInterface
+    RockPhysicsAnalyzer
         Configured RockPhysicsAnalyzer
     """
     builder = AnalysisBuilder("rock_physics")

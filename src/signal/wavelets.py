@@ -3,7 +3,9 @@
 Provides a clean OOP interface for creating and working with seismic wavelets.
 """
 
+from typing import Any
 import numpy as np
+from numpy.typing import NDArray
 import logging
 
 __all__ = [
@@ -25,7 +27,7 @@ class Wavelet:
         dt: Sampling interval in seconds
     """
 
-    def __init__(self, samples: np.ndarray, dt: float):
+    def __init__(self, samples: NDArray[np.floating[Any]], dt: float):
         """Initialize a wavelet.
 
         Args:
@@ -102,7 +104,9 @@ class RickerWavelet(Wavelet):
         super().__init__(samples, dt)
 
     @staticmethod
-    def _compute_samples(f_peak: float, length: float, dt: float) -> np.ndarray:
+    def _compute_samples(
+        f_peak: float, length: float, dt: float
+    ) -> NDArray[np.floating[Any]]:
         """Compute Ricker wavelet samples.
 
         Uses the analytical formula:

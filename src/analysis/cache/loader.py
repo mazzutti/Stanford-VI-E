@@ -25,7 +25,7 @@ Example Usage:
 """
 
 from pathlib import Path
-from typing import Callable, Optional, Union, List, NamedTuple
+from typing import Any, Callable, Optional, Union, List, NamedTuple, cast
 from types import TracebackType
 from os import PathLike
 from numpy.typing import NDArray
@@ -648,9 +648,7 @@ class CacheLoader:
         """
         return self._extract_array_from_npz(archive)
 
-    def _as_float64(
-        self, arr: np.ndarray[tuple[int, ...], np.dtype[np.generic]]
-    ) -> NDArray[np.float64]:
+    def _as_float64(self, arr: NDArray[np.floating[Any]]) -> NDArray[np.float64]:
         """Convert array to float64 type.
 
         Parameters
@@ -957,7 +955,14 @@ class CacheLoader:
                 and not isinstance(arr, np.memmap)
             ):
                 try:
-                    self._cache.set(cache_key, self._as_float64(arr))
+                    # Only cache if arr is a floating point array
+                    if isinstance(arr, np.ndarray) and np.issubdtype(
+                        arr.dtype, np.floating
+                    ):
+                        self._cache.set(
+                            cache_key,
+                            self._as_float64(cast(NDArray[np.floating[Any]], arr)),
+                        )
                 except Exception:
                     logger.warning(
                         "Failed to cache loaded array for %s", path, exc_info=True

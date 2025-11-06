@@ -9,12 +9,12 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 __all__ = [
-    "PadConfig"
-    "DilationConfig"
-    "NeighborDirection"
-    "ValidationResult"
-    "ProcessorConfig"
-    "BoundaryComputationConfig"
+    "PadConfig",
+    "DilationConfig",
+    "NeighborDirection",
+    "ValidationResult",
+    "ProcessorConfig",
+    "BoundaryComputationConfig",
 ]
 
 

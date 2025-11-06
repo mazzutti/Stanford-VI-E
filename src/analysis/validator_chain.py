@@ -40,6 +40,7 @@ from typing import (
     Union,
     Protocol,
     Generic,
+    Callable,
     Any,
 )
 from enum import Enum
@@ -62,6 +63,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+T_contra = TypeVar("T_contra", contravariant=True)
 
 
 class ValidatorResult(Enum):
@@ -72,13 +74,13 @@ class ValidatorResult(Enum):
     WARNING = "warning"
 
 
-class Validator(Protocol[T]):
+class Validator(Protocol[T_contra]):
     """Protocol for validation functions.
 
     Any callable that takes a value and returns validation errors or empty list.
     """
 
-    def __call__(self, value: T) -> List[str]:
+    def __call__(self, value: T_contra) -> List[str]:
         """Validate a value.
 
         Parameters
@@ -319,7 +321,7 @@ class ValidatorComposite(Generic[T]):
 # Built-in validators (composable)
 
 
-def not_none(message: str = "is required") -> Validator:
+def not_none(message: str = "is required") -> Callable[[Any], List[str]]:
     """Validator that checks if value is not None.
 
     Parameters
@@ -329,7 +331,7 @@ def not_none(message: str = "is required") -> Validator:
 
     Returns
     -------
-    Validator
+    Callable
         Validator function
     """
 
@@ -340,7 +342,7 @@ def not_none(message: str = "is required") -> Validator:
     return _not_none
 
 
-def positive(message: str = "must be positive") -> Validator:
+def positive(message: str = "must be positive") -> Callable[[Any], List[str]]:
     """Validator that checks if value is positive.
 
     Parameters
@@ -350,7 +352,7 @@ def positive(message: str = "must be positive") -> Validator:
 
     Returns
     -------
-    Validator
+    Callable
         Validator function
     """
 
@@ -361,7 +363,7 @@ def positive(message: str = "must be positive") -> Validator:
     return _positive
 
 
-def negative(message: str = "must be negative") -> Validator:
+def negative(message: str = "must be negative") -> Callable[[Any], List[str]]:
     """Validator that checks if value is negative.
 
     Parameters
@@ -386,7 +388,7 @@ def in_range(
     min_val: Union[int, float],
     max_val: Union[int, float],
     message: Optional[str] = None,
-) -> Validator:
+) -> Callable[[Any], List[str]]:
     """Validator that checks if value is in range.
 
     Parameters
@@ -400,7 +402,7 @@ def in_range(
 
     Returns
     -------
-    Validator
+    Callable
         Validator function
     """
     if message is None:
@@ -417,7 +419,7 @@ def length_between(
     min_len: int,
     max_len: int,
     message: Optional[str] = None,
-) -> Validator:
+) -> Callable[[Any], List[str]]:
     """Validator that checks if value length is in range.
 
     Parameters
@@ -431,7 +433,7 @@ def length_between(
 
     Returns
     -------
-    Validator
+    Callable
         Validator function
     """
     if message is None:
@@ -447,7 +449,9 @@ def length_between(
     return _length_between
 
 
-def matches_type(expected_type: type, message: Optional[str] = None) -> Validator:
+def matches_type(
+    expected_type: type, message: Optional[str] = None
+) -> Callable[[Any], List[str]]:
     """Validator that checks if value is of expected type.
 
     Parameters
@@ -472,7 +476,7 @@ def matches_type(expected_type: type, message: Optional[str] = None) -> Validato
     return _matches_type
 
 
-def is_callable(message: str = "must be callable") -> Validator:
+def is_callable(message: str = "must be callable") -> Callable[[Any], List[str]]:
     """Validator that checks if value is callable.
 
     Parameters
@@ -482,7 +486,7 @@ def is_callable(message: str = "must be callable") -> Validator:
 
     Returns
     -------
-    Validator
+    Callable
         Validator function
     """
 

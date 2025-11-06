@@ -43,7 +43,8 @@ from typing import (
     Any,
     List,
     Protocol,
-    Union,
+    cast,
+    Callable,
 )
 from datetime import datetime
 import logging
@@ -220,7 +221,7 @@ class Result(Generic[T]):
             return self.data.get(key, default)
         return default
 
-    def transform(self, func: callable[[T], Any]) -> Result[Any]:
+    def transform(self, func: Callable[[T], Any]) -> Result[Any]:
         """Transform result data with a function.
 
         Creates new Result with transformed data, preserving metadata and tags.
@@ -251,7 +252,7 @@ class Result(Generic[T]):
             logger.warning(f"Transform failed: {e}")
             raise
 
-    def combine(self, other: Result[T]) -> Result[Union[T, T]]:
+    def combine(self, other: Result[T]) -> Result[Any]:
         """Combine two results into one.
 
         Useful for merging partial results. Creates new result with combined
@@ -277,7 +278,7 @@ class Result(Generic[T]):
 
         # Combine data if both are dicts
         if isinstance(self.data, dict) and isinstance(other.data, dict):
-            combined_data = {**self.data, **other.data}
+            combined_data: Any = {**self.data, **other.data}
         else:
             combined_data = (self.data, other.data)
 
@@ -357,7 +358,7 @@ class Result(Generic[T]):
                 self.data
                 if isinstance(self.data, dict)
                 else (
-                    asdict(self.data)
+                    asdict(cast(Any, self.data))
                     if hasattr(self.data, "__dataclass_fields__")
                     else str(self.data)
                 )

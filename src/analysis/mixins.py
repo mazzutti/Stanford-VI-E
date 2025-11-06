@@ -40,6 +40,7 @@ from typing import (
     Sequence,
     Type,
     TypeVar,
+    cast,
 )
 
 if TYPE_CHECKING:
@@ -84,10 +85,10 @@ class SingletonMixin:
 
     def __new__(cls: Type[T], *args: Any, **kwargs: Any) -> T:
         """Create or return the singleton instance in a thread-safe manner."""
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super().__new__(cls)
-            return cls._instance
+        with getattr(cls, "_lock"):
+            if getattr(cls, "_instance", None) is None:
+                setattr(cls, "_instance", object.__new__(cls))
+            return cast(T, getattr(cls, "_instance"))
 
     @classmethod
     def reset(cls) -> None:
@@ -96,8 +97,8 @@ class SingletonMixin:
         After reset, the next instantiation will create a new instance.
         Thread-safe.
         """
-        with cls._lock:
-            cls._instance = None
+        with getattr(cls, "_lock"):
+            setattr(cls, "_instance", None)
             logger.debug(f"Reset singleton {cls.__name__}")
 
     @classmethod
@@ -107,8 +108,8 @@ class SingletonMixin:
         Returns:
             True if singleton exists, False otherwise.
         """
-        with cls._lock:
-            return cls._instance is not None
+        with getattr(cls, "_lock"):
+            return getattr(cls, "_instance", None) is not None
 
     @classmethod
     def get_instance(cls: Type[T]) -> Optional[T]:
@@ -117,8 +118,8 @@ class SingletonMixin:
         Returns:
             The singleton instance if initialized, None otherwise.
         """
-        with cls._lock:
-            return cls._instance
+        with getattr(cls, "_lock"):
+            return cast(Optional[T], getattr(cls, "_instance", None))
 
 
 class ValidatableMixin:

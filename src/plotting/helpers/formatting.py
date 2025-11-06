@@ -4,10 +4,11 @@ Provides concise logging and header helpers for plotting and analysis
 commands.
 """
 
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 from pathlib import Path
 import logging
 import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +33,17 @@ class FormattingHelper:
     def print_angle_summary(
         self,
         angles: Sequence[float],
-        volumes: Sequence[np.ndarray],
-        stack: np.ndarray | None = None,
-        gradient: np.ndarray | None = None,
+        volumes: Sequence["NDArray[np.floating[Any]]"],
+        stack: NDArray[np.floating[Any]] | None = None,
+        gradient: NDArray[np.floating[Any]] | None = None,
     ) -> None:
         """Print a concise per-angle summary."""
         return print_angle_summary(angles, volumes, stack=stack, gradient=gradient)
 
     def print_selected_angles(
-        self, selected_angles: np.ndarray, weights: np.ndarray
+        self,
+        selected_angles: NDArray[np.floating[Any]],
+        weights: NDArray[np.floating[Any]],
     ) -> None:
         """Print selected angles and weights."""
         return print_selected_angles(selected_angles, weights)
@@ -74,9 +77,9 @@ def print_header(title: str) -> None:
 
 def print_angle_summary(
     angles: Sequence[float],
-    volumes: Sequence[np.ndarray],
-    stack: np.ndarray | None = None,
-    gradient: np.ndarray | None = None,
+    volumes: Sequence[NDArray[np.floating[Any]]],
+    stack: NDArray[np.floating[Any]] | None = None,
+    gradient: NDArray[np.floating[Any]] | None = None,
 ) -> None:
     """Log a concise per-angle summary and optional stack/gradient stats."""
     print_header("ANGLE-DEPENDENT SUMMARY")
@@ -106,7 +109,9 @@ def print_angle_summary(
         )
 
 
-def print_selected_angles(selected_angles: np.ndarray, weights: np.ndarray) -> None:
+def print_selected_angles(
+    selected_angles: NDArray[np.floating[Any]], weights: NDArray[np.floating[Any]]
+) -> None:
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
 

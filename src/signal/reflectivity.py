@@ -5,7 +5,9 @@ pipelines. Provides optimized reflection coefficient calculations with Numba
 JIT compilation.
 """
 
+from typing import Any
 import numpy as np
+from numpy.typing import NDArray
 import logging
 from numba import njit, prange
 
@@ -22,7 +24,7 @@ class ZoeppritzSolver:
     Numba is a required dependency for this solver.
     """
 
-    def __init__(self, cpu_batch: int = None):
+    def __init__(self, cpu_batch: int | None = None):
         if cpu_batch is None:
             try:
                 import os
@@ -35,14 +37,14 @@ class ZoeppritzSolver:
 
     def solve(
         self,
-        vp1: np.ndarray,
-        vs1: np.ndarray,
-        rho1: np.ndarray,
-        vp2: np.ndarray,
-        vs2: np.ndarray,
-        rho2: np.ndarray,
+        vp1: NDArray[np.floating[Any]],
+        vs1: NDArray[np.floating[Any]],
+        rho1: NDArray[np.floating[Any]],
+        vp2: NDArray[np.floating[Any]],
+        vs2: NDArray[np.floating[Any]],
+        rho2: NDArray[np.floating[Any]],
         theta1_deg: float,
-    ) -> np.ndarray:
+    ) -> NDArray[np.complexfloating[Any, Any]]:
         """Solve for P-P reflection coefficients.
 
         Args are the same as the prior function. Returns complex128 array
@@ -80,7 +82,9 @@ class ZoeppritzSolver:
 
 
 @njit
-def _solve_4x4_numba(A, b):
+def _solve_4x4_numba(
+    A: "NDArray[np.complex128]", b: "NDArray[np.complex128]"
+) -> "NDArray[np.complex128]":
     # In-place Gaussian elimination with partial pivoting
     M = A.copy()
     rhs = b.copy()
@@ -93,39 +97,47 @@ def _solve_4x4_numba(A, b):
             if aval > maxval:
                 maxval = aval
                 piv = ii
-            if piv != k:
-                for jj in range(k, 4):
-                    tmp = M[k, jj]
-                    M[k, jj] = M[piv, jj]
-                    M[piv, jj] = tmp
-                tmp = rhs[k]
-                rhs[k] = rhs[piv]
-                rhs[piv] = tmp
-            akk = M[k, k]
-            if akk == 0:
-                continue
+        if piv != k:
+            for jj in range(k, 4):
+                tmp = M[k, jj]
+                M[k, jj] = M[piv, jj]
+                M[piv, jj] = tmp
+            tmp = rhs[k]
+            rhs[k] = rhs[piv]
+            rhs[piv] = tmp
+        akk = M[k, k]
+        if akk != 0:
             for ii in range(k + 1, 4):
                 factor = M[ii, k] / akk
                 rhs[ii] = rhs[ii] - factor * rhs[k]
                 for jj in range(k, 4):
                     M[ii, jj] = M[ii, jj] - factor * M[k, jj]
-        # Back substitution
-        x = np.empty(4, dtype=np.complex128)
-        for ii in range(3, -1, -1):
-            s = rhs[ii]
-            for jj in range(ii + 1, 4):
-                s = s - M[ii, jj] * x[jj]
-            if M[ii, ii] == 0:
-                x[ii] = 0
-            else:
-                x[ii] = s / M[ii, ii]
-        return x
+    # Back substitution
+    x = np.empty(4, dtype=np.complex128)
+    for ii in range(3, -1, -1):
+        s = rhs[ii]
+        for jj in range(ii + 1, 4):
+            s = s - M[ii, jj] * x[jj]
+        if M[ii, ii] == 0:
+            x[ii] = 0
+        else:
+            x[ii] = s / M[ii, ii]
+    return x
 
 
 @njit(parallel=True)
 def _numba_solve_zoeppritz(
-    vp1f, vs1f, rho1f, vp2f, vs2f, rho2f, theta1, theta2f, phi1f, phi2f
-):
+    vp1f: "NDArray[np.floating[Any]]",
+    vs1f: "NDArray[np.floating[Any]]",
+    rho1f: "NDArray[np.floating[Any]]",
+    vp2f: "NDArray[np.floating[Any]]",
+    vs2f: "NDArray[np.floating[Any]]",
+    rho2f: "NDArray[np.floating[Any]]",
+    theta1: float,
+    theta2f: "NDArray[np.floating[Any]]",
+    phi1f: "NDArray[np.floating[Any]]",
+    phi2f: "NDArray[np.floating[Any]]",
+) -> "NDArray[np.complex128]":
     N = vp1f.size
     cth1 = np.cos(theta1)
     sth1 = np.sin(theta1)

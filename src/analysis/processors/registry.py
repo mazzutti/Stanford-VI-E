@@ -113,7 +113,7 @@ class ProcessorRegistry:
     >>> detection_processors = registry.list_processors(tags=["detection"])
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize an empty processor registry."""
         self._processors: Dict[str, Callable[[], Any]] = {}
         self._metadata: Dict[str, ProcessorMetadata] = {}

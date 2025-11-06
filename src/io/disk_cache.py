@@ -61,7 +61,7 @@ class DiskCache:
 
         # Thread pool for background saves
         self._executor = ThreadPoolExecutor(max_workers=2)
-        self._futures: Dict[str, Future] = {}
+        self._futures: Dict[str, Future[None]] = {}
         self._lock = threading.Lock()
 
         # Optional periodic pruning thread

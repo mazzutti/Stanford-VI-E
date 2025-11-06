@@ -99,7 +99,7 @@ class FaciesAnalysisConfig(AnalysisConfig):
         if self.dilation_window < 1:
             raise ValueError("dilation_window must be at least 1")
 
-    def validate_inputs(self, **kwargs) -> bool:
+    def validate_inputs(self, **kwargs: str) -> bool:
         """Validate that required input parameters are provided.
 
         Implements AnalysisConfig abstract method. For facies analysis,

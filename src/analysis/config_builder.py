@@ -39,6 +39,7 @@ from typing import (
     Any,
     Callable,
     Protocol,
+    cast,
 )
 import logging
 
@@ -251,7 +252,9 @@ class ConfigBuilder(Generic[T]):
         self.validators[key] = validator
         return self
 
-    def add_validators(self, validators: Dict[str, Callable]) -> ConfigBuilder[T]:
+    def add_validators(
+        self, validators: Dict[str, Callable[[Any], bool]]
+    ) -> "ConfigBuilder[T]":
         """Add multiple validation functions.
 
         Parameters
@@ -326,9 +329,9 @@ class ConfigBuilder(Generic[T]):
                 filtered_values = {
                     k: v for k, v in final_values.items() if k in config_fields
                 }
-                instance = self.config_class(**filtered_values)
+                instance: T = cast(T, self.config_class(**filtered_values))
             else:
-                instance = self.config_class(**final_values)
+                instance = cast(T, self.config_class(**final_values))  # type: ignore[redundant-cast]
 
             logger.info(
                 f"Built {self.config_class.__name__} with "

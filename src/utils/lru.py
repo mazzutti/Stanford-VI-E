@@ -47,7 +47,7 @@ class LRUCache(Generic[T], CacheProtocol[T]):
         with self._lock:
             self._data.clear()
 
-    def info(self) -> dict:
+    def info(self) -> dict[str, int]:
         with self._lock:
             return {"maxsize": self.maxsize, "currsize": len(self._data)}
 
@@ -90,7 +90,7 @@ class ShardedLRUCache(Generic[T], CacheProtocol[T]):
         for s in self._shards:
             s.clear()
 
-    def info(self) -> dict:
+    def info(self) -> dict[str, int]:
         total = sum(s.info().get("currsize", 0) for s in self._shards)
         # report maxsize as sum of shard maxsizes
         max_total = sum(s.info().get("maxsize", 0) for s in self._shards)

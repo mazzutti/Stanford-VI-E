@@ -113,7 +113,7 @@ class AnalysisConfig(ABC):
             Configuration as dictionary for serialization.
         """
         if is_dataclass(self):
-            return asdict(self)  # type: ignore
+            return asdict(self)
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement to_dict() "
             "or be decorated with @dataclass"

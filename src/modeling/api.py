@@ -7,6 +7,8 @@ Uses ModelingPipeline for orchestration.
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
+from typing import Any
 import logging
 
 from src.modeling.pipeline import ModelingPipeline
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 def run_full_modeling(
     cache_dir: str = ".cache",
     add_avo_noise: bool = False,
-) -> dict[str, bool | list[np.ndarray] | None | np.ndarray]:
+) -> dict[str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]]:
     """Run the full modeling pipeline from depth to time domain.
 
     Orchestrates: data loading, depth-to-time resampling, and AVO synthesis.
@@ -35,7 +37,7 @@ def run_full_modeling(
         Dictionary with modeling results:
         - 'avo_cached': bool - whether result came from cache
         - 'angle_stacks': list[np.ndarray] - per-angle seismic stacks
-        - 'full_stack': np.ndarray - combined seismic stack
+        - 'full_stack': NDArray[np.floating[Any]] - combined seismic stack
 
     Example:
         >>> result = run_full_modeling(cache_dir=".cache", add_avo_noise=True)

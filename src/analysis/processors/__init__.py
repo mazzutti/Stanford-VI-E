@@ -36,6 +36,7 @@ Exceptions:
 Example
 -------
 >>> import numpy as np
+from numpy.typing import NDArray
 >>> from src.analysis.processors import BoundaryDetector, CubeAligner
 >>> facies_cube = np.random.randint(0, 5, (10, 10, 20))
 >>> detector = BoundaryDetector()

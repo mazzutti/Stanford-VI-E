@@ -7,8 +7,8 @@ through converter classes that handle specific unit types (velocity, density, et
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Union
-from numpy.typing import ArrayLike
+from typing import Any, Tuple, Union
+from numpy.typing import ArrayLike, NDArray
 
 import numpy as np
 import logging
@@ -17,7 +17,7 @@ import warnings
 logger = logging.getLogger(__name__)
 
 
-def _nanmax_abs(a: np.ndarray) -> float:
+def _nanmax_abs(a: NDArray[np.floating[Any]]) -> float:
     """Helper to safely compute max absolute value."""
     try:
         with warnings.catch_warnings():
@@ -34,7 +34,9 @@ class Converter(ABC):
     """
 
     @abstractmethod
-    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+    def convert(
+        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+    ) -> NDArray[np.floating[Any]]:
         """Convert array from one unit to another.
 
         Args:
@@ -63,7 +65,9 @@ class VelocityConverter(Converter):
         self.canonical_units = ("m/s", "km/s")
         self.conversion_factor = 1000.0
 
-    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+    def convert(
+        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+    ) -> NDArray[np.floating[Any]]:
         """Convert velocity between m/s and km/s."""
         if from_unit == to_unit:
             return array
@@ -90,7 +94,9 @@ class DensityConverter(Converter):
         self.canonical_units = ("kg/m3", "g/cc")
         self.conversion_factor = 1000.0
 
-    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+    def convert(
+        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+    ) -> NDArray[np.floating[Any]]:
         """Convert density between kg/m3 and g/cc."""
         if from_unit == to_unit:
             return array
@@ -123,10 +129,10 @@ class TimeConverter(Converter):
 
     def convert(  # type: ignore[override]
         self,
-        value: Union[np.ndarray, float],
+        value: Union["NDArray[np.floating[Any]]", float],
         from_unit: str = "unknown",
         to_unit: str = "s",
-    ) -> Union[np.ndarray, Tuple[float, bool]]:
+    ) -> Union["NDArray[np.floating[Any]]", Tuple[float, bool]]:
         """Convert time to seconds with heuristic detection.
 
         Returns (converted_value, was_converted) for scalar or array for ndarray
@@ -157,10 +163,10 @@ class LengthConverter(Converter):
 
     def convert(  # type: ignore[override]
         self,
-        value: Union[np.ndarray, float],
+        value: Union["NDArray[np.floating[Any]]", float],
         from_unit: str = "unknown",
         to_unit: str = "m",
-    ) -> Union[np.ndarray, Tuple[float, bool]]:
+    ) -> Union["NDArray[np.floating[Any]]", Tuple[float, bool]]:
         """Convert length to meters with heuristic detection.
 
         Returns (converted_value, was_converted) for scalar or array for ndarray
@@ -197,7 +203,9 @@ class UnitRegistry:
             LengthConverter(),
         ]
 
-    def convert(self, array: np.ndarray, from_unit: str, to_unit: str) -> np.ndarray:
+    def convert(
+        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+    ) -> NDArray[np.floating[Any]]:
         """Convert array from one unit to another using registered converters."""
         if from_unit == to_unit:
             return array
@@ -229,7 +237,7 @@ class UnitRegistry:
     @staticmethod
     def ensure_m_per_s(
         arr: ArrayLike, copy_on_convert: bool = False
-    ) -> Tuple[np.ndarray, bool]:
+    ) -> Tuple["NDArray[np.floating[Any]]", bool]:
         """Ensure velocity array is in m/s, converting from km/s if needed.
 
         Uses heuristic: values < 100 are likely km/s (seismic P-wave in km/s),
@@ -258,7 +266,7 @@ class UnitRegistry:
     @staticmethod
     def ensure_meters(
         arr: ArrayLike, copy_on_convert: bool = False
-    ) -> Tuple[np.ndarray, bool]:
+    ) -> Tuple["NDArray[np.floating[Any]]", bool]:
         """Ensure length array is in meters, converting from km if needed.
 
         Uses heuristic: values < 0.1 are likely km, values >= 0.1 are likely meters.

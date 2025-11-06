@@ -8,9 +8,10 @@ Provides focused, single-responsibility classes for common plotting tasks:
 """
 
 import logging
-from typing import Tuple, Optional
+from typing import Any, Tuple, Optional
 
 import numpy as np
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, Colormap
 from matplotlib.axes import Axes
@@ -37,7 +38,7 @@ class SliceExtractor:
         """
         self.ni, self.nj, self.nk = shape
 
-    def extract_inline(self, cube: np.ndarray, idx: int) -> Tuple[np.ndarray, str, str]:
+    def extract_inline(self, cube: NDArray[np.floating[Any]], idx: int) -> Tuple[NDArray[np.floating[Any]], str, str]:
         """Extract inline slice at index idx.
 
         Args:
@@ -50,8 +51,8 @@ class SliceExtractor:
         return cube[idx, :, :], "Crossline (J)", "Depth Index (K)"
 
     def extract_crossline(
-        self, cube: np.ndarray, idx: int
-    ) -> Tuple[np.ndarray, str, str]:
+        self, cube: NDArray[np.floating[Any]], idx: int
+    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
         """Extract crossline slice at index idx.
 
         Args:
@@ -64,8 +65,8 @@ class SliceExtractor:
         return cube[:, idx, :], "Inline (I)", "Depth Index (K)"
 
     def extract_depthslice(
-        self, cube: np.ndarray, idx: int
-    ) -> Tuple[np.ndarray, str, str]:
+        self, cube: NDArray[np.floating[Any]], idx: int
+    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
         """Extract depth/time slice at index idx.
 
         Args:
@@ -78,8 +79,8 @@ class SliceExtractor:
         return cube[:, :, idx], "Inline (I)", "Crossline (J)"
 
     def extract_by_orientation(
-        self, cube: np.ndarray, idx: int, orientation: str
-    ) -> Tuple[np.ndarray, str, str]:
+        self, cube: NDArray[np.floating[Any]], idx: int, orientation: str
+    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
         """Extract slice based on orientation string.
 
         Args:
@@ -108,7 +109,7 @@ class DataNormalizer:
 
     @staticmethod
     def compute_limits(
-        data: np.ndarray,
+        data: NDArray[np.floating[Any]],
         is_categorical: bool = False,
         percentile: float = 99.5,
     ) -> Tuple[float, float]:
@@ -205,7 +206,7 @@ class ImageRenderer:
     @staticmethod
     def render(
         ax: Axes,
-        data: np.ndarray,
+        data: NDArray[np.floating[Any]],
         config: PlotConfig,
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,

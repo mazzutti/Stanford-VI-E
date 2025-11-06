@@ -10,7 +10,8 @@ from pathlib import Path
 import os
 import hashlib
 import numpy as np
-from typing import Callable
+from numpy.typing import NDArray
+from typing import Any, Callable
 import logging
 
 from src.modeling.modeling import SynthesisConfig, _unwrap_quantity
@@ -30,8 +31,10 @@ class _CacheHasher:
 
     @staticmethod
     def hash_properties(
-        arrays: list[np.ndarray],
-        extras: list[str | float | int | bool | np.ndarray] | None = None,
+        arrays: list[NDArray[np.floating[Any]]],
+        extras: (
+            list[str | float | int | bool | NDArray[np.floating[Any]]] | None
+        ) = None,
     ) -> str:
         """Hash reflectivity and parameters for cache keys.
 
@@ -81,8 +84,8 @@ class CacheManager:
     def save_avo_synthetics(
         self,
         filename: str,
-        full_stack: np.ndarray,
-        angle_stacks: list[np.ndarray] | None = None,
+        full_stack: NDArray[np.floating[Any]],
+        angle_stacks: list[NDArray[np.floating[Any]]] | None = None,
     ) -> None:
         """Save AVO synthetics to cache.
 
@@ -91,7 +94,7 @@ class CacheManager:
             full_stack: Combined seismic stack
             angle_stacks: Optional list of angle-dependent stacks
         """
-        save_dict: dict[str, np.ndarray] = {"full_stack": full_stack}
+        save_dict: dict[str, NDArray[np.floating[Any]]] = {"full_stack": full_stack}
 
         if angle_stacks:
             for i, angle_stack in enumerate(angle_stacks):
@@ -103,7 +106,7 @@ class CacheManager:
 
     def load_avo_synthetics(
         self, filename: str
-    ) -> tuple[list[np.ndarray] | None, np.ndarray]:
+    ) -> tuple[list[NDArray[np.floating[Any]]] | None, NDArray[np.floating[Any]]]:
         """Load AVO synthetics from cache.
 
         Args:
@@ -126,11 +129,11 @@ class CacheManager:
 
     def compute_cache_key(
         self,
-        vp: np.ndarray,
-        vs: np.ndarray,
-        rho: np.ndarray,
+        vp: NDArray[np.floating[Any]],
+        vs: NDArray[np.floating[Any]],
+        rho: NDArray[np.floating[Any]],
         angles: list[float],
-        wavelet: np.ndarray,
+        wavelet: NDArray[np.floating[Any]],
         use_quality_weighting: bool = False,
         add_noise: bool = False,
         snr_db: float = 20,
@@ -150,7 +153,7 @@ class CacheManager:
         Returns:
             Cache key string
         """
-        extra_params: list[str | float | int | bool | np.ndarray] = [
+        extra_params: list[str | float | int | bool | NDArray[np.floating[Any]]] = [
             str(angles),
             wavelet,
             use_quality_weighting,
@@ -162,15 +165,20 @@ class CacheManager:
 
     def get_avo_synthetics(
         self,
-        props_time: dict[str, np.ndarray | Quantity],
+        props_time: dict[str, NDArray[np.floating[Any]] | Quantity],
         angles: list[float],
-        wavelet: np.ndarray,
+        wavelet: NDArray[np.floating[Any]],
         create_fn: Callable[
-            [dict[str, np.ndarray], list[float], np.ndarray, SynthesisConfig | None],
-            tuple[list[np.ndarray], np.ndarray],
+            [
+                dict[str, NDArray[np.floating[Any]]],
+                list[float],
+                NDArray[np.floating[Any]],
+                SynthesisConfig | None,
+            ],
+            tuple[list[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
         ],
         config: SynthesisConfig | None = None,
-    ) -> tuple[list[np.ndarray] | None, np.ndarray]:
+    ) -> tuple[list[NDArray[np.floating[Any]]] | None, NDArray[np.floating[Any]]]:
         """Get AVO synthetics, computing if not cached.
 
         Args:
@@ -214,7 +222,7 @@ class CacheManager:
         logger.info("Cache miss for AVO synthetics; computing...")
 
         # Unwrap Quantity objects before passing to create_fn
-        props_unwrapped: dict[str, np.ndarray] = {
+        props_unwrapped: dict[str, NDArray[np.floating[Any]]] = {
             k: _unwrap_quantity(v) for k, v in props_time.items()
         }
 

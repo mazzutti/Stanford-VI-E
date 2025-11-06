@@ -5,9 +5,10 @@ Uses PlotConfig and ImageRenderer for clean visualization.
 """
 
 import logging
-from typing import Literal, Optional, Dict, Tuple
+from typing import Any, Literal, Optional, Dict, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
@@ -30,7 +31,7 @@ class RockPhysicsPlotter(BasePlotter):
     def plot_attribute(
         self,
         ax: Axes,
-        data: np.ndarray,
+        data: NDArray[np.floating[Any]],
         idx: int,
         slice_type: Literal["inline", "crossline", "depthslice"] = "inline",
         config: Optional[PlotConfig] = None,
@@ -82,7 +83,7 @@ class RockPhysicsPlotter(BasePlotter):
     def plot_multiple_attributes(
         self,
         fig: Figure,
-        attributes: Dict[str, np.ndarray],
+        attributes: Dict[str, NDArray[np.floating[Any]]],
         idx: int = 0,
         slice_type: Literal["inline", "crossline", "depthslice"] = "inline",
         cmap: str = "viridis",

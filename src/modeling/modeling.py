@@ -8,11 +8,12 @@ wavelet convolution.
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from dataclasses import dataclass
 from tqdm.auto import tqdm
 import sys
 import logging
-from typing import TypeAlias
+from typing import Any, TypeAlias
 from src.utils.quantity import Quantity
 from src.modeling.processors import ReflectivityComputer, WaveletConvolver
 
@@ -20,8 +21,8 @@ from src.modeling.processors import ReflectivityComputer, WaveletConvolver
 logger = logging.getLogger(__name__)
 
 # Type aliases
-PropsDict: TypeAlias = dict[str, np.ndarray | Quantity]
-PropsUnwrapped: TypeAlias = dict[str, np.ndarray]
+PropsDict: TypeAlias = dict[str, NDArray[np.floating[Any]] | Quantity]
+PropsUnwrapped: TypeAlias = dict[str, NDArray[np.floating[Any]]]
 
 # Configuration constants
 CONVOLUTION_BLOCK_SIZE: int = 10
@@ -34,7 +35,9 @@ __all__ = [
 ]
 
 
-def _unwrap_quantity(value: Quantity | np.ndarray) -> np.ndarray:
+def _unwrap_quantity(
+    value: Quantity | NDArray[np.floating[Any]],
+) -> NDArray[np.floating[Any]]:
     """Extract array from Quantity or return as ndarray."""
     if isinstance(value, Quantity):
         return value.array
@@ -97,11 +100,11 @@ class AngleModel:
 
     def add_noise(
         self,
-        seismic: np.ndarray,
+        seismic: NDArray[np.floating[Any]],
         angle: float,
         snr_db: float,
         seed: int | None = None,
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating[Any]]:
         """Add realistic angle-dependent noise to seismic data.
 
         Combines systematic (angle-dependent) and random (SNR-dependent) noise.
@@ -116,22 +119,24 @@ class AngleModel:
 
         random_data_1 = np.random.randn(*seismic.shape)
         random_data_2 = np.random.randn(*seismic.shape)
-        noise_random: np.ndarray = np.asarray(
+        noise_random: NDArray[np.floating[Any]] = np.asarray(
             random_data_1, dtype=np.float64
         ) * np.sqrt(noise_power)
-        noise_systematic: np.ndarray = (
+        noise_systematic: NDArray[np.floating[Any]] = (
             np.asarray(random_data_2, dtype=np.float64) * sigma_systematic
         )
-        total_noise: np.ndarray = noise_random + noise_systematic
+        total_noise: NDArray[np.floating[Any]] = noise_random + noise_systematic
 
-        noisy_seismic: np.ndarray = seismic + total_noise.astype(seismic.dtype)
+        noisy_seismic: NDArray[np.floating[Any]] = seismic + total_noise.astype(
+            seismic.dtype
+        )
         return noisy_seismic.astype(np.float32)
 
     def weighted_stack(
         self,
-        angle_stacks: list[np.ndarray],
+        angle_stacks: list[NDArray[np.floating[Any]]],
         angles: list[float],
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating[Any]]:
         """Combine angle stacks using quality weights.
 
         Args:
@@ -184,9 +189,9 @@ class AVOSynthesizer:
         self,
         props_time: PropsDict,
         angles: list[float],
-        wavelet: np.ndarray,
+        wavelet: NDArray[np.floating[Any]],
         config: SynthesisConfig | None = None,
-    ) -> tuple[list[np.ndarray], np.ndarray]:
+    ) -> tuple[list[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]:
         """Create angle-dependent AVO synthetics from time-domain properties.
 
         Args:
@@ -247,16 +252,16 @@ class AVOSynthesizer:
 
     def _process_angle(
         self,
-        vp: np.ndarray,
-        vs: np.ndarray,
-        rho: np.ndarray,
+        vp: NDArray[np.floating[Any]],
+        vs: NDArray[np.floating[Any]],
+        rho: NDArray[np.floating[Any]],
         angle: float,
-        wavelet: np.ndarray,
+        wavelet: NDArray[np.floating[Any]],
         ni: int,
         nj: int,
         nk: int,
         block_i: int,
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating[Any]]:
         """Process a single angle: compute reflectivity and convolve."""
         # Compute reflectivity using dedicated processor
         rc_pad = self.reflectivity_computer.compute_reflectivity(vp, vs, rho, angle)

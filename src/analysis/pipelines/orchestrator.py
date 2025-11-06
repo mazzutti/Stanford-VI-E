@@ -25,6 +25,7 @@ from typing import (
     List,
     Optional,
     TypeVar,
+    cast,
 )
 import logging
 from datetime import datetime
@@ -224,10 +225,10 @@ class Pipeline(Generic[T_In, T_Out]):
             Name of this pipeline (for logging).
         """
         self.name = name
-        self._stages: List[PipelineStage] = []
-        self._results: Dict[str, StageResult] = {}
+        self._stages: List["PipelineStage[Any, Any]"] = []
+        self._results: Dict[str, "StageResult[Any]"] = {}
 
-    def add_stage(self, stage: PipelineStage) -> Pipeline:
+    def add_stage(self, stage: "PipelineStage[Any, Any]") -> "Pipeline[Any, Any]":
         """Add a stage to the pipeline (fluent API).
 
         Parameters
@@ -296,7 +297,7 @@ class Pipeline(Generic[T_In, T_Out]):
 
                 # Record result
                 duration = (datetime.now() - start_time).total_seconds() * 1000
-                result = StageResult(
+                result: StageResult[Any] = StageResult(
                     stage_name=stage.name,
                     success=True,
                     output=output,
@@ -322,9 +323,9 @@ class Pipeline(Generic[T_In, T_Out]):
                 ) from e
 
         logger.info(f"Pipeline '{self.name}' completed successfully")
-        return current
+        return cast(T_Out, current)
 
-    def get_stage_result(self, stage_name: str) -> Optional[StageResult]:
+    def get_stage_result(self, stage_name: str) -> Optional["StageResult[Any]"]:
         """Get result from a specific stage.
 
         Parameters
@@ -339,7 +340,7 @@ class Pipeline(Generic[T_In, T_Out]):
         """
         return self._results.get(stage_name)
 
-    def get_all_results(self) -> Dict[str, StageResult]:
+    def get_all_results(self) -> Dict[str, "StageResult[Any]"]:
         """Get results from all executed stages.
 
         Returns
@@ -505,9 +506,9 @@ class ParallelPipeline:
             Name of this parallel pipeline.
         """
         self.name = name
-        self._pipelines: List[Pipeline] = []
+        self._pipelines: List["Pipeline[Any, Any]"] = []
 
-    def add_pipeline(self, pipeline: Pipeline) -> ParallelPipeline:
+    def add_pipeline(self, pipeline: "Pipeline[Any, Any]") -> "ParallelPipeline":
         """Add a pipeline to execute in parallel.
 
         Parameters

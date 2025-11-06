@@ -45,6 +45,7 @@ Example Usage:
 
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
 
 from src.analysis.exceptions import ValidationError
 
@@ -73,7 +74,7 @@ class Validator(ABC):
     """
 
     @abstractmethod
-    def validate(self, value, name: str = "value", **kwargs) -> None:
+    def validate(self, value: Any, name: str = "value", **kwargs: Any) -> None:
         """Validate a value and raise ValidationError if invalid.
 
         Parameters
@@ -95,7 +96,7 @@ class Validator(ABC):
     @staticmethod
     def _format_error_message(
         name: str,
-        actual: any,
+        actual: Any,
         requirement: str,
     ) -> str:
         """Format a consistent validation error message.
@@ -124,7 +125,7 @@ class RangeValidator(Validator):
     p-values, and generic numeric ranges.
     """
 
-    def validate(
+    def validate(  # type: ignore[override]
         self,
         value: float,
         name: str = "value",
@@ -149,7 +150,10 @@ class RangeValidator(Validator):
         ValidationError
             If value is outside the specified range.
         """
-        self.validate_range(value, min_val, max_val, name)
+        # Handle None values by using unbounded defaults
+        actual_min = min_val if min_val is not None else float("-inf")
+        actual_max = max_val if max_val is not None else float("inf")
+        self.validate_range(float(value), actual_min, actual_max, name)
 
     @staticmethod
     def validate_correlation(
@@ -338,7 +342,7 @@ class RangeValidator(Validator):
 class CountValidator(Validator):
     """Validates count-like values (non-negative integers)."""
 
-    def validate(
+    def validate(  # type: ignore[override]
         self,
         value: int,
         name: str = "value",
@@ -434,7 +438,7 @@ class CountValidator(Validator):
 class QuantileValidator(Validator):
     """Validates quantile-related values."""
 
-    def validate(
+    def validate(  # type: ignore[override]
         self,
         value: float,
         name: str = "value",
@@ -567,7 +571,7 @@ class ValidatorStrategy(ABC):
     """
 
     @abstractmethod
-    def validate(self, data):
+    def validate(self, data: Any) -> Any:
         """Execute validation logic.
 
         Parameters
@@ -659,7 +663,7 @@ class CompositeValidator(ValidatorStrategy):
         self.validators = list(validators)
         self.mode = mode
 
-    def validate(self, data):
+    def validate(self, data: Any) -> Any:
         """Execute all validators and combine results.
 
         Parameters
@@ -672,7 +676,6 @@ class CompositeValidator(ValidatorStrategy):
         ValidationResult
             Combined validation result.
         """
-        from src.analysis.processors.config import ValidationResult
 
         results = [v.validate(data) for v in self.validators]
 
@@ -681,7 +684,7 @@ class CompositeValidator(ValidatorStrategy):
         else:
             return self._combine_any(results)
 
-    def _combine_all(self, results):
+    def _combine_all(self, results: Any) -> Any:
         """Combine results with AND logic (all must pass).
 
         Returns failure on first failed validation.
@@ -700,7 +703,7 @@ class CompositeValidator(ValidatorStrategy):
             n_removed=sum(r.n_removed for r in results),
         )
 
-    def _combine_any(self, results):
+    def _combine_any(self, results: Any) -> Any:
         """Combine results with OR logic (at least one must pass).
 
         Returns success if any validation passes.

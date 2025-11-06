@@ -5,9 +5,10 @@ Uses PlotConfig and ImageRenderer for clean, modern design.
 """
 
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.ndimage import sobel, gaussian_filter
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
@@ -28,8 +29,11 @@ class OverlayPlotter(BasePlotter):
     """
 
     def detect_facies_boundaries(
-        self, facies_slice: np.ndarray, sigma: float = 0.5, threshold: float = 0.1
-    ) -> np.ndarray:
+        self,
+        facies_slice: NDArray[np.floating[Any]],
+        sigma: float = 0.5,
+        threshold: float = 0.1,
+    ) -> NDArray[np.bool_]:
         """Detect facies boundaries using gradient analysis.
 
         Args:
@@ -55,8 +59,8 @@ class OverlayPlotter(BasePlotter):
     def plot_seismic_with_facies_overlay(
         self,
         ax: Axes,
-        seismic_slice: np.ndarray,
-        facies_slice: np.ndarray,
+        seismic_slice: NDArray[np.floating[Any]],
+        facies_slice: NDArray[np.floating[Any]],
         config: Optional[PlotConfig] = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
         """Plot seismic with facies boundaries overlaid.
@@ -122,7 +126,7 @@ class OverlayPlotter(BasePlotter):
     def plot_facies_only(
         self,
         ax: Axes,
-        facies_slice: np.ndarray,
+        facies_slice: NDArray[np.floating[Any]],
         config: Optional[PlotConfig] = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
         """Plot facies data only with discrete colormap.

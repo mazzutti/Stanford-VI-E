@@ -4,8 +4,9 @@ Provides a clean OOP interface for applying wavelets to seismic reflectivity
 data to produce synthetic seismograms.
 """
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import Any, TYPE_CHECKING, Optional, Union
 import numpy as np
+from numpy.typing import NDArray
 import logging
 
 if TYPE_CHECKING:
@@ -46,11 +47,11 @@ class SeismicSignalProcessor:
 
     def apply_wavelet(
         self,
-        reflectivity: np.ndarray,
-        wavelet: Union[np.ndarray, "Wavelet"],
+        reflectivity: NDArray[np.floating[Any]],
+        wavelet: Union[NDArray[np.floating[Any]], "Wavelet"],
         mode: str = "same",
         prefix: str = "",
-    ) -> np.ndarray:
+    ) -> NDArray[np.floating[Any]]:
         """Apply wavelet to reflectivity cube via convolution.
 
         Performs trace-by-trace convolution of the reflectivity cube with

@@ -5,9 +5,10 @@ Uses PlotConfig for configuration and ImageRenderer for rendering.
 """
 
 import logging
-from typing import Optional, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union, cast
 
 import numpy as np
+from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
@@ -35,7 +36,7 @@ class SlicePlotter(BasePlotter):
     def plot_2d_slices(
         self,
         ax: Axes,
-        cube: np.ndarray,
+        cube: NDArray[np.floating[Any]],
         slice_indices: Tuple[int, int, int],
         config: Optional[PlotConfig] = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
@@ -73,7 +74,7 @@ class SlicePlotter(BasePlotter):
     def plot_crossline(
         self,
         ax: Axes,
-        cube: np.ndarray,
+        cube: NDArray[np.floating[Any]],
         slice_indices: Tuple[int, int, int],
         config: Optional[PlotConfig] = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
@@ -110,7 +111,7 @@ class SlicePlotter(BasePlotter):
     def plot_depthslice(
         self,
         ax: Axes,
-        cube: np.ndarray,
+        cube: NDArray[np.floating[Any]],
         slice_indices: Tuple[int, int, int],
         config: Optional[PlotConfig] = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
@@ -145,7 +146,7 @@ class SlicePlotter(BasePlotter):
     def plot_3d_slices(
         self,
         ax: Union[Axes, "Axes3D"],
-        cube: np.ndarray,
+        cube: NDArray[np.floating[Any]],
         slice_indices: Tuple[int, int, int],
         config: Optional[PlotConfig] = None,
     ) -> Union[Axes, "Axes3D"]:

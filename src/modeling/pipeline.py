@@ -10,8 +10,9 @@ This simplified version delegates to specialized services for each step.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 import numpy as np
+from numpy.typing import NDArray
 import logging
 
 from src.modeling.config import ModelingConfig
@@ -58,7 +59,9 @@ class ModelingPipeline:
 
     def run(
         self,
-    ) -> dict[str, bool | list[np.ndarray] | None | np.ndarray]:
+    ) -> dict[
+        str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]
+    ]:
         """Execute the complete modeling pipeline.
 
         Uses configuration from self.config, delegating to specialized services:
@@ -83,7 +86,7 @@ class ModelingPipeline:
         # Load dataset
         logger.info("Loading dataset from %s...", cfg.data_path)
         dm = DatasetManager.from_stanfordsix(cfg.data_path, cfg.file_map, cfg.grid_spec)
-        props_depth: dict[str, np.ndarray | None] = {
+        props_depth: dict[str, NDArray[np.floating[Any]] | None] = {
             "vp": dm.vp,
             "vs": dm.vs,
             "rho": dm.rho,
@@ -95,19 +98,22 @@ class ModelingPipeline:
 
         # Resample to time domain
         logger.info("Resampling to time domain...")
-        props_time = self.resampler.resample_to_time(rpm.to_props_dict(), cfg.grid_spec)
+        props_dict: dict[str, NDArray[np.floating[Any]] | Quantity] = cast(
+            dict[str, NDArray[np.floating[Any]] | Quantity], rpm.to_props_dict()
+        )
+        props_time = self.resampler.resample_to_time(props_dict, cfg.grid_spec)
 
         # Create synthetics with caching
         logger.info("Generating AVO synthetics...")
 
         def create_fn(
-            props_unwrapped: dict[str, np.ndarray],
+            props_unwrapped: dict[str, NDArray[np.floating[Any]]],
             angles_in: list[float],
-            wavelet_in: np.ndarray,
+            wavelet_in: NDArray[np.floating[Any]],
             config_in: SynthesisConfig | None,
-        ) -> tuple[list[np.ndarray], np.ndarray]:
+        ) -> tuple[list[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]:
             return self.synthesizer.create_synthetics(
-                cast(dict[str, np.ndarray | Quantity], props_unwrapped),
+                cast(dict[str, NDArray[np.floating[Any]] | Quantity], props_unwrapped),
                 angles_in,
                 wavelet_in,
                 config_in,
