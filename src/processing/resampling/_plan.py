@@ -9,7 +9,7 @@ duplication across callers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List, Union, cast
 
 # Alias for clarity
 
@@ -113,13 +113,13 @@ class ResamplePlan:
         (nz+1, ntr) if non-uniform.
         """
         if self.uniform_twt:
-            return np.concatenate([[0.0], self.twt_arr[0, 0, :]])
+            return cast(np.ndarray, np.concatenate([[0.0], self.twt_arr[0, 0, :]]))
         # build per-column padded twt
         twt_padded = np.concatenate(
             [np.zeros((self.ni, self.nj, 1)), self.twt_arr], axis=2
         )
         # reshape to (nz+1, ntr)
-        return twt_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
+        return cast(np.ndarray, twt_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1))
 
     def prepare_depth_padded_flat(self, data_arr: np.ndarray) -> np.ndarray:
         """Given a depth-sampled `data_arr` shaped (ni, nj, nz), produce
@@ -129,7 +129,7 @@ class ResamplePlan:
         if data_arr.shape != (self.ni, self.nj, self.nz):
             raise ValueError("data_arr shape must match vp dimensions")
         depth_padded = np.concatenate([data_arr[:, :, 0:1], data_arr], axis=2)
-        return depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
+        return cast(np.ndarray, depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1))
 
     def blocks(self) -> List[Tuple[int, int]]:
         ntr = self.ntr

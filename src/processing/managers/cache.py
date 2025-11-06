@@ -54,7 +54,7 @@ class CacheManager(BaseManager):
                 strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
                 pruner = Pruner(strategy)
                 result = pruner.prune(p)
-                removed = result.count_removed
+                removed = result.count
             except Exception as e:
                 self._log_warning("%sCache pruning failed: %s", prefix, e)
 
@@ -91,7 +91,7 @@ class CacheManager(BaseManager):
             return
 
         # Group by key prefix
-        groups = {}
+        groups: dict[str, list[Path]] = {}
         for f in npz_files:
             key = f.name.split("_")[0]
             if key not in groups:

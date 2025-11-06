@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Type
+from typing import Any, Optional, Union, Type, cast
 import numpy as np
 
 import logging
@@ -11,6 +11,7 @@ from src.processing.resampling.backends._base import (
 )
 from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling.backends._manager import BackendManager
+from src.utils.quantity import Quantity
 
 
 try:
@@ -43,7 +44,12 @@ class VectorizedBackend:
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out, dt = resampler.depth_to_time_cube(data, vp, plan=plan)
-        return BackendResult(array=out, dt=dt)
+        # Ensure we extract the array if it's a Quantity
+        if isinstance(out, Quantity):
+            arr = out.array
+        else:
+            arr = out
+        return BackendResult(array=arr, dt=dt)
 
     def time_to_depth(
         self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any

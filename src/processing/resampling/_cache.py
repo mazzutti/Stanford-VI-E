@@ -64,7 +64,8 @@ class ResamplePlanCache:
             step = max(1, nbytes // chunks)
             buf = arr.ravel().view(np.uint8)
             for start in range(0, min(nbytes, step * chunks), step):
-                h.update(buf[start:start + min(step, nbytes - start)])
+                chunk = buf[start:start + min(step, nbytes - start)]
+                h.update(chunk.tobytes())
         return h.hexdigest()
 
     def _make_key(

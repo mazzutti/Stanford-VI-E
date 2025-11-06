@@ -115,8 +115,8 @@ class AVOValidator(Validator):
         self.logger = logger or logging.getLogger(__name__)
 
     def validate(
-        self, vp: ArrayLike, vs: ArrayLike, rho: ArrayLike
-    ) -> AVOValidityReport:
+        self, *args: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Validate AVO linearization conditions.
 
         Args:
@@ -125,8 +125,15 @@ class AVOValidator(Validator):
             rho: Density array
 
         Returns:
-            AVOValidityReport with results
+            AVOValidityReport as dictionary with results
         """
+        # Extract positional arguments
+        if len(args) < 3:
+            raise ValueError("validate() requires vp, vs, rho as positional arguments")
+        vp = args[0]
+        vs = args[1]
+        rho = args[2]
+        
         vp = np.asarray(vp)
         vs = np.asarray(vs)
         rho = np.asarray(rho)
@@ -146,7 +153,7 @@ class AVOValidator(Validator):
         # Suggest angles
         suggested_angles = self._suggest_angles(contrast_flag, angle_flag)
 
-        return AVOValidityReport(
+        report = AVOValidityReport(
             max_angle=float(self.max_angle),
             contrast_vp=contrast_vp,
             contrast_vs=contrast_vs,
@@ -155,8 +162,9 @@ class AVOValidator(Validator):
             angle_flag=angle_flag,
             suggested_angles=suggested_angles,
         )
+        return report.to_dict()
 
-    def is_valid(self, vp: ArrayLike, vs: ArrayLike, rho: ArrayLike) -> bool:
+    def is_valid(self, *args: Any, **kwargs: Any) -> bool:
         """Quick check if conditions are acceptable.
 
         Args:
@@ -167,7 +175,23 @@ class AVOValidator(Validator):
         Returns:
             True if valid
         """
-        report = self.validate(vp, vs, rho)
+        if len(args) < 3:
+            raise ValueError("is_valid() requires vp, vs, rho as positional arguments")
+        vp = args[0]
+        vs = args[1]
+        rho = args[2]
+        
+        report_dict = self.validate(vp, vs, rho)
+        # Reconstruct the report to check is_valid
+        report = AVOValidityReport(
+            max_angle=report_dict["max_angle"],
+            contrast_vp=report_dict["contrast_vp"],
+            contrast_vs=report_dict["contrast_vs"],
+            contrast_rho=report_dict["contrast_rho"],
+            contrast_flag=report_dict["contrast_flag"],
+            angle_flag=report_dict["angle_flag"],
+            suggested_angles=report_dict["suggested_angles"],
+        )
         return report.is_valid(self.contrast_threshold)
 
     @staticmethod
