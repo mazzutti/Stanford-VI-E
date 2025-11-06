@@ -1,7 +1,9 @@
 """BatchedInterpolator
 
+
 Provides a small helper to perform vectorized or block-wise interpolation of
 depth->time (and nearest-neighbor categorical) for many traces at once.
+
 
 This centralizes the flatten/reshape/block logic used in the resampler and
 provides a single place to tune block size vs memory.
@@ -9,13 +11,16 @@ provides a single place to tune block size vs memory.
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
+
 
 import logging
 import numpy as np
-from numpy.typing import ArrayLike
-from scipy.interpolate import interp1d  # type: ignore[import-untyped]
-from typing import cast
+from numpy.typing import ArrayLike, NDArray
+from scipy.interpolate import interp1d
+from typing import cast, Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +32,8 @@ class BatchedInterpolator:
     block_size: int = 65536
 
     def interpolate(
-        self, twt_padded: np.ndarray, depth_padded_flat: np.ndarray
-    ) -> np.ndarray:
+        self, twt_padded: NDArray[Any], depth_padded_flat: NDArray[Any]
+    ) -> NDArray[Any]:
         """Interpolate depth_padded_flat (shape (nz+1, ntraces)) onto self.time_axis.
 
         Returns: array shaped (nt, ntraces)
@@ -54,7 +59,7 @@ class BatchedInterpolator:
                     bounds_error=False,
                     fill_value=0.0,
                 )
-                return cast(np.ndarray, interp_func(time_axis_arr))
+                return cast(NDArray[Any], interp_func(time_axis_arr))
 
             out = np.zeros((nt, ntr), dtype=depth_padded_flat.dtype)
             for start in range(0, ntr, self.block_size):
@@ -110,8 +115,8 @@ class BatchedInterpolator:
         return out
 
     def nearest(
-        self, twt_padded: np.ndarray, depth_padded_flat: np.ndarray
-    ) -> np.ndarray:
+        self, twt_padded: NDArray[Any], depth_padded_flat: NDArray[Any]
+    ) -> NDArray[Any]:
         """Vectorized nearest-neighbor selection using searchsorted.
 
         twt_padded: 1D of length nz+1

@@ -2,9 +2,12 @@
 
 from abc import abstractmethod
 import logging
-from typing import Optional, Any
+from pathlib import Path
+from typing import Optional, List, Any
+
 
 from src.processing.core.abstracts import Manager
+
 
 __all__ = ["BaseManager"]
 
@@ -24,12 +27,22 @@ class BaseManager(Manager):
         self.logger = logger or logging.getLogger(self.__class__.__name__)
 
     @abstractmethod
-    def clear(self, *args: Any, **kwargs: Any) -> int:
+    def clear(
+        self,
+        patterns: Optional[List[str]] = None,
+        cache_dir: Optional[Path] = None,
+        prefix: str = "",
+    ) -> int:
         """Clear managed resources."""
         pass
 
     @abstractmethod
-    def summarize(self, *args: Any, **kwargs: Any) -> None:
+    def summarize(
+        self,
+        cache_dir: str = ".cache",
+        keys: Optional[List[str]] = None,
+        prefix: str = "",
+    ) -> None:
         """Print summary of managed resources."""
         pass
 

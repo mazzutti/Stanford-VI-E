@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Any
+from numpy.typing import NDArray
+
 
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+
 from src.io.grid import GridSpec
 from src.utils.quantity import Quantity
 
+
 __all__ = ["VelocityModel"]
 
+
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +35,7 @@ class VelocityModel:
     """
 
     # `vp` may be a raw numpy array or a `Quantity`.
-    vp: Union[Quantity, np.ndarray]
+    vp: Union[Quantity, NDArray[Any]]
     grid_spec: GridSpec
 
     def __post_init__(self) -> None:

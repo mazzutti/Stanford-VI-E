@@ -1,15 +1,19 @@
 """Metrics scaffolding for resampling backends.
 
+
 Provides a PlanFingerprint and a simple in-memory BackendMetrics collector
 that records selection counts and cumulative runtimes per backend and plan
 fingerprint. This is intentionally small and test-friendly.
 """
 
+
 from __future__ import annotations
+
 
 from dataclasses import dataclass
 from typing import Dict, Tuple
 import hashlib
+
 
 from src.processing.resampling._plan import ResamplePlan
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Type, cast
-import numpy as np
 
+from typing import Optional, TYPE_CHECKING, Any
+
+
+from numpy.typing import NDArray
 import logging
 
+
 from src.processing.resampling.backends._base import (
-    BackendError,
     BackendResult,
 )
 from src.processing.resampling._plan import ResamplePlan
@@ -14,12 +16,17 @@ from src.processing.resampling.backends._manager import BackendManager
 from src.utils.quantity import Quantity
 
 
+if TYPE_CHECKING:
+    pass
+
+
+# Try to import BatchedInterpolator at runtime
 try:
     from src.processing.interpolator import BatchedInterpolator as _BatchedInterpolator
 
-    BatchedInterpolator: Optional[Type[Any]] = _BatchedInterpolator
+    BatchedInterpolator_runtime: Optional[type] = _BatchedInterpolator
 except Exception:  # pragma: no cover - optional import
-    BatchedInterpolator = None
+    BatchedInterpolator_runtime = None
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +45,7 @@ class VectorizedBackend:
         return plan.uniform_twt
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         # For uniform_twt, we can call the resampler's fast path directly.
         from src.processing.resampling._resampler import resampler_factory
@@ -53,7 +60,7 @@ class VectorizedBackend:
         return BackendResult(array=arr, dt=dt)
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
         from src.processing.resampling._resampler import resampler_factory
 
@@ -77,17 +84,17 @@ class BatchedInterpolatorBackend:
     name = "batched_interpolator"
 
     def supports(self, plan: ResamplePlan) -> bool:
-        return BatchedInterpolator is not None
+        return BatchedInterpolator_runtime is not None
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
-        if BatchedInterpolator is None:
-            raise BackendError("BatchedInterpolator not available")
         # Prepare padded arrays and delegate
         twt_padded = plan.twt_padded()
         depth_padded_flat = plan.prepare_depth_padded_flat(data)
-        bi = BatchedInterpolator()
+        if BatchedInterpolator_runtime is None:
+            raise RuntimeError("BatchedInterpolator not available")
+        bi = BatchedInterpolator_runtime()
 
         out = bi.interpolate(twt_padded, depth_padded_flat)
         # BatchedInterpolator returns shape (nt, ntr) -> reshape to (ni,nj,nt)
@@ -97,9 +104,8 @@ class BatchedInterpolatorBackend:
         return BackendResult(array=out_arr, dt=plan.dt)
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: Any
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult:
-        # Not implemented in this simple backend; fall back to resampler
         from src.processing.resampling._resampler import resampler_factory
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
@@ -112,6 +118,8 @@ class BatchedInterpolatorBackend:
 
 
 # Register default backends
+
+
 def _register_default_backends() -> None:
     """Register the default backend implementations with the global BackendManager."""
     manager = BackendManager()

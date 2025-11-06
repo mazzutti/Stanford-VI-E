@@ -1,5 +1,6 @@
 """Processing utilities package.
 
+
 High-level processing operations for seismic data transformation, including:
 - Depth/time resampling (ResamplerService)
 - Process management (ManagerHub, ProcessManager, CacheManager, FileManager)
@@ -7,7 +8,9 @@ High-level processing operations for seismic data transformation, including:
 - Rock physics models with caching
 - Material property models with unit handling
 
+
 PHASE 1 REFACTORING: Single unified entry point via ServiceRegistry.
+
 
 The module is organized into subpackages:
     core: Abstract base classes and core interfaces
@@ -16,6 +19,7 @@ The module is organized into subpackages:
     rock_physics: Rock physics data models and caching
     avo: AVO analysis and validation
     resampling: Depth/time resampling (backends, plans, service)
+
 
 Service Registry (OOP Approach - Recommended):
     Use ServiceRegistry for dependency injection and service management:
@@ -33,6 +37,7 @@ Service Registry (OOP Approach - Recommended):
     Or for convenience:
 
         service = ResamplerService()  # Uses default registry internally
+
 
 Key classes:
     ServiceRegistry: OOP service registry for dependency injection (SINGLE ENTRY POINT)
@@ -54,6 +59,7 @@ Key classes:
 
 import logging
 
+
 # Core abstractions and exceptions
 from src.processing.core import (
     Processor,
@@ -68,8 +74,10 @@ from src.processing.core import (
     ConfigurationError,
 )
 
+
 # High-level services
 from src.processing.resampling.service import ResamplerService
+
 
 # Managers (simplified API)
 from src.processing.managers import (
@@ -80,9 +88,11 @@ from src.processing.managers import (
     ManagerHub,
 )
 
+
 # Rock physics
 from src.processing.rock_physics.model import RockPhysicsModel
 from src.processing.rock_physics.cache import ModelCache as RockPhysicsModelCache
+
 
 # Materials
 from src.processing.materials import (
@@ -92,11 +102,13 @@ from src.processing.materials import (
 )
 from src.processing.materials.velocity import VelocityModel
 
+
 # AVO analysis
 from src.processing.avo.validator import (
     AVOValidator,
     AVOValidityReport,
 )
+
 
 # PHASE 1: New unified OOP service registry (single entry point)
 from src.processing.registry import (
@@ -105,12 +117,15 @@ from src.processing.registry import (
     reset_registry,
 )
 
+
 # Resampling components (for advanced usage)
 from src.processing.resampling.backends._manager import BackendManager
 from src.processing.resampling._cache import ResamplePlanCache
 from src.processing.metrics import BackendMetrics
 
+
 logger = logging.getLogger(__name__)
+
 
 __all__ = [
     # Core abstractions

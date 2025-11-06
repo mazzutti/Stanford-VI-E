@@ -1,9 +1,11 @@
 """File management utilities."""
 
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, List
+
 
 from src.processing.managers.base import BaseManager
+
 
 __all__ = ["FileManager"]
 
@@ -11,7 +13,12 @@ __all__ = ["FileManager"]
 class FileManager(BaseManager):
     """Manages file operations: opening and checking file existence."""
 
-    def clear(self, *args: Any, **kwargs: Any) -> int:
+    def clear(
+        self,
+        patterns: Optional[List[str]] = None,
+        cache_dir: Optional[Path] = None,
+        prefix: str = "",
+    ) -> int:
         """Clear method not applicable for FileManager (no-op).
 
         Returns:
@@ -19,7 +26,12 @@ class FileManager(BaseManager):
         """
         return 0
 
-    def summarize(self, *args: Any, **kwargs: Any) -> None:
+    def summarize(
+        self,
+        cache_dir: str = ".cache",
+        keys: Optional[List[str]] = None,
+        prefix: str = "",
+    ) -> None:
         """Summarize method not applicable for FileManager (no-op)."""
         pass
 

@@ -1,8 +1,10 @@
 """ResamplePlanCache
 
+
 A small LRU cache for ResamplePlan instances keyed by the velocity array
 content and grid/time parameters. Avoids recomputing the same plan when the
 same vp cube is reused across multiple resampling calls.
+
 
 The cache stores a bounded number of entries and evicts least-recently-used
 plans when over capacity.
@@ -10,23 +12,28 @@ plans when over capacity.
 
 from __future__ import annotations
 
+
 from collections import OrderedDict
 from dataclasses import dataclass
 import hashlib
-from typing import Optional
+from typing import Optional, Any
+from numpy.typing import NDArray
+
 
 import numpy as np
 import logging
 
+
 from src.processing.resampling._plan import ResamplePlan
 from src.io.grid import GridSpec
+
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class _CacheKey:
-    grid_shape: tuple
+    grid_shape: tuple[int, ...]
     dz: float
     dt: float
     target_dt: Optional[float]
@@ -46,7 +53,7 @@ class ResamplePlanCache:
         self.maxsize = int(maxsize)
         self._store: OrderedDict[_CacheKey, ResamplePlan] = OrderedDict()
 
-    def _hash_vp(self, vp_arr: np.ndarray) -> str:
+    def _hash_vp(self, vp_arr: NDArray[Any]) -> str:
         # Use a fast hash based on shape, dtype and a sample of bytes.
         # For small arrays we hash the whole buffer; for larger arrays we
         # hash a few evenly spaced chunks to avoid excessive memory.
@@ -71,7 +78,7 @@ class ResamplePlanCache:
     def _make_key(
         self,
         grid_spec: GridSpec,
-        vp_arr: np.ndarray,
+        vp_arr: NDArray[Any],
         target_dt: Optional[float],
         target_nt: Optional[int],
     ) -> _CacheKey:
@@ -87,7 +94,7 @@ class ResamplePlanCache:
     def get_plan(
         self,
         grid_spec: GridSpec,
-        vp_arr: np.ndarray,
+        vp_arr: NDArray[Any],
         target_dt: Optional[float] = None,
         target_nt: Optional[int] = None,
         block_size: int = 65536,

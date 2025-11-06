@@ -1,10 +1,13 @@
 """Service registry for dependency injection and singleton management.
 
+
 Centralizes creation and access to all processing services using a class-based
 factory pattern instead of functional decorators.
 
+
 This is the single unified entry point for all services (Phase 1 refactoring).
 All module-level singleton functions are consolidated here.
+
 
 Usage:
     registry = ServiceRegistry.get_default()
@@ -13,6 +16,7 @@ Usage:
     cache = registry.get_resample_cache()
     metrics = registry.get_backend_metrics()
     hub = registry.get_manager_hub()
+
 
 Example:
     >>> from src.processing import ServiceRegistry
@@ -23,10 +27,13 @@ Example:
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, TYPE_CHECKING, Callable
+
+from typing import Optional, TYPE_CHECKING, Callable
 import logging
 
+
 if TYPE_CHECKING:
+    from src.io.grid import GridSpec
     from src.processing.resampling.service import ResamplerService
     from src.processing.resampling._cache import ResamplePlanCache
     from src.processing.resampling.backends._manager import BackendManager
@@ -34,7 +41,9 @@ if TYPE_CHECKING:
     from src.processing.managers import ManagerHub
     from src.processing.avo.validator import AVOValidator
 
+
 __all__ = ["ServiceRegistry", "get_registry", "reset_registry"]
+
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +82,37 @@ class ServiceRegistry:
         Args:
             logger: Optional logger instance
         """
-        self._instances: Dict[str, Any] = {}
+        self._instances: dict[
+            str,
+            ResamplerService
+            | ResamplePlanCache
+            | BackendManager
+            | BackendMetrics
+            | ManagerHub
+            | AVOValidator,
+        ] = {}
         self._logger = logger or logging.getLogger(self.__class__.__name__)
 
-    def _get_or_create(self, key: str, factory: Callable[[], Any]) -> Any:
+    def _get_or_create(
+        self,
+        key: str,
+        factory: Callable[
+            [],
+            ResamplerService
+            | ResamplePlanCache
+            | BackendManager
+            | BackendMetrics
+            | ManagerHub
+            | AVOValidator,
+        ],
+    ) -> (
+        ResamplerService
+        | ResamplePlanCache
+        | BackendManager
+        | BackendMetrics
+        | ManagerHub
+        | AVOValidator
+    ):
         """Get cached instance or create new one via factory.
 
         Args:
@@ -92,8 +128,8 @@ class ServiceRegistry:
         return self._instances[key]
 
     def get_resampler_service(
-        self, grid_spec: Optional[Any] = None
-    ) -> "ResamplerService":
+        self, grid_spec: Optional[GridSpec] = None
+    ) -> ResamplerService:
         """Get or create ResamplerService singleton.
 
         The ResamplerService wraps depth/time resampling with caching and metrics.
@@ -116,10 +152,11 @@ class ServiceRegistry:
             grid = grid_spec or GridSpec((512, 512, 512))
             return ResamplerService(grid_spec=grid)
 
-        result: ResamplerService = self._get_or_create("resampler_service", factory)
+        result = self._get_or_create("resampler_service", factory)
+        assert isinstance(result, ResamplerService)
         return result
 
-    def get_backend_manager(self) -> "BackendManager":
+    def get_backend_manager(self) -> BackendManager:
         """Get or create BackendManager singleton.
 
         Manages registration and selection of resampling backends.
@@ -137,10 +174,11 @@ class ServiceRegistry:
 
             return BackendManager()
 
-        result: BackendManager = self._get_or_create("backend_manager", factory)
+        result = self._get_or_create("backend_manager", factory)
+        assert isinstance(result, BackendManager)
         return result
 
-    def get_resample_cache(self) -> "ResamplePlanCache":
+    def get_resample_cache(self) -> ResamplePlanCache:
         """Get or create ResamplePlanCache singleton.
 
         Caches resampling plans to avoid recomputation.
@@ -159,10 +197,11 @@ class ServiceRegistry:
 
             return ResamplePlanCache(maxsize=16)
 
-        result: ResamplePlanCache = self._get_or_create("resample_cache", factory)
+        result = self._get_or_create("resample_cache", factory)
+        assert isinstance(result, ResamplePlanCache)
         return result
 
-    def get_backend_metrics(self) -> "BackendMetrics":
+    def get_backend_metrics(self) -> BackendMetrics:
         """Get or create BackendMetrics singleton.
 
         Tracks backend selection and runtime metrics for performance analysis.
@@ -180,10 +219,11 @@ class ServiceRegistry:
 
             return BackendMetrics()
 
-        result: BackendMetrics = self._get_or_create("backend_metrics", factory)
+        result = self._get_or_create("backend_metrics", factory)
+        assert isinstance(result, BackendMetrics)
         return result
 
-    def get_manager_hub(self) -> "ManagerHub":
+    def get_manager_hub(self) -> ManagerHub:
         """Get or create ManagerHub singleton.
 
         The ManagerHub provides unified access to cache, file, and process managers.
@@ -200,10 +240,11 @@ class ServiceRegistry:
 
             return ManagerHub()
 
-        result: ManagerHub = self._get_or_create("manager_hub", factory)
+        result = self._get_or_create("manager_hub", factory)
+        assert isinstance(result, ManagerHub)
         return result
 
-    def get_avo_validator(self, max_angle: float = 30.0) -> "AVOValidator":
+    def get_avo_validator(self, max_angle: float = 30.0) -> AVOValidator:
         """Get or create AVOValidator singleton.
 
         The AVOValidator performs AVO analysis and linearization checks.
@@ -224,7 +265,8 @@ class ServiceRegistry:
 
             return AVOValidator(max_angle=max_angle)
 
-        result: AVOValidator = self._get_or_create("avo_validator", factory)
+        result = self._get_or_create("avo_validator", factory)
+        assert isinstance(result, AVOValidator)
         return result
 
     def get_rock_physics_model(self) -> type:

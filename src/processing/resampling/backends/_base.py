@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Protocol
 
-import numpy as np
+from dataclasses import dataclass
+from typing import Optional, Protocol, Any
+from numpy.typing import NDArray
+
+
 import logging
+
 
 from src.processing.resampling._plan import ResamplePlan
 
@@ -24,11 +27,11 @@ class ResamplerBackend(Protocol):
     def supports(self, plan: ResamplePlan) -> bool: ...
 
     def depth_to_time(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: object
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult: ...
 
     def time_to_depth(
-        self, data: np.ndarray, vp: np.ndarray, plan: ResamplePlan, **kwargs: object
+        self, data: NDArray[Any], vp: NDArray[Any], plan: ResamplePlan, **kwargs: Any
     ) -> BackendResult: ...
 
 
@@ -40,11 +43,11 @@ class BackendResult:
     - dt: optional sampling interval (for depth->time results)
     """
 
-    array: np.ndarray
+    array: NDArray[Any]
     dt: Optional[float] = None
 
 
-def validate_backend_result(obj: object) -> bool:
+def validate_backend_result(obj: BackendResult | object) -> bool:
     """Return True if `obj` is a BackendResult with a numpy array inside.
 
     Useful for callers that must enforce the backend contract.
@@ -67,6 +70,7 @@ __all__ = [
     "BackendResult",
     "validate_backend_result",
 ]
+
 
 # Module logger
 logger = logging.getLogger(__name__)

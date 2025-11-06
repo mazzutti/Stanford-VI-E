@@ -6,6 +6,4 @@ package-level `__init__` files.
 
 import logging
 
-__all__ = []
-
 logger = logging.getLogger(__name__)

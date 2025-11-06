@@ -1,7 +1,9 @@
 """Base class for unit-aware material property models."""
 
 from abc import ABC, abstractmethod
-import numpy as np
+from typing import Any
+from numpy.typing import NDArray
+
 
 __all__ = ["MaterialModel"]
 
@@ -14,12 +16,12 @@ class MaterialModel(ABC):
     """
 
     @abstractmethod
-    def get_data(self) -> np.ndarray:
+    def get_data(self) -> NDArray[Any]:
         """Return the underlying data array."""
         pass
 
     @abstractmethod
-    def set_data(self, data: np.ndarray) -> None:
+    def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying data array."""
         pass
 

@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
 
-import numpy as np
+from dataclasses import dataclass, field
+from typing import Optional, Any
+from numpy.typing import NDArray
+
 
 from src.io.grid import GridSpec
 from src.io.disk_cache import DiskCache
 from src.utils.quantity import Quantity
 from src.processing.rock_physics.cache import ModelCache
 
+
 __all__ = ["RockPhysicsModel"]
 
+
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +39,10 @@ class RockPhysicsModel:
         disk_cache: Optional shared disk cache
     """
 
-    vp: Optional[Quantity | np.ndarray]
-    vs: Optional[Quantity | np.ndarray]
-    rho: Optional[Quantity | np.ndarray]
-    facies: Optional[np.ndarray]
+    vp: Optional[Quantity | NDArray[Any]]
+    vs: Optional[Quantity | NDArray[Any]]
+    rho: Optional[Quantity | NDArray[Any]]
+    facies: Optional[NDArray[Any]]
     grid_spec: GridSpec
     disk_cache: Optional[DiskCache] = field(default=None, init=True, repr=False)
     _cache: ModelCache = field(default_factory=ModelCache, init=False, repr=False)
@@ -51,7 +55,9 @@ class RockPhysicsModel:
             self._cache = ModelCache()
 
     @classmethod
-    def from_props(cls, props: dict, grid_spec: GridSpec) -> "RockPhysicsModel":
+    def from_props(
+        cls, props: dict[str, Any], grid_spec: GridSpec
+    ) -> "RockPhysicsModel":
         """Create model from properties dictionary.
 
         Wraps numeric arrays in Quantity with conservative unit guesses.
@@ -121,9 +127,9 @@ class RockPhysicsModel:
         """Invalidate internal caches for derived attributes."""
         self._cache.invalidate()
 
-    def to_props_dict(self) -> dict:
+    def to_props_dict(self) -> dict[str, NDArray[Any]]:
         """Export properties as a dictionary of numpy arrays."""
-        out = {}
+        out: dict[str, NDArray[Any]] = {}
         if self.vp is not None:
             out["vp"] = self.vp.array if isinstance(self.vp, Quantity) else self.vp
         if self.vs is not None:

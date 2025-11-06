@@ -1,32 +1,41 @@
 """Depth <-> Time resampling utilities.
 
+
 Provides a testable Resampler that centralizes depth/time conversions
 using a `GridSpec` object.
 """
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
-from typing import Tuple, Optional, Any, cast, Dict
+from typing import Tuple, Optional, cast, Any
+from numpy.typing import NDArray
+
 
 import numpy as np
-from scipy.interpolate import interp1d  # type: ignore[import-untyped]
+from scipy.interpolate import interp1d
 from src.processing.interpolator import BatchedInterpolator
 from src.processing.resampling._plan import ResamplePlan
-from numba import njit, prange  # type: ignore[import-untyped]
+from numba import njit, prange
 import logging
 import os
 
+
 from src.processing.resampling.backends._base import BackendResult, BackendError
+
 
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
 
+
 __all__ = ["DepthTimeResampler", "set_backend_verbose", "is_backend_verbose"]
+
 
 # Module logger
 logger = logging.getLogger(__name__)
+
 
 # Module-level lazy proxies are defined later in this file
 
@@ -81,7 +90,7 @@ class DepthTimeResampler:
 
     grid_spec: GridSpec
 
-    def compute_one_way_time(self, vp_trace: np.ndarray | Quantity) -> np.ndarray:
+    def compute_one_way_time(self, vp_trace: NDArray[Any] | Quantity) -> NDArray[Any]:
         """Compute one-way cumulative time for a single vertical trace.
 
         Args:
@@ -112,9 +121,9 @@ class DepthTimeResampler:
 
         slowness = 1.0 / vp_arr
         one_way = np.cumsum(slowness * dz_val)
-        return cast(np.ndarray, one_way)
+        return cast(NDArray[Any], one_way)
 
-    def compute_one_way_times(self, vp_arr: np.ndarray | Quantity) -> np.ndarray:
+    def compute_one_way_times(self, vp_arr: NDArray[Any] | Quantity) -> NDArray[Any]:
         """Vectorized computation of one-way cumulative time for all traces.
 
         Args:
@@ -144,16 +153,16 @@ class DepthTimeResampler:
         slowness = 1.0 / vp_float
         # cumulative sum along vertical axis (nz)
         one_way = np.cumsum(slowness * dz_val, axis=2)
-        return cast(np.ndarray, one_way)
+        return cast(NDArray[Any], one_way)
 
     def depth_to_time_cube(
         self,
-        data_depth: np.ndarray | Quantity,
-        vp_depth: np.ndarray | Quantity,
+        data_depth: NDArray[Any] | Quantity,
+        vp_depth: NDArray[Any] | Quantity,
         target_dt: Optional[float] = None,
         target_nt: Optional[int] = None,
         plan: "ResamplePlan" | None = None,
-    ) -> Tuple[np.ndarray | Quantity, float]:
+    ) -> Tuple[NDArray[Any] | Quantity, float]:
         """Resample depth-sampled `data_depth` into a regularly sampled time cube.
 
         Args:
@@ -280,9 +289,12 @@ class DepthTimeResampler:
             # integer/categorical data, linear otherwise.
             if np.issubdtype(data_arr.dtype, np.integer):
 
-                @njit(parallel=True)  # type: ignore[misc]
+                @njit(parallel=True)
                 def _nearest_resample_numba(
-                    twt_ir: Any, data: Any, t_axis: Any, out_arr: Any
+                    twt_ir: NDArray[Any],
+                    data: NDArray[Any],
+                    t_axis: NDArray[Any],
+                    out_arr: NDArray[Any],
                 ) -> None:
                     ni_, nj_, nz_ = data.shape
                     nt_ = t_axis.shape[0]
@@ -312,9 +324,12 @@ class DepthTimeResampler:
                 _nearest_resample_numba(plan.one_way * 2.0, data_arr, time_axis, out)
             else:
 
-                @njit(parallel=True)  # type: ignore[misc]
+                @njit(parallel=True)
                 def _linear_resample_numba(
-                    twt_ir: Any, data: Any, t_axis: Any, out_arr: Any
+                    twt_ir: NDArray[Any],
+                    data: NDArray[Any],
+                    t_axis: NDArray[Any],
+                    out_arr: NDArray[Any],
                 ) -> None:
                     ni_, nj_, nz_ = data.shape
                     nt_ = t_axis.shape[0]
@@ -409,10 +424,10 @@ class DepthTimeResampler:
 
     def time_to_depth_cube(
         self,
-        seismogram_time: np.ndarray | Quantity,
-        vp_depth: np.ndarray | Quantity,
+        seismogram_time: NDArray[Any] | Quantity,
+        vp_depth: NDArray[Any] | Quantity,
         plan: "ResamplePlan" | None = None,
-    ) -> np.ndarray | Quantity:
+    ) -> NDArray[Any] | Quantity:
         """Convert a time-sampled seismogram to depth-sampled cube using vp_depth.
 
         Args:
@@ -525,8 +540,8 @@ class DepthTimeResampler:
         return out
 
     def compute_twt_for_trace(
-        self, vp_trace: np.ndarray | Quantity
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        self, vp_trace: NDArray[Any] | Quantity
+    ) -> Tuple[NDArray[Any], NDArray[Any]]:
         """Return TWT (padded) and depth axis (padded) for a single trace.
 
         Returns twt_trace (with a leading 0) and a depth trace (also padded)
@@ -548,13 +563,13 @@ class DepthTimeResampler:
 
     def resample_time_cube(
         self,
-        data_time: np.ndarray,
-        src_time_axis: np.ndarray,
-        target_time_axis: np.ndarray,
+        data_time: NDArray[Any],
+        src_time_axis: NDArray[Any],
+        target_time_axis: NDArray[Any],
         kind: str = "linear",
         progress_every: Optional[int] = 30,
         prefix: str = "",
-    ) -> np.ndarray:
+    ) -> NDArray[Any]:
         """Resample a time-sampled cube from src_time_axis to target_time_axis.
 
         Mirrors the old utility function signature.
@@ -580,14 +595,14 @@ class DepthTimeResampler:
 
     def depth_to_time_from_twt(
         self,
-        data_depth: np.ndarray,
-        twt_irregular: np.ndarray,
-        time_axis: np.ndarray,
+        data_depth: NDArray[Any],
+        twt_irregular: NDArray[Any],
+        time_axis: NDArray[Any],
         is_categorical: bool = False,
         progress_every: Optional[int] = 30,
         prefix: str = "",
         plan: "ResamplePlan" | None = None,
-    ) -> np.ndarray:
+    ) -> NDArray[Any]:
         """Convert a depth-sampled property cube to regular time using an
         irregular TWT cube (twt_irregular).
         """
@@ -601,9 +616,12 @@ class DepthTimeResampler:
         if use_numba:
             if is_categorical or np.issubdtype(data_depth.dtype, np.integer):
 
-                @njit(parallel=True)  # type: ignore[misc]
+                @njit(parallel=True)
                 def _nearest_from_twt(
-                    twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any
+                    twt_ir: NDArray[Any],
+                    data_d: NDArray[Any],
+                    t_axis: NDArray[Any],
+                    out_a: NDArray[Any],
                 ) -> None:
                     ni_, nj_, nz_ = data_d.shape
                     nt_ = t_axis.shape[0]
@@ -629,9 +647,12 @@ class DepthTimeResampler:
                 _nearest_from_twt(twt_irregular, data_depth, time_axis, data_time)
             else:
 
-                @njit(parallel=True)  # type: ignore[misc]
+                @njit(parallel=True)
                 def _linear_resample_from_twt(
-                    twt_ir: Any, data_d: Any, t_axis: Any, out_a: Any
+                    twt_ir: NDArray[Any],
+                    data_d: NDArray[Any],
+                    t_axis: NDArray[Any],
+                    out_a: NDArray[Any],
                 ) -> None:
                     ni_, nj_, nz_ = data_d.shape
                     nt_ = t_axis.shape[0]
@@ -714,16 +735,18 @@ class DepthTimeResampler:
 
 
 # Thin factory to provide DepthTimeResampler instances per GridSpec.
+
+
 class ResamplerFactory:
     """Factory that returns cached DepthTimeResampler instances keyed by
     grid_spec (shape, dz, dt). This avoids repeated construction when many
     modules request a resampler for the same grid."""
 
     def __init__(self) -> None:
-        self._cache: Dict[Any, DepthTimeResampler] = {}
+        self._cache: dict[tuple[tuple[int, ...], float, float], DepthTimeResampler] = {}
 
     def get_resampler(self, grid_spec: GridSpec) -> DepthTimeResampler:
-        key: tuple[Any, ...] = (
+        key: tuple[tuple[int, ...], float, float] = (
             tuple(grid_spec.shape),
             float(grid_spec.dz),
             float(grid_spec.dt),
@@ -737,6 +760,8 @@ __all__.extend(["ResamplerFactory"])
 
 
 # Module-level singleton instance for convenient access
+
+
 def _create_resampler_factory() -> ResamplerFactory:
     """Factory function to create ResamplerFactory singleton."""
     return ResamplerFactory()

@@ -1,5 +1,6 @@
 """Core module initialization."""
 
+
 from src.processing.core.abstracts import (
     Processor,
     Manager,
@@ -15,6 +16,7 @@ from src.processing.core.exceptions import (
     ConfigurationError,
 )
 
+
 from src.processing.core.constants import (
     DEFAULT_MAX_CACHE_BYTES,
     DEFAULT_DT_MILLISECONDS,
@@ -23,6 +25,7 @@ from src.processing.core.constants import (
     DEFAULT_MAX_AVO_ANGLE,
     DEFAULT_CONTRAST_THRESHOLD,
 )
+
 
 __all__ = [
     # Abstracts

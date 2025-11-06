@@ -1,9 +1,11 @@
 """Cache for rock physics model derived attributes."""
 
-from typing import Optional
-import numpy as np
+from typing import Optional, Any
+from numpy.typing import NDArray
+
 
 from src.io.disk_cache import DiskCache
+
 
 __all__ = ["ModelCache"]
 
@@ -22,26 +24,26 @@ class ModelCache:
             disk_cache: Optional shared disk cache for expensive results
         """
         self.disk_cache = disk_cache
-        self._derived_cache: Optional[np.ndarray] = None
-        self._refl_cache: Optional[np.ndarray] = None
+        self._derived_cache: Optional[NDArray[Any]] = None
+        self._refl_cache: Optional[NDArray[Any]] = None
 
     def invalidate(self) -> None:
         """Invalidate all internal caches."""
         self._derived_cache = None
         self._refl_cache = None
 
-    def get_derived(self) -> Optional[np.ndarray]:
+    def get_derived(self) -> Optional[NDArray[Any]]:
         """Get cached derived attributes."""
         return self._derived_cache
 
-    def set_derived(self, data: np.ndarray) -> None:
+    def set_derived(self, data: NDArray[Any]) -> None:
         """Cache derived attributes."""
         self._derived_cache = data
 
-    def get_reflectivity(self) -> Optional[np.ndarray]:
+    def get_reflectivity(self) -> Optional[NDArray[Any]]:
         """Get cached reflectivity."""
         return self._refl_cache
 
-    def set_reflectivity(self, data: np.ndarray) -> None:
+    def set_reflectivity(self, data: NDArray[Any]) -> None:
         """Cache reflectivity."""
         self._refl_cache = data

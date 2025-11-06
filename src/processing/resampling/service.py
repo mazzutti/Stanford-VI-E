@@ -1,7 +1,9 @@
 """ResamplerService - High-level resampling service.
 
+
 Lightweight service that composes DepthTimeResampler, ResamplePlanCache,
 and BackendManager to provide a single entrypoint for depth<->time resampling.
+
 
 The service is intentionally thin: it delegates heavy work to DepthTimeResampler
 and to the registered backends while ensuring the shared plan cache is used when
@@ -10,12 +12,15 @@ possible.
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
+
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 import logging
+
 
 from src.io.grid import GridSpec
 from src.processing.resampling._plan import ResamplePlan
@@ -23,7 +28,9 @@ from src.processing.resampling._cache import get_resample_plan_cache
 from src.processing.resampling.backends._manager import BackendManager
 from src.utils.quantity import Quantity
 
+
 __all__ = ["ResamplerService"]
+
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -52,12 +59,12 @@ class ResamplerService:
 
     def depth_to_time(
         self,
-        data_depth: np.ndarray | Quantity | ArrayLike,
-        vp_depth: np.ndarray | Quantity | ArrayLike,
+        data_depth: NDArray[Any] | Quantity | ArrayLike,
+        vp_depth: NDArray[Any] | Quantity | ArrayLike,
         target_dt: Optional[float] = None,
         target_nt: Optional[int] = None,
         use_cache: bool = True,
-    ) -> Tuple[np.ndarray | Quantity, float]:
+    ) -> Tuple[NDArray[Any] | Quantity, float]:
         """Resample depth-sampled property to regular time using a ResamplePlan.
 
         This method will attempt to fetch a cached ResamplePlan for the given
@@ -96,10 +103,10 @@ class ResamplerService:
 
     def time_to_depth(
         self,
-        seismogram_time: np.ndarray | Quantity | ArrayLike,
-        vp_depth: np.ndarray | Quantity | ArrayLike,
+        seismogram_time: NDArray[Any] | Quantity | ArrayLike,
+        vp_depth: NDArray[Any] | Quantity | ArrayLike,
         use_cache: bool = True,
-    ) -> np.ndarray | Quantity:
+    ) -> NDArray[Any] | Quantity:
         """Resample a time-domain seismogram to depth using a ResamplePlan.
 
         Uses the shared cache similarly to `depth_to_time`.

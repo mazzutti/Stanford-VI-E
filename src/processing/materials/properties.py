@@ -1,11 +1,14 @@
 """S-wave velocity and density property models."""
 
 from dataclasses import dataclass
-from numpy.typing import ArrayLike
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
 import numpy as np
+
 
 from src.processing.materials.base import MaterialModel
 from src.utils.units import UnitRegistry
+
 
 __all__ = ["VsModel", "DensityModel"]
 
@@ -19,11 +22,11 @@ class VsModel(MaterialModel):
 
     vs: ArrayLike
 
-    def get_data(self) -> np.ndarray:
+    def get_data(self) -> NDArray[Any]:
         """Return the underlying S-wave velocity data."""
         return np.asarray(self.vs)
 
-    def set_data(self, data: np.ndarray) -> None:
+    def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying S-wave velocity data."""
         self.vs = data
 
@@ -60,11 +63,11 @@ class DensityModel(MaterialModel):
 
     rho: ArrayLike
 
-    def get_data(self) -> np.ndarray:
+    def get_data(self) -> NDArray[Any]:
         """Return the underlying density data."""
         return np.asarray(self.rho)
 
-    def set_data(self, data: np.ndarray) -> None:
+    def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying density data."""
         self.rho = data
 

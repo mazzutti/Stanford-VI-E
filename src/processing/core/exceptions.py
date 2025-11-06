@@ -1,7 +1,9 @@
 """Core exceptions for the processing module.
 
+
 Custom exception hierarchy for processing-related errors.
 """
+
 
 __all__ = [
     "ProcessingError",

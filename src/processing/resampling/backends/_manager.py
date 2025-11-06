@@ -1,14 +1,18 @@
 """Simple BackendManager to centralize backend registration and selection.
 
+
 This is intentionally small and aligned with the existing
 `backends` module API. It provides an instance that can be used for
 dependency injection when needed.
 """
 
+
 from __future__ import annotations
+
 
 from typing import Dict, List, Optional
 from dataclasses import dataclass
+
 
 from src.processing.resampling.backends._base import ResamplerBackend
 from src.processing.resampling._plan import ResamplePlan

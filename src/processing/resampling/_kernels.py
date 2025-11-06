@@ -1,14 +1,17 @@
 """Optimized resampling kernels using Numba JIT compilation.
 
+
 Centralizes numba-compiled functions for depth-to-time and time-to-depth
 resampling, reducing complexity in the main DepthTimeResampler class.
+
 
 Functions are compiled once and cached by numba for subsequent calls.
 """
 
 from typing import Any
-from numba import njit, prange  # type: ignore[import-untyped]
-import numpy as np
+from numpy.typing import NDArray
+
+from numba import njit, prange
 
 
 # ============================================================================
@@ -16,12 +19,12 @@ import numpy as np
 # ============================================================================
 
 
-@njit(parallel=True)  # type: ignore[misc]
+@njit(parallel=True)
 def resample_depth_to_time_nearest(
-    twt_irregular: Any,
-    data_depth: Any,
-    time_axis: Any,
-    out_array: Any,
+    twt_irregular: NDArray[Any],
+    data_depth: NDArray[Any],
+    time_axis: NDArray[Any],
+    out_array: NDArray[Any],
 ) -> None:
     """Nearest-neighbor resampling from depth to time domain (in-place).
 
@@ -61,12 +64,12 @@ def resample_depth_to_time_nearest(
                         out_array[ii, jj, ti] = prop[k]
 
 
-@njit(parallel=True)  # type: ignore[misc]
+@njit(parallel=True)
 def resample_depth_to_time_linear(
-    twt_irregular: Any,
-    data_depth: Any,
-    time_axis: Any,
-    out_array: Any,
+    twt_irregular: NDArray[Any],
+    data_depth: NDArray[Any],
+    time_axis: NDArray[Any],
+    out_array: NDArray[Any],
 ) -> None:
     """Linear interpolation from depth to time domain (in-place).
 
@@ -117,12 +120,12 @@ def resample_depth_to_time_linear(
 # ============================================================================
 
 
-@njit(parallel=True)  # type: ignore[misc]
+@njit(parallel=True)
 def resample_depth_to_time_from_irregular_nearest(
-    twt_irregular: Any,
-    data_depth: Any,
-    time_axis: Any,
-    out_array: Any,
+    twt_irregular: NDArray[Any],
+    data_depth: NDArray[Any],
+    time_axis: NDArray[Any],
+    out_array: NDArray[Any],
 ) -> None:
     """Nearest-neighbor resampling with irregular TWT (in-place).
 
@@ -159,12 +162,12 @@ def resample_depth_to_time_from_irregular_nearest(
                         out_array[ii, jj, ti] = prop[k]
 
 
-@njit(parallel=True)  # type: ignore[misc]
+@njit(parallel=True)
 def resample_depth_to_time_from_irregular_linear(
-    twt_irregular: Any,
-    data_depth: Any,
-    time_axis: Any,
-    out_array: Any,
+    twt_irregular: NDArray[Any],
+    data_depth: NDArray[Any],
+    time_axis: NDArray[Any],
+    out_array: NDArray[Any],
 ) -> None:
     """Linear interpolation with irregular TWT (in-place).
 

@@ -1,13 +1,22 @@
 """Core abstractions and interfaces for the processing module.
 
+
 Provides abstract base classes and interfaces that define contracts
 for different processing components.
 """
 
+from __future__ import annotations
+
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, TypeVar
-import numpy as np
-from numpy.typing import ArrayLike
+from pathlib import Path
+from typing import TYPE_CHECKING, TypeVar, Any, Optional, List
+from numpy.typing import ArrayLike, NDArray
+
+
+if TYPE_CHECKING:
+    from src.processing.resampling._plan import ResamplePlan
+
 
 __all__ = [
     "Processor",
@@ -16,6 +25,7 @@ __all__ = [
     "MaterialProperty",
     "Validator",
 ]
+
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -28,7 +38,7 @@ class Processor(ABC):
     """
 
     @abstractmethod
-    def process(self, data: Any, **kwargs: Any) -> Any:
+    def process(self, data: ArrayLike, **kwargs: Any) -> ArrayLike:
         """Process input data.
 
         Args:
@@ -48,8 +58,18 @@ class Manager(ABC):
     """
 
     @abstractmethod
-    def clear(self, *args: Any, **kwargs: Any) -> int:
+    def clear(
+        self,
+        patterns: Optional[List[str]] = None,
+        cache_dir: Optional[Path] = None,
+        prefix: str = "",
+    ) -> int:
         """Clear managed resources.
+
+        Args:
+            patterns: Optional glob patterns to match
+            cache_dir: Optional cache directory
+            prefix: Prefix for log messages
 
         Returns:
             Number of resources cleared
@@ -57,8 +77,19 @@ class Manager(ABC):
         pass
 
     @abstractmethod
-    def summarize(self, *args: Any, **kwargs: Any) -> None:
-        """Print summary of managed resources."""
+    def summarize(
+        self,
+        cache_dir: str = ".cache",
+        keys: Optional[List[str]] = None,
+        prefix: str = "",
+    ) -> None:
+        """Print summary of managed resources.
+
+        Args:
+            cache_dir: Cache directory to summarize
+            keys: Optional keys to filter
+            prefix: Prefix for log messages
+        """
         pass
 
 
@@ -69,7 +100,7 @@ class Resampler(ABC):
     """
 
     @abstractmethod
-    def resample(self, data: ArrayLike, plan: Any) -> np.ndarray:
+    def resample(self, data: ArrayLike, plan: ResamplePlan) -> NDArray[Any]:
         """Resample data according to plan.
 
         Args:
@@ -82,7 +113,7 @@ class Resampler(ABC):
         pass
 
     @abstractmethod
-    def inverse_resample(self, data: ArrayLike, plan: Any) -> np.ndarray:
+    def inverse_resample(self, data: ArrayLike, plan: ResamplePlan) -> NDArray[Any]:
         """Inverse resampling operation.
 
         Args:
@@ -102,12 +133,12 @@ class MaterialProperty(ABC):
     """
 
     @abstractmethod
-    def get_data(self) -> np.ndarray:
+    def get_data(self) -> NDArray[Any]:
         """Return the underlying data array."""
         pass
 
     @abstractmethod
-    def set_data(self, data: np.ndarray) -> None:
+    def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying data array."""
         pass
 
@@ -137,7 +168,7 @@ class Validator(ABC):
     """
 
     @abstractmethod
-    def validate(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def validate(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> dict[str, Any]:
         """Validate input and return report.
 
         Returns:
@@ -146,7 +177,7 @@ class Validator(ABC):
         pass
 
     @abstractmethod
-    def is_valid(self, *args: Any, **kwargs: Any) -> bool:
+    def is_valid(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> bool:
         """Quick validity check.
 
         Returns:
