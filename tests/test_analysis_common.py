@@ -227,9 +227,12 @@ def test_equality_same_instance(initialized_instance: AnalysisCommon) -> None:
 
 def test_equality_same_singleton() -> None:
     """Test that two references to singleton are equal."""
-    instance1 = AnalysisCommon.instance()
+    AnalysisCommon.reset()
+    manager = DummyProcessManager()
+    instance1 = AnalysisCommon.instance(manager)
     instance2 = AnalysisCommon.instance()
     assert instance1 == instance2, "Same singleton should be equal"
+    AnalysisCommon.reset()
 
 
 def test_inequality_different_instances() -> None:
@@ -277,9 +280,12 @@ def test_hash_consistency(initialized_instance: AnalysisCommon) -> None:
 
 def test_hash_same_for_singleton() -> None:
     """Test that singleton references have the same hash."""
-    instance1 = AnalysisCommon.instance()
+    AnalysisCommon.reset()
+    manager = DummyProcessManager()
+    instance1 = AnalysisCommon.instance(manager)
     instance2 = AnalysisCommon.instance()
     assert hash(instance1) == hash(instance2), "Same singleton should have same hash"
+    AnalysisCommon.reset()
 
 
 def test_bool_initialized_is_true() -> None:
