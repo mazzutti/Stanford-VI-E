@@ -125,18 +125,12 @@ class TestServiceRegistryManagers:
         """Clean up registry after each test."""
         reset_registry()
 
-    @pytest.mark.skip(
-        reason="FileManager needs abstract method implementation in src/processing"
-    )
     def test_get_manager_hub(self):
         """Test getting manager hub from registry."""
         registry = get_registry()
         hub = registry.get_manager_hub()
         assert hub is not None
 
-    @pytest.mark.skip(
-        reason="FileManager needs abstract method implementation in src/processing"
-    )
     def test_manager_hub_is_cached(self):
         """Test that manager hub is cached."""
         registry = get_registry()
