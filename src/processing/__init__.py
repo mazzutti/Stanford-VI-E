@@ -15,10 +15,21 @@ The module is organized into subpackages:
     avo: AVO analysis and validation
     resampling: Depth/time resampling (backends, plans, service)
 
+Service Registry (OOP Approach):
+    Use ServiceRegistry for dependency injection and service management:
+    
+        from src.processing.registry import get_registry
+        
+        registry = get_registry()
+        resampler = registry.resampler_service()
+        hub = registry.manager_hub()
+        validator = registry.avo_validator()
+
 Key classes:
+    ServiceRegistry: OOP service registry for dependency injection
     ResamplerService: High-level resampling with caching and metrics
     ManagerHub: Unified interface for all resource managers
-    ProcessManager: Process management facade
+    ProcessManager: Process management facade (simplified API)
     CacheManager: Cache directory operations
     FileManager: File operations
     RockPhysicsModel: Rock physics properties (vp, vs, rho, facies)
@@ -46,9 +57,9 @@ from src.processing.core import (
 )
 
 # High-level services
-from src.processing.resampling.service import ResamplerService, get_resampler_service
+from src.processing.resampling.service import ResamplerService
 
-# Managers (unified interface)
+# Managers (simplified API)
 from src.processing.managers import (
     BaseManager,
     CacheManager,
@@ -75,12 +86,10 @@ from src.processing.avo.validator import (
     AVOValidityReport,
 )
 
-# Service factories and registry
-from src.processing.services import (
-    get_resampler_service,
-    get_manager_hub,
-    get_avo_validator,
-    get_rock_physics_service,
+# New OOP service registry
+from src.processing.registry import (
+    ServiceRegistry,
+    get_registry,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,11 +109,9 @@ __all__ = [
     "ConfigurationError",
     # High-level APIs
     "ResamplerService",
-    # Service factories
-    "get_resampler_service",
-    "get_manager_hub",
-    "get_avo_validator",
-    "get_rock_physics_service",
+    # OOP Service Registry
+    "ServiceRegistry",
+    "get_registry",
     # Managers
     "BaseManager",
     "CacheManager",
@@ -129,5 +136,5 @@ __all__ = [
     "rock_physics",
     "avo",
     "resampling",
-    "services",
+    "registry",
 ]

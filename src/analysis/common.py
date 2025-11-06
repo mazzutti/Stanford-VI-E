@@ -139,7 +139,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         """Explicit accessor for the singleton instance with lazy initialization.
 
         If the singleton doesn't exist and no proc_manager is provided,
-        automatically uses get_process_manager() for default initialization.
+        automatically uses the processing registry for default initialization.
 
         Args:
             proc_manager: Optional ProcessManager to initialize/reconfigure with.
@@ -155,10 +155,10 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             if cls._instance is None:
                 if proc_manager is None:
                     # Lazy import to avoid cycles
-                    from src.processing.managers import get_process_manager
+                    from src.processing import get_registry
 
                     proc: ProcessManagerProtocol = cast(
-                        ProcessManagerProtocol, get_process_manager()
+                        ProcessManagerProtocol, get_registry().manager_hub().processes
                     )
                 else:
                     proc = proc_manager

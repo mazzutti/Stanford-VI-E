@@ -24,9 +24,8 @@ from src.processing.resampling.cache import get_resample_plan_cache
 from src.processing.resampling.backends.manager import get_backend_manager
 from src.utils.quantity import Quantity
 from src.processing.metrics import BackendMetrics, PlanFingerprint, get_global_metrics
-from src.processing.core.singleton import SingletonFactory
 
-__all__ = ["ResamplerService", "get_resampler_service"]
+__all__ = ["ResamplerService"]
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -141,19 +140,3 @@ class ResamplerService:
             fingerprint = PlanFingerprint.from_plan(plan)
             gm.record_runtime(backend_name, fingerprint, elapsed)
         return out
-
-
-# Module-level lazy singleton for the resampler service
-_resampler_service_factory: SingletonFactory[ResamplerService] = SingletonFactory(
-    lambda: ResamplerService(grid_spec=GridSpec())
-)
-
-
-def get_resampler_service(service: ResamplerService | None = None) -> ResamplerService:
-    """Return the provided ResamplerService or the module-level lazy singleton.
-
-    This helper follows the repository convention of providing get_* accessors
-    for module-level lazy singletons to simplify dependency injection in
-    tests and client code.
-    """
-    return _resampler_service_factory.get(service)

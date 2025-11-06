@@ -155,8 +155,10 @@ def test_singleton_reset_creates_new_instance() -> None:
 
 def test_instance_without_manager_auto_initializes() -> None:
     """Test that instance() auto-initializes with default process manager."""
-    with patch("src.processing.managers.get_process_manager") as mock_get_pm:
-        mock_get_pm.return_value = DummyProcessManager()
+    with patch("src.processing.get_registry") as mock_get_registry:
+        mock_registry = mock_get_registry.return_value
+        mock_hub = mock_registry.manager_hub.return_value
+        mock_hub.processes = DummyProcessManager()
         instance = AnalysisCommon.instance()
         assert instance.is_initialized, "Should auto-initialize with default manager"
 

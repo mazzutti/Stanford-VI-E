@@ -24,7 +24,6 @@ from .resampler import (
 
 from .service import (
     ResamplerService,
-    get_resampler_service,
 )
 
 from .plan import (
@@ -50,7 +49,6 @@ __all__ = [
     # Core
     "DepthTimeResampler",
     "ResamplerService",
-    "get_resampler_service",
     # Plans and caching
     "ResamplePlan",
     "ResamplePlanCache",
