@@ -138,7 +138,7 @@ class AvoStats(FormattableModel):
 
     Fields are optional to support partial results. Extras may be provided in
     the ``extras`` mapping for non-standard metrics.
-    
+
     Inherits formatting from FormattableModel for consistent __repr__/__str__
     implementations.
     """

@@ -25,6 +25,7 @@ from src.analysis.types.protocols import (
 )
 from src.analysis.domain.enum import Domain
 from src.analysis.facies.config import FaciesAnalysisConfig
+from src.analysis.factories.service_factory import ServiceLocator
 
 from src.analysis.models import (
     FaciesCorrelationConfig,
@@ -166,19 +167,21 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         self._velocity_model_class = velocity_model_class or VelocityModel
         self._plotter = plotter
 
-        # Inject or create processors (simplified with ternary operators)
-        self._boundary_detector = boundary_detector or BoundaryDetector()
-        self._cube_aligner = cube_aligner or CubeAligner()
+        # Inject or create processors (using ServiceLocator for centralized creation)
+        self._boundary_detector = boundary_detector or ServiceLocator.create_boundary_detector()
+        self._cube_aligner = cube_aligner or ServiceLocator.create_cube_aligner()
         self._boundary_amp_extractor = (
             boundary_amp_extractor
-            or BoundaryAmplitudeExtractor(dilation_window=self._config.dilation_window)
+            or ServiceLocator.create_boundary_amp_extractor(
+                dilation_window=self._config.dilation_window
+            )
         )
         self._gradient_calculator = (
-            gradient_calculator or GradientCorrelationCalculator()
+            gradient_calculator or ServiceLocator.create_gradient_calculator()
         )
-        self._interface_analyzer = interface_analyzer or InterfaceReflectionAnalyzer()
+        self._interface_analyzer = interface_analyzer or ServiceLocator.create_interface_analyzer()
         self._facies_discriminator = (
-            facies_discriminator or FaciesDiscriminationCalculator()
+            facies_discriminator or ServiceLocator.create_facies_discriminator()
         )
         self._domain_handler_factory = domain_handler_factory or DomainHandlerFactory()
 

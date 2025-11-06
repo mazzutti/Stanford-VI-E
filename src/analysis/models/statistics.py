@@ -37,7 +37,7 @@ __all__ = [
 @dataclass(slots=True)
 class GradientCorrelationResult(StatisticalResult, FormattableModel):
     """Represents gradient correlation analysis results with validation.
-    
+
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
     """
 
@@ -94,10 +94,10 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Provides statistics for consistent __repr__/__str__ formatting
         via FormattableModel.
-        
+
         Returns:
             Dictionary mapping stat names to float values suitable for
             formatted display (strongest correlation, boundary count, validity).
@@ -190,7 +190,7 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
 @dataclass(slots=True)
 class BoundaryAmpsResult(StatisticalResult, FormattableModel):
     """Represents amplitude measurements at and away from boundaries.
-    
+
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
     """
 
@@ -246,10 +246,10 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Provides statistics for consistent __repr__/__str__ formatting
         via FormattableModel.
-        
+
         Returns:
             Dictionary with key amplitude statistics.
         """
@@ -331,7 +331,7 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
 @dataclass(slots=True)
 class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
     """Represents facies discrimination analysis with computed properties.
-    
+
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
     """
 
@@ -408,10 +408,10 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Provides statistics for consistent __repr__/__str__ formatting
         via FormattableModel.
-        
+
         Returns:
             Dictionary with facies count and separation metrics.
         """
@@ -504,7 +504,7 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
 @dataclass
 class InterfaceReflectionResult(StatisticalResult, FormattableModel):
     """Structured result for interface reflection analysis.
-    
+
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
 
     Attributes
@@ -601,10 +601,10 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Provides statistics for consistent __repr__/__str__ formatting
         via FormattableModel.
-        
+
         Returns:
             Dictionary with transition counts.
         """
@@ -682,7 +682,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
 @dataclass
 class AvoAnalysisResult(StatisticalResult, FormattableModel):
     """Comprehensive AVO analysis result combining multiple techniques.
-    
+
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
     """
 
@@ -754,10 +754,10 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Provides statistics for consistent __repr__/__str__ formatting
         via FormattableModel.
-        
+
         Returns:
             Dictionary with component validity and coverage metrics.
         """

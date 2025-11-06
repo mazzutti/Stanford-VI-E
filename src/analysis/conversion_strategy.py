@@ -46,7 +46,7 @@ class UnitType(str, Enum):
 
 class ConversionStrategy(ABC):
     """Abstract base class for unit conversion strategies.
-    
+
     Each strategy encapsulates conversion logic for a specific unit type,
     providing consistent interface for all conversions.
     """
@@ -54,17 +54,17 @@ class ConversionStrategy(ABC):
     @abstractmethod
     def convert(self, value: float) -> float:
         """Convert value from source unit to target unit.
-        
+
         Parameters
         ----------
         value : float
             Value in source unit.
-        
+
         Returns
         -------
         float
             Converted value in target unit.
-        
+
         Raises
         ------
         ValueError
@@ -75,19 +75,19 @@ class ConversionStrategy(ABC):
     @abstractmethod
     def reverse_convert(self, value: float) -> float:
         """Convert value from target unit back to source unit.
-        
+
         Inverse of convert().
-        
+
         Parameters
         ----------
         value : float
             Value in target unit.
-        
+
         Returns
         -------
         float
             Converted value in source unit.
-        
+
         Raises
         ------
         ValueError
@@ -114,13 +114,13 @@ class ConversionStrategy(ABC):
 
 class VelocityConversionStrategy(ConversionStrategy):
     """Strategy for velocity unit conversions.
-    
+
     Supports conversions between:
       - m/s (SI unit)
       - km/s
       - ft/s
       - mile/s
-    
+
     Example:
         >>> conv = VelocityConversionStrategy("km/s", "m/s")
         >>> print(conv.convert(5.0))  # 5000.0
@@ -136,14 +136,14 @@ class VelocityConversionStrategy(ConversionStrategy):
 
     def __init__(self, from_unit: str, to_unit: str) -> None:
         """Initialize velocity converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source unit (e.g., 'km/s').
         to_unit : str
             Target unit (e.g., 'm/s').
-        
+
         Raises
         ------
         ValueError
@@ -192,13 +192,13 @@ class VelocityConversionStrategy(ConversionStrategy):
 
 class TimeConversionStrategy(ConversionStrategy):
     """Strategy for time unit conversions.
-    
+
     Supports conversions between:
       - s (seconds, SI unit)
       - ms (milliseconds)
       - us (microseconds)
       - ns (nanoseconds)
-    
+
     Example:
         >>> conv = TimeConversionStrategy("ms", "s")
         >>> print(conv.convert(1000.0))  # 1.0
@@ -214,14 +214,14 @@ class TimeConversionStrategy(ConversionStrategy):
 
     def __init__(self, from_unit: str, to_unit: str) -> None:
         """Initialize time converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source unit (e.g., 'ms').
         to_unit : str
             Target unit (e.g., 's').
-        
+
         Raises
         ------
         ValueError
@@ -270,13 +270,13 @@ class TimeConversionStrategy(ConversionStrategy):
 
 class DepthConversionStrategy(ConversionStrategy):
     """Strategy for depth/distance unit conversions.
-    
+
     Supports conversions between:
       - m (meters, SI unit)
       - km (kilometers)
       - ft (feet)
       - mile (miles)
-    
+
     Example:
         >>> conv = DepthConversionStrategy("km", "m")
         >>> print(conv.convert(1.0))  # 1000.0
@@ -292,14 +292,14 @@ class DepthConversionStrategy(ConversionStrategy):
 
     def __init__(self, from_unit: str, to_unit: str) -> None:
         """Initialize depth converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source unit (e.g., 'km').
         to_unit : str
             Target unit (e.g., 'm').
-        
+
         Raises
         ------
         ValueError
@@ -348,12 +348,12 @@ class DepthConversionStrategy(ConversionStrategy):
 
 class AmplitudeConversionStrategy(ConversionStrategy):
     """Strategy for seismic amplitude unit conversions.
-    
+
     Supports conversions between:
       - raw (dimensionless amplitude, default)
       - normalized (0-1 range)
       - percent (0-100 range)
-    
+
     Example:
         >>> conv = AmplitudeConversionStrategy("normalized", "percent")
         >>> print(conv.convert(0.5))  # 50.0
@@ -361,14 +361,14 @@ class AmplitudeConversionStrategy(ConversionStrategy):
 
     def __init__(self, from_unit: str, to_unit: str) -> None:
         """Initialize amplitude converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source unit ('raw', 'normalized', 'percent').
         to_unit : str
             Target unit ('raw', 'normalized', 'percent').
-        
+
         Raises
         ------
         ValueError
@@ -377,13 +377,11 @@ class AmplitudeConversionStrategy(ConversionStrategy):
         supported = {"raw", "normalized", "percent"}
         if from_unit not in supported:
             raise ValueError(
-                f"Unsupported amplitude unit: {from_unit}. "
-                f"Supported: {supported}"
+                f"Unsupported amplitude unit: {from_unit}. " f"Supported: {supported}"
             )
         if to_unit not in supported:
             raise ValueError(
-                f"Unsupported amplitude unit: {to_unit}. "
-                f"Supported: {supported}"
+                f"Unsupported amplitude unit: {to_unit}. " f"Supported: {supported}"
             )
         self._from_unit = from_unit
         self._to_unit = to_unit
@@ -439,9 +437,9 @@ class AmplitudeConversionStrategy(ConversionStrategy):
 
 class ConversionStrategyFactory:
     """Factory for creating conversion strategies.
-    
+
     Provides static methods for creating converters for common unit types.
-    
+
     Example:
         >>> converter = ConversionStrategyFactory.create("velocity", "km/s", "m/s")
         >>> result = converter.convert(3.0)
@@ -461,7 +459,7 @@ class ConversionStrategyFactory:
         to_unit: str,
     ) -> ConversionStrategy:
         """Create a conversion strategy.
-        
+
         Parameters
         ----------
         unit_type : str
@@ -470,12 +468,12 @@ class ConversionStrategyFactory:
             Source unit name.
         to_unit : str
             Target unit name.
-        
+
         Returns
         -------
         ConversionStrategy
             Appropriate converter instance.
-        
+
         Raises
         ------
         ValueError
@@ -498,14 +496,14 @@ class ConversionStrategyFactory:
     @staticmethod
     def create_velocity(from_unit: str, to_unit: str) -> VelocityConversionStrategy:
         """Create a velocity converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source velocity unit.
         to_unit : str
             Target velocity unit.
-        
+
         Returns
         -------
         VelocityConversionStrategy
@@ -516,14 +514,14 @@ class ConversionStrategyFactory:
     @staticmethod
     def create_time(from_unit: str, to_unit: str) -> TimeConversionStrategy:
         """Create a time converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source time unit.
         to_unit : str
             Target time unit.
-        
+
         Returns
         -------
         TimeConversionStrategy
@@ -534,14 +532,14 @@ class ConversionStrategyFactory:
     @staticmethod
     def create_depth(from_unit: str, to_unit: str) -> DepthConversionStrategy:
         """Create a depth converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source depth unit.
         to_unit : str
             Target depth unit.
-        
+
         Returns
         -------
         DepthConversionStrategy
@@ -552,14 +550,14 @@ class ConversionStrategyFactory:
     @staticmethod
     def create_amplitude(from_unit: str, to_unit: str) -> AmplitudeConversionStrategy:
         """Create an amplitude converter.
-        
+
         Parameters
         ----------
         from_unit : str
             Source amplitude unit.
         to_unit : str
             Target amplitude unit.
-        
+
         Returns
         -------
         AmplitudeConversionStrategy

@@ -40,7 +40,7 @@ __all__ = [
 
 class ServiceFactory(ABC):
     """Base factory for service creation.
-    
+
     Provides abstract interface for service factory implementations.
     All service factories should inherit from this class to ensure
     consistent factory contract.
@@ -49,17 +49,17 @@ class ServiceFactory(ABC):
     @abstractmethod
     def create(self, **kwargs: Any) -> Any:
         """Create a service with the given parameters.
-        
+
         Parameters
         ----------
         **kwargs : Any
             Service-specific configuration parameters.
-        
+
         Returns
         -------
         Any
             Created service instance.
-        
+
         Raises
         ------
         TypeError
@@ -72,10 +72,10 @@ class ServiceFactory(ABC):
 
 class CacheServiceFactory(ServiceFactory):
     """Factory for cache-related services.
-    
+
     Creates and configures cache loaders and related services
     with consistent initialization and default values.
-    
+
     Example:
         >>> factory = CacheServiceFactory()
         >>> cache_loader = factory.create_cache_loader(dataset_mgr)
@@ -85,19 +85,19 @@ class CacheServiceFactory(ServiceFactory):
 
     def create(self, service_type: str = "loader", **kwargs: Any) -> Any:
         """Create a cache service.
-        
+
         Parameters
         ----------
         service_type : str
             Type of service: 'loader'
         **kwargs : Any
             Service-specific parameters.
-        
+
         Returns
         -------
         Any
             Created cache service.
-        
+
         Raises
         ------
         ValueError
@@ -113,12 +113,12 @@ class CacheServiceFactory(ServiceFactory):
         dm: "DatasetManager",
     ) -> CacheLoaderProtocol:
         """Create a cache loader service.
-        
+
         Parameters
         ----------
         dm : DatasetManager
             DatasetManager for loading cached data.
-        
+
         Returns
         -------
         CacheLoaderProtocol
@@ -130,31 +130,37 @@ class CacheServiceFactory(ServiceFactory):
 
 class ProcessorServiceFactory(ServiceFactory):
     """Factory for processor-related services.
-    
-    Creates processors, resamplers, and other processing services
-    with consistent initialization.
-    
+
+    Creates processors, resamplers, analysis processors, and other
+    processing services with consistent initialization.
+
+    Supports both data processors (resampler, synthesizer) and
+    analysis processors (boundary detection, correlation calculation, etc).
+
     Example:
         >>> factory = ProcessorServiceFactory()
         >>> resampler = factory.create_resampler()
+        >>> boundary_detector = factory.create_boundary_detector()
         >>> synthesizer = factory.create_synthesizer()
     """
 
     def create(self, service_type: str = "resampler", **kwargs: Any) -> Any:
         """Create a processor service.
-        
+
         Parameters
         ----------
         service_type : str
-            Type of service: 'resampler', 'synthesizer'
+            Type of service: 'resampler', 'synthesizer', 'boundary_detector',
+            'cube_aligner', 'boundary_amp_extractor', 'gradient_calculator',
+            'interface_analyzer', 'facies_discriminator'
         **kwargs : Any
             Service-specific parameters.
-        
+
         Returns
         -------
         Any
             Created processor service.
-        
+
         Raises
         ------
         ValueError
@@ -164,24 +170,36 @@ class ProcessorServiceFactory(ServiceFactory):
             return self.create_resampler(**kwargs)
         elif service_type == "synthesizer":
             return self.create_synthesizer(**kwargs)
+        elif service_type == "boundary_detector":
+            return self.create_boundary_detector()
+        elif service_type == "cube_aligner":
+            return self.create_cube_aligner()
+        elif service_type == "boundary_amp_extractor":
+            return self.create_boundary_amp_extractor(**kwargs)
+        elif service_type == "gradient_calculator":
+            return self.create_gradient_calculator()
+        elif service_type == "interface_analyzer":
+            return self.create_interface_analyzer()
+        elif service_type == "facies_discriminator":
+            return self.create_facies_discriminator()
         else:
             raise ValueError(f"Unknown processor service type: {service_type}")
 
     @staticmethod
     def create_resampler(grid_spec: Optional[Any] = None) -> Any:
         """Create a resampler service.
-        
+
         Parameters
         ----------
         grid_spec : GridSpec, optional
             Grid specification for resampling. If None, resampler must be
             configured before use.
-        
+
         Returns
         -------
         Any
             Resampler implementation (DepthTimeResampler or similar).
-        
+
         Raises
         ------
         ImportError
@@ -189,6 +207,7 @@ class ProcessorServiceFactory(ServiceFactory):
         """
         if grid_spec is not None:
             from src.processing.resampling._resampler import DepthTimeResampler
+
             logger.debug(f"Creating DepthTimeResampler with grid_spec: {grid_spec}")
             resampler = DepthTimeResampler()
             resampler.grid_spec = grid_spec
@@ -197,18 +216,20 @@ class ProcessorServiceFactory(ServiceFactory):
             # Use factory if available
             try:
                 from src.processing.resampling._resampler import resampler_factory
+
                 logger.debug("Creating resampler via factory")
                 return resampler_factory.get_resampler()
             except (ImportError, AttributeError):
                 # Fallback: create empty resampler
                 from src.processing.resampling._resampler import DepthTimeResampler
+
                 logger.debug("Creating DepthTimeResampler (factory not available)")
                 return DepthTimeResampler()
 
     @staticmethod
     def create_synthesizer() -> Any:
         """Create an AVO synthesizer service.
-        
+
         Returns
         -------
         Any
@@ -219,13 +240,102 @@ class ProcessorServiceFactory(ServiceFactory):
         logger.debug("Creating AVOSynthesizer")
         return AVOSynthesizer()
 
+    @staticmethod
+    def create_boundary_detector() -> Any:
+        """Create a boundary detector processor.
+
+        Returns
+        -------
+        Any
+            BoundaryDetector implementation.
+        """
+        from src.analysis.processors import BoundaryDetector
+
+        logger.debug("Creating BoundaryDetector")
+        return BoundaryDetector()
+
+    @staticmethod
+    def create_cube_aligner() -> Any:
+        """Create a cube aligner processor.
+
+        Returns
+        -------
+        Any
+            CubeAligner implementation.
+        """
+        from src.analysis.processors import CubeAligner
+
+        logger.debug("Creating CubeAligner")
+        return CubeAligner()
+
+    @staticmethod
+    def create_boundary_amp_extractor(dilation_window: int = 2) -> Any:
+        """Create a boundary amplitude extractor processor.
+
+        Parameters
+        ----------
+        dilation_window : int
+            Dilation window for boundary zone expansion. Default is 2.
+
+        Returns
+        -------
+        Any
+            BoundaryAmplitudeExtractor implementation.
+        """
+        from src.analysis.processors import BoundaryAmplitudeExtractor
+
+        logger.debug(f"Creating BoundaryAmplitudeExtractor with window={dilation_window}")
+        return BoundaryAmplitudeExtractor(dilation_window=dilation_window)
+
+    @staticmethod
+    def create_gradient_calculator() -> Any:
+        """Create a gradient correlation calculator processor.
+
+        Returns
+        -------
+        Any
+            GradientCorrelationCalculator implementation.
+        """
+        from src.analysis.processors import GradientCorrelationCalculator
+
+        logger.debug("Creating GradientCorrelationCalculator")
+        return GradientCorrelationCalculator()
+
+    @staticmethod
+    def create_interface_analyzer() -> Any:
+        """Create an interface reflection analyzer processor.
+
+        Returns
+        -------
+        Any
+            InterfaceReflectionAnalyzer implementation.
+        """
+        from src.analysis.processors import InterfaceReflectionAnalyzer
+
+        logger.debug("Creating InterfaceReflectionAnalyzer")
+        return InterfaceReflectionAnalyzer()
+
+    @staticmethod
+    def create_facies_discriminator() -> Any:
+        """Create a facies discrimination calculator processor.
+
+        Returns
+        -------
+        Any
+            FaciesDiscriminationCalculator implementation.
+        """
+        from src.analysis.processors import FaciesDiscriminationCalculator
+
+        logger.debug("Creating FaciesDiscriminationCalculator")
+        return FaciesDiscriminationCalculator()
+
 
 class ComputerServiceFactory(ServiceFactory):
     """Factory for computer/calculator services.
-    
+
     Creates rock physics computers and attribute calculators
     with consistent initialization.
-    
+
     Example:
         >>> factory = ComputerServiceFactory()
         >>> avo_computer = factory.create_avo_computer()
@@ -234,19 +344,19 @@ class ComputerServiceFactory(ServiceFactory):
 
     def create(self, service_type: str = "avo", **kwargs: Any) -> Any:
         """Create a computer service.
-        
+
         Parameters
         ----------
         service_type : str
             Type of service: 'avo', 'lambda_mu', 'fluid_factor'
         **kwargs : Any
             Service-specific parameters.
-        
+
         Returns
         -------
         Any
             Created computer service.
-        
+
         Raises
         ------
         ValueError
@@ -264,7 +374,7 @@ class ComputerServiceFactory(ServiceFactory):
     @staticmethod
     def create_avo_computer() -> Any:
         """Create an AVO attributes computer.
-        
+
         Returns
         -------
         Any
@@ -278,7 +388,7 @@ class ComputerServiceFactory(ServiceFactory):
     @staticmethod
     def create_lambda_mu_computer() -> Any:
         """Create a Lamé parameters computer.
-        
+
         Returns
         -------
         Any
@@ -292,7 +402,7 @@ class ComputerServiceFactory(ServiceFactory):
     @staticmethod
     def create_fluid_factor_computer() -> Any:
         """Create a fluid factor computer.
-        
+
         Returns
         -------
         Any
@@ -306,14 +416,14 @@ class ComputerServiceFactory(ServiceFactory):
 
 class ServiceLocator:
     """Service Locator providing centralized access to service factories.
-    
+
     Implements the Service Locator pattern to provide a single point
     of access to all service factories. This simplifies dependency
     injection and centralizes service creation logic.
-    
+
     Note:
         This is a namespace class and should not be instantiated.
-    
+
     Example:
         >>> cache_mgr = ServiceLocator.create_cache_manager()
         >>> resampler = ServiceLocator.create_resampler()
@@ -328,7 +438,7 @@ class ServiceLocator:
 
     def __init__(self) -> None:
         """Prevent instantiation of service locator.
-        
+
         Raises
         ------
         TypeError
@@ -342,7 +452,7 @@ class ServiceLocator:
     @classmethod
     def get_cache_factory(cls) -> CacheServiceFactory:
         """Get the cache service factory.
-        
+
         Returns
         -------
         CacheServiceFactory
@@ -353,7 +463,7 @@ class ServiceLocator:
     @classmethod
     def get_processor_factory(cls) -> ProcessorServiceFactory:
         """Get the processor service factory.
-        
+
         Returns
         -------
         ProcessorServiceFactory
@@ -364,7 +474,7 @@ class ServiceLocator:
     @classmethod
     def get_computer_factory(cls) -> ComputerServiceFactory:
         """Get the computer service factory.
-        
+
         Returns
         -------
         ComputerServiceFactory
@@ -375,12 +485,12 @@ class ServiceLocator:
     @classmethod
     def create_cache_loader(cls, dm: "DatasetManager") -> CacheLoaderProtocol:
         """Create a cache loader service.
-        
+
         Parameters
         ----------
         dm : DatasetManager
             Dataset manager instance.
-        
+
         Returns
         -------
         CacheLoaderProtocol
@@ -392,7 +502,7 @@ class ServiceLocator:
     @classmethod
     def create_resampler(cls) -> Any:
         """Create a resampler service.
-        
+
         Returns
         -------
         Any
@@ -404,7 +514,7 @@ class ServiceLocator:
     @classmethod
     def create_synthesizer(cls) -> Any:
         """Create a synthesizer service.
-        
+
         Returns
         -------
         Any
@@ -414,9 +524,86 @@ class ServiceLocator:
         return factory.create_synthesizer()
 
     @classmethod
+    def create_boundary_detector(cls) -> Any:
+        """Create a boundary detector processor.
+
+        Returns
+        -------
+        Any
+            BoundaryDetector implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_boundary_detector()
+
+    @classmethod
+    def create_cube_aligner(cls) -> Any:
+        """Create a cube aligner processor.
+
+        Returns
+        -------
+        Any
+            CubeAligner implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_cube_aligner()
+
+    @classmethod
+    def create_boundary_amp_extractor(cls, dilation_window: int = 2) -> Any:
+        """Create a boundary amplitude extractor processor.
+
+        Parameters
+        ----------
+        dilation_window : int
+            Dilation window for boundary zone expansion. Default is 2.
+
+        Returns
+        -------
+        Any
+            BoundaryAmplitudeExtractor implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_boundary_amp_extractor(dilation_window=dilation_window)
+
+    @classmethod
+    def create_gradient_calculator(cls) -> Any:
+        """Create a gradient correlation calculator processor.
+
+        Returns
+        -------
+        Any
+            GradientCorrelationCalculator implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_gradient_calculator()
+
+    @classmethod
+    def create_interface_analyzer(cls) -> Any:
+        """Create an interface reflection analyzer processor.
+
+        Returns
+        -------
+        Any
+            InterfaceReflectionAnalyzer implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_interface_analyzer()
+
+    @classmethod
+    def create_facies_discriminator(cls) -> Any:
+        """Create a facies discrimination calculator processor.
+
+        Returns
+        -------
+        Any
+            FaciesDiscriminationCalculator implementation.
+        """
+        factory = cls.get_processor_factory()
+        return factory.create_facies_discriminator()
+
+    @classmethod
     def create_avo_computer(cls) -> Any:
         """Create an AVO computer service.
-        
+
         Returns
         -------
         Any
@@ -428,7 +615,7 @@ class ServiceLocator:
     @classmethod
     def create_lambda_mu_computer(cls) -> Any:
         """Create a Lamé parameters computer.
-        
+
         Returns
         -------
         Any
@@ -440,7 +627,7 @@ class ServiceLocator:
     @classmethod
     def create_fluid_factor_computer(cls) -> Any:
         """Create a fluid factor computer.
-        
+
         Returns
         -------
         Any

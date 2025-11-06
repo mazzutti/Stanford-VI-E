@@ -257,13 +257,13 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
 
     def run(self, **kwargs: Any) -> T_Result:
         """Template method orchestrating analyzer lifecycle.
-        
+
         Implements the Template Method pattern to standardize analyzer execution:
         1. Validate inputs
         2. Check readiness
         3. Execute analysis
         4. Handle errors consistently
-        
+
         This method should be used instead of calling analyze() directly.
         Subclasses should override analyze(), not run().
 
@@ -290,14 +290,14 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
                 f"{self.name}: Input validation failed. "
                 "Check input parameters and data."
             )
-        
+
         # Step 2: Check readiness
         if not self.is_ready():
             raise RuntimeError(
                 f"{self.name}: Analyzer not properly configured. "
                 "Call configure() before analyze()."
             )
-        
+
         # Step 3: Execute analysis
         logger.debug(f"{self.name}: Starting analysis")
         try:
@@ -306,6 +306,4 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
             return result
         except Exception as e:
             logger.error(f"{self.name}: Analysis failed: {e}", exc_info=True)
-            raise RuntimeError(
-                f"{self.name}: Analysis failed: {e}"
-            ) from e
+            raise RuntimeError(f"{self.name}: Analysis failed: {e}") from e

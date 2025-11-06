@@ -7,7 +7,7 @@ adding behavior dynamically without inheritance chains.
 Patterns Used:
   - Decorator: Wrap functions with additional behavior
   - Composition: Combine multiple decorators on single function
-  
+
 Decorators provided:
   - log_execution: Automatic logging of function entry/exit
   - time_operation: Track execution time and log warnings if threshold exceeded
@@ -45,20 +45,20 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 def log_execution(func: F) -> F:
     """Decorator for automatic execution logging.
-    
+
     Logs function entry, successful completion, and any exceptions that occur
     during execution. Useful for debugging and tracing execution flow.
-    
+
     Parameters
     ----------
     func : Callable
         Function to be decorated.
-    
+
     Returns
     -------
     Callable
         Wrapped function with logging.
-    
+
     Example
     -------
     >>> @log_execution
@@ -66,6 +66,7 @@ def log_execution(func: F) -> F:
     ...     return process(data)
     >>> analyzer.analyze(data)  # Logs entry and exit automatically
     """
+
     @functools.wraps(func)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         logger_inst = logging.getLogger(self.__class__.__module__)
@@ -87,10 +88,10 @@ def time_operation(
     threshold_ms: float = 100.0,
 ) -> Callable[[F], F]:
     """Decorator for operation timing with threshold warnings.
-    
+
     Measures function execution time and logs a warning if execution time
     exceeds the specified threshold. Useful for identifying performance issues.
-    
+
     Parameters
     ----------
     label : str, optional
@@ -98,12 +99,12 @@ def time_operation(
         If not provided, uses function name.
     threshold_ms : float, optional
         Time threshold in milliseconds for warning. Default: 100ms.
-    
+
     Returns
     -------
     Callable
         Decorator function.
-    
+
     Example
     -------
     >>> @time_operation("complex analysis", threshold_ms=500)
@@ -111,12 +112,13 @@ def time_operation(
     ...     return process(data)
     >>> analyzer.analyze(data)  # Logs warning if > 500ms
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             logger_inst = logging.getLogger(self.__class__.__module__)
             op_label = label or func.__qualname__
-            
+
             start_time = time.time()
             try:
                 result = func(self, *args, **kwargs)
@@ -128,9 +130,7 @@ def time_operation(
                         f"{op_label} took {elapsed_ms:.1f}ms (threshold: {threshold_ms}ms)"
                     )
                 else:
-                    logger_inst.debug(
-                        f"{op_label} completed in {elapsed_ms:.1f}ms"
-                    )
+                    logger_inst.debug(f"{op_label} completed in {elapsed_ms:.1f}ms")
 
         return wrapper  # type: ignore
 
@@ -142,27 +142,27 @@ def validate_input(
     error_msg: str = "Input validation failed",
 ) -> Callable[[F], F]:
     """Decorator for input validation before execution.
-    
+
     Calls validator function before executing the wrapped function.
     If validator returns False, raises ValueError without executing function.
-    
+
     Parameters
     ----------
     validator : Callable
         Function that takes input and returns True if valid, False otherwise.
     error_msg : str, optional
         Error message if validation fails.
-    
+
     Returns
     -------
     Callable
         Decorator function.
-    
+
     Raises
     ------
     ValueError
         If validator returns False.
-    
+
     Example
     -------
     >>> @validate_input(
@@ -173,6 +173,7 @@ def validate_input(
     ...     return process(data)
     >>> analyzer.analyze([])  # Raises ValueError
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
@@ -188,24 +189,24 @@ def validate_input(
 
 def memoize(func: F) -> F:
     """Decorator for function result caching.
-    
+
     Caches function results based on input arguments. Subsequent calls with
     same arguments return cached result without re-execution. Useful for
     expensive computations that are called multiple times with same inputs.
-    
+
     Note:
         Arguments must be hashable. Uses instance + arguments as cache key.
-    
+
     Parameters
     ----------
     func : Callable
         Function to be decorated.
-    
+
     Returns
     -------
     Callable
         Wrapped function with result caching.
-    
+
     Example
     -------
     >>> @memoize
@@ -248,10 +249,10 @@ def retry(
     retryable_exceptions: Optional[tuple[type[Exception], ...]] = None,
 ) -> Callable[[F], F]:
     """Decorator for automatic retry on failure.
-    
+
     Automatically retries function execution if it raises one of the specified
     exceptions. Supports exponential backoff with configurable delay multiplier.
-    
+
     Parameters
     ----------
     max_attempts : int, optional
@@ -262,17 +263,17 @@ def retry(
         Multiplier for delay after each retry. Default: 1.0 (no backoff).
     retryable_exceptions : tuple[Exception], optional
         Tuple of exception types to catch. Default: (Exception,).
-    
+
     Returns
     -------
     Callable
         Decorator function.
-    
+
     Raises
     ------
     Exception
         Original exception after max_attempts exceeded.
-    
+
     Example
     -------
     >>> @retry(max_attempts=5, delay_sec=0.5, backoff_factor=2.0)

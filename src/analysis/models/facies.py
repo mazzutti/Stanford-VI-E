@@ -26,7 +26,7 @@ __all__ = [
 @dataclass(slots=True)
 class FaciesStats(FormattableModel):
     """Per-facies amplitude statistics with computed properties and validation.
-    
+
     Inherits formatting from FormattableModel for consistent __repr__/__str__
     implementations across all statistical model classes.
     """
@@ -120,7 +120,7 @@ class FaciesStats(FormattableModel):
 
     def get_stats_dict(self) -> Dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
-        
+
         Used by parent class FormattableModel for consistent __repr__/__str__.
         """
         return {
