@@ -19,7 +19,6 @@ import multiprocessing
 
 from src.analysis.types.base import DatasetManagerFactory
 from src.io.grid import GridSpec
-from src.signal import RickerWavelet
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
 import logging

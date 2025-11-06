@@ -8,7 +8,6 @@ for flexible discovery and filtering.
 """
 
 import logging
-from typing import Callable, Any
 
 from src.analysis.processors.registry import (
     get_default_processor_registry,

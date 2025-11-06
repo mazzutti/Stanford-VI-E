@@ -6,7 +6,7 @@ for the facies correlation analysis pipeline and provides validation and
 serialization.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict
 
 from src.analysis.base import AnalysisConfig

@@ -30,7 +30,7 @@ Example Usage:
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Dict, List, TypeVar, Generic
+from typing import Any, Callable, Optional, Dict, List, TypeVar
 from datetime import datetime
 from enum import Enum
 

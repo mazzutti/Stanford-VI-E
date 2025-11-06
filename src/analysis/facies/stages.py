@@ -13,7 +13,7 @@ Stages handle:
 """
 
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Dict
 
 from src.analysis.pipelines.orchestrator import PipelineStage
 from src.analysis.domain.enum import Domain

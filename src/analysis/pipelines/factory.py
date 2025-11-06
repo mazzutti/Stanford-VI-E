@@ -3,8 +3,8 @@
 Eliminates boilerplate in stage creation and provides consistent configuration.
 """
 
-from typing import Callable, Any, Optional, Dict, TypeVar
-from abc import ABC, abstractmethod
+from typing import Callable, Any, Optional, TypeVar
+from abc import abstractmethod
 import logging
 
 from src.analysis.pipelines.orchestrator import PipelineStage

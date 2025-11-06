@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Optional, Protocol, Tuple, TypeVar, TYPE_CHECKING
+from typing import Any, Optional, Protocol, TypeVar, TYPE_CHECKING
 
 from numpy.typing import NDArray
 
