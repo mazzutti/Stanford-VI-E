@@ -188,7 +188,9 @@ class TestBatchedInterpolatorEdgeCases:
         twt_padded = np.array([0.0])  # Single depth
         depth_padded_flat = np.array([[10.0]], dtype=np.float64)
 
-        result = interp.interpolate(twt_padded, depth_padded_flat)
+        # Suppress RuntimeWarning from scipy when interpolating with single point
+        with pytest.warns(RuntimeWarning, match="invalid value encountered in divide"):
+            result = interp.interpolate(twt_padded, depth_padded_flat)
 
         assert result.shape == (3, 1)
         # All time samples should extrapolate/use the single value
