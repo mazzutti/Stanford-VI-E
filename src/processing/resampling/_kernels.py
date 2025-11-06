@@ -109,9 +109,7 @@ def resample_depth_to_time_linear(
                     t1 = twt[k]
                     v0 = trace[k - 1]
                     v1 = trace[k]
-                    out_array[ii, jj, ti] = linear_interpolate_value(
-                        t, t0, t1, v0, v1
-                    )
+                    out_array[ii, jj, ti] = linear_interpolate_value(t, t0, t1, v0, v1)
 
 
 # ============================================================================

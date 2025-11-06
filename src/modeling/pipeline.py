@@ -87,7 +87,9 @@ class ModelingPipeline:
         # Load dataset
         logger.info("Loading dataset from %s...", cfg.data_path)
         dm = DatasetManager.from_stanfordsix(cfg.data_path, cfg.file_map, cfg.grid_spec)
-        props_depth: dict[str, NDArray[np.floating[Any]] | None] = load_depth_properties(dm)
+        props_depth: dict[str, NDArray[np.floating[Any]] | None] = (
+            load_depth_properties(dm)
+        )
         rpm = RockPhysicsModel.from_props(props_depth, cfg.grid_spec)
         rpm.ensure_units()
 
