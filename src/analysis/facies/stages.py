@@ -241,7 +241,6 @@ class AvoAnalysisStage(PipelineStage):
             Updated context with analysis_complete=True
         """
         logger.debug("Performing AVO analysis...")
-        analyzer = input_data["analyzer"]
 
         # The actual AVO analysis logic is delegated to the
         # existing AnalysisPipeline and analyzer methods

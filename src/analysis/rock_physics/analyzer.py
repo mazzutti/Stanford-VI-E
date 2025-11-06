@@ -500,7 +500,7 @@ class RockPhysicsAnalyzer:
             try:
                 from src.plotting import RockPhysicsPlotter
 
-                plotter = RockPhysicsPlotter()
+                RockPhysicsPlotter()
                 self._log_debug("Rock physics plotter instantiated")
                 logger.info("Plot generation completed")
             except Exception:

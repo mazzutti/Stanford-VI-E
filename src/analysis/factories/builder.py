@@ -977,7 +977,7 @@ class AnalyzerBuilder:
 
         # Processors
         lines.append("\nProcessors:")
-        for proc_name, (proc_type, _, _) in sorted(self._processor_registry.items()):
+        for proc_name, (_, _, _) in sorted(self._processor_registry.items()):
             value = getattr(self, f"_{proc_name}", None)
             status = "✓" if value is not None else "○"
             config_status = (

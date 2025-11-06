@@ -72,8 +72,6 @@ class OverlayPlotter(BasePlotter):
         """
         config = config or PlotConfig.for_seismic()
 
-        _, _ = seismic_slice.shape
-
         # Plot seismic base image
         config = config.update(
             xlabel="Crossline (J)",

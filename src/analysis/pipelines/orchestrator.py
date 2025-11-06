@@ -388,7 +388,7 @@ class Pipeline(Generic[T_In, T_Out]):
         lines = [f"Pipeline: {self.name} ({len(self._results)} stages)"]
         total_time = 0.0
 
-        for stage_name, result in self._results.items():
+        for result in self._results.values():
             lines.append(f"  {result}")
             total_time += result.duration_ms
 

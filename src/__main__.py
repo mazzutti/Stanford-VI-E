@@ -357,41 +357,12 @@ class ParserFactory:
         for k, v in props_depth.items():
             was_q = hasattr(v, "array")
             data_arr = v.array if was_q else v
-            data_time, _ = resampler.depth_to_time_cube(
-                data_arr, vp_for_twt, plan=plan
-            )
+            data_time, _ = resampler.depth_to_time_cube(data_arr, vp_for_twt, plan=plan)
             props_time[k] = Quantity(data_time, v.unit) if was_q else data_time
         nt = props_time["vp"].shape[2]
         _t1 = time.time()
         logger.info("Depth->Time resampling completed in %.2fs", (_t1 - _t0))
         nx, ny, nt_samples = props_time["vp"].shape
-
-        # STEP 4: AVO
-        ricker = RickerWavelet(f_peak=26, dt=grid_spec.dt)
-        wavelet_avo = ricker.samples
-        from src.modeling import (
-            CacheManager,
-            AVOSynthesizer,
-            AngleModel,
-            SynthesisConfig,
-        )
-
-        config = SynthesisConfig(
-            use_quality_weighting=True,
-            add_noise=getattr(args, "add_avo_noise", False),
-            snr_db=20,
-        )
-
-        cache_manager = CacheManager()
-        synthesizer = AVOSynthesizer(AngleModel())
-
-        _, _ = cache_manager.get_avo_synthetics(
-            props_time,
-            [0, 5, 10, 15],
-            wavelet_avo,
-            create_fn=synthesizer.create_synthetics,
-            config=config,
-        )
 
         return {
             "props_depth": props_depth,
@@ -1053,7 +1024,7 @@ def main():
 
     # Use helpers to perform modeling pipeline (AVO only)
     props_depth, _, _, grid_spec = ParserFactory.load_data()
-    _ = ParserFactory.run_modeling(props_depth, args, grid_spec)
+    ParserFactory.run_modeling(props_depth, args, grid_spec)
     ParserFactory.save_results()
 
     return True
