@@ -40,7 +40,7 @@ from numpy.typing import NDArray
 >>> from src.analysis.processors import BoundaryDetector, CubeAligner
 >>> facies_cube = np.random.randint(0, 5, (10, 10, 20))
 >>> detector = BoundaryDetector()
->>> boundaries = detector.detect(facies_cube)  # Returns bool mask
+>>> boundaries = detector(facies_cube)  # Returns bool mask via BaseProcessor
 >>> aligner = CubeAligner()
 >>> seismic = np.random.randn(10, 10, 20)
 >>> seismic_aligned, facies_aligned = aligner.align(seismic, facies_cube)

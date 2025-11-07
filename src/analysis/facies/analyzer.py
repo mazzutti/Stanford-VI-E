@@ -358,7 +358,7 @@ class FaciesCorrelationAnalyzer(
             If ``facies_cube`` is not a 3-dimensional array.
         """
         self._ensure_initialized()
-        return cast(NDArray[np.bool_], self._boundary_detector.detect(facies_cube))
+        return cast(NDArray[np.bool_], self._boundary_detector(facies_cube))
 
     def _align_cubes(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
@@ -386,7 +386,7 @@ class FaciesCorrelationAnalyzer(
         self._ensure_initialized()
         return cast(
             tuple[NDArray[np.float64], NDArray[np.int64]],
-            self._cube_aligner.align(seismic_cube, facies_cube),
+            self._cube_aligner(seismic_cube, facies_cube),
         )
 
     def extract_boundary_amplitudes(
@@ -421,7 +421,7 @@ class FaciesCorrelationAnalyzer(
         self._ensure_initialized()
         return cast(
             BoundaryAmpsResult,
-            self._boundary_amp_extractor.extract(seismic_cube, boundaries, window),
+            self._boundary_amp_extractor(seismic_cube, boundaries, window),
         )
 
     def calculate_gradient_correlation(
@@ -442,7 +442,7 @@ class FaciesCorrelationAnalyzer(
         self._ensure_initialized()
         return cast(
             GradientCorrelationResult,
-            self._gradient_calculator.calculate(seismic_cube, facies_cube),
+            self._gradient_calculator(seismic_cube, facies_cube),
         )
 
     def analyze_interface_reflections(
@@ -462,7 +462,7 @@ class FaciesCorrelationAnalyzer(
         self._ensure_initialized()
         return cast(
             InterfaceReflectionResult,
-            self._interface_analyzer.analyze(seismic_cube, facies_cube),
+            self._interface_analyzer(seismic_cube, facies_cube),
         )
 
     def calculate_facies_discrimination(
@@ -473,7 +473,7 @@ class FaciesCorrelationAnalyzer(
         Delegates to the injected FaciesDiscriminationCalculator processor.
         """
         self._ensure_initialized()
-        return self._facies_discriminator.calculate(seismic_cube, facies_cube)
+        return self._facies_discriminator(seismic_cube, facies_cube)
 
     def compare_techniques(
         self, avo_stats: "AvoStats", metric_name: str

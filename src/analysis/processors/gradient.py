@@ -124,7 +124,7 @@ class GradientCorrelationCalculator(BaseProcessor):
         seismic_grad_abs = compute_vertical_gradient(seismic_aligned)
 
         # Detect facies boundaries
-        boundaries = self._detector.detect(facies_aligned)
+        boundaries = self._detector(facies_aligned)
 
         # Calculate correlation
         pearson_corr, pearson_pval = self._compute_correlation(

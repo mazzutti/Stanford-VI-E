@@ -123,7 +123,7 @@ class BoundaryDetector(BaseProcessor):
         >>> detector = BoundaryDetector()
         >>> facies = np.array([[[1, 1], [1, 2]],
         ...                    [[1, 2], [2, 2]]], dtype=np.int64)
-        >>> boundaries = detector.detect(facies)
+        >>> boundaries = detector(facies)
         >>> boundaries.shape
         (2, 2, 2)
         >>> boundaries.sum()  # Number of boundary voxels
