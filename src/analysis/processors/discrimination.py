@@ -12,7 +12,6 @@ from src.core import BaseProcessor
 
 from .decorators import ProcessorDecorators
 from .operations import AlignmentOps, ExtractionOps, StatsOps
-from .management import compute_amplitude_stats
 
 logger = logging.getLogger(__name__)
 

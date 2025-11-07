@@ -88,6 +88,7 @@ class BaseProcessor(Processor):
     - extract() for amplitude extraction operations
     - calculate() for correlation/computation operations
     - analyze() for analysis operations
+    - align() for cube alignment and registration utilities
 
     The process() method will automatically delegate to whichever method
     is implemented by the subclass, eliminating boilerplate code.
@@ -97,7 +98,7 @@ class BaseProcessor(Processor):
     """
 
     # Define the method resolution order for finding domain methods
-    _DOMAIN_METHODS = ["detect", "extract", "calculate", "analyze"]
+    _DOMAIN_METHODS = ["detect", "extract", "calculate", "analyze", "align"]
 
     def __init__(self) -> None:
         """Initialize base processor with shared dependencies."""
@@ -127,36 +128,36 @@ class BaseProcessor(Processor):
     def process(self, *args: Any, **kwargs: Any) -> Any:
         """Execute processor via automatic domain-method delegation.
 
-        Implements the polymorphic interface by finding and delegating to
-        the appropriate domain-specific method for this processor instance.
-        This eliminates repetitive process() implementations across subclasses.
+            Implements the polymorphic interface by finding and delegating to
+            the appropriate domain-specific method for this processor instance.
+            This eliminates repetitive process() implementations across subclasses.
 
-        The method resolution order is: detect → extract → calculate → analyze
+        The method resolution order is: detect → extract → calculate → analyze → align
 
-        Parameters
-        ----------
-        *args
-            Variable positional arguments (specific to the domain method).
-        **kwargs
-            Variable keyword arguments (specific to the domain method).
+            Parameters
+            ----------
+            *args
+                Variable positional arguments (specific to the domain method).
+            **kwargs
+                Variable keyword arguments (specific to the domain method).
 
-        Returns
-        -------
-        Any
-            Result of the domain operation (type varies by processor).
+            Returns
+            -------
+            Any
+                Result of the domain operation (type varies by processor).
 
-        Raises
-        ------
-        NotImplementedError
-            If the processor implements none of the expected domain methods.
+            Raises
+            ------
+            NotImplementedError
+                If the processor implements none of the expected domain methods.
 
-        Examples
-        --------
-        >>> detector = BoundaryDetector()
-        >>> boundaries = detector.process(facies_cube)  # Calls detect()
+            Examples
+            --------
+            >>> detector = BoundaryDetector()
+            >>> boundaries = detector.process(facies_cube)  # Calls detect()
 
-        >>> extractor = BoundaryAmplitudeExtractor()
-        >>> result = extractor.process(seismic, boundaries)  # Calls extract()
+            >>> extractor = BoundaryAmplitudeExtractor()
+            >>> result = extractor.process(seismic, boundaries)  # Calls extract()
         """
         for method_name in self._DOMAIN_METHODS:
             if hasattr(self, method_name):

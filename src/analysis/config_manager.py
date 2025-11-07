@@ -35,7 +35,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Type, Union
+from typing import Any, Dict, Optional, List, Union
 from pathlib import Path
 import logging
 import json

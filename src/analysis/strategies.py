@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Literal, TypeVar, Union, cast
+from typing import Any, TypeVar, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray

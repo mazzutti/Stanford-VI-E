@@ -33,7 +33,7 @@ Usage:
 import time
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, Any, Dict
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from threading import RLock
 from collections import deque
 from enum import Enum

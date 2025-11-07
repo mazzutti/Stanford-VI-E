@@ -22,13 +22,12 @@ from src.analysis.service_container import (
     create_service_provider,
     ServiceContainerBuilder,
 )
-from src.analysis.patterns.dependency_injection import Container, ServiceProvider
-from src.analysis.patterns.event_bus import EventBus, EventHandler, Event
-from src.analysis.patterns.circuit_breaker import CircuitBreaker, circuit_breaker
-from src.analysis.patterns.retry import retry, RetryStrategy, ExponentialBackoffStrategy
+from src.analysis.patterns.dependency_injection import Container
+from src.analysis.patterns.event_bus import EventBus
+from src.analysis.patterns.circuit_breaker import circuit_breaker
+from src.analysis.patterns.retry import retry, ExponentialBackoffStrategy
 from src.analysis.integrated_analyzer import IntegratedAnalyzer
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
-from src.analysis.facies.config import FaciesAnalysisConfig
 
 logger = logging.getLogger(__name__)
 

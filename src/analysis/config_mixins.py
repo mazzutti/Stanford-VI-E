@@ -5,7 +5,6 @@ to avoid duplication across different analyzer configurations.
 """
 
 from abc import abstractmethod
-from typing import Any
 
 
 class ValidatableConfigMixin:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 

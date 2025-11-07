@@ -22,10 +22,9 @@ Example:
     >>> lam_mu = analyzer.compute_lambda_mu_rho(vp, vs, rho)
 """
 
-from src.analysis.rock_physics.analyzer import (
-    RockPhysicsAnalyzer,
-    RockPhysicsConstants,
-)
+from src.analysis.rock_physics.analyzer import RockPhysicsAnalyzer
+from src.analysis.rock_physics.constants import RockPhysicsConstants
+from src.analysis.rock_physics.config import RockPhysicsAnalysisConfig
 from src.analysis.rock_physics.computers import (
     AVOAttributesComputer,
     LambdaMuRhoComputer,
@@ -40,6 +39,7 @@ from src.analysis.rock_physics.discrimination import (
 __all__ = [
     "RockPhysicsAnalyzer",
     "RockPhysicsConstants",
+    "RockPhysicsAnalysisConfig",
     "AVOAttributesComputer",
     "LambdaMuRhoComputer",
     "FluidFactorComputer",

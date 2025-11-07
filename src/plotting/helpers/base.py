@@ -8,7 +8,6 @@ import logging
 from abc import ABC
 from typing import Optional
 
-import matplotlib.pyplot as plt
 
 from src.plotting.helpers.config import setup_matplotlib
 

@@ -7,7 +7,7 @@ available conversion strategies through a single factory interface.
 from __future__ import annotations
 
 import logging
-from typing import Literal, Union
+from typing import Literal
 
 from src.analysis.strategies import (
     AmplitudeConversionStrategy,

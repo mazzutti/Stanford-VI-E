@@ -21,18 +21,16 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from src.analysis.patterns.dependency_injection import (
     Container,
     ContainerBuilder,
-    Lifecycle,
 )
 from src.analysis.patterns.event_bus import EventBus
 from src.analysis.patterns.circuit_breaker import CircuitBreakerPool
 from src.analysis.config_manager import ConfigManager
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
-from src.analysis.models import FaciesCorrelationConfig
 
 logger = logging.getLogger(__name__)
 

@@ -17,27 +17,20 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional, Callable, Any, Dict, List
-from datetime import datetime
+from typing import Optional, Callable, Any, List
 
 from src.analysis.service_container import (
-    get_default_container,
     ServiceContainerBuilder,
 )
 from src.analysis.factory import ComponentFactory, create_analyzer_with_patterns
 from src.analysis.integrated_analyzer import IntegratedAnalyzer
 from src.analysis.patterns.event_bus import (
     EventBus,
-    Event,
-    EventHandler,
-    EventFilter,
 )
-from src.analysis.patterns.dependency_injection import Container, ServiceProvider
+from src.analysis.patterns.dependency_injection import Container
 from src.analysis.patterns.circuit_breaker import (
-    CircuitBreakerPool,
     reset_all_circuit_breakers,
 )
-from src.analysis.patterns.retry import RetryPolicy, ExponentialBackoffStrategy
 from src.analysis import events
 
 logger = logging.getLogger(__name__)

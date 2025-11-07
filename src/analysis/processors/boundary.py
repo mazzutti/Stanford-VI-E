@@ -7,7 +7,7 @@ from typing import cast, Literal, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core import BaseProcessor, Processor
+from src.core import BaseProcessor
 from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
 from .validators import ArrayValidator
@@ -219,61 +219,10 @@ class BoundaryDetector(BaseProcessor):
         ArrayValidator.validate_3d_array(facies_cube, "facies_cube")
 
 
-class CubeAligner(Processor):
+class CubeAligner(BaseProcessor):
     """Aligns and crops multiple 3D cubes to a common shape."""
 
     NDIM_REQUIRED: int = 3
-
-    def process(
-        self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
-        """Implement polymorphic process() method (required by Processor ABC).
-
-        Delegates to align() method. This enables treating CubeAligner
-        uniformly with other processors.
-
-        Parameters
-        ----------
-        seismic_cube : numpy.ndarray(dtype=float64)
-            Seismic amplitude cube with shape (ni, nj, nk).
-        facies_cube : numpy.ndarray(dtype=int64)
-            Facies label cube with shape (ni, nj, nk).
-
-        Returns
-        -------
-        tuple
-            (seismic_aligned, facies_aligned) both with same shape.
-        """
-        return cast(
-            Tuple[NDArray[np.float64], NDArray[np.int64]],
-            self.align(seismic_cube, facies_cube),
-        )
-
-    def __call__(
-        self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
-        """Make CubeAligner callable as a convenience wrapper for align().
-
-        Allows using aligner instance as a function:
-            aligner = CubeAligner()
-            seismic_aligned, facies_aligned = aligner(seismic, facies)
-
-        Parameters
-        ----------
-        seismic_cube : numpy.ndarray(dtype=float64)
-            Seismic amplitude cube with shape (ni, nj, nk).
-        facies_cube : numpy.ndarray(dtype=int64)
-            Facies label cube with shape (ni, nj, nk).
-
-        Returns
-        -------
-        tuple
-            (seismic_aligned, facies_aligned) both with same shape.
-        """
-        return cast(
-            Tuple[NDArray[np.float64], NDArray[np.int64]],
-            self.align(seismic_cube, facies_cube),
-        )
 
     @ProcessorDecorators.time_operation(
         "cube alignment", threshold_ms=ProcessorConfig().cube_alignment_threshold_ms

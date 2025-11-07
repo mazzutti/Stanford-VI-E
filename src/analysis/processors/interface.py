@@ -15,8 +15,8 @@ from src.analysis.models import (
 from src.core import BaseProcessor
 from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
-from .operations import AlignmentOps, ReshapeOps, ExtractionOps, StatsOps
-from .management import convert_numpy_scalars_to_float, compute_amplitude_stats
+from .operations import AlignmentOps, ReshapeOps, ExtractionOps
+from .management import compute_amplitude_stats
 
 logger = logging.getLogger(__name__)
 

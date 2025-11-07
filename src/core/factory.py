@@ -42,7 +42,6 @@ from typing import (
     Optional,
     Type,
     TypeVar,
-    Union,
 )
 
 if TYPE_CHECKING:

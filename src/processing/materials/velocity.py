@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Optional, Union, Any
+from typing import Union, Any
 from numpy.typing import NDArray
 
 

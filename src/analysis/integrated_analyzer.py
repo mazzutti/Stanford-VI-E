@@ -43,28 +43,24 @@ Example:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, List, Type, Callable
+from typing import Any, Dict, Optional, Callable
 from dataclasses import dataclass, field
 
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 from src.analysis.facies.config import FaciesAnalysisConfig
 from src.analysis.patterns.observer import (
     Observable,
-    AnalysisObserver,
     AnalysisEvent,
     EventType,
 )
-from src.analysis.patterns.builder import FaciesAnalyzerBuilder, AnalysisBuilderBase
+from src.analysis.patterns.builder import FaciesAnalyzerBuilder
 from src.analysis.patterns.command import (
     CommandQueue,
-    RunAnalysisCommand,
     AnalysisCommand,
 )
-from src.analysis.patterns.event_bus import EventBus, Event, EventHandler
+from src.analysis.patterns.event_bus import EventBus, Event
 from src.analysis.patterns.dependency_injection import Container, ServiceProvider
-from src.analysis.patterns.circuit_breaker import CircuitBreaker, circuit_breaker
-from src.analysis.patterns.retry import retry
-from src.analysis import events
+from src.analysis.patterns.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 

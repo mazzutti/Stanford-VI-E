@@ -43,7 +43,7 @@ from typing import (
 )
 import logging
 
-from src.core import BaseConfig, ConfigValidator, ConfigRule, ConfigProfile
+from src.core import ConfigValidator, ConfigRule
 
 __all__ = [
     "ConfigBuilder",
