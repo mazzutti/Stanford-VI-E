@@ -153,6 +153,20 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         """Check if analyzer is ready for analysis."""
         return self._initialized and self._state != AnalyzerState.FAILED
 
+    def _mark_error(self, error: Exception, context: str) -> None:
+        """Mark analyzer as failed and log error.
+
+        Parameters
+        ----------
+        error : Exception
+            The exception that occurred.
+        context : str
+            Description of where the error occurred (e.g., "Initialization failed").
+        """
+        self._state = AnalyzerState.FAILED
+        self._error = error
+        logger.error(f"{self.name}: {context}: {error}")
+
     def initialize(self) -> None:
         """Initialize analyzer (validate config, setup dependencies).
 
@@ -179,9 +193,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
             logger.debug(f"{self.name}: Initialized successfully")
 
         except Exception as e:
-            self._state = AnalyzerState.FAILED
-            self._error = e
-            logger.error(f"{self.name}: Initialization failed: {e}")
+            self._mark_error(e, "Initialization failed")
             raise
 
     def _validate_config(self) -> None:
@@ -241,9 +253,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
             return result
 
         except Exception as e:
-            self._state = AnalyzerState.FAILED
-            self._error = e
-            logger.error(f"{self.name}: Analysis failed: {e}")
+            self._mark_error(e, "Analysis failed")
             raise
 
     @abstractmethod

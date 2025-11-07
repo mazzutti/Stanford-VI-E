@@ -24,6 +24,13 @@ from src.utils.lru import LRUCache, ShardedLRUCache
 from src.utils.types import ProcessManagerProtocol
 from src.utils.normalizers import UnitNormalizer
 from src.utils.converters import UnitConverter
+from src.utils.exceptions import (
+    safe_call,
+    ignore_errors,
+    log_errors,
+    handle_errors,
+    safe_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,4 +55,10 @@ __all__ = [
     "ProcessManagerProtocol",
     # Utilities
     "UnitNormalizer",
+    # Exception handling
+    "safe_call",
+    "ignore_errors",
+    "log_errors",
+    "handle_errors",
+    "safe_context",
 ]

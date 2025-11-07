@@ -69,18 +69,27 @@ from .factory import (
 )
 
 from .analyzers import (
-    # State & metrics
     AnalyzerState,
     AnalysisMetrics,
-    # Base classes
     BaseAnalyzer,
     AnalyzerLifecycle,
     PipelineAnalyzer,
-    # Mixins
     CompositeMixin,
     CacheMixin,
     ValidationMixin,
     MetricsMixin,
+)
+from .configuration import (
+    ConfigProfile,
+    ConfigRule,
+    ConfigValidator,
+    BaseConfig,
+    ConfigSource,
+    ConfigSourceRegistry,
+)
+from .processors import (
+    Processor,
+    BaseProcessor,
 )
 
 from .configuration import (

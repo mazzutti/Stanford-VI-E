@@ -55,40 +55,8 @@ logger = logging.getLogger(__name__)
 class AnalyzerBuilder:
     """Builder for FaciesCorrelationAnalyzer with fluent configuration."""
 
-    # Static factory methods for processors
-    @staticmethod
-    def _create_boundary_detector() -> BoundaryDetector:
-        """Create a BoundaryDetector instance."""
-        return BoundaryDetector()
-
-    @staticmethod
-    def _create_cube_aligner() -> CubeAligner:
-        """Create a CubeAligner instance."""
-        return CubeAligner()
-
-    @staticmethod
-    def _create_gradient_calculator() -> GradientCorrelationCalculator:
-        """Create a GradientCorrelationCalculator instance."""
-        return GradientCorrelationCalculator()
-
-    @staticmethod
-    def _create_interface_analyzer() -> InterfaceReflectionAnalyzer:
-        """Create an InterfaceReflectionAnalyzer instance."""
-        return InterfaceReflectionAnalyzer()
-
-    @staticmethod
-    def _create_facies_discriminator() -> FaciesDiscriminationCalculator:
-        """Create a FaciesDiscriminationCalculator instance."""
-        return FaciesDiscriminationCalculator()
-
-    @staticmethod
-    def _create_domain_handler_factory() -> DomainHandlerFactory:
-        """Create a DomainHandlerFactory instance."""
-        return DomainHandlerFactory()
-
-    @staticmethod
     def _create_boundary_amp_extractor(
-        config: FaciesCorrelationConfig,
+        self, config: FaciesCorrelationConfig
     ) -> BoundaryAmplitudeExtractor:
         """Create a BoundaryAmplitudeExtractor instance."""
         return BoundaryAmplitudeExtractor(dilation_window=config.dilation_window)
@@ -116,35 +84,33 @@ class AnalyzerBuilder:
         self._processor_registry: Dict[
             str, Tuple[Type[object], Callable[..., object], Optional[object]]
         ] = {
-            "boundary_detector": (
-                BoundaryDetector,
-                self._create_boundary_detector,
-                None,
-            ),
-            "cube_aligner": (CubeAligner, self._create_cube_aligner, None),
+            "boundary_detector": (BoundaryDetector, BoundaryDetector, None),
+            "cube_aligner": (CubeAligner, CubeAligner, None),
             "gradient_calculator": (
                 GradientCorrelationCalculator,
-                self._create_gradient_calculator,
+                GradientCorrelationCalculator,
                 None,
             ),
             "interface_analyzer": (
                 InterfaceReflectionAnalyzer,
-                self._create_interface_analyzer,
+                InterfaceReflectionAnalyzer,
                 None,
             ),
             "facies_discriminator": (
                 FaciesDiscriminationCalculator,
-                self._create_facies_discriminator,
+                FaciesDiscriminationCalculator,
                 None,
             ),
             "domain_handler_factory": (
                 DomainHandlerFactory,
-                self._create_domain_handler_factory,
+                DomainHandlerFactory,
                 None,
             ),
             "boundary_amp_extractor": (
                 BoundaryAmplitudeExtractor,
-                self._create_boundary_amp_extractor,
+                lambda: BoundaryAmplitudeExtractor(
+                    dilation_window=self._config.dilation_window if self._config else 10
+                ),
                 None,
             ),
         }
@@ -332,247 +298,42 @@ class AnalyzerBuilder:
         return self
 
     def is_frozen(self) -> bool:
-        """Check if builder is frozen.
-
-        Returns
-        -------
-        bool
-            True if frozen, False otherwise.
-        """
+        """Check if builder is frozen."""
         return self._is_frozen
 
     @staticmethod
     def set_log_level(level: int) -> None:
-        """Configure logging verbosity for builder initialization.
-
-        Parameters
-        ----------
-        level
-            Logging level (e.g., logging.DEBUG, logging.INFO, logging.WARNING).
-
-        Example
-        -------
-        >>> import logging
-        >>> AnalyzerBuilder.set_log_level(logging.DEBUG)  # Verbose logging
-        >>> analyzer = AnalyzerFactory.create_default()
-        """
+        """Configure logging verbosity for builder initialization."""
         logger.setLevel(level)
 
-    def with_resampler_factory(self, factory: ResamplerFactory) -> "AnalyzerBuilder":
-        """Configure a resampler factory.
+    def __getattr__(self, name: str) -> Callable[..., "AnalyzerBuilder"]:
+        """Generate setter methods dynamically (with_xxx pattern).
 
-        Parameters
-        ----------
-        factory
-            ResamplerFactory instance for time<->depth operations.
+        This reduces boilerplate by ~300 LOC from explicit setter definitions.
+        Supports calls like: builder.with_config(cfg).with_plotter(p).build()
 
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
+        Special mappings:
+        - with_cache_file_selector -> select_cache_files
         """
-        return self._set_dependency("resampler_factory", factory)
+        if name.startswith("with_"):
+            # Extract attribute name from with_xxx
+            attr_name = name[5:]  # Remove "with_"
 
-    def with_cache_file_selector(
-        self, selector: Callable[[str, str], Optional[str]]
-    ) -> "AnalyzerBuilder":
-        """Configure a cache file selector function.
+            # Special case mappings
+            special_mappings = {
+                "cache_file_selector": "select_cache_files",
+            }
+            attr_name = special_mappings.get(attr_name, attr_name)
 
-        Parameters
-        ----------
-        selector
-            Callable(cache_dir, domain) -> Optional[cache_filename].
+            def setter(value: object) -> "AnalyzerBuilder":
+                """Set a dependency dynamically."""
+                return self._set_dependency(attr_name, value)
 
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("select_cache_files", selector)
+            return setter
 
-    def with_cache_loader(self, loader: CacheLoaderProtocol) -> "AnalyzerBuilder":
-        """Configure a cache loader.
-
-        Parameters
-        ----------
-        loader
-            Object implementing CacheLoaderProtocol.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("cache_loader", loader)
-
-    def with_velocity_model_class(
-        self, model_class: Type[VelocityModel]
-    ) -> "AnalyzerBuilder":
-        """Configure a velocity model class.
-
-        Parameters
-        ----------
-        model_class
-            Class deriving from VelocityModel.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("velocity_model_class", model_class)
-
-    def with_plotter(self, plotter: PlotterProtocol) -> "AnalyzerBuilder":
-        """Configure a plotter.
-
-        Parameters
-        ----------
-        plotter
-            Object implementing PlotterProtocol.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("plotter", plotter)
-
-    def with_config(self, config: FaciesCorrelationConfig) -> "AnalyzerBuilder":
-        """Configure analysis parameters.
-
-        Parameters
-        ----------
-        config
-            FaciesCorrelationConfig instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-
-        Example
-        -------
-        >>> config = FaciesCorrelationConfig()
-        >>> analyzer = (AnalyzerFactory.builder()
-        ...     .with_config(config)
-        ...     .build())
-        """
-        return self._set_dependency("config", config)
-
-    def with_boundary_detector(self, detector: BoundaryDetector) -> "AnalyzerBuilder":
-        """Configure a custom boundary detector processor.
-
-        Parameters
-        ----------
-        detector
-            BoundaryDetector instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("boundary_detector", detector)
-
-    def with_cube_aligner(self, aligner: CubeAligner) -> "AnalyzerBuilder":
-        """Configure a custom cube aligner processor.
-
-        Parameters
-        ----------
-        aligner
-            CubeAligner instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("cube_aligner", aligner)
-
-    def with_boundary_amp_extractor(
-        self, extractor: BoundaryAmplitudeExtractor
-    ) -> "AnalyzerBuilder":
-        """Configure a custom boundary amplitude extractor processor.
-
-        Parameters
-        ----------
-        extractor
-            BoundaryAmplitudeExtractor instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("boundary_amp_extractor", extractor)
-
-    def with_gradient_calculator(
-        self, calculator: GradientCorrelationCalculator
-    ) -> "AnalyzerBuilder":
-        """Configure a custom gradient correlation calculator processor.
-
-        Parameters
-        ----------
-        calculator
-            GradientCorrelationCalculator instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("gradient_calculator", calculator)
-
-    def with_interface_analyzer(
-        self, analyzer: InterfaceReflectionAnalyzer
-    ) -> "AnalyzerBuilder":
-        """Configure a custom interface reflection analyzer processor.
-
-        Parameters
-        ----------
-        analyzer
-            InterfaceReflectionAnalyzer instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("interface_analyzer", analyzer)
-
-    def with_facies_discriminator(
-        self, discriminator: FaciesDiscriminationCalculator
-    ) -> "AnalyzerBuilder":
-        """Configure a custom facies discrimination calculator processor.
-
-        Parameters
-        ----------
-        discriminator
-            FaciesDiscriminationCalculator instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("facies_discriminator", discriminator)
-
-    def with_domain_handler_factory(
-        self, factory: DomainHandlerFactory
-    ) -> "AnalyzerBuilder":
-        """Configure a custom domain handler factory.
-
-        Parameters
-        ----------
-        factory
-            DomainHandlerFactory instance.
-
-        Returns
-        -------
-        AnalyzerBuilder
-            Self for method chaining.
-        """
-        return self._set_dependency("domain_handler_factory", factory)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     def with_processors(self, **processors: object) -> "AnalyzerBuilder":
         """Configure multiple processors at once (batch configuration).
@@ -775,35 +536,33 @@ class AnalyzerBuilder:
         self._facies_discriminator = None
         self._domain_handler_factory = None
         self._processor_registry = {
-            "boundary_detector": (
-                BoundaryDetector,
-                self._create_boundary_detector,
-                None,
-            ),
-            "cube_aligner": (CubeAligner, self._create_cube_aligner, None),
+            "boundary_detector": (BoundaryDetector, BoundaryDetector, None),
+            "cube_aligner": (CubeAligner, CubeAligner, None),
             "gradient_calculator": (
                 GradientCorrelationCalculator,
-                self._create_gradient_calculator,
+                GradientCorrelationCalculator,
                 None,
             ),
             "interface_analyzer": (
                 InterfaceReflectionAnalyzer,
-                self._create_interface_analyzer,
+                InterfaceReflectionAnalyzer,
                 None,
             ),
             "facies_discriminator": (
                 FaciesDiscriminationCalculator,
-                self._create_facies_discriminator,
+                FaciesDiscriminationCalculator,
                 None,
             ),
             "domain_handler_factory": (
                 DomainHandlerFactory,
-                self._create_domain_handler_factory,
+                DomainHandlerFactory,
                 None,
             ),
             "boundary_amp_extractor": (
                 BoundaryAmplitudeExtractor,
-                self._create_boundary_amp_extractor,
+                lambda: BoundaryAmplitudeExtractor(
+                    dilation_window=self._config.dilation_window if self._config else 10
+                ),
                 None,
             ),
         }
