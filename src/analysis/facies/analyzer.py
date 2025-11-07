@@ -3,6 +3,10 @@
 This module provides the high-level FaciesCorrelationAnalyzer class that
 coordinates the facies correlation analysis pipeline through dependency
 injection and composition.
+
+Integrated Patterns:
+  - Circuit Breaker: Fault tolerance for analysis execution
+  - Retry: Automatic resilience with exponential backoff
 """
 
 import logging
@@ -26,6 +30,9 @@ from src.analysis.types.protocols import (
 from src.analysis.domain.enum import Domain
 from src.analysis.facies.config import FaciesAnalysisConfig
 from src.analysis.factories.service_factory import ServiceLocator
+from src.analysis.decorators import log_execution, time_operation
+from src.analysis.patterns.circuit_breaker import circuit_breaker
+from src.analysis.patterns.retry import retry
 
 from src.analysis.models import (
     FaciesCorrelationConfig,
@@ -168,7 +175,9 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         self._plotter = plotter
 
         # Inject or create processors (using ServiceLocator for centralized creation)
-        self._boundary_detector = boundary_detector or ServiceLocator.create_boundary_detector()
+        self._boundary_detector = (
+            boundary_detector or ServiceLocator.create_boundary_detector()
+        )
         self._cube_aligner = cube_aligner or ServiceLocator.create_cube_aligner()
         self._boundary_amp_extractor = (
             boundary_amp_extractor
@@ -179,7 +188,9 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         self._gradient_calculator = (
             gradient_calculator or ServiceLocator.create_gradient_calculator()
         )
-        self._interface_analyzer = interface_analyzer or ServiceLocator.create_interface_analyzer()
+        self._interface_analyzer = (
+            interface_analyzer or ServiceLocator.create_interface_analyzer()
+        )
         self._facies_discriminator = (
             facies_discriminator or ServiceLocator.create_facies_discriminator()
         )
@@ -816,6 +827,18 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         if verbose:
             lg.basicConfig(level=lg.DEBUG, format="[%(levelname)s] %(message)s")
 
+    @log_execution
+    @time_operation("Facies correlation analysis", threshold_ms=5000)
+    @circuit_breaker(
+        name="facies_correlation_analysis",
+        failure_threshold=3,
+        recovery_timeout=60,
+    )
+    @retry(
+        max_attempts=3,
+        initial_delay=2.0,
+        retryable_exceptions=[RuntimeError, OSError, IOError],
+    )
     def run(
         self,
         *,

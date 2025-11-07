@@ -19,6 +19,7 @@ from numpy.typing import NDArray
 
 from src.analysis.processors.types import FloatingArray
 from src.analysis.types.base import Computer, AnalysisSchema
+from src.analysis.decorators import log_execution, time_operation, memoize
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,21 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
 
         Raises:
             ValueError: if input arrays have mismatched shapes, invalid dimensions, or angles_deg is empty
+        """
+        return self._compute_avo(vp, vs, rho, angles_deg)
+
+    @log_execution
+    @time_operation("AVO computation", threshold_ms=200)
+    def _compute_avo(
+        self,
+        vp: FloatingArray,
+        vs: FloatingArray,
+        rho: FloatingArray,
+        angles_deg: Sequence[float],
+    ) -> Dict[str, FloatingArray]:
+        """Internal method for AVO computation with decorators applied.
+
+        Handles the actual computation with logging and timing.
         """
         self._validate_inputs(vp, vs, rho)
 
@@ -314,6 +330,17 @@ class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
         Returns:
             Dict containing computed Lamé parameters and their ratio
         """
+        return self._compute_lambda_mu(vp, vs, rho)
+
+    @log_execution
+    @time_operation("Lambda-Mu-Rho computation", threshold_ms=150)
+    def _compute_lambda_mu(
+        self,
+        vp: FloatingArray,
+        vs: FloatingArray,
+        rho: FloatingArray,
+    ) -> Dict[str, FloatingArray]:
+        """Internal method for Lambda-Mu-Rho computation with decorators applied."""
         logger.info("Computing Lambda-Mu-Rho attributes...")
 
         mu = rho * vs**2
@@ -399,4 +426,15 @@ class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
         Returns:
             Fluid factor volume as numpy array
         """
+        return self._compute_fluid_factor(lambda_rho, mu_rho, k)
+
+    @log_execution
+    @time_operation("Fluid factor computation", threshold_ms=100)
+    def _compute_fluid_factor(
+        self,
+        lambda_rho: FloatingArray,
+        mu_rho: FloatingArray,
+        k: float,
+    ) -> FloatingArray:
+        """Internal method for fluid factor computation with decorators applied."""
         return cast(FloatingArray, lambda_rho - k * mu_rho)

@@ -96,16 +96,11 @@ class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         )
         ValidatorRegistry.validate_positive(self.dilation_window, "dilation_window")
 
-    def validate_inputs(self, **kwargs: str) -> bool:
+    def validate_inputs(self) -> bool:
         """Validate that required input parameters are provided.
 
         Implements AnalysisConfig abstract method. For facies analysis,
-        typically validates that cache_dir exists or can be created.
-
-        Parameters
-        ----------
-        **kwargs
-            Arbitrary keyword arguments (unused, for interface compatibility).
+        validates that cache_dir exists or can be created.
 
         Returns
         -------

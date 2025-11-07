@@ -29,6 +29,7 @@ from src.processing.resampling.backends._base import BackendResult, BackendError
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
+from src.analysis.decorators import log_execution, time_operation
 
 
 __all__ = ["DepthTimeResampler", "set_backend_verbose", "is_backend_verbose"]
@@ -124,6 +125,8 @@ class DepthTimeResampler:
         one_way = np.cumsum(slowness * dz_val)
         return cast(NDArray[Any], one_way)
 
+    @log_execution
+    @time_operation("compute_one_way_times", threshold_ms=100)
     def compute_one_way_times(self, vp_arr: NDArray[Any] | Quantity) -> NDArray[Any]:
         """Vectorized computation of one-way cumulative time for all traces.
 
@@ -156,6 +159,8 @@ class DepthTimeResampler:
         one_way = np.cumsum(slowness * dz_val, axis=2)
         return cast(NDArray[Any], one_way)
 
+    @log_execution
+    @time_operation("depth_to_time_cube", threshold_ms=500)
     def depth_to_time_cube(
         self,
         data_depth: NDArray[Any] | Quantity,

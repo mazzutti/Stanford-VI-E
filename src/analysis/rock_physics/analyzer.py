@@ -345,39 +345,18 @@ class RockPhysicsAnalyzer:
         return vp, vs, rho, facies
 
     def _get_grid_configuration(self) -> tuple[str, Dict[str, str], Any]:
-        """Acquire grid configuration from plotting config or sensible defaults."""
-        try:
+        """Acquire grid configuration from module-level defaults."""
+        from src.io.grid import GridSpec
 
-            # PlotConfig doesn't contain grid info, so use defaults
-            # This method is legacy and should be refactored
-            logger.debug("Using module-level grid configuration defaults.")
-            from src.io.grid import GridSpec
-
-            return (
-                RockPhysicsConstants.DEFAULT_DATA_PATH,
-                RockPhysicsConstants.DEFAULT_FILE_MAP.copy(),
-                GridSpec(
-                    RockPhysicsConstants.DEFAULT_GRID_SHAPE,
-                    dz=RockPhysicsConstants.DEFAULT_DZ,
-                    dt=RockPhysicsConstants.DEFAULT_DT,
-                ),
-            )
-        except Exception as e:
-            logger.debug(
-                f"Failed to load grid configuration: {e}. "
-                f"Using module-level defaults."
-            )
-            from src.io.grid import GridSpec
-
-            return (
-                RockPhysicsConstants.DEFAULT_DATA_PATH,
-                RockPhysicsConstants.DEFAULT_FILE_MAP.copy(),
-                GridSpec(
-                    RockPhysicsConstants.DEFAULT_GRID_SHAPE,
-                    dz=RockPhysicsConstants.DEFAULT_DZ,
-                    dt=RockPhysicsConstants.DEFAULT_DT,
-                ),
-            )
+        return (
+            RockPhysicsConstants.DEFAULT_DATA_PATH,
+            RockPhysicsConstants.DEFAULT_FILE_MAP.copy(),
+            GridSpec(
+                RockPhysicsConstants.DEFAULT_GRID_SHAPE,
+                dz=RockPhysicsConstants.DEFAULT_DZ,
+                dt=RockPhysicsConstants.DEFAULT_DT,
+            ),
+        )
 
     def _compute_all_attributes(
         self,

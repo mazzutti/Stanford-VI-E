@@ -304,13 +304,13 @@ class DepthDomainHandler(DomainHandler):
         Parameters
         ----------
         vm
-            Time resampler instance (unused in depth domain).
+            Time resampler instance.
         facies_depth
             Facies cube in depth domain.
         avo
             AVO cube.
         grid_spec
-            Grid specification (unused in depth domain).
+            Grid specification.
 
         Returns
         -------

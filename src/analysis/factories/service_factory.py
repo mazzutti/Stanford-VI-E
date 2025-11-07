@@ -284,7 +284,9 @@ class ProcessorServiceFactory(ServiceFactory):
         """
         from src.analysis.processors import BoundaryAmplitudeExtractor
 
-        logger.debug(f"Creating BoundaryAmplitudeExtractor with window={dilation_window}")
+        logger.debug(
+            f"Creating BoundaryAmplitudeExtractor with window={dilation_window}"
+        )
         return BoundaryAmplitudeExtractor(dilation_window=dilation_window)
 
     @staticmethod

@@ -24,10 +24,14 @@ Quick Start
 
 from src.analysis.factories.analyzer_factory import AnalyzerFactory
 from src.analysis.factories.builder import AnalyzerBuilder
+from src.analysis.factories.conversion_factory import ConversionStrategyFactory
+from src.analysis.factories.service_factory import ProcessorServiceFactory
 from src.analysis.factories.validators import TypeValidator
 
 __all__ = [
     "AnalyzerFactory",
     "AnalyzerBuilder",
     "TypeValidator",
+    "ProcessorServiceFactory",
+    "ConversionStrategyFactory",
 ]

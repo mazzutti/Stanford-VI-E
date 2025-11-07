@@ -15,6 +15,7 @@ from numpy.typing import NDArray
 from src.io.grid import GridSpec
 from src.modeling.modeling import _unwrap_quantity
 from src.utils.quantity import Quantity
+from src.analysis.factories import ConversionStrategyFactory
 
 logger = logging.getLogger(__name__)
 

@@ -93,6 +93,19 @@ from .processor_mixins import (
     ExecutionMetrics,
     ExecutionRecord,
 )
+from .integration import (
+    AnalysisSystem,
+    SystemConfiguration,
+    EventSubscriber,
+)
+from .factory import (
+    ComponentFactory,
+    create_analyzer_with_patterns,
+)
+from .service_container import (
+    create_service_provider,
+    get_default_container,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -183,4 +196,11 @@ __all__ = [
     "ProcessorMixinManager",
     "ExecutionMetrics",
     "ExecutionRecord",
+    # Pattern Integration
+    "AnalysisSystem",
+    "SystemConfiguration",
+    "ComponentFactory",
+    "create_analyzer_with_patterns",
+    "create_service_provider",
+    "get_default_container",
 ]
