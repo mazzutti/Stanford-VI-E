@@ -262,7 +262,7 @@ class DomainHandler(ABC):
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager - performs cleanup.
 
@@ -272,7 +272,7 @@ class DomainHandler(ABC):
             Exception type if an exception occurred.
         exc_val
             Exception value if an exception occurred.
-        exc_tb
+        _exc_tb
             Exception traceback if an exception occurred.
         """
         try:

@@ -38,7 +38,6 @@ from .validators import (
     CountValidator,
     QuantileValidator,
     ValidatorStrategy,
-    CompositeValidator,
 )
 from .common import AnalysisCommon
 from .factories import TypeValidator
@@ -153,7 +152,6 @@ __all__ = [
     "CountValidator",
     "QuantileValidator",
     "ValidatorStrategy",
-    "CompositeValidator",
     # Mixins
     "SingletonMixin",
     "ValidatableMixin",

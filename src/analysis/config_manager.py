@@ -3,14 +3,17 @@
 This module provides comprehensive configuration management with support for
 multiple formats, runtime overrides, validation, and profile-based configurations.
 
+Consolidates configuration management by inheriting from BaseConfig,
+eliminating duplicated get/set/validate logic while keeping specialized
+features like source-based loading and profile management.
+
 Patterns Used:
-  - Configuration: Externalize settings
   - Strategy: Different config sources (YAML, JSON, ENV)
-  - Validation: Enforce config constraints
   - Factory: Create configs from different sources
+  - Composite: Multiple sources with merging
 
 Example:
-    >>> from src.analysis.config_manager import ConfigManager, ConfigProfile
+    >>> from src.analysis.config_manager import ConfigManager
     >>>
     >>> # Load from file
     >>> manager = ConfigManager.from_file("config/settings.yaml")
@@ -25,127 +28,30 @@ Example:
     >>> manager.load_profile("production")
     >>>
     >>> # Validate configuration
-    >>> if manager.validate():
+    >>> if manager.is_valid():
     ...     app.start(manager)
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Type, Union, Callable
-from dataclasses import dataclass
+from typing import Any, Dict, Optional, List, Type, Union
 from pathlib import Path
 import logging
 import json
-from enum import Enum
 import os
+
+from src.core import BaseConfig, ConfigProfile, ConfigRule
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "ConfigProfile",
-    "ConfigValidator",
     "ConfigSource",
     "ConfigManager",
     "EnvironmentSource",
     "JsonSource",
     "YamlSource",
 ]
-
-
-class ConfigProfile(Enum):
-    """Configuration profiles for different environments."""
-
-    DEVELOPMENT = "development"
-    TESTING = "testing"
-    STAGING = "staging"
-    PRODUCTION = "production"
-
-
-@dataclass
-class ConfigRule:
-    """Configuration validation rule."""
-
-    key: str
-    required: bool = False
-    expected_type: Optional[Type] = None
-    validators: List[Callable] = None
-    description: str = ""
-
-    def __post_init__(self):
-        """Initialize validators list."""
-        if self.validators is None:
-            self.validators = []
-
-    def validate(self, value: Any) -> tuple[bool, Optional[str]]:
-        """Validate a configuration value.
-
-        Args:
-            value: Value to validate
-
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        if value is None:
-            if self.required:
-                return False, f"Required configuration missing: {self.key}"
-            return True, None
-
-        if self.expected_type and not isinstance(value, self.expected_type):
-            return False, (
-                f"Configuration {self.key} should be {self.expected_type.__name__}, "
-                f"got {type(value).__name__}"
-            )
-
-        for validator in self.validators:
-            try:
-                if not validator(value):
-                    return False, f"Validation failed for {self.key}: {value}"
-            except Exception as e:
-                return False, f"Validation error for {self.key}: {e}"
-
-        return True, None
-
-
-class ConfigValidator:
-    """Validates configuration against defined rules."""
-
-    def __init__(self):
-        """Initialize validator."""
-        self.rules: Dict[str, ConfigRule] = {}
-
-    def add_rule(self, rule: ConfigRule) -> ConfigValidator:
-        """Add validation rule.
-
-        Args:
-            rule: Configuration rule
-
-        Returns:
-            Self for chaining
-        """
-        self.rules[rule.key] = rule
-        return self
-
-    def validate(self, config: Dict[str, Any]) -> tuple[bool, List[str]]:
-        """Validate configuration.
-
-        Args:
-            config: Configuration dictionary
-
-        Returns:
-            Tuple of (is_valid, list_of_errors)
-        """
-        errors = []
-
-        for key, rule in self.rules.items():
-            value = config.get(key)
-            is_valid, error = rule.validate(value)
-
-            if not is_valid:
-                errors.append(error)
-                logger.error(error)
-
-        return len(errors) == 0, errors
 
 
 class ConfigSource(ABC):
@@ -265,16 +171,17 @@ class YamlSource(ConfigSource):
         return config
 
 
-class ConfigManager:
-    """Centralized configuration management with validation and profiles."""
+class ConfigManager(BaseConfig):
+    """Centralized configuration management with validation and profiles.
 
-    def __init__(self):
+    Inherits from BaseConfig to leverage shared configuration functionality
+    (get/set/validate/profiles) while adding specialized features for
+    loading configurations from multiple sources.
+    """
+
+    def __init__(self) -> None:
         """Initialize configuration manager."""
-        self._config: Dict[str, Any] = {}
-        self._defaults: Dict[str, Any] = {}
-        self._overrides: Dict[str, Any] = {}
-        self._validator = ConfigValidator()
-        self._profile = ConfigProfile.DEVELOPMENT
+        super().__init__()
         self._sources: List[ConfigSource] = []
         logger.info("ConfigManager initialized")
 
@@ -333,20 +240,8 @@ class ConfigManager:
         Returns:
             Self for chaining
         """
-        self._validator.add_rule(rule)
-        return self
-
-    def set_default(self, key: str, value: Any) -> ConfigManager:
-        """Set default configuration value.
-
-        Args:
-            key: Configuration key
-            value: Default value
-
-        Returns:
-            Self for chaining
-        """
-        self._defaults[key] = value
+        # add_rule is now inherited from BaseConfig via _validator
+        super().add_rule(rule)
         return self
 
     def reload(self) -> ConfigManager:
@@ -369,92 +264,6 @@ class ConfigManager:
 
         logger.info("Configuration reloaded")
         return self
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value with dot notation.
-
-        Args:
-            key: Configuration key (supports dot notation: "section.key")
-            default: Default value if not found
-
-        Returns:
-            Configuration value or default
-        """
-        value = self._config
-
-        for part in key.split("."):
-            if isinstance(value, dict) and part in value:
-                value = value[part]
-            else:
-                # Check defaults if not found in config
-                default_value = self._defaults.get(key, default)
-                return default_value
-
-        return value
-
-    def set(self, key: str, value: Any) -> ConfigManager:
-        """Set configuration value with dot notation.
-
-        Args:
-            key: Configuration key (supports dot notation)
-            value: Value to set
-
-        Returns:
-            Self for chaining
-        """
-        parts = key.split(".")
-        current = self._overrides
-
-        for part in parts[:-1]:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-
-        current[parts[-1]] = value
-
-        # Also set in main config for nested access
-        current = self._config
-        for part in parts[:-1]:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-        current[parts[-1]] = value
-
-        logger.debug(f"Configuration set: {key}={value}")
-        return self
-
-    def load_profile(self, profile: Union[str, ConfigProfile]) -> ConfigManager:
-        """Load configuration profile.
-
-        Args:
-            profile: Profile name or ConfigProfile enum
-
-        Returns:
-            Self for chaining
-        """
-        if isinstance(profile, str):
-            profile = ConfigProfile(profile.lower())
-
-        self._profile = profile
-        logger.info(f"Configuration profile set to: {profile.value}")
-
-        return self
-
-    def validate(self) -> bool:
-        """Validate current configuration.
-
-        Returns:
-            True if valid, False otherwise
-        """
-        is_valid, errors = self._validator.validate(self._config)
-
-        if is_valid:
-            logger.info("Configuration validation passed")
-        else:
-            for error in errors:
-                logger.error(error)
-
-        return is_valid
 
     def get_profile(self) -> ConfigProfile:
         """Get current configuration profile.

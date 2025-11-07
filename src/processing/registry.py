@@ -144,12 +144,11 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.resampling.service import ResamplerService
+        from src.io.grid import GridSpec as GridSpecClass
 
         def factory() -> ResamplerService:
-            from src.processing.resampling.service import ResamplerService
-            from src.io.grid import GridSpec
-
-            grid = grid_spec or GridSpec((512, 512, 512))
+            grid = grid_spec or GridSpecClass((512, 512, 512))
             return ResamplerService(grid_spec=grid)
 
         result = self._get_or_create("resampler_service", factory)
@@ -168,10 +167,9 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.resampling.backends._manager import BackendManager
 
         def factory() -> BackendManager:
-            from src.processing.resampling.backends._manager import BackendManager
-
             return BackendManager()
 
         result = self._get_or_create("backend_manager", factory)
@@ -190,11 +188,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.resampling._cache import ResamplePlanCache
 
         def factory() -> ResamplePlanCache:
             # Import here to avoid circular dependencies
-            from src.processing.resampling._cache import ResamplePlanCache
-
             return ResamplePlanCache(maxsize=16)
 
         result = self._get_or_create("resample_cache", factory)
@@ -213,10 +210,9 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.metrics import BackendMetrics
 
         def factory() -> BackendMetrics:
-            from src.processing.metrics import BackendMetrics
-
             return BackendMetrics()
 
         result = self._get_or_create("backend_metrics", factory)
@@ -234,10 +230,9 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.managers import ManagerHub
 
         def factory() -> ManagerHub:
-            from src.processing.managers import ManagerHub
-
             return ManagerHub()
 
         result = self._get_or_create("manager_hub", factory)
@@ -259,10 +254,9 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+        from src.processing.avo.validator import AVOValidator
 
         def factory() -> AVOValidator:
-            from src.processing.avo.validator import AVOValidator
-
             return AVOValidator(max_angle=max_angle)
 
         result = self._get_or_create("avo_validator", factory)

@@ -351,7 +351,7 @@ class TestCommandPattern(unittest.TestCase):
         self.assertIn("key", description)
 
 
-class TestIntegration(unittest.TestCase):
+class TestPatternsIntegration(unittest.TestCase):
     """Integration tests for all three patterns working together."""
 
     def setUp(self):

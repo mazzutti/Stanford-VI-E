@@ -9,7 +9,7 @@ for flexible discovery and filtering.
 
 import logging
 
-from src.analysis.processors.registry import (
+from src.analysis.processors.management import (
     get_default_processor_registry,
     ProcessorRegistry,
 )

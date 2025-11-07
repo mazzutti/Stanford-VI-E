@@ -241,8 +241,8 @@ class TestBatchedInterpolatorDataTypes:
 
         assert result.dtype == np.float32
 
-    def test_float64_data(self):
-        """Test with float64 data."""
+    def test_interpolator_float64_data(self):
+        """Test interpolator with float64 data."""
         time_axis = np.array([0.0, 1.0], dtype=np.float64)
         interp = BatchedInterpolator(time_axis=time_axis)
 

@@ -22,6 +22,8 @@ from src.utils.units import (
 from src.utils.quantity import Quantity
 from src.utils.lru import LRUCache, ShardedLRUCache
 from src.utils.types import ProcessManagerProtocol
+from src.utils.normalizers import UnitNormalizer
+from src.utils.converters import UnitConverter
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ __all__ = [
     "DensityConverter",
     "TimeConverter",
     "LengthConverter",
+    "UnitConverter",
     # Registry
     "UnitRegistry",
     "get_unit_registry",
@@ -43,4 +46,6 @@ __all__ = [
     "ShardedLRUCache",
     # Protocols
     "ProcessManagerProtocol",
+    # Utilities
+    "UnitNormalizer",
 ]

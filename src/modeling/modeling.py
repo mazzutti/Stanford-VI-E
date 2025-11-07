@@ -225,9 +225,7 @@ class AVOSynthesizer:
             file=sys.stderr,
         ) as bar:
             for idx, angle in enumerate(angles):
-                angle_stack_full = self._process_angle(
-                    vp, vs, rho, angle, wavelet, ni, nj, nk, CONVOLUTION_BLOCK_SIZE
-                )
+                angle_stack_full = self._process_angle(vp, vs, rho, angle, wavelet)
 
                 if config.add_noise:
                     angle_stack_full = self.angle_model.add_noise(
@@ -257,10 +255,6 @@ class AVOSynthesizer:
         rho: NDArray[np.floating[Any]],
         angle: float,
         wavelet: NDArray[np.floating[Any]],
-        ni: int,
-        nj: int,
-        nk: int,
-        block_i: int,
     ) -> NDArray[np.floating[Any]]:
         """Process a single angle: compute reflectivity and convolve."""
         # Compute reflectivity using dedicated processor

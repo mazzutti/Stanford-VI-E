@@ -38,10 +38,12 @@ from src.analysis.patterns.event_bus import (
     EventDispatcher,
 )
 
-from src.analysis.config_manager import (
+from src.core import (
     ConfigProfile,
     ConfigRule,
     ConfigValidator,
+)
+from src.analysis.config_manager import (
     ConfigSource,
     EnvironmentSource,
     JsonSource,
@@ -597,7 +599,9 @@ class TestConfigManager:
         )
         manager.set("port", "not_int")
 
-        assert not manager.validate()
+        is_valid, errors = manager.validate()
+        assert not is_valid
+        assert len(errors) > 0
 
 
 # ============================================================================

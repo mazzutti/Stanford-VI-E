@@ -9,9 +9,10 @@ from numpy.typing import NDArray
 
 from src.analysis.models import BoundaryAmpsResult
 
-from .base import BaseProcessor
-from .config import ProcessorConfig
+from src.core import BaseProcessor
+from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
+from .operations import AlignmentOps, ExtractionOps
 from .validators import ArrayValidator
 
 logger = logging.getLogger(__name__)
@@ -101,24 +102,24 @@ class BoundaryAmplitudeExtractor(BaseProcessor):
             ArrayValidator.validate_positive_parameter(window, "window")
 
         # Align to common shape using composed CubeAligner
-        seismic_aligned, boundaries_aligned = self._aligner.align(
-            seismic_cube, boundaries.astype(np.int64)
+        seismic_aligned, boundaries_aligned = AlignmentOps.align_cubes(
+            self._aligner, seismic_cube, boundaries.astype(np.int64)
         )
         boundaries_aligned = boundaries_aligned.astype(np.bool_)
 
         # Dilate boundaries to create a window
         boundary_zone = binary_dilation(boundaries_aligned, iterations=window)
 
-        # Flatten both arrays for consistent indexing
-        seismic_flat = seismic_aligned.flatten()
-        boundary_zone_flat = boundary_zone.flatten()
-
-        # Extract amplitudes
-        at_boundaries = seismic_flat[boundary_zone_flat]
-        away_from_boundaries = seismic_flat[~boundary_zone_flat]
+        # Extract amplitudes using boundary mask
+        at_boundaries = ExtractionOps.extract_by_mask(
+            seismic_aligned.flatten(), boundary_zone.flatten(), mask_value=True
+        )
+        away_from_boundaries = ExtractionOps.extract_by_mask(
+            seismic_aligned.flatten(), boundary_zone.flatten(), mask_value=False
+        )
 
         return BoundaryAmpsResult(
             at_boundaries=at_boundaries,
             away_from_boundaries=away_from_boundaries,
-            boundary_mask=boundary_zone_flat,
+            boundary_mask=boundary_zone.flatten(),
         )

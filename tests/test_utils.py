@@ -2,17 +2,17 @@
 
 Combines:
 1. Tests for existing utils implementation (Quantity, UnitRegistry, etc.)
-2. Tests demonstrating proposed OOP improvements and refactored patterns
+2. Tests for OOP utility classes (UnitNormalizer, converters, etc.)
 3. Focus on reflectivity-related utilities and unit conversions
 
-All tests validate both current implementation and proposed architectural patterns.
+All tests validate both current implementation and utility classes that have
+been moved to src/utils for production use.
 """
 
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 from unittest.mock import MagicMock
-from abc import ABC, abstractmethod
 from typing import Tuple
 
 from src.utils.quantity import Quantity
@@ -20,167 +20,12 @@ from src.utils.types import ProcessManagerProtocol
 from src.utils.units import UnitRegistry
 from src.utils.lru import LRUCache, ShardedLRUCache
 from src.utils.constants import CACHE_DIR_DEFAULT
+from src.utils.normalizers import UnitNormalizer
+from src.utils.converters import UnitConverter, VelocityConverter, DensityConverter
 
 
 # ============================================================================
-# PROPOSED OOP IMPROVEMENTS - Helper Classes for Demonstration
-# ============================================================================
-# These classes demonstrate the refactored OOP patterns proposed for utils.
-# They can be gradually integrated into src/utils in future refactoring.
-
-
-class UnitNormalizer:
-    """Normalizes unit strings to canonical forms.
-
-    Proposed improvement: centralize unit alias handling instead of scattering
-    normalize logic throughout the code.
-    """
-
-    # Mapping from aliases to canonical unit names
-    VELOCITY_ALIASES = {
-        "m/s": "m/s",
-        "m_per_s": "m/s",
-        "km/s": "km/s",
-        "km_per_s": "km/s",
-    }
-
-    DENSITY_ALIASES = {
-        "g/cc": "g/cc",
-        "g/cm3": "g/cc",
-        "g/cm^3": "g/cc",
-        "kg/m3": "kg/m3",
-        "kg/m^3": "kg/m3",
-        "kg/m³": "kg/m3",
-    }
-
-    ALL_ALIASES = {**VELOCITY_ALIASES, **DENSITY_ALIASES}
-
-    @classmethod
-    def normalize(cls, unit: str) -> str:
-        """Normalize unit string to canonical form."""
-        unit = unit.strip()
-        return cls.ALL_ALIASES.get(unit, unit)
-
-    @classmethod
-    def is_velocity(cls, unit: str) -> bool:
-        """Check if unit is velocity."""
-        norm = cls.normalize(unit)
-        return norm in ("m/s", "km/s")
-
-    @classmethod
-    def is_density(cls, unit: str) -> bool:
-        """Check if unit is density."""
-        norm = cls.normalize(unit)
-        return norm in ("g/cc", "kg/m3")
-
-
-class UnitConverter(ABC):
-    """Abstract base class for unit converters.
-
-    Proposed improvement: Strategy pattern for cleaner, more extensible
-    unit conversion logic instead of static methods with repeated patterns.
-    """
-
-    @abstractmethod
-    def is_likely_in_unit(self, arr: np.ndarray) -> bool:
-        """Check if array is likely already in target unit."""
-        pass
-
-    @abstractmethod
-    def convert_if_needed(
-        self, arr: np.ndarray, copy_on_convert: bool = True
-    ) -> Tuple[np.ndarray, bool]:
-        """Convert array to target unit if needed. Returns (array, converted_bool)."""
-        pass
-
-    def _nanmax_abs(self, a: np.ndarray) -> float:
-        """Helper to safely get max absolute value."""
-        try:
-            return float(np.nanmax(np.abs(a)))
-        except Exception:
-            return float("inf")
-
-    def _ensure_numeric(self, arr: np.ndarray) -> np.ndarray:
-        """Ensure array is numeric."""
-        if not np.issubdtype(arr.dtype, np.number):
-            arr = arr.astype(float)
-        return arr
-
-
-class VelocityConverter(UnitConverter):
-    """Converts velocity values (km/s ↔ m/s).
-
-    Example of cleaner converter pattern with configurable thresholds.
-    """
-
-    def __init__(self, threshold: float = 100.0):
-        """Initialize converter. Values < threshold are assumed to be km/s."""
-        self.threshold = threshold
-        self.conversion_factor = 1000.0
-
-    def is_likely_in_unit(self, arr: np.ndarray) -> bool:
-        """Check if array is likely in m/s (> threshold)."""
-        maxabs = self._nanmax_abs(arr)
-        return maxabs >= self.threshold
-
-    def convert_if_needed(
-        self, arr: np.ndarray, copy_on_convert: bool = True
-    ) -> Tuple[np.ndarray, bool]:
-        """Convert from km/s to m/s if needed."""
-        arr = self._ensure_numeric(arr)
-        maxabs = self._nanmax_abs(arr)
-
-        if maxabs == float("inf"):
-            return arr, False
-
-        if maxabs < self.threshold:  # Likely km/s, convert to m/s
-            if copy_on_convert:
-                return arr.astype(float) * self.conversion_factor, True
-            else:
-                arr[...] = arr * self.conversion_factor
-                return arr, True
-
-        return arr, False
-
-
-class DensityConverter(UnitConverter):
-    """Converts density values (g/cc ↔ kg/m³).
-
-    Example of cleaner converter pattern with configurable thresholds.
-    """
-
-    def __init__(self, threshold: float = 100.0):
-        """Initialize converter. Values < threshold are assumed to be g/cc."""
-        self.threshold = threshold
-        self.conversion_factor = 1000.0
-
-    def is_likely_in_unit(self, arr: np.ndarray) -> bool:
-        """Check if array is likely in kg/m³ (> threshold)."""
-        maxabs = self._nanmax_abs(arr)
-        return maxabs >= self.threshold
-
-    def convert_if_needed(
-        self, arr: np.ndarray, copy_on_convert: bool = True
-    ) -> Tuple[np.ndarray, bool]:
-        """Convert from g/cc to kg/m³ if needed."""
-        arr = self._ensure_numeric(arr)
-        maxabs = self._nanmax_abs(arr)
-
-        if maxabs == float("inf"):
-            return arr, False
-
-        if maxabs < self.threshold:  # Likely g/cc, convert to kg/m³
-            if copy_on_convert:
-                return arr.astype(float) * self.conversion_factor, True
-            else:
-                arr[...] = arr * self.conversion_factor
-                return arr, True
-
-        return arr, False
-
-
-# ============================================================================
-# TESTS FOR PROPOSED OOP IMPROVEMENTS
+# TESTS FOR UTILITY CLASSES
 # ============================================================================
 
 
@@ -282,13 +127,13 @@ class TestVelocityConverter:
 class TestDensityConverter:
     """Test DensityConverter - proposed strategy pattern converter."""
 
-    def test_initialization(self) -> None:
+    def test_initialization_density_converter(self) -> None:
         """Test converter initialization."""
         converter = DensityConverter(threshold=100.0)
         assert converter.threshold == 100.0
         assert converter.conversion_factor == 1000.0
 
-    def test_convert_if_needed_small_array(self) -> None:
+    def test_convert_if_needed_small_array_density_converter(self) -> None:
         """Test conversion of small values (g/cc to kg/m3)."""
         converter = DensityConverter()
         arr = np.array([2.0, 2.5, 3.0])
@@ -296,7 +141,7 @@ class TestDensityConverter:
         assert_allclose(result, [2000.0, 2500.0, 3000.0])
         assert converted is True
 
-    def test_convert_if_needed_large_array(self) -> None:
+    def test_convert_if_needed_large_array_density_converter(self) -> None:
         """Test no conversion for large values."""
         converter = DensityConverter()
         arr = np.array([2000.0, 2500.0, 3000.0])
@@ -498,7 +343,7 @@ class TestUnitRegistryExisting:
 class TestQuantityExisting:
     """Test existing Quantity class implementation."""
 
-    def test_initialization(self) -> None:
+    def test_initialization_quantity_existing(self) -> None:
         """Test Quantity initialization."""
         q = Quantity([1.0, 2.0], "km/s")
         assert_allclose(q.array, [1.0, 2.0])
@@ -553,8 +398,8 @@ class TestQuantityExisting:
         q = Quantity([1.0, 2.0, 3.0], "m/s")
         assert len(q) == 3
 
-    def test_repr(self) -> None:
-        """Test string representation."""
+    def test_quantity_repr(self) -> None:
+        """Test Quantity string representation."""
         q = Quantity(np.ones((3, 4)), "m/s")
         repr_str = repr(q)
         assert "3, 4" in repr_str
@@ -985,7 +830,7 @@ class TestQuantityErrorHandling:
         assert result.unit == "m/s"
         np.testing.assert_array_equal(result.array, [8.0, 15.0])
 
-    def test_quantity_to_same_unit_no_copy(self) -> None:
+    def test_quantity_to_same_unit_no_copy_quantity_error_handling(self) -> None:
         """Test Quantity.to with same unit and copy=False."""
         q = Quantity(np.array([1.0, 2.0]), "m/s")
         result = q.to("m/s", copy=False)
@@ -997,7 +842,7 @@ class TestQuantityErrorHandling:
         arr = np.asarray(q)
         np.testing.assert_array_equal(arr, [1.0, 2.0, 3.0])
 
-    def test_quantity_copy(self) -> None:
+    def test_quantity_copy_quantity_error_handling(self) -> None:
         """Test Quantity.copy creates independent copy."""
         q = Quantity(np.array([1.0, 2.0]), "m/s")
         q_copy = q.copy()

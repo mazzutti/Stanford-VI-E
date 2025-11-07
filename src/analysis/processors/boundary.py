@@ -1,19 +1,48 @@
 """Boundary detection and cube alignment processors."""
 
 import logging
+from enum import Enum
 from typing import cast, Literal, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .base import BaseProcessor, Processor
-from .config import NeighborDirection, ProcessorConfig
+from src.core import BaseProcessor, Processor
+from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
 from .validators import ArrayValidator
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["BoundaryDetector", "CubeAligner"]
+__all__ = ["BoundaryDetector", "CubeAligner", "NeighborDirection"]
+
+
+class NeighborDirection(Enum):
+    """Enum for 4-connected neighbor directions in boundary detection.
+
+    Provides type-safe access to slice indices for neighbor voxel comparison.
+    All indices are relative to the center after padding.
+    """
+
+    UP = slice(0, -2)
+    """Slice for upper neighbor (same depth slice, row-1)."""
+
+    DOWN = slice(2, None)
+    """Slice for lower neighbor (same depth slice, row+1)."""
+
+    LEFT = slice(0, -2)
+    """Slice for left neighbor (same depth slice, col-1)."""
+
+    RIGHT = slice(2, None)
+    """Slice for right neighbor (same depth slice, col+1)."""
+
+    CENTER = slice(1, -1)
+    """Slice for center voxels (after padding, selects original data)."""
+
+    @classmethod
+    def all_directions(cls) -> list["NeighborDirection"]:
+        """Get all neighbor directions except center."""
+        return [cls.UP, cls.DOWN, cls.LEFT, cls.RIGHT]
 
 
 class BoundaryDetector(BaseProcessor):

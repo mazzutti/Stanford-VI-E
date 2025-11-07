@@ -186,8 +186,8 @@ class TestAnalyzerBuilder:
         with pytest.raises(TypeError):
             builder.with_cache_file_selector("not_callable")  # type: ignore
 
-    def test_repr(self) -> None:
-        """Test builder string representation."""
+    def test_analyzer_builder_repr(self) -> None:
+        """Test AnalyzerBuilder string representation."""
         builder = AnalyzerBuilder()
         repr_str = repr(builder)
 
@@ -272,7 +272,7 @@ class TestAnalyzerFactory:
         assert builder.configured_processor_count() > 0
 
 
-class TestBuilderValidationError:
+class TestFactoriesAnalyzerBuilderValidationError:
     """Test suite for BuilderValidationError exception."""
 
     def test_validation_error_initialization(self) -> None:

@@ -43,6 +43,8 @@ from typing import (
 )
 import logging
 
+from src.core import BaseConfig, ConfigValidator, ConfigRule, ConfigProfile
+
 __all__ = [
     "ConfigBuilder",
     "Configurable",
@@ -75,7 +77,7 @@ class ConfigBuilder(Generic[T]):
     """Fluent builder for configuration objects.
 
     Provides a clean, chainable API for constructing configuration objects
-    with optional validation and defaults.
+    with optional validation and defaults using BaseConfig's validation framework.
 
     Type Parameters
     ---------------
@@ -88,10 +90,10 @@ class ConfigBuilder(Generic[T]):
         Configuration class to instantiate
     values : dict
         Configuration values being accumulated
-    validators : dict
-        Validation functions for specific fields
     defaults : dict
         Default values for fields
+    _validator : ConfigValidator
+        Shared validation framework from BaseConfig
 
     Examples
     --------
@@ -102,11 +104,6 @@ class ConfigBuilder(Generic[T]):
         ...     .set("dilation_window", 5)
         ...     .build())
 
-    With defaults:
-        >>> builder = ConfigBuilder(FaciesAnalysisConfig)
-        >>> builder.set_default("cache_dir", ".cache")
-        >>> config = builder.set("dilation_window", 5).build()
-
     With validation:
         >>> builder = ConfigBuilder(FaciesAnalysisConfig)
         >>> builder.add_validator(
@@ -114,19 +111,12 @@ class ConfigBuilder(Generic[T]):
         ...     lambda v: v > 0 or "must be positive"
         ... )
         >>> config = builder.set("dilation_window", 5).build()  # Valid
-        >>> config = builder.set("dilation_window", -1).build()  # Raises
-
-    Partial configuration:
-        >>> partial = ConfigBuilder(MyConfig).set("x", 1)
-        >>> config1 = partial.clone().set("y", 2).build()
-        >>> config2 = partial.clone().set("y", 3).build()
     """
 
     config_class: Type[T]
     values: Dict[str, Any] = field(default_factory=dict)
-    validators: Dict[str, Callable[[Any], bool]] = field(default_factory=dict)
     defaults: Dict[str, Any] = field(default_factory=dict)
-    _strict_mode: bool = False
+    _validator: ConfigValidator = field(default_factory=ConfigValidator)
 
     def set(self, key: str, value: Any) -> ConfigBuilder[T]:
         """Set a configuration value.
@@ -143,21 +133,10 @@ class ConfigBuilder(Generic[T]):
         ConfigBuilder[T]
             Self for method chaining
 
-        Raises
-        ------
-        ValueError
-            If value fails validation (in strict mode)
-
         Example
         -------
         >>> builder.set("timeout", 60.0)
         """
-        # Validate if validator exists
-        if key in self.validators:
-            validator = self.validators[key]
-            if not validator(value):
-                raise ValueError(f"Validation failed for {key}={value}")
-
         self.values[key] = value
         logger.debug(f"Set {key}={value}")
         return self
@@ -230,8 +209,7 @@ class ConfigBuilder(Generic[T]):
     ) -> ConfigBuilder[T]:
         """Add a validation function for a configuration key.
 
-        Validator is called during set() if strict_mode is enabled,
-        or during build() regardless.
+        Uses BaseConfig's validation framework for consistent validation behavior.
 
         Parameters
         ----------
@@ -249,7 +227,8 @@ class ConfigBuilder(Generic[T]):
         -------
         >>> builder.add_validator("timeout", lambda v: v > 0)
         """
-        self.validators[key] = validator
+        rule = ConfigRule(key=key, validators=[validator])
+        self._validator.add_rule(rule)
         return self
 
     def add_validators(
@@ -267,33 +246,15 @@ class ConfigBuilder(Generic[T]):
         ConfigBuilder[T]
             Self for method chaining
         """
-        self.validators.update(validators)
-        return self
-
-    def with_strict_validation(self, enabled: bool = True) -> ConfigBuilder[T]:
-        """Enable/disable strict validation mode.
-
-        In strict mode, set() will validate immediately. In loose mode,
-        validation happens only during build().
-
-        Parameters
-        ----------
-        enabled : bool
-            Enable strict validation
-
-        Returns
-        -------
-        ConfigBuilder[T]
-            Self for method chaining
-        """
-        self._strict_mode = enabled
+        for key, validator in validators.items():
+            self.add_validator(key, validator)
         return self
 
     def build(self) -> T:
         """Build the configuration object.
 
-        Combines explicitly set values with defaults, validates, and
-        instantiates the configuration class.
+        Combines explicitly set values with defaults, validates using BaseConfig's
+        validation framework, and instantiates the configuration class.
 
         Returns
         -------
@@ -315,11 +276,10 @@ class ConfigBuilder(Generic[T]):
         final_values = self.defaults.copy()
         final_values.update(self.values)
 
-        # Validate all values
-        for key, value in final_values.items():
-            if key in self.validators:
-                if not self.validators[key](value):
-                    raise ValueError(f"Validation failed for {key}={value}")
+        # Validate using BaseConfig's validator
+        is_valid, errors = self._validator.validate(final_values)
+        if not is_valid:
+            raise ValueError(f"Validation errors: {errors}")
 
         # Instantiate config class
         try:
@@ -361,13 +321,16 @@ class ConfigBuilder(Generic[T]):
         >>> config1 = builder1.build()
         >>> config2 = builder2.build()
         """
-        return ConfigBuilder(
+        new_builder = ConfigBuilder(
             config_class=self.config_class,
             values=self.values.copy(),
-            validators=self.validators.copy(),
             defaults=self.defaults.copy(),
-            _strict_mode=self._strict_mode,
         )
+        # Copy validator rules
+        new_builder._validator = ConfigValidator()
+        for rule in self._validator.rules.values():
+            new_builder._validator.add_rule(rule)
+        return new_builder
 
     def to_dict(self) -> Dict[str, Any]:
         """Get current configuration as dictionary.
@@ -375,20 +338,14 @@ class ConfigBuilder(Generic[T]):
         Returns
         -------
         dict
-            Dictionary of configuration values
+            Dictionary of configuration values (defaults + values)
         """
         result = self.defaults.copy()
         result.update(self.values)
         return result
 
-    def summary(self) -> str:
-        """Get human-readable summary of builder state.
-
-        Returns
-        -------
-        str
-            Summary of configured values and defaults
-        """
+    def __repr__(self) -> str:
+        """Return string representation."""
         config_name = self.config_class.__name__
         value_count = len(self.values)
         default_count = len(self.defaults)
@@ -397,13 +354,9 @@ class ConfigBuilder(Generic[T]):
             f"values={value_count}, defaults={default_count})"
         )
 
-    def __repr__(self) -> str:
-        """Return string representation."""
-        return self.summary()
-
     def __str__(self) -> str:
         """Return human-readable string."""
-        return self.summary()
+        return self.__repr__()
 
 
 # Convenience factory functions

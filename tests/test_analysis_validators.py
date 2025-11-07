@@ -234,7 +234,7 @@ class TestQuantileValidator:
             QuantileValidator.validate_quantile_order(10, 10, 10, allow_equal=False)
 
 
-class TestValidationError:
+class TestAnalysisValidatorsValidationError:
     """Tests for ValidationError exception."""
 
     def test_validation_error_creation(self) -> None:  # type: ignore
@@ -305,7 +305,7 @@ class TestRangeValidatorEdgeCases:
 class TestCountValidatorEdgeCases:
     """Tests for edge cases in CountValidator."""
 
-    def test_validate_count_zero(self) -> None:  # type: ignore
+    def test_validate_count_zero_count_validator_edge_cases(self) -> None:  # type: ignore
         """Test zero count."""
     # type: ignore
         CountValidator.validate_count(0)
@@ -351,7 +351,7 @@ class TestQuantileValidatorEdgeCases:
         QuantileValidator.validate_quantile_order(1.0, 5.0, 10.0)
 
 
-class TestValidatorIntegration:
+class TestAnalysisValidatorsValidatorIntegration:
     """Integration tests combining multiple validators."""
 
     def test_validate_correlation_and_pvalue(self) -> None:  # type: ignore

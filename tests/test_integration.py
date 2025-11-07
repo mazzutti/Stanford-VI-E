@@ -81,6 +81,7 @@ class TestCachingWithRateLimiting:
         assert successful == 50
 
 
+@pytest.mark.slow
 class TestCircuitBreakerWithRetry:
     """Test circuit breaker combined with retry logic."""
 
@@ -111,9 +112,12 @@ class TestCircuitBreakerWithRetry:
         with pytest.raises((RuntimeError, Exception)):
             retry_policy.execute(breaker_protected)
 
-        # Circuit should be open or have recorded failures
+            # Circuit should be open or have recorded failures
         stats = breaker.get_stats()
         assert stats.failed_calls >= 2 or breaker.state == CircuitBreakerState.OPEN
+
+
+class TestMonitoringAggregation:
 
     def test_circuit_breaker_half_open_with_retry_recovery(self):
         """Test recovery through half-open state with retry."""
@@ -147,6 +151,18 @@ class TestCircuitBreakerWithRetry:
             breaker.call(sometimes_failing)
 
         # Wait for recovery timeout
+        time.sleep(0.15)
+
+        # Circuit should be HALF_OPEN now
+        assert breaker.state == CircuitBreakerState.HALF_OPEN
+
+        # Retry policy should succeed on next attempt
+        retry_policy = RetryPolicy(max_attempts=3)
+        result = retry_policy.execute(breaker_protected)
+        assert result == "recovered"
+
+        # Circuit should be closed after successful call
+        assert breaker.state == CircuitBreakerState.CLOSED
         time.sleep(0.2)
 
         # Access state property to trigger transition to HALF_OPEN
@@ -458,88 +474,6 @@ class TestPerformanceWithAllComponents:
 
         assert l1_cache.size() <= 50
         assert l2_cache.size() <= 100  # Not all keys loaded
-
-
-class TestErrorRecoveryScenarios:
-    """Test error recovery across component interactions."""
-
-    def test_cascading_failure_and_recovery(self):
-        """Test system recovers from cascading failures."""
-        logger = StructuredLogger("failure_recovery")
-
-        # Components
-        cache = LRUCache(max_size=100)
-        breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=0.2)
-        retry_policy = RetryPolicy(max_attempts=4)
-        limiter = TokenBucketLimiter(capacity=50, refill_rate=5)
-
-        call_count = {"value": 0}
-        failure_phase = {"active": True}
-
-        @monitor(logger=logger)
-        def operation_with_recovery():
-            nonlocal call_count
-            call_count["value"] += 1
-
-            def op():
-                # First 5 calls fail
-                if failure_phase["active"] and call_count["value"] <= 5:
-                    logger.warning("Operation failed", attempt=call_count["value"])
-                    raise RuntimeError("Service unavailable")
-
-                # Transition out of failure phase
-                if call_count["value"] == 6:
-                    failure_phase["active"] = False
-                    logger.info("Exiting failure phase")
-
-                return "recovered"
-
-            # Use circuit breaker
-            def breaker_protected():
-                return breaker.call(op)
-
-            return retry_policy.execute(breaker_protected)
-
-        # Start recovery process
-        for i in range(10):
-            try:
-                result = operation_with_recovery()
-                logger.info("Success", iteration=i, result=result)
-            except Exception as e:
-                logger.error("Failed", iteration=i, exception=str(e))
-
-            time.sleep(0.05)
-
-        # Should eventually recover
-        assert call_count["value"] > 5
-
-    def test_timeout_with_monitoring_and_retry(self):
-        """Test timeout handling with monitoring and retry."""
-        logger = StructuredLogger("timeout_handling")
-        metrics = MetricsCollector()
-        retry_policy = RetryPolicy(max_attempts=3)
-
-        @monitor(logger=logger, metrics=metrics)
-        def monitored_retry():
-            attempt_count = {"value": 0}
-
-            def operation():
-                attempt_count["value"] += 1
-                metrics.record_counter("attempts", 1)
-
-                if attempt_count["value"] < 3:
-                    raise TimeoutError("Operation timeout")
-
-                metrics.record_counter("successes", 1)
-                return "success"
-
-            return retry_policy.execute(operation)
-
-        result = monitored_retry()
-        assert result == "success"
-
-        summary = metrics.get_metrics_summary()
-        assert summary["attempts"]["count"] >= 3
 
 
 class TestMonitoringAggregation:

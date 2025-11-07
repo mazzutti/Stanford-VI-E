@@ -113,7 +113,7 @@ class TestDepthDomainHandler:
 class TestTimeDomainHandler:
     """Test suite for TimeDomainHandler."""
 
-    def test_initialization(self) -> None:
+    def test_initialization_time_domain_handler(self) -> None:
         """Test handler initializes with TIME domain."""
         handler = TimeDomainHandler()
         assert handler.domain == Domain.TIME
@@ -144,7 +144,7 @@ class TestTimeDomainHandler:
         # Verify facies is resampled version
         assert_array_equal(result.facies, facies_resampled)
 
-    def test_string_representation(self) -> None:
+    def test_string_representation_time_domain_handler(self) -> None:
         """Test handler string representations."""
         handler = TimeDomainHandler()
         assert "TimeDomainHandler" in str(handler)
@@ -427,7 +427,7 @@ class TestDomainHandlerFactory:
 
         assert registry.is_initialized(Domain.DEPTH)
 
-    def test_get_all_handlers(self) -> None:
+    def test_get_all_handlers_domain_handler_factory(self) -> None:
         """Test getting all initialized handlers."""
         DomainHandlerFactory.get_handler(Domain.DEPTH)
         DomainHandlerFactory.get_handler(Domain.TIME)
@@ -438,7 +438,7 @@ class TestDomainHandlerFactory:
         assert Domain.DEPTH in all_handlers
         assert Domain.TIME in all_handlers
 
-    def test_handler_context_manager(self) -> None:
+    def test_handler_context_manager_domain_handler_factory(self) -> None:
         """Test context manager factory method."""
         with DomainHandlerFactory.handler_context(Domain.DEPTH) as handler:
             assert handler.domain == Domain.DEPTH
@@ -470,7 +470,7 @@ class TestDomainHandlerFactory:
         assert isinstance(stats, HandlerStatistics)
         assert stats.domain == Domain.DEPTH
 
-    def test_get_all_statistics(self) -> None:
+    def test_get_all_statistics_domain_handler_factory(self) -> None:
         """Test getting statistics for all handlers."""
         DomainHandlerFactory.get_handler(Domain.DEPTH)
         DomainHandlerFactory.get_handler(Domain.TIME)
@@ -512,7 +512,7 @@ class TestDomainHandlerFactory:
             mock_cleanup.assert_called_once()
 
 
-class TestIntegration:
+class TestAnalysisDomainIntegration:
     """Integration tests for the domain_handlers module."""
 
     def teardown_method(self) -> None:

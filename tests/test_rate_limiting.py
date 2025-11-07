@@ -174,7 +174,7 @@ class TestTokenBucketLimiter:
 class TestSlidingWindowLimiter:
     """Test SlidingWindowLimiter."""
 
-    def test_creation(self):
+    def test_creation_sliding_window(self):
         """Test creating sliding window limiter."""
         limiter = SlidingWindowLimiter(max_requests=100, window_size=60)
         assert limiter.max_requests == 100
@@ -190,13 +190,13 @@ class TestSlidingWindowLimiter:
         with pytest.raises(ValueError):
             SlidingWindowLimiter(max_requests=100, window_size=0)
 
-    def test_allow_request_success(self):
+    def test_allow_request_success_sliding_window(self):
         """Test allowing request within limit."""
         limiter = SlidingWindowLimiter(max_requests=10, window_size=60)
         assert limiter.allow_request(5) is True
         assert limiter.allow_request(3) is True
 
-    def test_allow_request_failure(self):
+    def test_allow_request_failure_sliding_window(self):
         """Test denying request exceeding limit."""
         limiter = SlidingWindowLimiter(max_requests=5, window_size=60)
         assert limiter.allow_request(3) is True
@@ -225,7 +225,7 @@ class TestSlidingWindowLimiter:
         limiter.allow_request(2)
         assert limiter.get_current_count() == 5
 
-    def test_get_stats(self):
+    def test_get_stats_sliding_window(self):
         """Test getting statistics."""
         limiter = SlidingWindowLimiter(max_requests=5, window_size=60)
         limiter.allow_request(3)
@@ -240,14 +240,14 @@ class TestSlidingWindowLimiter:
 class TestLeakyBucketLimiter:
     """Test LeakyBucketLimiter."""
 
-    def test_creation(self):
+    def test_creation_leaky_bucket(self):
         """Test creating leaky bucket limiter."""
         limiter = LeakyBucketLimiter(capacity=100, leak_rate=10)
         assert limiter.capacity == 100
         assert limiter.leak_rate == 10
         assert limiter.water_level == 0.0
 
-    def test_invalid_capacity(self):
+    def test_invalid_capacity_leaky_bucket(self):
         """Test invalid capacity."""
         with pytest.raises(ValueError):
             LeakyBucketLimiter(capacity=0, leak_rate=10)
@@ -257,13 +257,13 @@ class TestLeakyBucketLimiter:
         with pytest.raises(ValueError):
             LeakyBucketLimiter(capacity=100, leak_rate=0)
 
-    def test_allow_request_success(self):
+    def test_allow_request_success_leaky_bucket(self):
         """Test adding request to bucket."""
         limiter = LeakyBucketLimiter(capacity=100, leak_rate=10)
         assert limiter.allow_request(50) is True
         assert limiter.water_level == 50
 
-    def test_allow_request_failure(self):
+    def test_allow_request_failure_leaky_bucket(self):
         """Test rejecting when bucket full."""
         limiter = LeakyBucketLimiter(capacity=100, leak_rate=10)
         assert limiter.allow_request(100) is True
@@ -295,7 +295,7 @@ class TestLeakyBucketLimiter:
 
         assert limiter.get_queue_size() >= 24.99  # Allow for floating point precision
 
-    def test_get_stats(self):
+    def test_get_stats_leaky_bucket(self):
         """Test getting statistics."""
         limiter = LeakyBucketLimiter(capacity=100, leak_rate=10)
         limiter.allow_request(30)
@@ -447,12 +447,12 @@ class TestRateLimitDecorator:
         call_count = {"value": 0}
 
         @rate_limit(limiter)
-        def test_function():
+        def decorated_function():
             call_count["value"] += 1
             return "result"
 
         # Should succeed
-        result = test_function()
+        result = decorated_function()
         assert result == "result"
         assert call_count["value"] == 1
 
@@ -462,16 +462,16 @@ class TestRateLimitDecorator:
         call_count = {"value": 0}
 
         @rate_limit(limiter)
-        def test_function():
+        def decorated_function():
             call_count["value"] += 1
             return "result"
 
         # First call should succeed
-        result1 = test_function()
+        result1 = decorated_function()
         assert result1 == "result"
 
         # Second call should fail
-        result2 = test_function()
+        result2 = decorated_function()
         assert result2 is None
         assert call_count["value"] == 1
 
@@ -480,27 +480,27 @@ class TestRateLimitDecorator:
         limiter = TokenBucketLimiter(capacity=10, refill_rate=1)
 
         @rate_limit(limiter, tokens=5)
-        def test_function():
+        def decorated_function():
             return "result"
 
-        assert test_function() == "result"
-        assert test_function() == "result"
-        assert test_function() is None  # Third call should fail
+        assert decorated_function() == "result"
+        assert decorated_function() == "result"
+        assert decorated_function() is None  # Third call should fail
 
     def test_decorator_raise_on_limit(self):
         """Test decorator raises exception when rate limited."""
         limiter = TokenBucketLimiter(capacity=1, refill_rate=0.1)
 
         @rate_limit(limiter, raise_on_limit=True)
-        def test_function():
+        def decorated_function():
             return "result"
 
         # First call succeeds
-        assert test_function() == "result"
+        assert decorated_function() == "result"
 
         # Second call raises exception
         with pytest.raises(RateLimitExceeded):
-            test_function()
+            decorated_function()
 
     def test_decorator_preserves_function_name(self):
         """Test decorator preserves function metadata."""
@@ -515,7 +515,7 @@ class TestRateLimitDecorator:
         assert "My function docstring" in my_function.__doc__
 
 
-class TestThreadSafety:
+class TestRateLimitingThreadSafety:
     """Test thread safety of rate limiters."""
 
     def test_token_bucket_thread_safety(self):
@@ -580,7 +580,7 @@ class TestThreadSafety:
         assert results["allowed"] <= 100
 
 
-class TestIntegration:
+class TestRateLimitingIntegration:
     """Integration tests for rate limiting."""
 
     def test_api_rate_limiting(self):

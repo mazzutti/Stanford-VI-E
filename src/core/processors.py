@@ -1,11 +1,36 @@
-"""Base classes for processor hierarchy."""
+"""Unified processor base classes for the Stanford-VI-E framework.
+
+Provides abstract base classes and concrete implementations that define contracts
+for different processing components across both analysis and processing modules.
+
+This module consolidates processor abstractions to eliminate duplication and
+provide a single source of truth for processor interface definitions.
+
+Patterns Used:
+- Abstract Base Class: Define processor interface contract
+- Template Method: Optional smart delegation to domain-specific methods
+- Strategy: Allow different processor implementations
+
+Example:
+    >>> from src.core.processors import Processor, BaseProcessor
+    >>>
+    >>> class MyProcessor(BaseProcessor):
+    ...     def detect(self, data):
+    ...         '''Implement detection logic'''
+    ...         return process_data(data)
+    >>>
+    >>> processor = MyProcessor()
+    >>> result = processor(input_data)  # Calls detect() via process()
+"""
+
+from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .boundary import CubeAligner
+    from src.analysis.processors.boundary import CubeAligner
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +38,15 @@ __all__ = ["Processor", "BaseProcessor"]
 
 
 class Processor(ABC):
-    """Abstract base class for all data processors (polymorphic interface).
+    """Abstract base class for all data processors (unified interface).
 
     Defines the common interface that all processors must implement.
     This enables treating different processor types uniformly while maintaining
-    their specific implementations.
+    their specific implementations across both analysis and processing modules.
+
+    This unified class replaces previous duplicate implementations in:
+    - src/analysis/processors/base.py
+    - src/processing/core/abstracts.py
 
     Notes
     -----
@@ -62,6 +91,9 @@ class BaseProcessor(Processor):
 
     The process() method will automatically delegate to whichever method
     is implemented by the subclass, eliminating boilerplate code.
+
+    This implementation was previously in src/analysis/processors/base.py
+    and is now unified in src/core.
     """
 
     # Define the method resolution order for finding domain methods
@@ -87,7 +119,7 @@ class BaseProcessor(Processor):
         """
         if self._aligner_instance is None:
             # Import here to avoid circular imports
-            from .boundary import CubeAligner
+            from src.analysis.processors.boundary import CubeAligner
 
             self._aligner_instance = CubeAligner()
         return self._aligner_instance

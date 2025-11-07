@@ -1,13 +1,14 @@
 from collections import OrderedDict
-from typing import List, Optional, Generic, TypeVar
+from typing import List, Optional, Generic, TypeVar, TYPE_CHECKING
 import threading
 
-from src.analysis.types.protocols import CacheProtocol
+if TYPE_CHECKING:
+    from src.analysis.types.protocols import CacheProtocol
 
 T = TypeVar("T")
 
 
-class LRUCache(Generic[T], CacheProtocol[T]):
+class LRUCache(Generic[T]):  # type: ignore
     """A tiny LRU cache wrapper around OrderedDict.
 
     Stores values under string keys. When maxsize is 0 or None, caching is disabled.
@@ -52,7 +53,7 @@ class LRUCache(Generic[T], CacheProtocol[T]):
             return {"maxsize": self.maxsize, "currsize": len(self._data)}
 
 
-class ShardedLRUCache(Generic[T], CacheProtocol[T]):
+class ShardedLRUCache(Generic[T]):  # type: ignore
     """A simple sharded LRU cache that composes multiple LRUCache shards.
 
     Each shard is an independent LRUCache. Keys are assigned to shards by

@@ -207,7 +207,7 @@ class TestGSLibReader:
         reader = GSLibReader()
         assert reader is not None
 
-    def test_reader_instantiation(self):
+    def test_reader_instantiation_gs_lib_reader(self):
         """Test GSLibReader can be instantiated."""
         reader = GSLibReader()
         assert reader is not None
@@ -643,8 +643,8 @@ class TestDatasetManager:
         with manager:
             pass  # Should not raise
 
-    def test_repr(self, tmp_data_dir: Path, grid_spec: GridSpec):
-        """Test __repr__ method."""
+    def test_dataset_manager_repr(self, tmp_data_dir: Path, grid_spec: GridSpec):
+        """Test DatasetManager __repr__ method."""
         manager = DatasetManager(
             data_path=str(tmp_data_dir),
             file_map={"vp": "VP"},  # Needs at least one entry

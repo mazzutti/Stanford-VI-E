@@ -11,6 +11,7 @@ Test organization:
 - Result classes tests (various analysis results)
 - Integration and edge case tests
 """
+
 # mypy: ignore-errors
 
 
@@ -461,8 +462,8 @@ class TestFaciesStats:
         # Should only contain one element since stats are equal
         assert len(s) == 1
 
-    def test_repr(self, valid_facies_stats):
-        """Test __repr__ output."""
+    def test_facies_stats_repr(self, valid_facies_stats):
+        """Test FaciesStats __repr__ output."""
         repr_str = repr(valid_facies_stats)
         assert "FaciesStats" in repr_str
         assert str(valid_facies_stats.count) in repr_str
@@ -470,18 +471,20 @@ class TestFaciesStats:
     def test_repr_empty(self, empty_facies_stats):
         """Test __repr__ for empty stats."""
         repr_str = repr(empty_facies_stats)
-        assert "empty" in repr_str.lower()
+        assert "FaciesStats" in repr_str
+        assert "count=0" in repr_str
 
     def test_str_representation(self, valid_facies_stats):
         """Test __str__ output."""
         str_repr = str(valid_facies_stats)
         assert "FaciesStats" in str_repr
-        assert "n=100" in str_repr
+        assert "count=100" in str_repr
 
     def test_str_empty(self, empty_facies_stats):
         """Test __str__ for empty stats."""
         str_repr = str(empty_facies_stats)
-        assert "empty" in str_repr.lower()
+        assert "FaciesStats" in str_repr
+        assert "count=0" in str_repr
 
     def test_str_precision_constant(self, valid_facies_stats):
         """Test __str__ uses _STR_PRECISION constant."""
@@ -696,7 +699,7 @@ class TestTransition:
         assert t_rev.from_facies == 1
         assert t_rev.to_facies == 0
 
-    def test_to_dict(self):
+    def test_to_dict_transition(self):
         """Test conversion to dictionary."""
         t = Transition(from_facies=0, to_facies=1)
         d = t.to_dict()
@@ -721,7 +724,7 @@ class TestTransition:
         assert t.from_facies == 0
         assert t.to_facies == 1
 
-    def test_hash_consistency(self):
+    def test_hash_consistency_transition(self):
         """Test hash is consistent."""
         t1 = Transition(from_facies=0, to_facies=1)
         h1 = hash(t1)
@@ -762,7 +765,7 @@ class TestTransition:
 class TestGradientCorrelationResult:
     """Tests for GradientCorrelationResult class."""
 
-    def test_creation_valid(self, gradient_corr_result):
+    def test_creation_valid_gradient_correlation_result(self, gradient_corr_result):
         """Test creating valid result."""
         assert gradient_corr_result.pearson_correlation == 0.85
         assert gradient_corr_result.pearson_pvalue == 0.01
@@ -798,13 +801,13 @@ class TestGradientCorrelationResult:
         assert method == "Pearson"
         assert value == 0.9
 
-    def test_to_dict(self, gradient_corr_result):
+    def test_to_dict_gradient_correlation_result(self, gradient_corr_result):
         """Test conversion to dictionary."""
         d = gradient_corr_result.to_dict()
         assert isinstance(d, dict)
         assert d["pearson_correlation"] == 0.85
 
-    def test_from_dict(self, gradient_corr_result):
+    def test_from_dict_gradient_correlation_result(self, gradient_corr_result):
         """Test creation from dictionary."""
         d = gradient_corr_result.to_dict()
         # Note: to_dict doesn't include array data (NDArray types)
@@ -817,7 +820,7 @@ class TestGradientCorrelationResult:
 class TestBoundaryAmpsResult:
     """Tests for BoundaryAmpsResult class."""
 
-    def test_creation_valid(self, boundary_amps_result):
+    def test_creation_valid_boundary_amps_result(self, boundary_amps_result):
         """Test creating valid result."""
         assert len(boundary_amps_result.at_boundaries) == 3
         assert len(boundary_amps_result.away_from_boundaries) == 2
@@ -859,7 +862,7 @@ class TestBoundaryAmpsResult:
 class TestFaciesDiscriminationResult:
     """Tests for FaciesDiscriminationResult class."""
 
-    def test_creation_valid(self, facies_disc_result):
+    def test_creation_valid_facies_discrimination_result(self, facies_disc_result):
         """Test creating valid result."""
         assert facies_disc_result.facies_count == 2
         assert len(facies_disc_result.facies_stats) == 2
@@ -884,7 +887,7 @@ class TestFaciesDiscriminationResult:
 class TestDisplayCubesResult:
     """Tests for DisplayCubesResult class."""
 
-    def test_creation_valid(self):
+    def test_creation_valid_display_cubes_result(self):
         """Test creating valid result."""
         avo = np.random.rand(10, 10, 10)
         facies = np.random.randint(0, 4, (10, 10, 10))
@@ -913,7 +916,7 @@ class TestDisplayCubesResult:
 # ============================================================================
 
 
-class TestIntegration:
+class TestModelsBaseIntegration:
     """Integration tests across multiple model classes."""
 
     def test_facies_stats_sorting(self):
@@ -1004,7 +1007,7 @@ class TestIntegration:
 # ============================================================================
 
 
-class TestEdgeCases:
+class TestModelsBaseEdgeCases:
     """Tests for edge cases and error conditions."""
 
     def test_facies_stats_with_all_nan(self):
@@ -1426,7 +1429,7 @@ class TestAdditionalUtilityMethods:
         result = ModelUtilities.validate_numeric_pair(np.nan, np.nan, "test_pair")
         assert result is False
 
-    def test_validate_in_range_valid(self):
+    def test_validate_in_range_valid_additional_utility_methods(self):
         """Test validate_in_range with valid value."""
         ModelUtilities.validate_in_range(0.5, 0.0, 1.0, "test_value")
 
@@ -2047,17 +2050,17 @@ class TestFaciesCorrelationConfig:
 
     def test_config_invalid_facies_count(self):
         """Test that invalid facies count raises errors."""
-        with pytest.raises(ValueError, match="at least 1"):
+        with pytest.raises(ValueError, match="must be positive"):
             FaciesCorrelationConfig(facies_count=0)
 
     def test_config_invalid_boundary_threshold(self):
         """Test that invalid threshold raises errors."""
-        with pytest.raises(ValueError, match="between 0 and 1"):
+        with pytest.raises(ValueError, match="must be in"):
             FaciesCorrelationConfig(boundary_threshold=1.5)
 
     def test_config_invalid_dilation_window(self):
         """Test that invalid window raises errors."""
-        with pytest.raises(ValueError, match="at least 1"):
+        with pytest.raises(ValueError, match="must be positive"):
             FaciesCorrelationConfig(dilation_window=0)
 
     def test_config_to_dict(self):
@@ -2654,7 +2657,7 @@ class TestAvoStatsEdgeCases:
 class TestModelUtilitiesEdgeCases:
     """Edge case tests for ModelUtilities methods."""
 
-    def test_is_nan_with_nan(self):
+    def test_is_nan_with_nan_model_utilities_edge_cases(self):
         """Test is_nan with actual NaN."""
         assert ModelUtilities.is_nan(np.nan)
         assert ModelUtilities.is_nan(float("nan"))
@@ -2934,7 +2937,7 @@ class TestFaciesStatsProperties:
 class TestTransitionStringConversions:
     """Tests for Transition string conversion methods."""
 
-    def test_transition_str_representation(self):
+    def test_transition_str_representation_transition_string_conversions(self):
         """Test string representation of Transition."""
         t = Transition(0, 1)
         str_repr = str(t)
@@ -3114,12 +3117,12 @@ class TestModelUtilitiesValidation:
         # Should not raise
         ModelUtilities.validate_numeric_value(0.5, 0.0, 1.0, "test", "description")
 
-    def test_validate_numeric_value_out_of_range(self):
+    def test_validate_numeric_value_out_of_range_model_utilities_validation(self):
         """Test validate_numeric_value with out-of-range value."""
         with pytest.raises(ValueError, match="must be in"):
             ModelUtilities.validate_numeric_value(1.5, 0.0, 1.0, "test", "description")
 
-    def test_validate_matching_keys_valid(self):
+    def test_validate_matching_keys_valid_model_utilities_validation(self):
         """Test validate_matching_keys with matching keys."""
         dict1 = {0: "a", 1: "b"}
         dict2 = {0: "x", 1: "y"}
@@ -3165,7 +3168,7 @@ class TestDisplayCubesResultProperties:
         result = DisplayCubesResult(avo_display=avo, facies_display=facies)
         assert result.avo_std > 0.0
 
-    def test_avo_stats_property(self):
+    def test_avo_stats_property_display_cubes_result_properties(self):
         """Test avo_stats cached property."""
         avo = np.array([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]])
         facies = np.zeros_like(avo, dtype=np.int64)
@@ -3326,7 +3329,7 @@ class TestFaciesStatsHash:
         d = {stats1: "value"}
         assert d[stats2] == "value"
 
-    def test_facies_stats_hash_with_nan_mean(self):
+    def test_facies_stats_hash_with_nan_mean_facies_stats_hash(self):
         """Test hash with NaN mean."""
         stats = FaciesStats(count=10, mean=np.nan)
         h = hash(stats)
@@ -3339,24 +3342,27 @@ class TestFaciesStatsRepresentations:
     def test_facies_stats_repr_empty(self):
         """Test repr for empty stats."""
         stats = FaciesStats(count=0)
-        assert "empty" in repr(stats)
+        assert "FaciesStats" in repr(stats)
+        assert "count=0" in repr(stats)
 
     def test_facies_stats_repr_non_empty(self):
         """Test repr for non-empty stats."""
         stats = FaciesStats(count=100, mean=0.5, std=0.1, median=0.55)
         r = repr(stats)
-        assert "count" not in r or "FaciesStats" in r
+        assert "FaciesStats" in r
+        assert "count=100" in r
 
     def test_facies_stats_str_empty(self):
         """Test str for empty stats."""
         stats = FaciesStats(count=0)
-        assert "empty" in str(stats)
+        assert "FaciesStats" in str(stats)
+        assert "count=0" in str(stats)
 
     def test_facies_stats_str_non_empty(self):
         """Test str for non-empty stats."""
         stats = FaciesStats(count=100, mean=0.5, std=0.1, median=0.55, min=0.0, max=1.0)
         s = str(stats)
-        assert "n=100" in s
+        assert "count=100" in s
 
 
 class TestAbstractBaseClassBehavior:
@@ -3586,7 +3592,7 @@ class TestAvoResultsContains:
 class TestModelUtilitiesComputeArrayStats:
     """Tests for ModelUtilities compute_array_stats."""
 
-    def test_compute_array_stats(self):
+    def test_compute_array_stats_model_utilities_compute_array_stats(self):
         """Test compute_array_stats calculates all statistics."""
         arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         stats = ModelUtilities.compute_array_stats(arr)
@@ -3599,7 +3605,7 @@ class TestModelUtilitiesComputeArrayStats:
 class TestModelUtilitiesSafeFloat:
     """Tests for ModelUtilities safe_float method."""
 
-    def test_safe_float_with_valid_string(self):
+    def test_safe_float_with_valid_string_model_utilities_safe_float(self):
         """Test safe_float converts valid string to float."""
         result = ModelUtilities.safe_float("3.14")
         assert result == 3.14
@@ -3609,17 +3615,17 @@ class TestModelUtilitiesSafeFloat:
         result = ModelUtilities.safe_float(42)
         assert result == 42.0
 
-    def test_safe_float_with_none(self):
+    def test_safe_float_with_none_model_utilities_safe_float(self):
         """Test safe_float returns default for None."""
         result = ModelUtilities.safe_float(None)
         assert np.isnan(result)
 
-    def test_safe_float_with_invalid_string(self):
+    def test_safe_float_with_invalid_string_model_utilities_safe_float(self):
         """Test safe_float returns default for invalid string."""
         result = ModelUtilities.safe_float("not_a_number")
         assert np.isnan(result)
 
-    def test_safe_float_with_custom_default(self):
+    def test_safe_float_with_custom_default_model_utilities_safe_float(self):
         """Test safe_float uses custom default."""
         result = ModelUtilities.safe_float("invalid", default=99.0)
         assert result == 99.0

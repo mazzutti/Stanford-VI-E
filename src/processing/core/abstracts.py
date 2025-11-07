@@ -1,18 +1,21 @@
 """Core abstractions and interfaces for the processing module.
 
-
 Provides abstract base classes and interfaces that define contracts
 for different processing components.
+
+Note: The Processor ABC has been consolidated into src.core.processors
+for unified use across both analysis and processing modules.
 """
 
 from __future__ import annotations
-
 
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar, Any, Optional, List
 from numpy.typing import ArrayLike, NDArray
 
+# Import unified Processor from src.core
+from src.core.processors import Processor
 
 if TYPE_CHECKING:
     from src.processing.resampling._plan import ResamplePlan
@@ -29,26 +32,6 @@ __all__ = [
 
 T = TypeVar("T")
 R = TypeVar("R")
-
-
-class Processor(ABC):
-    """Abstract base class for data processors.
-
-    Processors transform input data through a well-defined process method.
-    """
-
-    @abstractmethod
-    def process(self, data: ArrayLike, **kwargs: Any) -> ArrayLike:
-        """Process input data.
-
-        Args:
-            data: Input data to process
-            **kwargs: Additional processing parameters
-
-        Returns:
-            Processed data
-        """
-        pass
 
 
 class Manager(ABC):

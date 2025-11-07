@@ -23,12 +23,12 @@ from src.analysis.models import (
     Transition,
 )
 from src.analysis.processors.amplitude import BoundaryAmplitudeExtractor
-from src.analysis.processors.base import BaseProcessor, Processor
-from src.analysis.processors.config import (
+from src.core import BaseProcessor, Processor
+from src.analysis.processors.management import (
     BoundaryComputationConfig,
-    NeighborDirection,
     ProcessorConfig,
 )
+from src.analysis.processors.boundary import NeighborDirection
 from src.analysis.processors.decorators import ProcessorDecorators
 from src.analysis.processors.discrimination import FaciesDiscriminationCalculator
 from src.analysis.processors.exceptions import (
@@ -39,8 +39,11 @@ from src.analysis.processors.exceptions import (
 )
 from src.analysis.processors.gradient import GradientCorrelationCalculator
 from src.analysis.processors.interface import InterfaceReflectionAnalyzer
-from src.analysis.processors.registry import ProcessorRegistry
-from src.analysis.processors.utils import ProcessorUtils
+from src.analysis.processors.management import (
+    ProcessorRegistry,
+    compute_amplitude_stats,
+    reshape_3d_to_2d,
+)
 from src.analysis.processors.validators import (
     ArrayValidator,
     ValidationHelpers,
@@ -745,12 +748,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_accepts_valid_3d_array(self):
         """Test that valid 3D array passes validation."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube.shape
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones((10, 10, 10))
         result = processor.detect(cube)
         assert result == (10, 10, 10)
@@ -758,12 +761,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_rejects_2d_array(self):
         """Test that 2D array fails validation for 3D expected."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones((10, 10))
         with pytest.raises(ValueError, match="expects 3D cube"):
             processor.detect(cube)
@@ -771,12 +774,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_rejects_1d_array(self):
         """Test that 1D array fails validation."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones(10)
         with pytest.raises(ValueError, match="expects 3D cube"):
             processor.detect(cube)
@@ -784,24 +787,24 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_rejects_non_ndarray(self):
         """Test that non-ndarray input raises TypeError."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         with pytest.raises(TypeError, match="Expected ndarray"):
             processor.detect([1, 2, 3])
 
     def test_validate_cube_shape_rejects_empty_array(self):
         """Test that empty array is rejected."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.array([]).reshape(0, 0, 0)
         with pytest.raises(ValueError, match="empty"):
             processor.detect(cube)
@@ -809,12 +812,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_includes_function_name_in_error(self):
         """Test that error message includes function name."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def my_detector(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones((5, 5))
         with pytest.raises(ValueError, match="my_detector"):
             processor.my_detector(cube)
@@ -822,12 +825,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_includes_shape_in_error(self):
         """Test that error message includes actual shape."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def detect(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones((5, 5))
         with pytest.raises(ValueError, match="shape"):
             processor.detect(cube)
@@ -835,12 +838,12 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_custom_dimensions(self):
         """Test validator with custom dimension requirement."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=2)
             def process_2d(self, arr):
                 return arr
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         arr_2d = np.ones((10, 10))
         result = processor.process_2d(arr_2d)
         assert result.shape == (10, 10)
@@ -852,23 +855,23 @@ class TestValidateCubeShapeDecorator:
     def test_validate_cube_shape_preserves_function_name(self):
         """Test that decorator preserves function name."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def original_func(self, cube):
                 return cube
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         assert processor.original_func.__name__ == "original_func"
 
     def test_validate_cube_shape_passes_through_arguments(self):
         """Test that decorator preserves all arguments."""
 
-        class TestProcessor(BaseProcessor):
+        class ConcreteTestProcessor(BaseProcessor):
             @ProcessorDecorators.validate_cube_shape(expected_dims=3)
             def func_with_args(self, cube, param1, param2=None):
                 return (cube.shape, param1, param2)
 
-        processor = TestProcessor()
+        processor = ConcreteTestProcessor()
         cube = np.ones((5, 5, 5))
         result = processor.func_with_args(cube, "val1", param2="val2")
         assert result == ((5, 5, 5), "val1", "val2")
@@ -877,12 +880,12 @@ class TestValidateCubeShapeDecorator:
         """Test that validation logs at DEBUG level."""
         with caplog.at_level(logging.DEBUG):
 
-            class TestProcessor(BaseProcessor):
+            class ConcreteTestProcessor(BaseProcessor):
                 @ProcessorDecorators.validate_cube_shape(expected_dims=3)
                 def detect(self, cube):
                     return cube
 
-            processor = TestProcessor()
+            processor = ConcreteTestProcessor()
             cube = np.ones((5, 5, 5))
             processor.detect(cube)
             assert "Validated 3D cube" in caplog.text
@@ -1256,7 +1259,7 @@ class TestFaciesDiscriminationCalculatorSeparationMatrix:
 class TestFaciesDiscriminationCalculatorIntegration:
     """Integration tests for FaciesDiscriminationCalculator."""
 
-    def test_full_workflow(self):
+    def test_full_workflow_facies_discrimination_calculator_integration(self):
         """Test complete workflow from seismic/facies to results."""
         np.random.seed(42)
         seismic = np.random.randn(6, 6, 12).astype(np.float64)
@@ -1272,7 +1275,7 @@ class TestFaciesDiscriminationCalculatorIntegration:
         assert result.separation_matrix.shape[0] == len(result.label_order)
         assert len(result.facies_amplitudes) > 0
 
-    def test_reproducibility(self):
+    def test_reproducibility_facies_discrimination_calculator_integration(self):
         """Test that results are reproducible."""
         np.random.seed(42)
         seismic = np.random.randn(5, 5, 10).astype(np.float64)
@@ -1313,7 +1316,7 @@ class TestFaciesDiscriminationCalculatorLogging:
 # ============================================================================
 
 
-class TestValidationError:
+class TestProcessorsValidationError:
     """Test suite for ValidationError exception."""
 
     def test_validation_error_inherits_from_processor_error(self):
@@ -1474,7 +1477,9 @@ class TestExceptionUsagePatterns:
 class TestGradientCorrelationCalculatorCalculate:
     """Tests for GradientCorrelationCalculator.calculate method."""
 
-    def test_calculate_returns_result_structure(self):
+    def test_calculate_returns_result_structure_gradient_correlation_calculator_calculate(
+        self,
+    ):
         """Test that calculate returns complete result structure."""
         seismic = np.random.randn(5, 5, 10).astype(np.float64)
         facies = np.random.randint(0, 3, (5, 5, 10)).astype(np.int64)
@@ -1687,7 +1692,7 @@ class TestGradientCorrelationCalculatorComputeCorrelation:
 class TestGradientCorrelationCalculatorIntegration:
     """Integration tests for GradientCorrelationCalculator."""
 
-    def test_full_workflow(self):
+    def test_full_workflow_gradient_correlation_calculator_integration(self):
         """Test complete workflow from seismic/facies to correlation result."""
         np.random.seed(42)
         seismic = np.random.randn(6, 6, 12).astype(np.float64)
@@ -1702,7 +1707,7 @@ class TestGradientCorrelationCalculatorIntegration:
         assert result.seismic_gradient.shape == seismic.shape
         assert result.boundaries.shape == seismic.shape
 
-    def test_reproducibility(self):
+    def test_reproducibility_gradient_correlation_calculator_integration(self):
         """Test that results are reproducible."""
         np.random.seed(42)
         seismic = np.random.randn(5, 5, 10).astype(np.float64)
@@ -1744,7 +1749,7 @@ class TestGradientCorrelationCalculatorIntegration:
 class TestGradientCorrelationCalculatorLogging:
     """Tests for logging behavior."""
 
-    def test_calculate_logging(self, caplog):
+    def test_calculate_logging_gradient_correlation_calculator_logging(self, caplog):
         """Test that calculate logs debug information."""
         seismic = np.random.randn(4, 4, 8).astype(np.float64)
         facies = np.random.randint(0, 2, (4, 4, 8)).astype(np.int64)
@@ -2078,161 +2083,13 @@ class TestInterfaceReflectionAnalyzerLogging:
 # ============================================================================
 
 
-class TestProcessorUtilsComputeQuartiles:
-    """Tests for compute_quartiles."""
-
-    def test_compute_quartiles_basic(self):
-        """Test quartile computation on basic array."""
-        amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        assert isinstance(q1, float)
-        assert isinstance(q3, float)
-        assert q1 < q3
-
-    def test_compute_quartiles_uniform(self):
-        """Test quartiles on uniform array."""
-        amps = np.array([2.0, 2.0, 2.0, 2.0, 2.0])
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        assert q1 == 2.0
-        assert q3 == 2.0
-
-    def test_compute_quartiles_large_array(self):
-        """Test quartiles on large array."""
-        amps = np.arange(1000, dtype=np.float64)
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        # Q1 should be around 250, Q3 around 750
-        assert 200 < q1 < 300
-        assert 700 < q3 < 800
-
-    def test_compute_quartiles_single_element(self):
-        """Test quartiles with single element."""
-        amps = np.array([5.0])
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        assert q1 == 5.0
-        assert q3 == 5.0
-
-    def test_compute_quartiles_two_elements(self):
-        """Test quartiles with two elements."""
-        amps = np.array([1.0, 9.0])
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        assert isinstance(q1, float)
-        assert isinstance(q3, float)
-
-    def test_compute_quartiles_negative_values(self):
-        """Test quartiles with negative values."""
-        amps = np.array([-5.0, -3.0, -1.0, 1.0, 3.0])
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-
-        assert q1 < q3
-
-
-class TestProcessorUtilsFilterFiniteValues:
-    """Tests for filter_finite_values."""
-
-    def test_filter_no_invalid_values(self):
-        """Test filtering when both arrays have only finite values."""
-        arr1 = np.array([1.0, 2.0, 3.0])
-        arr2 = np.array([4.0, 5.0, 6.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        np.testing.assert_array_equal(result1, arr1)
-        np.testing.assert_array_equal(result2, arr2)
-        assert count == 0
-
-    def test_filter_with_nan_in_first(self):
-        """Test filtering with NaN in first array."""
-        arr1 = np.array([1.0, np.nan, 3.0])
-        arr2 = np.array([4.0, 5.0, 6.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        assert len(result1) == 2
-        assert len(result2) == 2
-        assert count == 1
-
-    def test_filter_with_nan_in_second(self):
-        """Test filtering with NaN in second array."""
-        arr1 = np.array([1.0, 2.0, 3.0])
-        arr2 = np.array([4.0, np.nan, 6.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        assert len(result1) == 2
-        assert len(result2) == 2
-        assert count == 1
-
-    def test_filter_with_inf(self):
-        """Test filtering with infinity values."""
-        arr1 = np.array([1.0, np.inf, 3.0])
-        arr2 = np.array([4.0, 5.0, 6.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        assert len(result1) == 2
-        assert len(result2) == 2
-        assert count == 1
-
-    def test_filter_with_negative_inf(self):
-        """Test filtering with negative infinity."""
-        arr1 = np.array([1.0, 2.0, 3.0])
-        arr2 = np.array([4.0, -np.inf, 6.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        assert len(result1) == 2
-        assert len(result2) == 2
-
-    def test_filter_all_invalid(self):
-        """Test filtering when all values are invalid."""
-        arr1 = np.array([np.nan, np.inf, np.nan])
-        arr2 = np.array([1.0, 2.0, 3.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        assert len(result1) == 0
-        assert len(result2) == 0
-        assert count == 3
-
-    def test_filter_mixed_invalid(self):
-        """Test filtering with mixed invalid values."""
-        arr1 = np.array([1.0, np.nan, 3.0, np.inf])
-        arr2 = np.array([5.0, 6.0, np.nan, 8.0])
-
-        result1, result2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-
-        # Rows 1, 2, 3 have invalid values
-        assert len(result1) == 1  # Only first row is valid
-        assert len(result2) == 1
-        assert count == 3
-
-
 class TestProcessorUtilsComputeAmplitudeStats:
     """Tests for compute_amplitude_stats."""
 
     def test_compute_stats_basic(self):
         """Test basic amplitude statistics computation."""
         amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         assert stats is not None
         assert stats.count == 5
@@ -2241,7 +2098,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_single_value(self):
         """Test statistics with single amplitude."""
         amps = np.array([5.0])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         assert stats.count == 1
         assert stats.mean == 5.0
@@ -2249,7 +2106,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_with_negatives(self):
         """Test statistics with negative amplitudes."""
         amps = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         assert stats.count == 5
         assert stats.mean == 0.0
@@ -2257,7 +2114,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_zeros(self):
         """Test statistics with all zeros."""
         amps = np.array([0.0, 0.0, 0.0])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         assert stats.count == 3
         assert stats.mean == 0.0
@@ -2266,7 +2123,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_with_nan(self):
         """Test statistics handling with NaN values."""
         amps = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         # Should handle NaN gracefully
         if stats is not None:
@@ -2275,7 +2132,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_empty_array(self):
         """Test statistics with empty array."""
         amps = np.array([])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         # Should handle empty array gracefully
         assert stats is None or stats.count == 0
@@ -2283,7 +2140,7 @@ class TestProcessorUtilsComputeAmplitudeStats:
     def test_compute_stats_large_values(self):
         """Test statistics with large amplitude values."""
         amps = np.array([1e6, 2e6, 3e6])
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
 
         assert stats is not None
         assert stats.mean == pytest.approx(2e6)
@@ -2297,7 +2154,7 @@ class TestProcessorUtilsReshape3dTo2d:
         seismic = np.arange(24, dtype=np.float64).reshape(2, 3, 4)
         facies = np.arange(24, dtype=np.int64).reshape(2, 3, 4)
 
-        seismic_2d, facies_2d = ProcessorUtils.reshape_3d_to_2d(seismic, facies)
+        seismic_2d, facies_2d = reshape_3d_to_2d(seismic, facies)
 
         assert seismic_2d.shape == (6, 4)  # (ni*nj, nk)
         assert facies_2d.shape == (6, 4)
@@ -2307,7 +2164,7 @@ class TestProcessorUtilsReshape3dTo2d:
         seismic = np.arange(24, dtype=np.float64).reshape(2, 3, 4)
         facies = np.arange(24, dtype=np.int64).reshape(2, 3, 4)
 
-        seismic_2d, facies_2d = ProcessorUtils.reshape_3d_to_2d(seismic, facies)
+        seismic_2d, facies_2d = reshape_3d_to_2d(seismic, facies)
 
         # All original values should be present
         assert set(seismic_2d.flatten()) == set(seismic.flatten())
@@ -2317,7 +2174,7 @@ class TestProcessorUtilsReshape3dTo2d:
         seismic = np.array([[[1.0, 2.0, 3.0]]], dtype=np.float64)
         facies = np.array([[[1, 2, 3]]], dtype=np.int64)
 
-        seismic_2d, facies_2d = ProcessorUtils.reshape_3d_to_2d(seismic, facies)
+        seismic_2d, facies_2d = reshape_3d_to_2d(seismic, facies)
 
         assert seismic_2d.shape == (1, 3)
         assert facies_2d.shape == (1, 3)
@@ -2327,7 +2184,7 @@ class TestProcessorUtilsReshape3dTo2d:
         seismic = np.random.randn(3, 3, 5).astype(np.float64)
         facies = np.random.randint(0, 3, (3, 3, 5)).astype(np.int64)
 
-        seismic_2d, facies_2d = ProcessorUtils.reshape_3d_to_2d(seismic, facies)
+        seismic_2d, facies_2d = reshape_3d_to_2d(seismic, facies)
 
         assert seismic_2d.dtype == np.float64
         assert facies_2d.dtype == np.int64
@@ -2340,43 +2197,18 @@ class TestProcessorUtilsIntegration:
         """Test complete workflow of computing stats then quartiles."""
         amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
 
-        stats = ProcessorUtils.compute_amplitude_stats(amps)
+        stats = compute_amplitude_stats(amps)
         assert stats is not None
+        assert stats.mean == 5.0
 
-        q1, q3 = ProcessorUtils._compute_quartiles_static(amps)
-        assert q1 < q3
-        assert stats.mean > q1
-        assert stats.mean < q3
+    def test_workflow_filter_and_reshape(self):
+        """Test filtering and reshaping workflow."""
+        seismic = np.random.randn(3, 3, 5).astype(np.float64)
+        facies = np.random.randint(0, 3, (3, 3, 5)).astype(np.int64)
 
-    def test_workflow_filter_and_stats(self):
-        """Test filtering invalid values then computing stats."""
-        arr1 = np.array([1.0, np.nan, 3.0, 4.0])
-        arr2 = np.array([5.0, 6.0, np.nan, 8.0])
-
-        filtered1, filtered2, count = ProcessorUtils._filter_finite_values_static(
-            arr1, arr2
-        )
-        assert len(filtered1) == 2
-        assert count == 2
-
-        stats = ProcessorUtils.compute_amplitude_stats(filtered1)
-        assert stats is not None
-
-    def test_workflow_convert_scalars_from_computation(self):
-        """Test converting results from NumPy operations."""
-        amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-
-        mean_val = np.mean(amps)
-        std_val = np.std(amps)
-        q1, q3 = np.percentile(amps, [25, 75])
-
-        result = ProcessorUtils._convert_numpy_scalars_to_float_static(
-            mean_val, std_val, q1, q3
-        )
-
-        assert isinstance(result, tuple)
-        assert len(result) == 4
-        assert all(isinstance(x, float) for x in result)
+        seismic_2d, facies_2d = reshape_3d_to_2d(seismic, facies)
+        assert seismic_2d.shape == (9, 5)
+        assert facies_2d.shape == (9, 5)
 
 
 # Tests from test_processors_validators
@@ -2641,7 +2473,7 @@ class TestValidationHelpersEnsureValidArrays:
         assert "first" in str(exc_info.value)
 
 
-class TestValidatorIntegration:
+class TestProcessorsValidatorIntegration:
     """Integration tests for validators."""
 
     def test_validate_processor_inputs(self):

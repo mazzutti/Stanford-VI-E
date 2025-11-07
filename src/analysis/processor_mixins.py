@@ -665,7 +665,7 @@ class _MetricsContext:
         self.mixin.start_metrics()
         return self.mixin._metrics  # type: ignore
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> None:
         """Exit context, end metrics."""
         self.mixin.end_metrics()
 

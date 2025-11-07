@@ -390,25 +390,36 @@ def test_analyzer_repr():
     assert "config" in repr_str.lower()
 
 
-def test_analyzer_str():
+def test_analyzer_repr_contains_class_name():
+    """Test analyzer __repr__ contains class name."""
+    analyzer = FaciesCorrelationAnalyzer()
+    repr_str = repr(analyzer)
+    assert "FaciesCorrelationAnalyzer" in repr_str
+
+
+def test_analyzer_str_contains_class_name():
     """Test analyzer __str__ is human-readable."""
     analyzer = FaciesCorrelationAnalyzer()
     str_repr = str(analyzer)
     assert "FaciesCorrelationAnalyzer" in str_repr
-    assert "ready" in str_repr.lower()
 
 
 def test_analyzer_is_ready():
-    """Test analyzer readiness check returns boolean."""
+    """Test analyzer readiness check."""
     analyzer = FaciesCorrelationAnalyzer()
-    is_ready = analyzer.is_ready()
-    assert isinstance(is_ready, bool)
-    assert is_ready is True
+    # A freshly created analyzer is not ready (needs initialization)
+    assert isinstance(analyzer.is_ready, bool)
+    assert analyzer.is_ready is False
+
+    # After initialization, it should be ready
+    analyzer.initialize()
+    assert analyzer.is_ready is True
 
 
 def test_analyzer_get_processor_info():
     """Test getting processor information."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize before accessing processor info
     info = analyzer.get_processor_info()
     assert isinstance(info, dict)
     assert "boundary_detector" in info
@@ -421,6 +432,7 @@ def test_analyzer_get_processor_info():
 def test_analyzer_get_summary():
     """Test getting analyzer summary."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize before getting summary
     summary = analyzer.get_summary()
     assert isinstance(summary, str)
     assert "FaciesCorrelationAnalyzer" in summary
@@ -430,6 +442,7 @@ def test_analyzer_get_summary():
 def test_processor_info_contains_all_processors():
     """Test that processor_info includes all expected processors."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize
     info = analyzer.get_processor_info()
     expected_processors = [
         "boundary_detector",
@@ -447,6 +460,7 @@ def test_processor_info_contains_all_processors():
 def test_processor_info_all_strings():
     """Test that all processor info values are strings."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize
     info = analyzer.get_processor_info()
     for key, value in info.items():
         assert isinstance(value, str)
@@ -455,6 +469,7 @@ def test_processor_info_all_strings():
 def test_get_processor_info_completeness():
     """Test that processor info includes all expected processors."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize
     info = analyzer.get_processor_info()
     assert isinstance(info, dict)
     assert len(info) > 0
@@ -467,6 +482,7 @@ def test_get_processor_info_completeness():
 def test_get_processor_info_immutability():
     """Test that multiple calls return consistent info."""
     analyzer = FaciesCorrelationAnalyzer()
+    analyzer.initialize()  # Must initialize
     info1 = analyzer.get_processor_info()
     info2 = analyzer.get_processor_info()
     assert info1 == info2
@@ -998,8 +1014,13 @@ class TestPrepareDisplayCubes:
         mock_factory = mock.MagicMock()
         mock_factory.get_handler.return_value = mock_handler
 
+        mock_resampler_factory = mock.MagicMock()
+        mock_resampler = mock.MagicMock()
+        mock_resampler_factory.get_resampler.return_value = mock_resampler
+
         analyzer = FaciesCorrelationAnalyzer()
         analyzer._domain_handler_factory = mock_factory
+        analyzer._resampler_factory = mock_resampler_factory
 
         vm = mock.MagicMock()
         facies_depth = np.array([[[0]]], dtype=int)
@@ -1009,7 +1030,7 @@ class TestPrepareDisplayCubes:
         analyzer._prepare_display_cubes(vm, facies_depth, avo, Domain.DEPTH, grid_spec)
 
         mock_handler.prepare_display_cubes.assert_called_once_with(
-            vm, facies_depth, avo, grid_spec
+            mock_resampler, facies_depth, avo, grid_spec
         )
 
 
@@ -1064,7 +1085,7 @@ class TestPerformAvoAnalysis:
 # ============================================================================
 
 
-class TestIntegration:
+class TestFaciesAnalyzerIntegration:
     """Integration tests combining multiple components."""
 
     def test_compare_and_create_plot_workflow(self):

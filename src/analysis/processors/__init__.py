@@ -48,12 +48,28 @@ from numpy.typing import NDArray
 
 # Phase 2 modules (utilities and helpers)
 from .decorators import ProcessorDecorators  # noqa: F401
-from .registry import (  # noqa: F401
+from .management import (  # noqa: F401
     ProcessorRegistry,
     ProcessorMetadata,
     get_default_processor_registry,
     register_processor,
     create_processor,
+    convert_numpy_scalars_to_float,
+    compute_quartiles,
+    filter_finite_values,
+    flatten_and_filter_finite,
+    reshape_3d_to_2d,
+    align_and_reshape,
+    compute_vertical_gradient,
+    extract_amplitude_subset,
+    compute_amplitude_stats,
+    set_default_statistics_strategy,
+    get_default_statistics_strategy,
+    PadConfig,
+    DilationConfig,
+    ValidationResult,
+    ProcessorConfig,
+    BoundaryComputationConfig,
 )
 from .exceptions import (  # noqa: F401
     CorrelationError,
@@ -67,7 +83,6 @@ from .validators import (  # noqa: F401
     Validatable,
     _ValidationErrors,
 )
-from .utils import ProcessorUtils  # noqa: F401
 from .types import (  # noqa: F401
     BoolArray,
     CorrelationFunction,
@@ -79,13 +94,14 @@ from .types import (  # noqa: F401
     StatsType,
     T,
 )
-from .config import (  # noqa: F401
-    BoundaryComputationConfig,
-    NeighborDirection,
-    ProcessorConfig,
-    ValidationResult,
+from .boundary import NeighborDirection  # noqa: F401
+from src.core import BaseProcessor, Processor  # noqa: F401
+from .operations import (  # noqa: F401
+    AlignmentOps,
+    ReshapeOps,
+    ExtractionOps,
+    StatsOps,
 )
-from .base import BaseProcessor, Processor  # noqa: F401
 
 # Phase 3 modules (processor implementations)
 from .boundary import BoundaryDetector, CubeAligner  # noqa: F401
@@ -110,11 +126,29 @@ __all__ = [
     "BoundaryComputationConfig",
     "NeighborDirection",
     "ValidationResult",
-    # Utilities
-    "ProcessorUtils",
+    "PadConfig",
+    "DilationConfig",
+    # Utility functions
+    "convert_numpy_scalars_to_float",
+    "compute_quartiles",
+    "filter_finite_values",
+    "flatten_and_filter_finite",
+    "reshape_3d_to_2d",
+    "align_and_reshape",
+    "compute_vertical_gradient",
+    "extract_amplitude_subset",
+    "compute_amplitude_stats",
+    "set_default_statistics_strategy",
+    "get_default_statistics_strategy",
+    # Array validation
     "ArrayValidator",
     "ValidationHelpers",
     "Validatable",
+    # Operations (Phase 6c)
+    "AlignmentOps",
+    "ReshapeOps",
+    "ExtractionOps",
+    "StatsOps",
     # Decorators
     "ProcessorDecorators",
     # Registry

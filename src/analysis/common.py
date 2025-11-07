@@ -226,6 +226,11 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         self._initialized = value
 
     @property
+    def is_initialized(self) -> bool:
+        """Check if the singleton is initialized."""
+        return self._is_fully_initialized
+
+    @property
     def proc_manager(self) -> ProcessManagerProtocol:
         """Access the configured ProcessManager.
 
@@ -264,7 +269,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         """Support context manager protocol."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> None:
         """Support context manager protocol exit."""
         return None
 

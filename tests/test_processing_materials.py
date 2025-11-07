@@ -332,7 +332,7 @@ class TestVsModelValidation:
 class TestDensityModelInit:
     """Tests for DensityModel initialization."""
 
-    def test_init_with_array(self):
+    def test_init_with_array_density_model_init(self):
         """Test initialization with numpy array."""
         rho = np.ones((5, 5, 5)) * 2300.0
         model = DensityModel(rho=rho)
@@ -340,7 +340,7 @@ class TestDensityModelInit:
         assert model.rho is rho
         assert np.array_equal(model.get_data(), rho)
 
-    def test_init_preserves_data_type(self):
+    def test_init_preserves_data_type_density_model_init(self):
         """Test that initialization preserves data type."""
         rho = np.ones((5, 5, 5), dtype=np.float32) * 2300.0
         model = DensityModel(rho=rho)
@@ -351,7 +351,7 @@ class TestDensityModelInit:
 class TestDensityModelGetSetData:
     """Tests for DensityModel get/set data methods."""
 
-    def test_get_data(self):
+    def test_get_data_density_model_get_set_data(self):
         """Test get_data returns array."""
         rho = np.ones((3, 3, 3)) * 2300.0
         model = DensityModel(rho=rho)
@@ -359,7 +359,7 @@ class TestDensityModelGetSetData:
         data = model.get_data()
         assert np.array_equal(data, rho)
 
-    def test_set_data(self):
+    def test_set_data_density_model_get_set_data(self):
         """Test set_data updates rho."""
         rho = np.ones((3, 3, 3)) * 2300.0
         new_rho = np.ones((3, 3, 3)) * 2400.0
@@ -369,7 +369,7 @@ class TestDensityModelGetSetData:
 
         assert np.array_equal(model.rho, new_rho)
 
-    def test_get_data_returns_ndarray(self):
+    def test_get_data_returns_ndarray_density_model_get_set_data(self):
         """Test get_data always returns ndarray."""
         rho = [2300, 2400]  # List input
         model = DensityModel(rho=rho)
@@ -393,7 +393,7 @@ class TestDensityModelUnitConversion:
 class TestDensityModelValidation:
     """Tests for DensityModel validation."""
 
-    def test_validate_positive_values(self):
+    def test_validate_positive_values_density_model_validation(self):
         """Test validation with positive finite values."""
         rho = np.ones((3, 3, 3)) * 2300.0
         model = DensityModel(rho=rho)
@@ -401,7 +401,7 @@ class TestDensityModelValidation:
         # Should not raise
         model.validate()
 
-    def test_validate_rejects_negative_values(self):
+    def test_validate_rejects_negative_values_density_model_validation(self):
         """Test validation rejects negative values."""
         rho = np.ones((3, 3, 3)) * -2300.0
         model = DensityModel(rho=rho)
@@ -409,7 +409,7 @@ class TestDensityModelValidation:
         with pytest.raises(ValueError, match="non-positive"):
             model.validate()
 
-    def test_validate_rejects_zero(self):
+    def test_validate_rejects_zero_density_model_validation(self):
         """Test validation rejects zero values."""
         rho = np.ones((3, 3, 3)) * 0.0
         model = DensityModel(rho=rho)
@@ -417,7 +417,7 @@ class TestDensityModelValidation:
         with pytest.raises(ValueError, match="non-positive"):
             model.validate()
 
-    def test_validate_rejects_nan(self):
+    def test_validate_rejects_nan_density_model_validation(self):
         """Test validation rejects NaN values."""
         rho = np.ones((3, 3, 3)) * np.nan
         model = DensityModel(rho=rho)
@@ -425,7 +425,7 @@ class TestDensityModelValidation:
         with pytest.raises(ValueError, match="non-finite"):
             model.validate()
 
-    def test_validate_rejects_inf(self):
+    def test_validate_rejects_inf_density_model_validation(self):
         """Test validation rejects infinite values."""
         rho = np.ones((3, 3, 3)) * np.inf
         model = DensityModel(rho=rho)
@@ -433,7 +433,7 @@ class TestDensityModelValidation:
         with pytest.raises(ValueError, match="non-finite"):
             model.validate()
 
-    def test_validate_with_mixed_valid_values(self):
+    def test_validate_with_mixed_valid_values_density_model_validation(self):
         """Test validation with spatially varying values."""
         rho = np.random.rand(5, 5, 5) * 300 + 2000  # 2000-2300 kg/m^3
         model = DensityModel(rho=rho)

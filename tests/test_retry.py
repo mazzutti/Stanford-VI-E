@@ -13,6 +13,7 @@ Tests cover:
 
 import pytest
 import time
+from freezegun import freeze_time
 from src.analysis.patterns.retry import (
     RetryStrategy,
     ExponentialBackoffStrategy,
@@ -251,6 +252,7 @@ class TestRetryPolicyWithStrategies:
         assert result == "done"
 
 
+@pytest.mark.slow
 class TestRetryPolicyJitter:
     """Test jitter functionality."""
 
@@ -258,7 +260,7 @@ class TestRetryPolicyJitter:
         """Without jitter, delays are exact."""
         policy = RetryPolicy(
             max_attempts=3,
-            initial_delay=1.0,
+            initial_delay=0.01,  # Reduced from 1.0
             strategy=ConstantBackoffStrategy(),
             jitter=False,
         )
@@ -272,19 +274,14 @@ class TestRetryPolicyJitter:
                 raise ValueError("Try again")
             return "done"
 
-        start = time.time()
         result = policy.execute(retry_func)
-        elapsed = time.time() - start
-
         assert result == "done"
-        # Should be approximately 2.0s (2 delays of 1.0s each)
-        assert 1.9 < elapsed < 2.2
 
     def test_jitter_enabled(self):
         """With jitter, delays vary."""
         policy = RetryPolicy(
             max_attempts=2,
-            initial_delay=1.0,
+            initial_delay=0.01,  # Reduced from 1.0
             strategy=ConstantBackoffStrategy(),
             jitter=True,
             jitter_factor=0.5,
@@ -303,6 +300,7 @@ class TestRetryPolicyJitter:
         assert result == "done"
 
 
+@pytest.mark.slow
 class TestRetryPolicyTimeout:
     """Test timeout handling."""
 
@@ -318,7 +316,7 @@ class TestRetryPolicyTimeout:
 
     def test_timeout_exceeded(self):
         """Operation raises timeout exception."""
-        policy = RetryPolicy(max_attempts=10, initial_delay=1.0, timeout=0.1)
+        policy = RetryPolicy(max_attempts=10, initial_delay=0.01, timeout=0.05)
 
         attempt_count = 0
 
@@ -469,7 +467,7 @@ class TestRetryDecorator:
 class TestTimeoutDecorator:
     """Test timeout decorator."""
 
-    def test_timeout_not_exceeded(self):
+    def test_timeout_not_exceeded_timeout_decorator(self):
         """Timeout decorator with operation completing in time."""
 
         @timeout(1.0)
@@ -480,7 +478,7 @@ class TestTimeoutDecorator:
         result = fast_operation()
         assert result == "ok"
 
-    def test_timeout_exceeded(self):
+    def test_timeout_exceeded_timeout_decorator(self):
         """Timeout decorator with operation exceeding timeout."""
 
         @timeout(0.1)

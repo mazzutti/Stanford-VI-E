@@ -87,7 +87,7 @@ class TestVectorizedBackend:
 class TestBatchedInterpolatorBackend:
     """Test BatchedInterpolatorBackend class."""
 
-    def test_backend_name(self):
+    def test_backend_name_batched_interpolator_backend(self):
         """Test backend name."""
         backend = BatchedInterpolatorBackend()
         assert backend.name == "batched_interpolator"
@@ -102,7 +102,7 @@ class TestBatchedInterpolatorBackend:
     def test_depth_to_time_error_handling(self):
         """Test depth_to_time error when BatchedInterpolator unavailable."""
         with patch(
-            "src.processing.resampling.backends._implementations.BatchedInterpolator",
+            "src.processing.resampling.backends._implementations.BatchedInterpolator_runtime",
             None,
         ):
             backend = BatchedInterpolatorBackend()

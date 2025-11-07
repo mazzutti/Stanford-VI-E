@@ -579,7 +579,7 @@ warnings.filterwarnings(
 
 @tool
 def cleanup_cache(
-    cache_dir: str = ".cache", dry_run: bool = False, verbose: bool = False
+    cache_dir: str = ".cache", _dry_run: bool = False, verbose: bool = False
 ) -> tuple[int, float]:
     """Clean up old cache files (CLI tool).
 
@@ -685,7 +685,7 @@ def plot_rock_physics_attributes(argv: list[str] | None = None) -> dict[str, str
 
 @tool
 def analysis_rock_physics(
-    venv_python: str | None = None, cache_dir: str = ".cache", prompt: bool = True
+    _venv_python: str | None = None, cache_dir: str = ".cache", _prompt: bool = True
 ) -> bool:
     from src.analysis.io import HeaderPrinter
     from src.analysis.common import AnalysisCommon
@@ -742,7 +742,7 @@ def analysis_rock_physics(
 def analyze_facies_correlation(
     cache_dir: str = ".cache",
     domain: str = "depth",
-    no_multiangle: bool = False,
+    _no_multiangle: bool = False,
     verbose: bool = False,
 ) -> Any:
     """Central delegator for facies-correlation analysis.
@@ -771,7 +771,7 @@ def analyze_facies_correlation(
 @tool
 def seismograms(
     cache_dir: str = ".cache",
-    venv_python: str | None = None,
+    _venv_python: str | None = None,
     skip_cleanup: bool = False,
     verbose: bool = False,
 ) -> Any:

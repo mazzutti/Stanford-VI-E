@@ -85,7 +85,7 @@ class VelocityModel:
         if np.any(arr <= 0.0):
             raise ValueError("vp contains non-positive values")
 
-    def smooth(self, sigma: float = 1.0, truncate: Optional[float] = None) -> None:
+    def smooth(self, sigma: float = 1.0) -> None:
         """Apply Gaussian smoothing in-place to the velocity model.
 
         Args:

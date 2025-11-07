@@ -333,7 +333,7 @@ class TestBatchedInterpolatorBackendDepthToTime:
         vp = np.ones((2, 3, 4)) * 3000
 
         with patch(
-            "src.processing.resampling.backends._implementations.BatchedInterpolator"
+            "src.processing.resampling.backends._implementations.BatchedInterpolator_runtime"
         ) as MockBI:
             mock_bi = Mock()
             MockBI.return_value = mock_bi
@@ -355,7 +355,7 @@ class TestBatchedInterpolatorBackendDepthToTime:
 
         # Force unavailable
         with patch(
-            "src.processing.resampling.backends._implementations.BatchedInterpolator",
+            "src.processing.resampling.backends._implementations.BatchedInterpolator_runtime",
             None,
         ):
             with pytest.raises(BackendError, match="BatchedInterpolator not available"):

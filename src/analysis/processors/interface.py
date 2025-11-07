@@ -1,7 +1,7 @@
 """Interface reflection analyzer processor."""
 
 import logging
-from typing import Literal, Optional, Tuple, cast
+from typing import Optional, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,10 +12,11 @@ from src.analysis.models import (
     Transition,
 )
 
-from .base import BaseProcessor
-from .config import ProcessorConfig
+from src.core import BaseProcessor
+from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
-from .utils import ProcessorUtils
+from .operations import AlignmentOps, ReshapeOps, ExtractionOps, StatsOps
+from .management import convert_numpy_scalars_to_float, compute_amplitude_stats
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,9 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
             Summary and raw statistics grouped by transition pairs.
         """
         # Align cubes and reshape to (n_traces, nk) for trace-wise analysis
-        seismic_aligned, facies_aligned = self._aligner.align(seismic_cube, facies_cube)
+        seismic_aligned, facies_aligned = AlignmentOps.align_cubes(
+            self._aligner, seismic_cube, facies_cube
+        )
 
         if seismic_aligned.shape != facies_aligned.shape:
             raise ValueError(
@@ -66,148 +69,22 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
                 f"seismic {seismic_aligned.shape} vs facies {facies_aligned.shape}"
             )
 
-        seismic_2d, facies_2d = self._reshape_to_traces(seismic_aligned, facies_aligned)
-
-        # Find transitions (vertical facies changes) across all traces
-        diffs = facies_2d[:, 1:] != facies_2d[:, :-1]
-        rows, ks = np.nonzero(diffs)
-
-        if rows.size == 0:
-            return InterfaceReflectionResult(transitions_summary={}, interface_stats={})
-
-        ks = ks + 1  # transition index is k (second sample)
+        seismic_2d, facies_2d = ReshapeOps.reshape_to_traces(
+            seismic_aligned, facies_aligned
+        )
 
         # Extract amplitudes at transitions
-        amps = self._extract_amplitudes(seismic_2d, rows, ks)
+        fac_from, fac_to, amps = ExtractionOps.extract_at_transitions(
+            seismic_2d, facies_2d
+        )
 
-        # Determine transition pairs (from -> to facies)
-        fac_from = facies_2d[rows, ks - 1]
-        fac_to = facies_2d[rows, ks]
+        if fac_from.size == 0:
+            return InterfaceReflectionResult(transitions_summary={}, interface_stats={})
 
         # Aggregate by transition type
-        return self._aggregate_by_transition(fac_from, fac_to, amps)
-
-    @staticmethod
-    def _reshape_to_traces(
-        seismic_aligned: NDArray[np.float64], facies_aligned: NDArray[np.int64]
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
-        """Reshape 3D cubes to 2D trace-sample format.
-
-        Delegates to consolidated reshaping helper for cleaner, more maintainable code.
-
-        Parameters
-        ----------
-        seismic_aligned
-            3D seismic cube (ni, nj, nk).
-        facies_aligned
-            3D facies cube (ni, nj, nk).
-
-        Returns
-        -------
-        tuple
-            (seismic_2d, facies_2d) both with shape (n_traces, nk).
-
-        Raises
-        ------
-        ValueError
-            If reshape fails due to shape mismatch.
-        """
-        return ProcessorUtils.reshape_3d_to_2d(seismic_aligned, facies_aligned)
-
-    @staticmethod
-    def _extract_amplitudes(
-        seismic_2d: NDArray[np.float64],
-        rows: NDArray[np.intp],
-        ks: NDArray[np.intp],
-    ) -> NDArray[np.float64]:
-        """Extract windowed amplitudes around transition points.
-
-        Efficiently extracts mean absolute amplitudes in windows around
-        specified transition sample indices. Uses sliding_window_view when
-        available for optimal memory efficiency, with a faster NumPy-based
-        fallback for compatibility.
-
-        Parameters
-        ----------
-        seismic_2d
-            2D seismic array (n_traces, nk).
-        rows
-            Trace indices.
-        ks
-            Sample indices (transition locations).
-
-        Returns
-        -------
-        numpy.ndarray
-            Mean absolute amplitudes in windows around transitions.
-
-        Raises
-        ------
-        ValueError
-            If no valid transition points are provided.
-        """
-        if rows.size == 0 or ks.size == 0:
-            raise ValueError("No transition points provided")
-
-        pad_width = (
-            (0, 0),
-            (
-                2,
-                2,
-            ),
+        return InterfaceReflectionAnalyzer._aggregate_by_transition(
+            fac_from, fac_to, amps
         )
-        seismic_padded = np.pad(
-            seismic_2d,
-            pad_width=pad_width,
-            mode=cast(
-                Literal[
-                    "constant",
-                    "edge",
-                    "linear_ramp",
-                    "maximum",
-                    "mean",
-                    "median",
-                    "minimum",
-                    "reflect",
-                    "symmetric",
-                    "wrap",
-                    "empty",
-                ],
-                "edge",
-            ),
-        )
-
-        try:
-            from numpy.lib.stride_tricks import sliding_window_view
-
-            windows = sliding_window_view(
-                seismic_padded,
-                window_shape=5,
-                axis=1,
-            )
-            logger.debug("Using optimized sliding_window_view for amplitude extraction")
-        except (ImportError, ValueError) as e:
-            logger.debug(
-                "Falling back to efficient manual window construction: %s", str(e)
-            )
-            # Fallback: construct windows using strided-view manual implementation
-            # More memory efficient than explicit loop construction
-            n_traces, padded_nk = seismic_padded.shape
-            n_windows = padded_nk - 5 + 1
-            windows = np.lib.stride_tricks.as_strided(
-                seismic_padded,
-                shape=(n_traces, n_windows, 5),
-                strides=(
-                    seismic_padded.strides[0],
-                    seismic_padded.strides[1],
-                    seismic_padded.strides[1],
-                ),
-                writeable=False,
-            )
-
-        amps = np.abs(windows[rows, ks, :]).mean(axis=1)
-        logger.debug("Extracted %d windowed amplitudes", len(amps))
-        return cast(NDArray[np.float64], amps)
 
     @staticmethod
     def _aggregate_by_transition(
@@ -261,8 +138,8 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
             f_to = ucode % base
             key = Transition(int(f_from), int(f_to))
 
-            interface_stats[key] = np.asarray(group_amps)
-            summary[key] = ProcessorUtils.compute_amplitude_stats(group_amps)
+            interface_stats[key] = group_amps
+            summary[key] = compute_amplitude_stats(group_amps)
 
         return InterfaceReflectionResult(
             transitions_summary=summary,
@@ -270,3 +147,93 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
                 dict[Transition, Optional[NDArray[np.float64]]], interface_stats
             ),
         )
+
+    @staticmethod
+    def _reshape_to_traces(
+        seismic_aligned: NDArray[np.float64], facies_aligned: NDArray[np.int64]
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Reshape 3D cubes to 2D trace-sample format.
+
+        Delegates to consolidated reshaping helper for cleaner, more maintainable code.
+
+        Parameters
+        ----------
+        seismic_aligned
+            3D seismic cube (ni, nj, nk).
+        facies_aligned
+            3D facies cube (ni, nj, nk).
+
+        Returns
+        -------
+        tuple
+            (seismic_2d, facies_2d) with shapes (n_traces, nk).
+
+        Raises
+        ------
+        ValueError
+            If reshape fails due to shape mismatch.
+        """
+        return ReshapeOps.reshape_to_traces(seismic_aligned, facies_aligned)
+
+    @staticmethod
+    def _extract_amplitudes(
+        seismic_2d: NDArray[np.float64],
+        rows: NDArray[np.intp],
+        ks: NDArray[np.intp],
+    ) -> NDArray[np.float64]:
+        """Extract windowed amplitudes around transition points.
+
+        Extracts mean absolute amplitudes in windows around
+        specified transition sample indices using NumPy vectorization.
+
+        Parameters
+        ----------
+        seismic_2d
+            2D seismic array (n_traces, nk).
+        rows
+            Row indices of transition points.
+        ks
+            Column (sample) indices of transition points.
+
+        Returns
+        -------
+        numpy.ndarray(dtype=float64)
+            Mean absolute amplitudes at transition windows (same length as rows).
+
+        Raises
+        ------
+        ValueError
+            If row/column index arrays have different lengths or are empty.
+        """
+        if rows.size == 0 or ks.size == 0:
+            raise ValueError("No transition points provided")
+
+        if rows.size != ks.size:
+            raise ValueError(
+                f"rows and ks arrays must have same size, got {rows.size} and {ks.size}"
+            )
+
+        # Determine window size (minimum of 2 samples around transition)
+        window_size = 2
+
+        # Pad seismic data along the sample axis to handle edge cases
+        padded = np.pad(
+            seismic_2d, ((0, 0), (window_size - 1, window_size - 1)), mode="edge"
+        )
+
+        # Adjust indices for padding
+        ks_padded = ks + (window_size - 1)
+
+        # Extract windows using NumPy advanced indexing
+        windows = np.array(
+            [
+                padded[row, k - (window_size - 1) : k + 1]
+                for row, k in zip(rows, ks_padded)
+            ],
+            dtype=np.float64,
+        )
+
+        # Compute mean absolute amplitude in each window
+        amps = np.abs(windows).mean(axis=1)
+        logger.debug("Extracted %d windowed amplitudes", len(amps))
+        return cast(NDArray[np.float64], amps)

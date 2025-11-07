@@ -565,7 +565,7 @@ class IntegratedAnalyzer(Observable):
         logger.debug("Entering IntegratedAnalyzer context")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
         """Exit context manager."""
         logger.debug("Exiting IntegratedAnalyzer context")
         if exc_type is not None:

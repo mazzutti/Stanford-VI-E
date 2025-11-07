@@ -268,7 +268,7 @@ class ModelUtilities:
     def validate_numeric_pair(
         val1: Optional[float],
         val2: Optional[float],
-        pair_name: str = "numeric pair",
+        name: Optional[str] = None,
     ) -> bool:
         """Validate that both values in a numeric pair are not NaN.
 
@@ -278,7 +278,7 @@ class ModelUtilities:
         Args:
             val1: First value to check (e.g., q75).
             val2: Second value to check (e.g., q25).
-            pair_name: Human-readable name of the pair for error messages.
+            name: Optional name for the pair (used for logging/error messages).
 
         Returns:
             False if either value is NaN, True otherwise (both are valid).

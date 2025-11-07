@@ -139,8 +139,7 @@ class DatasetManager:
     def __exit__(
         self,
         exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_val: Optional[BaseException], _exc_tb: Optional[TracebackType],
     ) -> None:
         """Context manager exit.
 
@@ -150,7 +149,7 @@ class DatasetManager:
             Exception type if an exception occurred.
         exc_val : Optional[BaseException]
             Exception value if an exception occurred.
-        exc_tb : Optional[TracebackType]
+        __exc_tb : Optional[TracebackType]
             Exception traceback if an exception occurred.
         """
         # No cleanup needed currently - provides hook for future resource management

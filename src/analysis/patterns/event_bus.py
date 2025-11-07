@@ -33,7 +33,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type, Set
+from typing import Any, Callable, Dict, List, Optional, Type
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -400,7 +400,7 @@ class AsyncEventBus(EventBus):
         """Enter context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
         """Exit context manager."""
         self.stop()
 

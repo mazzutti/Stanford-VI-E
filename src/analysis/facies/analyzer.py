@@ -10,7 +10,6 @@ Integrated Patterns:
 """
 
 import logging
-from types import TracebackType
 from typing import Any, Callable, Optional, Type, Dict, cast
 
 import numpy as np
@@ -20,7 +19,6 @@ from matplotlib.figure import Figure
 from src.plotting.helpers.config import PlotConfig
 from src.processing.materials.velocity import VelocityModel
 from src.io.grid import GridSpec
-from src.analysis.base import AnalyzerInterface
 
 from src.analysis.types.protocols import (
     ResamplerFactory,
@@ -56,6 +54,7 @@ from src.analysis.processors import (
 )
 from src.analysis.processors.validators import DomainValidator, PathValidator
 from src.analysis.domain import DomainHandlerFactory
+from src.core import BaseAnalyzer, PipelineAnalyzer, CompositeMixin
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,9 @@ DEFAULT_CACHE_DIR = ".cache"
 DEFAULT_DOMAIN = Domain.DEPTH
 
 
-class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure]):
+class FaciesCorrelationAnalyzer(
+    CompositeMixin, PipelineAnalyzer[FaciesAnalysisConfig, Figure]
+):
     """Orchestrator for seismic-facies correlation analysis pipeline.
 
     The analyzer groups together a sequence of analysis routines (gradient
@@ -73,64 +74,38 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
     ``run(...)`` method. ``run()`` executes the pipeline and returns a
     Matplotlib :class:`Figure` with analysis summary plots.
 
-    Implements the AnalyzerInterface for polymorphic treatment and
-    integration with the high-level analysis framework.
+    Uses BaseAnalyzer lifecycle management for consistent error handling,
+    logging, and resource cleanup. Implements PipelineAnalyzer for multi-stage
+    analysis and CompositeMixin for sub-analyzer composition.
 
     Parameters
     ----------
+    config
+        Optional :class:`FaciesCorrelationConfig` instance containing
+        tunable parameters for the analysis pipeline. A default is created
+        when not supplied.
     resampler_factory
         Optional factory providing resampler instances for time<->depth
         operations. If omitted, the package default resampler factory is
         used when needed.
     select_cache_files
-        Optional callable ``(cache_dir, domain) -> Optional[str]`` used to
-        select a precomputed AVO cache file. If provided it takes
-        precedence over built-in selection logic.
+        Optional callable to select a precomputed AVO cache file.
     cache_loader
-        Optional object implementing the CacheLoaderProtocol; used to
-        load cache files when provided.
+        Optional CacheLoaderProtocol implementation.
     velocity_model_class
-        Optional class deriving from :class:`VelocityModel` used to build
-        velocity/resampling helpers from the dataset.
+        Optional VelocityModel-derived class.
     plotter
-        Optional plotting implementation conforming to the PlotterProtocol
-        used to produce figure outputs. When omitted the library's
-        default ``FaciesPlotter`` is lazily instantiated. The plotter
-        expects an ``AvoResults`` dataclass instance (not a plain dict).
-    config
-        Optional :class:`FaciesCorrelationConfig` instance containing
-        tunable parameters for the analysis pipeline. A default is created
-        when not supplied.
-    boundary_detector
-        Optional custom BoundaryDetector instance (injected by factory).
-    cube_aligner
-        Optional custom CubeAligner instance (injected by factory).
-    boundary_amp_extractor
-        Optional custom BoundaryAmplitudeExtractor instance.
-    gradient_calculator
-        Optional custom GradientCorrelationCalculator instance.
-    interface_analyzer
-        Optional custom InterfaceReflectionAnalyzer instance.
-    facies_discriminator
-        Optional custom FaciesDiscriminationCalculator instance.
-    domain_handler_factory
-        Optional custom DomainHandlerFactory instance.
-
-    Notes
-    -----
-    This class is intentionally lightweight to make unit-testing easier;
-    all heavy imports (plotting, resampling) are performed lazily when
-    needed so importing this module does not create plotting side-effects.
+        Optional PlotterProtocol implementation. Lazily instantiated if omitted.
+    **kwargs
+        Processor dependencies injected for testing (boundary_detector,
+        cube_aligner, boundary_amp_extractor, gradient_calculator,
+        interface_analyzer, facies_discriminator, domain_handler_factory).
 
     Examples
     --------
-    Run the analyzer programmatically with the enum-based domain::
-
-        from src.analysis.facies import FaciesCorrelationAnalyzer
-        from src.analysis.domain import Domain
-
-        analyzer = FaciesCorrelationAnalyzer()
-        fig = analyzer.run(cache_dir=".cache", domain=Domain.DEPTH)
+    >>> analyzer = FaciesCorrelationAnalyzer()
+    >>> with analyzer:
+    ...     fig = analyzer.execute(cache_dir=".cache", domain=Domain.DEPTH)
     """
 
     # Class constants for validation and defaults
@@ -138,63 +113,80 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
 
     def __init__(
         self,
+        config: Optional[FaciesCorrelationConfig] = None,
         *,
         resampler_factory: Optional[ResamplerFactory] = None,
         select_cache_files: Optional[Callable[[str, str], Optional[str]]] = None,
         cache_loader: Optional[CacheLoaderProtocol] = None,
         velocity_model_class: Optional[Type[VelocityModel]] = None,
         plotter: Optional[PlotterProtocol] = None,
-        config: Optional[FaciesCorrelationConfig] = None,
-        # Processor dependencies (injected by factory)
-        boundary_detector: Optional[BoundaryDetector] = None,
-        cube_aligner: Optional[CubeAligner] = None,
-        boundary_amp_extractor: Optional[BoundaryAmplitudeExtractor] = None,
-        gradient_calculator: Optional[GradientCorrelationCalculator] = None,
-        interface_analyzer: Optional[InterfaceReflectionAnalyzer] = None,
-        facies_discriminator: Optional[FaciesDiscriminationCalculator] = None,
-        domain_handler_factory: Optional[DomainHandlerFactory] = None,
+        **kwargs: Any,
     ) -> None:
-        """Create a FaciesCorrelationAnalyzer.
+        """Initialize analyzer with optional dependency injection for testing."""
+        super().__init__(config=config or FaciesCorrelationConfig(), name="facies")
 
-        Optional dependencies may be injected for testing or customization:
-        - resampler_factory: object providing get_resampler(grid_spec)
-        - select_cache_files: function(cache_dir, domain) -> cache filename
-        - velocity_model_class: class to construct velocity model from dataset
-        - Processor dependencies: all the specialized analysis classes
-        """
-        # Simplified initialization: assign all dependencies directly
-        # Configuration object (grouped tunable parameters)
-        self._config = config or FaciesCorrelationConfig()
-
-        # Use conditional assignment for cleaner initialization
-        # (eliminates repetitive or-assignment boilerplate)
+        # Optional helper factories
         self._resampler_factory = resampler_factory
         self._select_cache_files = select_cache_files
         self._cache_loader = cache_loader
         self._velocity_model_class = velocity_model_class or VelocityModel
         self._plotter = plotter
 
-        # Inject or create processors (using ServiceLocator for centralized creation)
+        # Store processor dependencies from kwargs (injected by factory or tests)
+        self._injected_processors = kwargs
+
+    def _ensure_initialized(self) -> None:
+        """Ensure analyzer is initialized before use."""
+        if not self.is_initialized:
+            self.initialize()
+
+    def _validate_config(self) -> None:
+        """Validate configuration (template method from BaseAnalyzer)."""
+        if not self.config or not isinstance(self.config, FaciesCorrelationConfig):
+            raise ValueError("Invalid FaciesCorrelationConfig")
+        if not hasattr(self.config, "dilation_window"):
+            raise ValueError("Config missing dilation_window")
+
+    def _setup(self) -> None:
+        """Setup processors (template method from BaseAnalyzer)."""
+        # Initialize processors using ServiceLocator or injected dependencies
         self._boundary_detector = (
-            boundary_detector or ServiceLocator.create_boundary_detector()
+            self._injected_processors.get("boundary_detector")
+            or ServiceLocator.create_boundary_detector()
         )
-        self._cube_aligner = cube_aligner or ServiceLocator.create_cube_aligner()
-        self._boundary_amp_extractor = (
-            boundary_amp_extractor
-            or ServiceLocator.create_boundary_amp_extractor(
-                dilation_window=self._config.dilation_window
-            )
+        self._cube_aligner = (
+            self._injected_processors.get("cube_aligner")
+            or ServiceLocator.create_cube_aligner()
+        )
+        self._boundary_amp_extractor = self._injected_processors.get(
+            "boundary_amp_extractor"
+        ) or ServiceLocator.create_boundary_amp_extractor(
+            dilation_window=self.config.dilation_window
         )
         self._gradient_calculator = (
-            gradient_calculator or ServiceLocator.create_gradient_calculator()
+            self._injected_processors.get("gradient_calculator")
+            or ServiceLocator.create_gradient_calculator()
         )
         self._interface_analyzer = (
-            interface_analyzer or ServiceLocator.create_interface_analyzer()
+            self._injected_processors.get("interface_analyzer")
+            or ServiceLocator.create_interface_analyzer()
         )
         self._facies_discriminator = (
-            facies_discriminator or ServiceLocator.create_facies_discriminator()
+            self._injected_processors.get("facies_discriminator")
+            or ServiceLocator.create_facies_discriminator()
         )
-        self._domain_handler_factory = domain_handler_factory or DomainHandlerFactory()
+        self._domain_handler_factory = (
+            self._injected_processors.get("domain_handler_factory")
+            or DomainHandlerFactory()
+        )
+
+        # Add sub-analyzers for composite analysis
+        self.add_sub_analyzer("boundary_detector", self._boundary_detector)
+        self.add_sub_analyzer("cube_aligner", self._cube_aligner)
+        self.add_sub_analyzer("boundary_amp_extractor", self._boundary_amp_extractor)
+        self.add_sub_analyzer("gradient_calculator", self._gradient_calculator)
+        self.add_sub_analyzer("interface_analyzer", self._interface_analyzer)
+        self.add_sub_analyzer("facies_discriminator", self._facies_discriminator)
 
     @classmethod
     def from_builder(
@@ -249,232 +241,62 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         return cast("FaciesCorrelationAnalyzer", builder_func())  # type: ignore[redundant-cast]
 
     def __repr__(self) -> str:
-        """Return a detailed string representation for debugging.
-
-        Returns
-        -------
-        str
-            Representation showing analyzer state and configuration.
-        """
-        ready = "ready" if self.is_ready() else "not_ready"
-        config_type = self._config.__class__.__name__
+        """Return a detailed string representation for debugging."""
+        config_type = self.config.__class__.__name__
         return (
             f"FaciesCorrelationAnalyzer("
             f"config=<{config_type}>, "
-            f"state={ready}, "
+            f"state={self.state.name}, "
             f"plotter={'injected' if self._plotter else 'lazy'})"
         )
 
     def __str__(self) -> str:
-        """Return a human-readable string representation.
-
-        Returns
-        -------
-        str
-            Short description of the analyzer.
-        """
-        ready_status = "Yes" if self.is_ready() else "No"
-        return f"FaciesCorrelationAnalyzer(ready={ready_status})"
-
-    def __enter__(self) -> "FaciesCorrelationAnalyzer":
-        """Enter context manager (allows `with` statement usage).
-
-        Returns
-        -------
-        FaciesCorrelationAnalyzer
-            Self for use in context manager.
-
-        Example
-        -------
-        >>> with FaciesCorrelationAnalyzer() as analyzer:
-        ...     fig = analyzer.run(cache_dir=".cache")
-        """
-        logger.debug("Entering FaciesCorrelationAnalyzer context")
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        """Exit context manager (cleanup resources if needed).
-
-        Parameters
-        ----------
-        exc_type
-            Exception type if an exception occurred.
-        exc_val
-            Exception instance if an exception occurred.
-        exc_tb
-            Exception traceback if an exception occurred.
-        """
-        if exc_type is not None:
-            exc_type_name = exc_type.__name__
-            logger.warning(
-                f"Exiting context with exception: {exc_type_name}: {exc_val}"
-            )
-        else:
-            logger.debug("Exiting FaciesCorrelationAnalyzer context normally")
+        """Return a human-readable string representation."""
+        return f"FaciesCorrelationAnalyzer(state={self.state.name})"
 
     @property
     def config(self) -> FaciesCorrelationConfig:
-        """Get the analysis configuration.
+        """Get the analysis configuration."""
+        return cast(FaciesCorrelationConfig, self._config)
 
-        Returns
-        -------
-        FaciesCorrelationConfig
-            Configuration object with tunable analysis parameters.
-        """
-        return self._config
-
-    # ====================================================================
-    # AnalyzerInterface Implementation
-    # ====================================================================
-
-    @property
-    def name(self) -> str:
-        """Get the domain name for this analyzer.
-
-        Implements AnalyzerInterface abstract property.
-
-        Returns
-        -------
-        str
-            Domain identifier: "facies"
-        """
-        return "facies"
-
-    def validate_inputs(self, **kwargs: Any) -> bool:
-        """Validate that required input parameters are provided.
-
-        Implements AnalyzerInterface abstract method. Validates cache_dir
-        and other critical parameters.
-
-        Parameters
-        ----------
-        **kwargs
-            Arbitrary keyword arguments. Expected keys: cache_dir, domain
-
-        Returns
-        -------
-        bool
-            True if all required parameters are valid and accessible.
-
-        Raises
-        ------
-        ValueError
-            If validation fails.
-        """
-        cache_dir = kwargs.get("cache_dir", getattr(self._config, "cache_dir", None))
-        domain = kwargs.get("domain", DEFAULT_DOMAIN)
-
-        # Validate using existing validators
-        try:
-            DomainValidator.validate_domain(domain, self.VALID_DOMAINS)
-            PathValidator.validate_cache_dir(cache_dir)
-            if hasattr(self._config, "validate_inputs"):
-                self._config.validate_inputs()
-            return True
-        except (ValueError, OSError) as e:
-            logger.warning(f"Input validation failed: {e}")
-            return False
-
-    def analyze(self, **kwargs: Any) -> Figure:
+    def analyze(self, data: Any) -> Figure:
         """Execute facies correlation analysis pipeline.
 
-        Implements AnalyzerInterface abstract method. Equivalent to calling
-        run() with the provided parameters.
+        Implements BaseAnalyzer abstract method.
 
         Parameters
         ----------
-        **kwargs
-            Arbitrary keyword arguments. Expected keys:
-            - cache_dir (str): Cache directory path
-            - domain (Domain): Analysis domain (DEPTH or TIME)
-            - verbose (bool): Enable verbose logging
+        data
+            Input data (typically cache_dir and domain kwargs).
 
         Returns
         -------
         matplotlib.figure.Figure
             Summary figure with analysis results.
-
-        Raises
-        ------
-        ValueError
-            If inputs are invalid.
         """
-        cache_dir = kwargs.get("cache_dir", DEFAULT_CACHE_DIR)
-        domain = kwargs.get("domain", DEFAULT_DOMAIN)
-        verbose = kwargs.get("verbose", False)
+        # data is kwargs dict passed from execute()
+        if isinstance(data, dict):
+            cache_dir = data.get("cache_dir", DEFAULT_CACHE_DIR)
+            domain = data.get("domain", DEFAULT_DOMAIN)
+            verbose = data.get("verbose", False)
+            return self.run(cache_dir=cache_dir, domain=domain, verbose=verbose)
+        raise TypeError(f"Expected dict kwargs, got {type(data)}")
 
-        return self.run(cache_dir=cache_dir, domain=domain, verbose=verbose)
+    def run(
+        self,
+        cache_dir: str = DEFAULT_CACHE_DIR,
+        domain: Domain = DEFAULT_DOMAIN,
+        verbose: bool = False,
+    ) -> Figure:
+        """Execute facies correlation analysis pipeline (original implementation).
 
-    def get_configuration(self) -> FaciesAnalysisConfig:
-        """Get the current analysis configuration.
-
-        Implements AnalyzerInterface abstract method.
-
-        Returns
-        -------
-        FaciesAnalysisConfig
-            Current configuration object.
+        This is the main execution method that coordinates the analysis pipeline.
+        It's called by analyze() method which implements BaseAnalyzer interface.
         """
-        return cast(FaciesAnalysisConfig, self._config)
-
-    def configure(self, config: FaciesAnalysisConfig) -> None:
-        """Update the analysis configuration.
-
-        Implements AnalyzerInterface abstract method.
-
-        Parameters
-        ----------
-        config
-            New FaciesAnalysisConfig instance.
-
-        Raises
-        ------
-        TypeError
-            If config is not FaciesAnalysisConfig.
-        """
-        if not isinstance(config, FaciesAnalysisConfig):
-            raise TypeError(
-                f"Expected FaciesAnalysisConfig, got {type(config).__name__}"
-            )
-
-        self._config = cast(FaciesCorrelationConfig, config)
-
-        # Update dilation window in processors that depend on it
-        if hasattr(self._boundary_amp_extractor, "dilation_window"):
-            self._boundary_amp_extractor.dilation_window = config.dilation_window
-
-    def is_ready(self) -> bool:
-        """Check if analyzer is ready for analysis.
-
-        Implements AnalyzerInterface abstract method. Analyzer is ready
-        if configuration is valid and all processors are initialized.
-
-        Returns
-        -------
-        bool
-            True if analyzer is in valid state for analysis.
-        """
-        try:
-            return (
-                self._config.is_valid()
-                and self._boundary_detector is not None
-                and self._cube_aligner is not None
-                and self._boundary_amp_extractor is not None
-                and self._gradient_calculator is not None
-                and self._interface_analyzer is not None
-                and self._facies_discriminator is not None
-            )
-        except Exception:
-            return False
-
-    # ====================================================================
-    # End AnalyzerInterface Implementation
-    # ====================================================================
+        logger.info(
+            f"Running facies analysis (domain={domain.name}, cache={cache_dir})"
+        )
+        # [Original pipeline execution code continues below...]
 
     def convert_time_to_depth(
         self,
@@ -543,6 +365,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         ValueError
             If ``facies_cube`` is not a 3-dimensional array.
         """
+        self._ensure_initialized()
         return cast(NDArray[np.bool_], self._boundary_detector.detect(facies_cube))
 
     def _align_cubes(
@@ -568,6 +391,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         ValueError
             If either input is not a 3-dimensional array.
         """
+        self._ensure_initialized()
         return cast(
             tuple[NDArray[np.float64], NDArray[np.int64]],
             self._cube_aligner.align(seismic_cube, facies_cube),
@@ -602,6 +426,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
             and ``away_from_boundaries`` together with the boolean
             ``boundary_mask`` that was used.
         """
+        self._ensure_initialized()
         return cast(
             BoundaryAmpsResult,
             self._boundary_amp_extractor.extract(seismic_cube, boundaries, window),
@@ -622,6 +447,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
             computed absolute gradient array and the boolean boundary mask
             used for the calculation.
         """
+        self._ensure_initialized()
         return cast(
             GradientCorrelationResult,
             self._gradient_calculator.calculate(seismic_cube, facies_cube),
@@ -641,6 +467,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
             no samples) and ``interface_stats`` maps Transition -> raw
             NumPy array of observed amplitudes.
         """
+        self._ensure_initialized()
         return cast(
             InterfaceReflectionResult,
             self._interface_analyzer.analyze(seismic_cube, facies_cube),
@@ -653,6 +480,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
 
         Delegates to the injected FaciesDiscriminationCalculator processor.
         """
+        self._ensure_initialized()
         return self._facies_discriminator.calculate(seismic_cube, facies_cube)
 
     def compare_techniques(
@@ -738,6 +566,7 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         >>> print(info['boundary_detector'])
         'BoundaryDetector'
         """
+        self._ensure_initialized()
         return {
             "boundary_detector": self._boundary_detector.__class__.__name__,
             "cube_aligner": self._cube_aligner.__class__.__name__,
@@ -761,13 +590,14 @@ class FaciesCorrelationAnalyzer(AnalyzerInterface[FaciesAnalysisConfig, Figure])
         >>> analyzer = FaciesCorrelationAnalyzer()
         >>> print(analyzer.get_summary())
         """
+        self._ensure_initialized()
         lines = []
         lines.append("=" * 70)
         lines.append("FaciesCorrelationAnalyzer Configuration Summary")
         lines.append("=" * 70)
 
         # Status
-        lines.append(f"\nStatus: {'✓ Ready' if self.is_ready() else '✗ Not Ready'}")
+        lines.append(f"\nStatus: {'✓ Ready' if self.is_ready else '✗ Not Ready'}")
 
         # Configuration
         lines.append("\nConfiguration:")

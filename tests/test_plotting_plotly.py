@@ -158,8 +158,8 @@ class TestPlotlyPlotterDataTypes:
 
         assert len(surfaces) > 0
 
-    def test_float64_data(self, plotter):
-        """Test with float64 data."""
+    def test_plotly_float64_data(self, plotter):
+        """Test plotly with float64 data."""
         cube = np.random.randn(8, 12, 16).astype(np.float64)
 
         surfaces = plotter.create_3d_volume(cube, (4, 6, 8))

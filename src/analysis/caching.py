@@ -44,7 +44,7 @@ from time import time
 from functools import wraps
 import logging
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

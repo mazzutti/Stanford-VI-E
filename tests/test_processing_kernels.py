@@ -326,8 +326,8 @@ class TestKernelsDataTypes:
         resample_depth_to_time_nearest(twt_irregular, data_depth, time_axis, out_array)
         assert out_array.dtype == np.int32
 
-    def test_float64_data(self):
-        """Test with float64 data."""
+    def test_kernels_float64_data(self):
+        """Test kernels with float64 data."""
         ni, nj, nz = 1, 1, 3
         nt = 2
 

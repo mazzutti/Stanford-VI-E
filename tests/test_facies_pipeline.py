@@ -9,6 +9,7 @@ Tests focus on:
 - Error handling and edge cases
 - Complex workflows
 """
+
 # mypy: ignore-errors
 
 
@@ -391,8 +392,8 @@ class TestAnalysisPipelineDataTypes:
         data = np.random.rand(10, 10, 10).astype(np.float32)
         assert data.dtype == np.float32
 
-    def test_float64_data(self):
-        """Test with float64 data."""
+    def test_facies_pipeline_float64_data(self):
+        """Test facies pipeline with float64 data."""
         data = np.random.rand(10, 10, 10).astype(np.float64)
         assert data.dtype == np.float64
 

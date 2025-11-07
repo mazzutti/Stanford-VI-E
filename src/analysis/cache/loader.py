@@ -356,7 +356,7 @@ class CacheLoader:
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        _exc_tb: Optional[TracebackType],
     ) -> None:
         """Exit context manager for CacheLoader.
 
@@ -369,7 +369,7 @@ class CacheLoader:
             The exception type if an exception occurred, None otherwise.
         exc_val : Optional[Exception]
             The exception instance if an exception occurred, None otherwise.
-        exc_tb : Optional[TracebackType]
+        _exc_tb : Optional[TracebackType]
             The traceback if an exception occurred, None otherwise.
 
         Returns
@@ -590,9 +590,6 @@ class CacheLoader:
     ) -> Union[NDArray[np.float64], NpzFile]:
         """Load a file using the configured numpy loader.
 
-        Attempts to load with allow_pickle=False for security. Falls back to
-        loading without this parameter for compatibility with older NumPy versions.
-
         Parameters
         ----------
         path : Path
@@ -613,15 +610,9 @@ class CacheLoader:
             f"with mmap_mode='{mmap_mode}'" if mmap_mode else "without memory mapping"
         )
         logger.debug(f"Loading file {path.name} {mmap_str}")
-        try:
-            if mmap_mode is not None:
-                return self._np_load(str(path), mmap_mode=mmap_mode, allow_pickle=False)
-            return self._np_load(str(path), allow_pickle=False)
-        except TypeError:
-            logger.debug(
-                "NumPy version doesn't support allow_pickle, retrying without it"
-            )
-            return self._np_load(str(path))
+        if mmap_mode is not None:
+            return self._np_load(str(path), mmap_mode=mmap_mode, allow_pickle=False)
+        return self._np_load(str(path), allow_pickle=False)
 
     def _extract_array_from_archive(
         self, archive: NpzFile

@@ -5,8 +5,6 @@ all rock physics computations using composition with domain-specific
 computer and analyzer classes.
 """
 
-from __future__ import annotations
-
 import logging
 import os
 from typing import Any, Dict, Optional, Sequence, cast, TypeVar
@@ -31,6 +29,7 @@ from src.analysis.rock_physics.discrimination import (
     AttributeDiscriminationAnalyzer,
     DiscriminationResult,
 )
+from src.core import BaseAnalyzer, CompositeMixin
 
 logger = logging.getLogger(__name__)
 
@@ -117,20 +116,66 @@ class RockPhysicsConstants:
     }
 
 
-class RockPhysicsAnalyzer:
+class RockPhysicsAnalyzer(
+    CompositeMixin, BaseAnalyzer[Dict[str, Any], Dict[str, FloatingArray]]
+):
     """Orchestrates rock physics attribute computation and analysis.
 
     This class uses composition with domain-specific analyzers to provide
-    a unified interface for computing AVO attributes, Lamé parameters
+    a unified interface for computing AVO attributes, Lamé parameters,
     fluid factors, and discrimination analysis.
+
+    Uses BaseAnalyzer lifecycle management for consistent initialization,
+    error handling, and resource cleanup. Implements CompositeMixin for
+    sub-analyzer composition.
+
+    Examples
+    --------
+    >>> analyzer = RockPhysicsAnalyzer()
+    >>> with analyzer:
+    ...     results = analyzer.execute(vp=vp_array, vs=vs_array, rho=rho_array)
     """
 
-    def __init__(self) -> None:
-        """Initialize the analyzer with domain-specific computers."""
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize analyzer with rock physics computers."""
+        super().__init__(config=config or {}, name="rock_physics")
+        # Store computer instances for lazy initialization in _setup()
+        self._avo_computer = None
+        self._lambda_mu_computer = None
+        self._fluid_computer = None
+        self._discrimination_analyzer = None
+
+    def _validate_config(self) -> None:
+        """Validate configuration (template method from BaseAnalyzer)."""
+        # Config is optional for rock physics analyzer
+        if self.config and not isinstance(self.config, dict):
+            raise ValueError("Config must be a dict or None")
+
+    def _setup(self) -> None:
+        """Setup domain-specific computers (template method from BaseAnalyzer)."""
         self._avo_computer = AVOAttributesComputer()
         self._lambda_mu_computer = LambdaMuRhoComputer()
         self._fluid_computer = FluidFactorComputer()
         self._discrimination_analyzer = AttributeDiscriminationAnalyzer()
+
+        # Add sub-analyzers for composite analysis
+        self.add_sub_analyzer("avo_computer", self._avo_computer)
+        self.add_sub_analyzer("lambda_mu_computer", self._lambda_mu_computer)
+        self.add_sub_analyzer("fluid_computer", self._fluid_computer)
+        self.add_sub_analyzer("discrimination_analyzer", self._discrimination_analyzer)
+
+    def _ensure_initialized(self) -> None:
+        """Ensure analyzer is initialized before accessing processors.
+
+        Automatically initializes the analyzer on first use if not already done.
+        """
+        if not self.is_initialized:
+            self.initialize()
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        """Get the analysis configuration."""
+        return cast(Dict[str, Any], self._config)
 
     @classmethod
     def from_builder(cls, builder_func: Optional[Any] = None) -> "RockPhysicsAnalyzer":
@@ -176,6 +221,40 @@ class RockPhysicsAnalyzer:
 
         return cast(RockPhysicsAnalyzer, builder_func())
 
+    def analyze(self, data: Any) -> Dict[str, FloatingArray]:
+        """Execute rock physics analysis pipeline.
+
+        Implements BaseAnalyzer abstract method.
+
+        Parameters
+        ----------
+        data
+            Input data dict with keys: vp, vs, rho, and optional angles_deg, k
+
+        Returns
+        -------
+        Dict[str, FloatingArray]
+            Dictionary with computed rock physics attributes.
+        """
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected dict, got {type(data)}")
+
+        if not self._avo_computer:
+            self.initialize()
+
+        vp = data.get("vp")
+        vs = data.get("vs")
+        rho = data.get("rho")
+
+        if vp is None or vs is None or rho is None:
+            raise ValueError("Missing required keys: vp, vs, rho")
+
+        # Execute main computations
+        avo_results = self.compute_avo_attributes(
+            vp, vs, rho, angles_deg=data.get("angles_deg", DEFAULT_AVO_ANGLES_DEG)
+        )
+        return avo_results
+
     def compute_avo_attributes(
         self,
         vp: FloatingArray,
@@ -193,6 +272,7 @@ class RockPhysicsAnalyzer:
         Returns:
             Dict with keys: 'intercept', 'gradient', 'product', 'scaled_gradient'
         """
+        self._ensure_initialized()
         return self._avo_computer.compute(vp, vs, rho, angles_deg=angles_deg)
 
     def compute_lambda_mu_rho(
@@ -208,6 +288,7 @@ class RockPhysicsAnalyzer:
         Returns:
             Dict with keys: 'lambda_rho', 'mu_rho', 'lambda_mu_ratio'
         """
+        self._ensure_initialized()
         return self._lambda_mu_computer.compute(vp, vs, rho)
 
     def compute_fluid_factor(
@@ -226,6 +307,7 @@ class RockPhysicsAnalyzer:
         Returns:
             Fluid factor volume
         """
+        self._ensure_initialized()
         return self._fluid_computer.compute(lambda_rho, mu_rho, k=k)
 
     def analyze_attribute_discrimination(
@@ -241,6 +323,7 @@ class RockPhysicsAnalyzer:
         Returns:
             Dictionary with discrimination statistics (Cohen's d, correlation, SNR, etc.)
         """
+        self._ensure_initialized()
         return self._discrimination_analyzer.analyze_single(
             attribute, facies, name=name
         )
@@ -257,22 +340,14 @@ class RockPhysicsAnalyzer:
         Returns:
             Dict mapping attribute names to their discrimination statistics
         """
+        self._ensure_initialized()
         return self._discrimination_analyzer.analyze_multiple(attribute_results, facies)
 
     def _load_dataset_manager(
         self, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
-        """Load dataset using DatasetManagerFactory with fallback."""
-        from src.analysis.types.protocols import DatasetManagerFactory
-
-        try:
-            # Type ignore: DatasetManagerFactory is a Protocol, but at runtime
-            # it's used as a concrete implementation (mypy limitation)
-            factory = cast(Any, DatasetManagerFactory())  # type: ignore[misc]
-            return cast(DatasetManager, factory.create(data_path, file_map, grid_spec))
-        except Exception as e:
-            logger.debug(f"DatasetManagerFactory failed: {e}, using fallback")
-            return DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
+        """Load dataset using the DatasetManager factory."""
+        return DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
 
     def _build_attribute_results(
         self,

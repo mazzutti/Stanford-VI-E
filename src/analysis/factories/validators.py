@@ -1,7 +1,6 @@
 """Type validation utilities for builder pattern.
 
-This module provides type validation helpers that handle both regular types
-and Protocol types with duck-typing fallback.
+This module provides type validation helpers that handle regular types.
 
 Exception classes (BuilderValidationError, BuilderFrozenError) have been moved
 to src.analysis.exceptions for centralized exception handling.
@@ -14,11 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class TypeValidator:
-    """Validates values against expected types with Protocol support.
+    """Validates values against expected types.
 
-    This class handles validation of regular types and Protocol types.
-    For Protocol types, it uses duck-typing validation via hasattr checks
-    instead of isinstance, since Protocols don't support isinstance directly.
+    This class handles validation of regular types.
 
     Example Usage:
         >>> validator = TypeValidator()
@@ -29,14 +26,14 @@ class TypeValidator:
 
     @staticmethod
     def validate(value: object, expected_type: object, field_name: str) -> None:
-        """Validate value against expected type with proper Protocol handling.
+        """Validate value against expected type.
 
         Parameters
         ----------
         value
             The value to validate.
         expected_type
-            The expected type (could be a regular type or Protocol).
+            The expected type.
         field_name
             Name of the field being validated (for error messages).
 
@@ -66,39 +63,9 @@ class TypeValidator:
 
         # For regular types, use isinstance
         if isinstance(expected_type, type):
-            try:
-                if not isinstance(value, expected_type):
-                    raise TypeError(
-                        f"Expected {expected_type.__name__} for '{field_name}', "
-                        f"got {type(value).__name__}"
-                    )
-                return
-            except TypeError:
-                # Fallback for edge cases
-                logger.warning(
-                    f"Could not validate type for '{field_name}' against "
-                    f"{expected_type}. Using duck-typing validation."
+            if not isinstance(value, expected_type):
+                raise TypeError(
+                    f"Expected {expected_type.__name__} for '{field_name}', "
+                    f"got {type(value).__name__}"
                 )
-
-        # For Protocol types (which don't work with isinstance)
-        # Use duck-typing: check if the value has the expected attributes/methods
-        try:
-            # Try to get the Protocol's expected attributes
-            if hasattr(expected_type, "__protocol_attrs__"):
-                required_attrs = getattr(expected_type, "__protocol_attrs__", [])
-                missing_attrs = [
-                    attr for attr in required_attrs if not hasattr(value, attr)
-                ]
-                if missing_attrs:
-                    logger.warning(
-                        f"Value for '{field_name}' may not implement all Protocol methods: "
-                        f"missing {missing_attrs}"
-                    )
-            else:
-                # Generic warning for unknown Protocol-like types
-                logger.debug(
-                    f"Skipping strict validation for '{field_name}' "
-                    f"(assumed Protocol type)"
-                )
-        except Exception as e:
-            logger.debug(f"Could not validate Protocol type for '{field_name}': {e}")
+            return

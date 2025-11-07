@@ -107,7 +107,7 @@ def _attach_event_bus_to_analyzer(
             # Publish to event bus for decoupled handling
             logger.debug(f"Publishing result event: {result_type}")
 
-        def on_data_changed(self, data_type: str, new_data: Any):
+        def on_data_changed(self, data_type: str, _new_data: Any):
             """Publish data changed event."""
             logger.debug(f"Publishing data changed event: {data_type}")
 

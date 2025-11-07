@@ -119,7 +119,7 @@ class AVOValidator(Validator):
 
     def validate(
         self, *args: NDArray[Any], **kwargs: NDArray[Any]
-    ) -> dict[str, float | bool | list[float] | None]:
+    ) -> AVOValidityReport:
         """Validate AVO linearization conditions.
 
         Args:
@@ -128,7 +128,7 @@ class AVOValidator(Validator):
             rho: Density array
 
         Returns:
-            AVOValidityReport as dictionary with results
+            AVOValidityReport with validation results
         """
         # Extract positional or keyword arguments
         if args:
@@ -180,7 +180,7 @@ class AVOValidator(Validator):
             angle_flag=angle_flag,
             suggested_angles=suggested_angles,
         )
-        return report.to_dict()
+        return report
 
     def is_valid(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> bool:
         """Quick check if conditions are acceptable.

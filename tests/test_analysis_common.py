@@ -735,13 +735,13 @@ def test_hash_allows_use_in_collections() -> None:
 # =============================================================================
 
 
-class TestIntegration:
+class TestAnalysisCommonIntegration:
     """Integration tests combining all OOP improvements."""
 
     def test_analyzer_with_registry_and_pipeline(self):
         """Test using analyzer with registry and pipeline."""
         from src.analysis.base import AnalyzerInterface, AnalysisConfig
-        from src.analysis.processors.registry import ProcessorRegistry
+        from src.analysis.processors.management import ProcessorRegistry
         from src.analysis.pipelines.orchestrator import Pipeline, PipelineStage
         from typing import Dict
 
@@ -838,7 +838,7 @@ class TestIntegration:
     def test_polymorphic_usage_patterns(self):
         """Test polymorphic usage across components."""
         from src.analysis.base import AnalyzerInterface, AnalysisConfig
-        from src.analysis.processors.registry import ProcessorRegistry
+        from src.analysis.processors.management import ProcessorRegistry
         from typing import Dict
 
         class BaseConfig(AnalysisConfig):

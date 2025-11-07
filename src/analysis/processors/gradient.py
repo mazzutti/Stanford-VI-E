@@ -8,12 +8,13 @@ from numpy.typing import NDArray
 
 from src.analysis.models import GradientCorrelationResult
 
-from .base import BaseProcessor
+from src.core import BaseProcessor
 from .boundary import BoundaryDetector
-from .config import ProcessorConfig
+from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
+from .operations import AlignmentOps
 from .types import CorrelationFunction, CorrelationResult
-from .utils import ProcessorUtils
+from .management import compute_vertical_gradient, flatten_and_filter_finite
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +116,12 @@ class GradientCorrelationCalculator(BaseProcessor):
         ...     )
         """
         # Align/crop cubes to the same shape
-        seismic_aligned, facies_aligned = self._aligner.align(seismic_cube, facies_cube)
+        seismic_aligned, facies_aligned = AlignmentOps.align_cubes(
+            self._aligner, seismic_cube, facies_cube
+        )
 
         # Compute derivative along vertical (k) axis using consolidated helper
-        seismic_grad_abs = ProcessorUtils.compute_vertical_gradient(seismic_aligned)
+        seismic_grad_abs = compute_vertical_gradient(seismic_aligned)
 
         # Detect facies boundaries
         boundaries = self._detector.detect(facies_aligned)
@@ -166,8 +169,8 @@ class GradientCorrelationCalculator(BaseProcessor):
             (correlation_coefficient, p_value) or (nan, nan) on failure.
         """
         # Flatten and filter in composite operation
-        seismic_grad_valid, boundaries_valid = (
-            ProcessorUtils._flatten_and_filter_finite_static(seismic_grad, boundaries)
+        seismic_grad_valid, boundaries_valid = flatten_and_filter_finite(
+            seismic_grad, boundaries
         )
 
         if seismic_grad_valid is None or boundaries_valid is None:

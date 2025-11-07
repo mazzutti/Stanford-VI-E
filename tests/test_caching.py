@@ -6,6 +6,8 @@ Tests cover all cache strategies, statistics, thread safety, and invalidation.
 import pytest
 import time
 from threading import Thread
+from unittest.mock import patch
+from freezegun import freeze_time
 from src.analysis.caching import (
     LRUCache,
     LFUCache,
@@ -150,6 +152,7 @@ class TestLFUCache:
 # ============================================================================
 
 
+@pytest.mark.slow
 class TestTTLCache:
     """Tests for TTL cache implementation."""
 
@@ -160,6 +163,7 @@ class TestTTLCache:
         cache.set("key1", "value1")
         assert cache.get("key1") == "value1"
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_ttl_expiration(self):
         """Test that expired items are removed."""
         cache = TTLCache(ttl_seconds=1)
@@ -167,9 +171,11 @@ class TestTTLCache:
         cache.set("key1", "value1")
         assert cache.get("key1") == "value1"
 
-        time.sleep(1.1)
-        assert cache.get("key1") is None
+        # Move time forward by 1.1 seconds
+        with freeze_time("2025-01-01 12:00:01.1"):
+            assert cache.get("key1") is None
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_ttl_custom_ttl(self):
         """Test custom TTL per item."""
         cache = TTLCache(ttl_seconds=10)
@@ -177,9 +183,11 @@ class TestTTLCache:
         cache.set("key1", "value1", ttl=1)
         assert cache.get("key1") == "value1"
 
-        time.sleep(1.1)
-        assert cache.get("key1") is None
+        # Move time forward by 1.1 seconds
+        with freeze_time("2025-01-01 12:00:01.1"):
+            assert cache.get("key1") is None
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_ttl_stats(self):
         """Test statistics with expiration."""
         cache = TTLCache(ttl_seconds=1, max_size=10)
@@ -188,9 +196,10 @@ class TestTTLCache:
         cache.set("key2", "value2")
         assert cache.size() == 2
 
-        time.sleep(1.1)
-        # Size should only count non-expired
-        assert cache.size() == 0
+        # Move time forward by 1.1 seconds
+        with freeze_time("2025-01-01 12:00:01.1"):
+            # Size should only count non-expired
+            assert cache.size() == 0
 
 
 # ============================================================================
@@ -371,6 +380,7 @@ class TestCacheDecorator:
         stats = func.stats()
         assert stats.evictions == 1
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_cache_decorator_ttl_strategy(self):
         """Test decorator with TTL strategy."""
 
@@ -381,11 +391,11 @@ class TestCacheDecorator:
         result1 = func(5)
         assert result1 == 25
 
-        time.sleep(1.1)
-
-        # Should recompute after TTL
-        result2 = func(5)
-        assert result2 == 25
+        # Move time forward past TTL
+        with freeze_time("2025-01-01 12:00:01.1"):
+            # Should recompute after TTL
+            result2 = func(5)
+            assert result2 == 25
 
 
 # ============================================================================

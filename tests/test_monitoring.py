@@ -503,15 +503,15 @@ class TestMonitorDecorator:
         metrics = MetricsCollector()
 
         @monitor(logger=logger, metrics=metrics)
-        def test_function():
+        def monitored_service_function():
             time.sleep(0.01)
             return "result"
 
-        result = test_function()
+        result = monitored_service_function()
 
         assert result == "result"
         summary = metrics.get_metrics_summary()
-        assert "test_function_duration" in summary
+        assert "monitored_service_function_duration" in summary
 
     def test_monitor_decorator_with_args(self):
         """Test monitor decorator with function arguments."""
@@ -546,7 +546,7 @@ class TestMonitorDecorator:
         assert result == 42
 
 
-class TestThreadSafety:
+class TestMonitoringThreadSafety:
     """Test thread-safety of monitoring components."""
 
     def test_logger_thread_safety(self):
@@ -605,7 +605,7 @@ class TestThreadSafety:
         assert counter["value"] == 15
 
 
-class TestIntegration:
+class TestMonitoringIntegration:
     """Integration tests for monitoring components."""
 
     def test_full_monitoring_workflow(self):

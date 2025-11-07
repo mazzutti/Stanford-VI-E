@@ -121,8 +121,7 @@ class HeaderPrinter:
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
+        exc_val: BaseException | None, _exc_tb: object,
     ) -> None:
         """Exit context manager gracefully.
 

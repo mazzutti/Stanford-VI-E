@@ -10,6 +10,7 @@ import logging
 
 from src.processing.resampling.backends._base import (
     BackendResult,
+    BackendError,
 )
 from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling.backends._manager import BackendManager
@@ -93,7 +94,7 @@ class BatchedInterpolatorBackend:
         twt_padded = plan.twt_padded()
         depth_padded_flat = plan.prepare_depth_padded_flat(data)
         if BatchedInterpolator_runtime is None:
-            raise RuntimeError("BatchedInterpolator not available")
+            raise BackendError("BatchedInterpolator not available")
         bi = BatchedInterpolator_runtime()
 
         out = bi.interpolate(twt_padded, depth_padded_flat)

@@ -15,6 +15,7 @@ Tests cover:
 import pytest
 import time
 from threading import Thread
+from freezegun import freeze_time
 from src.analysis.patterns.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerState,
@@ -26,6 +27,7 @@ from src.analysis.patterns.circuit_breaker import (
 )
 
 
+@pytest.mark.slow
 class TestCircuitBreakerStates:
     """Test state transitions and basic functionality."""
 
@@ -69,6 +71,7 @@ class TestCircuitBreakerStates:
         with pytest.raises(CircuitBreakerOpen):
             breaker.call(failing_func)
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_open_to_half_open_after_timeout(self):
         """Circuit transitions to HALF_OPEN after recovery timeout."""
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
@@ -82,12 +85,12 @@ class TestCircuitBreakerStates:
 
         assert breaker.state == CircuitBreakerState.OPEN
 
-        # Wait for recovery timeout
-        time.sleep(1.1)
+        # Move time forward past recovery timeout
+        with freeze_time("2025-01-01 12:00:01.1"):
+            # Accessing state should trigger transition
+            assert breaker.state == CircuitBreakerState.HALF_OPEN
 
-        # Accessing state should trigger transition
-        assert breaker.state == CircuitBreakerState.HALF_OPEN
-
+    @freeze_time("2025-01-01 12:00:00")
     def test_half_open_to_closed_on_success(self):
         """Successful call in HALF_OPEN state closes circuit."""
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
@@ -102,15 +105,16 @@ class TestCircuitBreakerStates:
         with pytest.raises(ValueError):
             breaker.call(failing_func)
 
-        # Wait for recovery timeout and transition to HALF_OPEN
-        time.sleep(1.1)
-        assert breaker.state == CircuitBreakerState.HALF_OPEN
+        # Move time forward past recovery timeout
+        with freeze_time("2025-01-01 12:00:01.1"):
+            assert breaker.state == CircuitBreakerState.HALF_OPEN
 
-        # Successful call closes circuit
-        result = breaker.call(success_func)
-        assert result == "success"
-        assert breaker.state == CircuitBreakerState.CLOSED
+            # Successful call closes circuit
+            result = breaker.call(success_func)
+            assert result == "success"
+            assert breaker.state == CircuitBreakerState.CLOSED
 
+    @freeze_time("2025-01-01 12:00:00")
     def test_half_open_to_open_on_failure(self):
         """Failed call in HALF_OPEN state reopens circuit."""
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
@@ -122,15 +126,15 @@ class TestCircuitBreakerStates:
         with pytest.raises(ValueError):
             breaker.call(failing_func)
 
-        # Wait for recovery timeout and transition to HALF_OPEN
-        time.sleep(1.1)
-        assert breaker.state == CircuitBreakerState.HALF_OPEN
+        # Move time forward past recovery timeout
+        with freeze_time("2025-01-01 12:00:01.1"):
+            assert breaker.state == CircuitBreakerState.HALF_OPEN
 
-        # Failed call reopens circuit
-        with pytest.raises(ValueError):
-            breaker.call(failing_func)
+            # Failed call reopens circuit
+            with pytest.raises(ValueError):
+                breaker.call(failing_func)
 
-        assert breaker.state == CircuitBreakerState.OPEN
+            assert breaker.state == CircuitBreakerState.OPEN
 
 
 class TestCircuitBreakerStatistics:
@@ -501,13 +505,14 @@ class TestCircuitBreakerThreadSafety:
         assert breaker.state == CircuitBreakerState.OPEN
 
 
+@pytest.mark.slow
 class TestCircuitBreakerIntegration:
     """Integration tests combining multiple features."""
 
     def test_full_lifecycle(self):
         """Test complete circuit breaker lifecycle."""
         breaker = CircuitBreaker(
-            failure_threshold=3, recovery_timeout=1, name="integration_test"
+            failure_threshold=3, recovery_timeout=0.5, name="integration_test"
         )
 
         call_count = 0
@@ -536,8 +541,8 @@ class TestCircuitBreakerIntegration:
         with pytest.raises(CircuitBreakerOpen):
             breaker.call(simulate_service)
 
-        # Phase 3: Wait for recovery
-        time.sleep(1.1)
+        # Phase 3: Wait for recovery with reduced timeout
+        time.sleep(0.6)
         assert breaker.state == CircuitBreakerState.HALF_OPEN
 
         # Phase 4: Successful recovery closes circuit
@@ -559,7 +564,9 @@ class TestCircuitBreakerIntegration:
 
         call_count = 0
 
-        @circuit_breaker(name="lifecycle_test", failure_threshold=2, recovery_timeout=1)
+        @circuit_breaker(
+            name="lifecycle_test", failure_threshold=2, recovery_timeout=0.5
+        )
         def risky_operation():
             nonlocal call_count
             call_count += 1
@@ -577,9 +584,8 @@ class TestCircuitBreakerIntegration:
         with pytest.raises(CircuitBreakerOpen):
             risky_operation()
 
-        # Wait for recovery
-        time.sleep(1.1)
-
+        # Wait for recovery with reduced timeout
+        time.sleep(0.6)
         # Recovery
         result = risky_operation()
         assert result == "recovered"

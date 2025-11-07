@@ -223,7 +223,7 @@ class StructuredLogger:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, _exc_tb):
         """Context manager exit."""
         pass
 
@@ -399,7 +399,7 @@ class PerformanceMonitor:
             self.logger.debug(f"Operation started: {self.name}")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, _exc_tb):
         """Exit context - operation completed."""
         success = exc_type is None
         error = str(exc_val) if exc_val else None

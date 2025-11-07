@@ -589,7 +589,7 @@ class TestEdgeCasesAndErrors:
 # =============================================================================
 
 
-class TestIntegration:
+class TestCacheLoaderIntegration:
     """End-to-end integration tests."""
 
     def test_workflow_select_and_load(self, tmp_path: Path) -> None:

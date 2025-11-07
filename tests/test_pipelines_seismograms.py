@@ -439,7 +439,7 @@ class TestMain:
         assert "completed successfully" in caplog.text
 
 
-class TestIntegration:
+class TestPipelinesSeismogramsIntegration:
     """Integration tests for SeismogramAnalyzer."""
 
     def test_multiple_instances_have_separate_loggers(self, mock_analysis):

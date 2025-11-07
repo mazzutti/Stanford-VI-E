@@ -171,7 +171,7 @@ class TestAVOAttributesComputer:
 class TestFluidFactorComputer:
     """Tests for FluidFactorComputer."""
 
-    def test_computer_initialization(self):
+    def test_computer_initialization_fluid_factor_computer(self):
         """Test FluidFactorComputer initialization."""
         computer = FluidFactorComputer()
         assert computer is not None
@@ -275,7 +275,7 @@ class TestFluidFactorComputer:
 class TestLambdaMuRhoComputer:
     """Tests for LambdaMuRhoComputer."""
 
-    def test_computer_initialization(self):
+    def test_computer_initialization_lambda_mu_rho_computer(self):
         """Test LambdaMuRhoComputer initialization."""
         computer = LambdaMuRhoComputer()
         assert computer is not None
