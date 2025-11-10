@@ -18,6 +18,7 @@ __all__ = [
     "plot_3d_interactive",
     "plot_3d_slices",
     "plot_rock_physics_attributes",
+    "plot_original_properties",
     "analysis_rock_physics",
     "analyze_facies_correlation",
     "seismograms",
@@ -143,31 +144,67 @@ def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
 
 
 @tool
-def plot_rock_physics_attributes(argv: list[str] | None = None) -> dict[str, str]:
-    """Rock physics attribute visualization.
+def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -> None:
+    """Generate PNG plots for rock physics attributes.
+
+    Creates individual plots for each attribute (Lambda-Rho, Mu-Rho, AVO Intercept,
+    AVO Gradient) plus a comprehensive comparison plot showing all attributes.
 
     Parameters
     ----------
-    argv : list[str] | None
-        Command line arguments
+    domain : str
+        Domain for visualization. Either "depth" or "time".
+        Default is "depth".
+    verbose : bool
+        Enable verbose logging. Default is False.
 
-    Returns
-    -------
-    dict[str, str]
-        Result with domain name
+    Raises
+    ------
+    FileNotFoundError
+        If cache files are missing
+    ValueError
+        If domain is not "depth" or "time"
+
+    Examples
+    --------
+    >>> # Generate depth domain rock physics plots
+    >>> plot_rock_physics_attributes(domain="depth")
+    [INFO] Successfully generated 5 plot(s)
+
+    >>> # Generate time domain plots with verbose logging
+    >>> plot_rock_physics_attributes(domain="time", verbose=True)
+    [DEBUG] Loading cache file: .cache/rock_physics_attributes_time.npz
+    [INFO] Successfully generated 5 plot(s)
     """
-    import argparse
+    import matplotlib
 
-    parser = argparse.ArgumentParser(description="Visualize rock physics attributes")
-    parser.add_argument(
-        "--domain",
-        choices=["depth", "time"],
-        default="depth",
-        help="Domain for visualization",
+    # Import OOP plotter
+    from src.plotting.property_plotter import RockPhysicsPropertyPlotter
+
+    matplotlib.use("Agg")  # Use non-interactive backend
+
+    # Validate domain
+    if domain not in ["depth", "time"]:
+        raise ValueError(f"domain must be 'depth' or 'time', got '{domain}'")
+
+    # Create plotter instance
+    plotter = RockPhysicsPropertyPlotter(
+        cache_dir=".cache",
+        domain=domain,
+        output_dir="docs/images",
+        verbose=verbose,
     )
-    args = parser.parse_args(argv)
 
-    return {"domain": args.domain}
+    # Generate individual attribute plots
+    generated_files = plotter.generate_all_plots(file_prefix="rock_physics")
+
+    # Generate multi-attribute comparison plot
+    comparison_file = plotter.generate_comparison_plot()
+    if comparison_file:
+        generated_files.append(comparison_file)
+
+    print(f"[INFO] Successfully generated {len(generated_files)} plot(s)")
+    print("[INFO] Rock physics attribute plotting complete!")
 
 
 @tool
@@ -193,7 +230,7 @@ def analysis_rock_physics(
     from src.analysis.io import HeaderPrinter
     from src.analysis.common import AnalysisCommon
 
-    analysis = AnalysisCommon()
+    analysis = AnalysisCommon.instance()
     long_desc = (
         "This pipeline clears caches, computes rock physics attributes and "
         "creates visualizations (AVO-focused)."
@@ -318,7 +355,7 @@ def analysis_seismograms() -> bool:
     from src.analysis.domain.enum import Domain
     from src.analysis.cache import CacheLoader
 
-    analysis = AnalysisCommon()
+    analysis = AnalysisCommon.instance()
 
     logger.info("%s", "=" * 70)
     logger.info("COMPLETE SEISMIC MODELING PIPELINE - DUAL DOMAIN")
@@ -384,7 +421,7 @@ def regenerate_seismograms() -> bool:
     from src.analysis.common import AnalysisCommon
     from src.analysis.pipelines import SeismogramAnalyzer
 
-    regen = AnalysisCommon()
+    regen = AnalysisCommon.instance()
 
     logger.info("%s", "=" * 70)
     logger.info("COMPLETE SEISMIC MODELING PIPELINE - DUAL DOMAIN")
@@ -406,6 +443,91 @@ def regenerate_seismograms() -> bool:
 
 
 @tool
+def plot_seismograms(
+    time_cache: str = ".cache/avo_time.npz",
+    depth_cache: str = ".cache/avo_depth.npz",
+    output_dir: str = "docs/images",
+) -> bool:
+    """Generate all seismogram PNG plots from cache files.
+
+    Generates plots for both time and depth domains:
+    - Full stack plots
+    - Individual angle stack plots
+
+    Parameters
+    ----------
+    time_cache : str
+        Path to time domain cache file, default: .cache/avo_time.npz
+    depth_cache : str
+        Path to depth domain cache file, default: .cache/avo_depth.npz
+    output_dir : str
+        Output directory for PNG files, default: docs/images
+
+    Returns
+    -------
+    bool
+        True if successful
+
+    Examples
+    --------
+    $ python -m src plot_seismograms
+    $ python -m src plot_seismograms --time_cache .cache/avo_time.npz
+    """
+    from pathlib import Path
+
+    from src.plotting import SeismogramPlotter
+
+    logger.info("%s", "=" * 70)
+    logger.info("SEISMOGRAM PLOT GENERATION")
+    logger.info("%s", "=" * 70)
+
+    cache_dir = Path(".cache")
+    out_dir = Path(output_dir)
+
+    # Find cache files (they may have hash suffixes)
+    time_files_list = list(cache_dir.glob("avo_time*.npz"))
+    depth_files_list = list(cache_dir.glob("avo_depth*.npz"))
+
+    if not time_files_list and not depth_files_list:
+        logger.error("No cache files found. Run 'analysis_seismograms' first.")
+        return False
+
+    plotter = SeismogramPlotter(verbose=True)
+
+    # Generate time domain plots
+    if time_files_list:
+        time_path = time_files_list[0]  # Use most recent
+        logger.info(f"\nGenerating TIME DOMAIN seismogram plots...")
+        logger.info(f"  Cache: {time_path}")
+        logger.info(f"  Output: {out_dir}")
+        time_files = plotter.plot_from_cache(time_path, out_dir, domain="time")
+        logger.info(
+            f"✓ Generated {len(time_files['angle_stacks']) + len(time_files['full_stack'])} time domain plot(s)\n"
+        )
+    else:
+        logger.warning(f"Time domain cache not found in {cache_dir}")
+
+    # Generate depth domain plots
+    if depth_files_list:
+        depth_path = depth_files_list[0]  # Use most recent
+        logger.info(f"\nGenerating DEPTH DOMAIN seismogram plots...")
+        logger.info(f"  Cache: {depth_path}")
+        logger.info(f"  Output: {out_dir}")
+        depth_files = plotter.plot_from_cache(depth_path, out_dir, domain="depth")
+        logger.info(
+            f"✓ Generated {len(depth_files['angle_stacks']) + len(depth_files['full_stack'])} depth domain plot(s)\n"
+        )
+    else:
+        logger.warning(f"Depth domain cache not found in {cache_dir}")
+
+    logger.info("%s", "=" * 70)
+    logger.info("✓ SEISMOGRAM PLOTS GENERATED SUCCESSFULLY")
+    logger.info("%s", "=" * 70)
+
+    return True
+
+
+@tool
 def regenerate_rock_physics() -> bool:
     """Regenerate rock physics attributes without interactive steps.
 
@@ -419,7 +541,7 @@ def regenerate_rock_physics() -> bool:
     except Exception:
         from src.analysis.common import AnalysisCommon
 
-        regen = AnalysisCommon()
+        regen = AnalysisCommon.instance()
 
     from src.analysis.io import HeaderPrinter
     from src.analysis.rock_physics import RockPhysicsAnalyzer
@@ -509,3 +631,221 @@ def rock_physics_attributes(
         )
     except Exception as exc:
         raise SystemExit(f"Rock physics delegator unavailable: {exc}") from exc
+
+
+@tool
+def resample_rock_physics_to_time(
+    cache_dir: str = ".cache",
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Resample rock physics attributes from depth domain to time domain.
+
+    This tool loads depth-domain rock physics attributes and resamples them
+    to the time domain using the P-wave velocity field. The time-domain
+    attributes are saved to a separate cache file for plotting.
+
+    Parameters
+    ----------
+    cache_dir : str
+        Cache directory path, default: .cache
+    verbose : bool
+        Enable verbose logging, default: False
+
+    Returns
+    -------
+    dict[str, Any]
+        Result dictionary with keys:
+        - success: boolean indicating success
+        - input_file: source depth attributes file
+        - output_file: destination time attributes file
+        - attributes_resampled: list of attribute names
+        - error: error message if failed (optional)
+    """
+    import numpy as np
+    from pathlib import Path
+
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+
+    cache_path = Path(cache_dir)
+
+    # Load depth domain rock physics attributes
+    rp_file = cache_path / "rock_physics_attributes.npz"
+    if not rp_file.exists():
+        error_msg = f"Depth attributes file not found: {rp_file}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg}
+
+    logger.info(f"Loading depth-domain rock physics attributes from {rp_file}")
+    rp_data = np.load(rp_file, allow_pickle=True)
+
+    # Load Vp from GSLIB file for resampling
+    logger.info("Loading Vp from GSLIB file for resampling...")
+    from src.io.loader import DatasetManager
+    from src.io.grid import GridSpec
+
+    grid_spec = GridSpec(shape=(150, 200, 200), dz=1.0, dt=0.001)
+
+    file_map = {"vp": "P-wave Velocity"}
+
+    try:
+        dm = DatasetManager.from_stanfordsix(".", file_map, grid_spec)
+        vp_prop = dm.get_property("vp")
+        vp_depth = vp_prop.array if hasattr(vp_prop, "array") else vp_prop
+        logger.info(f"Loaded Vp shape: {vp_depth.shape}")
+    except Exception as e:
+        error_msg = f"Could not load Vp: {e}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg}
+
+    # Initialize resampler
+    from src.processing.resampling._resampler import resampler_factory
+    from src.processing.resampling._cache import get_resample_plan_cache
+
+    resampler = resampler_factory.get_resampler(grid_spec)
+    plan_cache = get_resample_plan_cache()
+    plan = plan_cache.get_plan(grid_spec, vp_depth, target_dt=grid_spec.dt)
+
+    logger.info("Resampling rock physics attributes to time domain...")
+
+    # Attributes to resample
+    attributes_to_resample = [
+        "lambda_rho",
+        "mu_rho",
+        "intercept",
+        "gradient",
+        "product",
+        "scaled_gradient",
+        "lambda_mu_ratio",
+        "fluid_factor",
+        "discrimination",
+    ]
+
+    resampled_attrs = {}
+    resampled_names = []
+
+    for attr_name in attributes_to_resample:
+        if attr_name not in rp_data:
+            continue
+
+        attr_data = rp_data[attr_name]
+
+        # Skip empty arrays or object arrays (discrimination)
+        if attr_data.size == 0 or attr_data.dtype == object:
+            logger.info(f"  Skipping {attr_name} (empty or object type)")
+            resampled_attrs[attr_name] = attr_data
+            continue
+
+        logger.info(f"  Resampling {attr_name}: {attr_data.shape} -> ... ")
+
+        try:
+            # Resample to time
+            attr_time, dt = resampler.depth_to_time_cube(attr_data, vp_depth, plan=plan)
+            logger.info(f"    → {attr_time.shape}")
+            resampled_attrs[attr_name] = attr_time
+            resampled_names.append(attr_name)
+        except Exception as e:
+            logger.error(f"Failed to resample {attr_name}: {e}")
+            continue
+
+    # Save to new cache file
+    output_file = cache_path / "rock_physics_attributes_time.npz"
+    logger.info(f"Saving time-domain rock physics attributes to {output_file}")
+    np.savez_compressed(output_file, **resampled_attrs)
+
+    logger.info(f"✓ Done! Resampled {len(resampled_names)} attributes to time domain")
+
+    return {
+        "success": True,
+        "input_file": str(rp_file),
+        "output_file": str(output_file),
+        "attributes_resampled": resampled_names,
+    }
+
+
+@tool
+def plot_original_properties(
+    output_dir: str = "docs/images",
+    data_dir: str = ".",
+    plot_type: str = "2d",
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Generate plots of original Stanford VI-E properties (Vp, Vs, Rho).
+
+    This tool loads the original GSLIB data files and generates visualizations
+    showing the spatial distribution of P-wave velocity, S-wave velocity,
+    and density across the reservoir model.
+
+    Parameters
+    ----------
+    output_dir : str
+        Output directory for plot files, default: docs/images
+    data_dir : str
+        Root directory containing Stanford VI-E data folders, default: .
+    plot_type : str
+        Type of plot: '2d' for PNG slices (matplotlib) or '3d' for interactive
+        HTML volume (Plotly), default: 2d
+    verbose : bool
+        Enable verbose logging, default: False
+
+    Returns
+    -------
+    dict[str, Any]
+        Result dictionary with keys:
+        - generated: list of generated file paths
+        - count: number of files generated
+        - properties: list of property names plotted
+        - plot_type: type of plots generated
+        - error: error message if failed (optional)
+    """
+    # Import OOP plotter
+    from src.plotting.property_plotter import OriginalPropertyPlotter
+
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+
+    try:
+        # Create plotter instance
+        plotter = OriginalPropertyPlotter(
+            data_dir=data_dir,
+            output_dir=output_dir,
+            verbose=verbose,
+        )
+
+        generated_files = []
+
+        if plot_type.lower() == "3d":
+            # For 3D mode, we need to load data first
+            plotter.load_data()
+            # Generate 3D Plotly interactive plots
+            generated_files = plotter.generate_3d_plotly_visualizations()
+            # Get property names
+            properties = plotter.get_properties()
+        else:
+            # Generate 2D matplotlib plots (includes data loading)
+            generated_files = plotter.generate_all_plots(file_prefix="original")
+            # Get property names
+            properties = plotter.get_properties()
+
+        logger.info(
+            f"✓ Generated {len(generated_files)} original property plots ({plot_type})"
+        )
+
+        return {
+            "generated": generated_files,
+            "count": len(generated_files),
+            "properties": list(properties.keys()),
+            "plot_type": plot_type,
+        }
+
+    except Exception as e:
+        error_msg = f"Failed to generate original property plots: {e}"
+        logger.error(error_msg, exc_info=True)
+        return {
+            "error": error_msg,
+            "generated": [],
+            "count": 0,
+            "properties": [],
+        }

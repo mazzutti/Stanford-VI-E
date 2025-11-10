@@ -105,6 +105,24 @@ class ParserFactory:
             default=None,
             help="Comma-separated list of angles to use for AVO (e.g. '0,5,10,15')",
         )
+        parser.add_argument(
+            "--plot-type",
+            choices=["2d", "3d"],
+            default="2d",
+            help="Type of plot for visualization tools: '2d' for PNG (matplotlib) or '3d' for HTML (Plotly)",
+        )
+        parser.add_argument(
+            "--output-dir",
+            type=str,
+            default="docs/images",
+            help="Output directory for generated plots and visualizations",
+        )
+        parser.add_argument(
+            "--data-dir",
+            type=str,
+            default=".",
+            help="Root directory containing data files (for data loading tools)",
+        )
         return parser
 
     @staticmethod

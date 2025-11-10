@@ -51,19 +51,19 @@ class RockPhysicsPlotter(BasePlotter):
         config = config or PlotConfig.for_attributes("Attribute", cmap="viridis")
 
         if slice_type == "inline":
-            slice_data = data[idx, :, :]
+            slice_data = data[idx, :, :].T  # Transpose for correct orientation
             xlabel = "Crossline Index"
             ylabel = "Depth Index"
             title = config.title or f"Inline {idx}"
 
         elif slice_type == "crossline":
-            slice_data = data[:, idx, :]
+            slice_data = data[:, idx, :].T  # Transpose for correct orientation
             xlabel = "Inline Index"
             ylabel = "Depth Index"
             title = config.title or f"Crossline {idx}"
 
         else:  # depthslice
-            slice_data = data[:, :, idx]
+            slice_data = data[:, :, idx]  # No transpose for depth slice
             xlabel = "Inline Index"
             ylabel = "Crossline Index"
             title = config.title or f"Depth {idx}m"

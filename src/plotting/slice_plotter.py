@@ -25,6 +25,121 @@ from src.plotting.helpers.components import (
 logger = logging.getLogger(__name__)
 
 
+def plot_3d_slices_to_png(
+    data: NDArray[np.floating[Any]],
+    output_path: Any,  # Path or str
+    title: str,
+    units: str,
+    cmap: str = "viridis",
+    dpi: int = 1000,
+) -> Any:
+    """Generate a 3-slice PNG plot (inline, crossline, depth) for 3D data.
+
+    This is a unified plotting function used by both rock physics attributes
+    and original property visualization tools. Creates a figure with three
+    orthogonal slices through the 3D volume with consistent sizing.
+
+    Parameters
+    ----------
+    data : NDArray[np.floating[Any]]
+        3D data array with shape (ni, nj, nk)
+    output_path : Path or str
+        Output file path for the PNG image
+    title : str
+        Main title for the figure
+    units : str
+        Units for the colorbar label
+    cmap : str
+        Matplotlib colormap name, default: viridis
+    dpi : int
+        Resolution in dots per inch, default: 1000
+
+    Returns
+    -------
+    Path or str
+        Path to the generated PNG file
+
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> import numpy as np
+    >>> data = np.random.rand(150, 200, 200)
+    >>> output = Path("docs/images/my_plot.png")
+    >>> plot_3d_slices_to_png(
+    ...     data, output, "P-wave Velocity", "km/s", cmap="viridis"
+    ... )
+    """
+    # Create figure with 3 subplots (inline, crossline, depthslice)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig.suptitle(title, fontsize=16, fontweight="bold")
+
+    # Get middle indices for slicing
+    ni, nj, nk = data.shape
+    mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
+
+    # Get data range for consistent colorbar (2nd and 98th percentile)
+    vmin, vmax = np.percentile(data, [2, 98])
+
+    # Create colorbar label with units
+    colorbar_label = f"{title}\n[{units}]"
+
+    # Inline slice (constant i)
+    im1 = axes[0].imshow(
+        data[mid_i, :, :].T,
+        aspect="auto",
+        origin="upper",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axes[0].set_title(f"Inline (i={mid_i})")
+    axes[0].set_xlabel("Crossline (j)")
+    axes[0].set_ylabel("Depth (k)")
+    plt.colorbar(im1, ax=axes[0], label=colorbar_label)
+
+    # Crossline slice (constant j)
+    im2 = axes[1].imshow(
+        data[:, mid_j, :].T,
+        aspect="auto",
+        origin="upper",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axes[1].set_title(f"Crossline (j={mid_j})")
+    axes[1].set_xlabel("Inline (i)")
+    axes[1].set_ylabel("Depth (k)")
+    plt.colorbar(im2, ax=axes[1], label=colorbar_label)
+
+    # Depth slice (constant k)
+    im3 = axes[2].imshow(
+        data[:, :, mid_k].T,
+        aspect="auto",
+        origin="upper",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axes[2].set_title(f"Depth Slice (k={mid_k})")
+    axes[2].set_xlabel("Inline (i)")
+    axes[2].set_ylabel("Crossline (j)")
+    plt.colorbar(im3, ax=axes[2], label=colorbar_label)
+
+    plt.tight_layout()
+
+    # Save plot
+    from pathlib import Path
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+
+    logger.debug(f"Saved 3D slice plot: {output_path}")
+
+    return output_path
+
+
 class SlicePlotter(BasePlotter):
     """Plotter for 2D and 3D orthogonal slice visualizations.
 
@@ -132,8 +247,8 @@ class SlicePlotter(BasePlotter):
         slice_data = cube[:, :, idx_k]
 
         config = config.update(
-            xlabel="Inline (I)",
-            ylabel="Crossline (J)",
+            xlabel="Crossline (J)",
+            ylabel="Inline (I)",
             title=config.title or f"Depth {idx_k}",
         )
 

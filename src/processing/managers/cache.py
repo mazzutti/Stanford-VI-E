@@ -1,96 +1,90 @@
 """Cache management utilities."""
 
-
 from pathlib import Path
 from typing import List, Optional
+import os
+
+from src.processing.managers.resource_manager import ResourceManager
 
 
-from src.processing.managers.base import BaseManager
+__all__ = ["CacheManager", "CacheClearStrategy", "CacheSummarizeStrategy"]
 
 
-__all__ = ["CacheManager"]
+class CacheClearStrategy:
+    """Strategy for clearing cache files."""
 
-
-class CacheManager(BaseManager):
-    """Manages cache directory operations: clearing and summarizing cache files."""
-
-    def clear(
-        self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
-        prefix: str = "",
-    ) -> int:
-        """Clear cache files matching patterns or using size-based pruning.
-
-        Args:
-            patterns: Optional list of glob patterns to match
-            cache_dir: Cache directory path (defaults to ".cache")
-            prefix: Prefix for log messages
-
-        Returns:
-            Number of removed files
-        """
-        import os
-
-        target_dir = str(cache_dir) if cache_dir is not None else ".cache"
-        p = Path(target_dir)
-        if not p.exists():
+    def clear(self, resource_dir: Path, patterns: Optional[List[str]] = None) -> int:
+        """Clear cache files matching patterns or using size-based pruning."""
+        if not resource_dir.exists():
             return 0
+        return (
+            self._clear_by_pattern(resource_dir, patterns)
+            if patterns
+            else self._clear_by_size(resource_dir)
+        )
 
+    def _clear_by_pattern(self, resource_dir: Path, patterns: List[str]) -> int:
+        """Remove files matching glob patterns."""
         removed = 0
-        if patterns:
-            for pat in patterns:
-                try:
-                    for fn in p.glob(pat):
-                        try:
-                            os.remove(fn)
-                            removed += 1
-                        except Exception as e:
-                            self._log_warning("%sError removing %s: %s", prefix, fn, e)
-                except Exception:
-                    self._log_warning("%sPattern %s evaluation failed", prefix, pat)
-        else:
-            # Use modern pruning API for size-based cleanup
-            from src.io.pruning import Pruner, PruneStrategy
-
-            try:
-                strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
-                pruner = Pruner(strategy)
-                result = pruner.prune(p)
-                removed = result.count
-            except Exception as e:
-                self._log_warning("%sCache pruning failed: %s", prefix, e)
-
-        self._log_info("%sRemoved %d files from %s", prefix, removed, str(p))
+        for pattern in patterns:
+            removed += self._remove_matching_files(resource_dir, pattern)
         return removed
 
-    def summarize(
-        self,
-        cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
-        prefix: str = "",
-    ) -> None:
-        """Print a summary of cache files in the directory.
+    def _remove_matching_files(self, resource_dir: Path, pattern: str) -> int:
+        """Remove all files matching pattern."""
+        removed = 0
+        try:
+            for file_path in resource_dir.glob(pattern):
+                if self._safe_remove(file_path):
+                    removed += 1
+        except Exception:
+            pass
+        return removed
 
-        Args:
-            cache_dir: Cache directory path
-            keys: Optional list of key prefixes to filter by
-            prefix: Prefix for log messages
-        """
-        p = Path(cache_dir)
-        if not p.exists():
-            self._log_info("%sCache directory not found: %s", prefix, cache_dir)
+    @staticmethod
+    def _safe_remove(file_path: Path) -> bool:
+        """Safely remove a file, returning True if successful."""
+        try:
+            os.remove(file_path)
+            return True
+        except Exception:
+            return False
+
+    def _clear_by_size(self, resource_dir: Path) -> int:
+        """Clear cache using size-based pruning strategy."""
+        try:
+            from src.io.pruning import Pruner, PruneStrategy
+
+            strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
+            result = Pruner(strategy).prune(resource_dir)
+            return result.count
+        except Exception:
+            return 0
+
+
+class CacheSummarizeStrategy:
+    """Strategy for summarizing cache files."""
+
+    def __init__(self, logger=None):
+        import logging
+
+        self.logger = logger or logging.getLogger(self.__class__.__name__)
+
+    def summarize(self, resource_dir: Path, keys: Optional[List[str]] = None) -> None:
+        """Print a summary of cache files in the directory."""
+        if not resource_dir.exists():
+            self.logger.info(f"Cache directory not found: {resource_dir}")
             return
 
-        self._log_info("%sCache summary (%s):", prefix, cache_dir)
+        self.logger.info(f"Cache summary ({resource_dir}):")
 
         # List all .npz files in the cache directory
         npz_files = sorted(
-            p.glob("*.npz"), key=lambda x: x.stat().st_mtime, reverse=True
+            resource_dir.glob("*.npz"), key=lambda x: x.stat().st_mtime, reverse=True
         )
 
         if not npz_files:
-            self._log_info("%s  (empty cache)", prefix)
+            self.logger.info("  (empty cache)")
             return
 
         # Group by key prefix
@@ -110,12 +104,27 @@ class CacheManager(BaseManager):
             if candidates:
                 latest = candidates[0]
                 size_mb = latest.stat().st_size / (1024**2)
-                self._log_info(
-                    "%s  %s: %s (%.1f MB)",
-                    prefix,
-                    k,
-                    latest.name,
-                    size_mb,
-                )
+                self.logger.info(f"  {k}: {latest.name} ({size_mb:.1f} MB)")
             else:
-                self._log_info("%s  %s: <none>", prefix, k)
+                self.logger.info(f"  {k}: <none>")
+
+
+class CacheManager(ResourceManager[Path]):
+    """Manages cache directory operations: clearing and summarizing cache files."""
+
+    def __init__(self, cache_dir: Path = None, logger=None):
+        """Initialize cache manager.
+
+        Args:
+            cache_dir: Cache directory (defaults to ".cache")
+            logger: Optional logger instance
+        """
+        if cache_dir is None:
+            cache_dir = Path(".cache")
+
+        super().__init__(
+            resource_dir=cache_dir,
+            clear_strategy=CacheClearStrategy(),
+            summarize_strategy=CacheSummarizeStrategy(logger),
+            logger=logger,
+        )

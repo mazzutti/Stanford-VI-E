@@ -86,6 +86,9 @@ def main() -> bool:
         parser.parse_args(parse_argv) if parse_argv is not None else parser.parse_args()
     )
 
+    # Configure logging
+    ParserFactory.configure_logging(getattr(args, "verbose", False))
+
     # Dispatch tool if requested
     if getattr(args, "run_tool", None):
         result = ParserFactory.run_tool(

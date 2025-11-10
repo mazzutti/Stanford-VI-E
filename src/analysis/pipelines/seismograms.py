@@ -47,7 +47,7 @@ class SeismogramAnalyzer:
             analysis: Optional AnalysisCommon instance for dependency injection.
                      If None, creates a new instance.
         """
-        self._analysis = analysis or AnalysisCommon()
+        self._analysis = analysis or AnalysisCommon.instance()
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @contextmanager
@@ -223,8 +223,6 @@ class SeismogramAnalyzer:
 
                 run_full_modeling(
                     cache_dir=cache_dir,
-                    skip_cleanup=skip_cleanup,
-                    verbose=verbose,
                     add_avo_noise=False,
                 )
             self._logger.info("✓ Seismic modeling pipeline completed successfully")

@@ -124,67 +124,14 @@ class CacheLoader:
 
     @staticmethod
     def _build_cache_filename(domain: str, extension: str = _NPZ_EXTENSION) -> str:
-        """Build standard cache filename for a domain.
-
-        Parameters
-        ----------
-        domain : str
-            Domain identifier (e.g., 'acoustic', 'elastic'). Must be non-empty.
-        extension : str, default=".npz"
-            File extension to use.
-
-        Returns
-        -------
-        str
-            Formatted filename (e.g., "avo_acoustic.npz").
-
-        Raises
-        ------
-        ValueError
-            If domain is empty or None.
-        """
+        """Build standard cache filename (e.g., 'avo_acoustic.npz')."""
         if not domain:
             raise ValueError("domain must be a non-empty string")
         return f"{_FILE_PREFIX}{domain}{extension}"
 
     @staticmethod
     def default_selector(cache_dir: str, domain: str) -> Optional[str]:
-        """Locate AVO cache file for a given domain.
-
-        Searches for cache files in the following priority order:
-        1. avo_{domain}.npz (compressed NPZ format)
-        2. avo_{domain}.npy (uncompressed NPY format)
-
-        This is the default file selection strategy used when no custom
-        selector is provided.
-
-        Parameters
-        ----------
-        cache_dir : str
-            Directory path containing cache files.
-        domain : str
-            Domain identifier (e.g., 'elastic', 'acoustic'). Must be non-empty.
-
-        Returns
-        -------
-        Optional[str]
-            Full path to the selected cache file, or None if not found.
-
-        Raises
-        ------
-        ValueError
-            If domain is empty or None.
-        OSError
-            If cache_dir is not accessible or doesn't exist.
-
-        Examples
-        --------
-        >>> path = CacheLoader.default_selector("/data/cache", "elastic")
-        >>> if path:
-        ...     print(f"Found cache: {path}")
-        ... else:
-        ...     print("No cache file found")
-        """
+        """Locate AVO cache file (tries .npz then .npy)."""
         if not domain:
             raise ValueError("domain must be a non-empty string")
 
@@ -250,37 +197,7 @@ class CacheLoader:
 
     @staticmethod
     def default_archive_extractor(archive: NpzFile) -> Optional[NDArray[np.float64]]:
-        """Extract array from NPZ archive using sensible defaults.
-
-        Extraction strategy:
-        1. If 'full_stack' key exists, returns that array
-        2. Otherwise, returns the first array in the archive
-        3. Returns None on any error and logs the exception
-
-        This is the default extraction strategy used when no custom
-        extractor is provided.
-
-        Parameters
-        ----------
-        archive : NpzFile
-            Loaded NPZ archive object.
-
-        Returns
-        -------
-        Optional[NDArray[np.float64]]
-            Extracted array as float64, or None if extraction failed.
-
-        Notes
-        -----
-        The 'full_stack' key is a convention in this project for storing
-        the main data array within NPZ files.
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> archive = np.load("data.npz")
-        >>> data = CacheLoader.default_archive_extractor(archive)
-        """
+        """Extract array from NPZ (tries 'full_stack' key, then first array)."""
         return CacheLoader._extract_array_from_npz(archive)
 
     def __init__(
@@ -292,21 +209,7 @@ class CacheLoader:
         cache_size: int = 0,
         archive_extractor: Optional[ArchiveExtractorProtocol] = None,
     ) -> None:
-        """Initialize CacheLoader with optional caching and custom strategies.
-
-        Parameters
-        ----------
-        selector : Optional[SelectorProtocol]
-            Custom file selection callable. If None, uses default_selector.
-        np_load : Callable
-            NumPy load function (default: np.load). Can be mocked for testing.
-        cache : Optional[CacheProtocol]
-            Externally provided cache instance. If provided, cache_size is ignored.
-        cache_size : int, default=0
-            Size of the LRU cache. If 0 and cache is None, caching is disabled.
-            Must be non-negative.
-        archive_extractor : Optional[ArchiveExtractorProtocol]
-            Custom NPZ extraction callable. If None, uses default_archive_extractor.
+        """Initialize with optional caching and custom strategies.
 
         Raises
         ------
@@ -431,61 +334,7 @@ class CacheLoader:
         prefer_latest: bool = True,
         allow_npy: bool = True,
     ) -> Optional[str]:
-        """Select a cache file for the given domain.
-
-        Uses the configured selector first. If that fails or returns None,
-        falls back to default selection logic with optional "latest file"
-        matching via globbing.
-
-        Selection order:
-        1. Try custom selector (if configured)
-        2. Look for avo_{domain}.npz
-        3. Look for avo_{domain}.npy (if allow_npy=True)
-        4. If prefer_latest=True, glob for matching patterns and return newest
-
-        Parameters
-        ----------
-        cache_dir : Union[str, PathLike[str]]
-            Directory containing cache files.
-        domain : str
-            Domain identifier (e.g., 'acoustic', 'elastic').
-        prefer_latest : bool, default=True
-            If True and no standard file found, search for latest matching
-            file by modification time.
-        allow_npy : bool, default=True
-            If True, also search for .npy files as fallback.
-
-        Returns
-        -------
-        Optional[str]
-            Full path to selected cache file, or None if not found.
-
-        Raises
-        ------
-        ValueError
-            If domain is empty or None.
-        OSError
-            If cache_dir is not accessible.
-
-        Notes
-        -----
-        Exceptions from the custom selector are logged but do not raise.
-        Globbing only occurs if prefer_latest=True and no standard file exists.
-
-        Examples
-        --------
-        Basic file selection:
-        >>> loader = CacheLoaderFactory.create_default()
-        >>> path = loader.select_cache_file("/data/cache", "acoustic")
-
-        With options:
-        >>> path = loader.select_cache_file(
-        ...     "/data/cache",
-        ...     "elastic",
-        ...     prefer_latest=True,
-        ...     allow_npy=False
-        ... )
-        """
+        """Select cache file (tries custom selector, then .npz/.npy, then glob)."""
         if not domain:
             raise ValueError("domain must be a non-empty string")
 
@@ -494,39 +343,66 @@ class CacheLoader:
             f"Searching for cache file: domain={domain}, cache_dir={cache_path}"
         )
 
-        if self._selector is not None:
-            try:
-                result = self._selector(str(cache_path), domain)
-                if result:
-                    logger.debug(f"Custom selector found cache file: {result}")
-                    return result
-                logger.debug("Custom selector returned None")
-            except Exception:
-                logger.exception("Injected selector raised an exception")
-
-        candidate_npz = cache_path / self._build_cache_filename(domain, _NPZ_EXTENSION)
-        if candidate_npz.exists():
-            logger.debug(f"Found NPZ cache file: {candidate_npz}")
-            return str(candidate_npz)
-        if allow_npy:
-            candidate_npy = cache_path / self._build_cache_filename(
-                domain, _NPY_EXTENSION
-            )
-            if candidate_npy.exists():
-                logger.debug(f"Found NPY cache file: {candidate_npy}")
-                return str(candidate_npy)
-
-        if prefer_latest and cache_path.is_dir():
-            existing_matches = self._find_matching_cache_files(
-                cache_path, domain, allow_npy
-            )
-            if existing_matches:
-                newest = max(existing_matches, key=lambda p: p.stat().st_mtime)
-                logger.debug(f"Found latest matching cache file: {newest}")
-                return str(newest)
+        # Chain of responsibility pattern for file selection
+        for strategy in self._get_selection_strategies(
+            cache_path, domain, prefer_latest, allow_npy
+        ):
+            result = strategy()
+            if result:
+                return result
 
         logger.warning(f"No cache file found for domain '{domain}' in {cache_path}")
+        return None
 
+    def _get_selection_strategies(
+        self, cache_path: Path, domain: str, prefer_latest: bool, allow_npy: bool
+    ):
+        """Get ordered list of selection strategies to try."""
+        strategies = [
+            lambda: self._try_custom_selector(cache_path, domain),
+            lambda: self._try_standard_files(cache_path, domain, allow_npy),
+        ]
+        if prefer_latest:
+            strategies.append(
+                lambda: self._try_latest_match(cache_path, domain, allow_npy)
+            )
+        return strategies
+
+    def _try_custom_selector(self, cache_path: Path, domain: str) -> Optional[str]:
+        """Try custom selector if configured."""
+        if self._selector is None:
+            return None
+        try:
+            result = self._selector(str(cache_path), domain)
+            if result:
+                logger.debug(f"Custom selector found cache file: {result}")
+            return result
+        except Exception:
+            logger.exception("Injected selector raised an exception")
+            return None
+
+    def _try_standard_files(
+        self, cache_path: Path, domain: str, allow_npy: bool
+    ) -> Optional[str]:
+        """Try standard cache file naming conventions."""
+        for ext in [_NPZ_EXTENSION] + ([_NPY_EXTENSION] if allow_npy else []):
+            candidate = cache_path / self._build_cache_filename(domain, ext)
+            if candidate.exists():
+                logger.debug(f"Found {ext.upper()} cache file: {candidate}")
+                return str(candidate)
+        return None
+
+    def _try_latest_match(
+        self, cache_path: Path, domain: str, allow_npy: bool
+    ) -> Optional[str]:
+        """Find latest matching cache file by glob pattern."""
+        if not cache_path.is_dir():
+            return None
+        matches = self._find_matching_cache_files(cache_path, domain, allow_npy)
+        if matches:
+            newest = max(matches, key=lambda p: p.stat().st_mtime)
+            logger.debug(f"Found latest matching cache file: {newest}")
+            return str(newest)
         return None
 
     def _find_matching_cache_files(
@@ -541,71 +417,30 @@ class CacheLoader:
         domain : str
             Domain identifier. Must be non-empty.
         allow_npy : bool, default=True
-            If True, also search for .npy files.
-
-        Returns
-        -------
-        List[Path]
-            List of existing matching files, sorted by modification time
-            (newest first).
-
-        Notes
-        -----
-        Uses globbing patterns to find files matching avo_*domain*.ext format.
-        All results are filtered to ensure they still exist on disk.
-
-        Examples
-        --------
-        >>> loader = CacheLoaderFactory.create_default()
-        >>> matches = loader._find_matching_cache_files(
-        ...     Path("/data/cache"),
-        ...     "acoustic",
-        ...     allow_npy=True
-        ... )
-        >>> if matches:
-        ...     latest = matches[0]  # Already sorted by mtime
-        """
+            If True, also search for .npy files."""
         try:
-            # Collect all matching patterns
-            matches = [
-                p
-                for glob_result in [
-                    cache_path.glob(f"{_FILE_PREFIX}*{domain}*{_NPZ_EXTENSION}"),
-                    (
-                        cache_path.glob(f"{_FILE_PREFIX}*{domain}*{_NPY_EXTENSION}")
-                        if allow_npy
-                        else []
-                    ),
-                ]
-                for p in glob_result
-                if p.exists()
-            ]
-            return matches
+            return self._glob_and_filter(cache_path, domain, allow_npy)
         except Exception:
             logger.debug("Error globbing cache directory %s", cache_path, exc_info=True)
             return []
 
+    def _glob_and_filter(
+        self, cache_path: Path, domain: str, allow_npy: bool
+    ) -> List[Path]:
+        """Glob for matching files and filter existing ones."""
+        patterns = [f"{_FILE_PREFIX}*{domain}*{_NPZ_EXTENSION}"]
+        if allow_npy:
+            patterns.append(f"{_FILE_PREFIX}*{domain}*{_NPY_EXTENSION}")
+
+        matches = []
+        for pattern in patterns:
+            matches.extend(p for p in cache_path.glob(pattern) if p.exists())
+        return matches
+
     def _call_loader(
         self, path: Path, *, mmap_mode: Optional[str] = None
     ) -> Union[NDArray[np.float64], NpzFile]:
-        """Load a file using the configured numpy loader.
-
-        Parameters
-        ----------
-        path : Path
-            File path to load.
-        mmap_mode : Optional[str]
-            Memory mapping mode ('r', 'r+', 'w+', 'c'). None disables mmap.
-
-        Returns
-        -------
-        Union[NDArray, NpzFile]
-            Loaded data or archive object.
-
-        Raises
-        ------
-        Various numpy exceptions if file cannot be loaded.
-        """
+        """Load file using numpy loader with optional memory mapping."""
         mmap_str = (
             f"with mmap_mode='{mmap_mode}'" if mmap_mode else "without memory mapping"
         )
@@ -640,19 +475,50 @@ class CacheLoader:
         return self._extract_array_from_npz(archive)
 
     def _as_float64(self, arr: NDArray[np.floating[Any]]) -> NDArray[np.float64]:
-        """Convert array to float64 type.
-
-        Parameters
-        ----------
-        arr : NDArray
-            Input array of any compatible type.
-
-        Returns
-        -------
-        NDArray[np.float64]
-            Array converted to float64.
-        """
+        """Convert array to float64."""
         return np.asarray(arr).astype(np.float64)
+
+    def _process_loaded_data(self, loaded, p: Path):
+        """Process loaded data based on type (memmap, NPZ, or regular array)."""
+        if isinstance(loaded, np.memmap):
+            logger.debug(f"Loaded memory-mapped array from {p.name}")
+            return loaded
+
+        if isinstance(loaded, NpzFile):
+            return self._extract_from_npz(loaded, p)
+
+        logger.debug(f"Loaded and converted array from {p.name} to float64")
+        return np.asarray(loaded)
+
+    def _extract_from_npz(self, npz_file: NpzFile, p: Path):
+        """Extract array from NPZ archive using configured or default extractor."""
+        with npz_file as archive:
+            # Try custom extractor first
+            if self._archive_extractor is not None:
+                result = self._try_custom_extractor(archive, p)
+                if result is not None:
+                    return result
+
+            # Fall back to default extraction
+            result = self._extract_array_from_archive(archive)
+            if result is not None:
+                logger.debug(f"Extracted array from NPZ {p.name}")
+            return result
+
+    def _try_custom_extractor(self, archive: NpzFile, p: Path):
+        """Try custom archive extractor with error handling."""
+        try:
+            result = self._archive_extractor(archive)
+            if result is not None:
+                logger.debug(
+                    f"Extracted array from NPZ {p.name} using custom extractor"
+                )
+            return result
+        except Exception as e:
+            logger.exception(
+                f"Custom archive_extractor failed for {p.name}: {type(e).__name__}"
+            )
+            return None
 
     def _load_uncached(
         self,
@@ -708,35 +574,7 @@ class CacheLoader:
         """
         try:
             loaded = self._call_loader(p, mmap_mode=mmap_mode)
-
-            # Return memmap as-is to preserve efficiency
-            if isinstance(loaded, np.memmap):
-                logger.debug(f"Loaded memory-mapped array from {p.name}")
-                return loaded
-
-            # Handle NPZ archives
-            if isinstance(loaded, NpzFile):
-                with loaded as archive:
-                    if self._archive_extractor is not None:
-                        try:
-                            result = self._archive_extractor(archive)
-                            if result is not None:
-                                logger.debug(
-                                    f"Extracted array from NPZ {p.name} using custom extractor"
-                                )
-                            return result
-                        except Exception as e:
-                            logger.exception(
-                                f"Custom archive_extractor failed for {p.name}: {type(e).__name__}"
-                            )
-                    result = self._extract_array_from_archive(archive)
-                    if result is not None:
-                        logger.debug(f"Extracted array from NPZ {p.name}")
-                    return result
-
-            # For other formats (NPY, etc.), convert to float64
-            logger.debug(f"Loaded and converted array from {p.name} to float64")
-            return np.asarray(loaded)
+            return self._process_loaded_data(loaded, p)
         except OSError as e:
             logger.error(f"File access error loading {p.name}: {e}")
             if raise_on_error:
@@ -967,77 +805,42 @@ class CacheLoader:
         return None
 
 
-class CacheLoaderFactory:
+from src.core.generic_factory import GenericFactory
+
+
+class CacheLoaderFactory(GenericFactory["CacheLoader"]):
     """Factory for creating CacheLoader instances with various configurations.
 
-    Provides factory methods for creating properly configured CacheLoader instances
-    with flexible configuration options. This factory pattern ensures proper cache
-    and loader initialization while remaining fully testable through dependency
-    injection.
-
-    Methods
-    -------
-    create(*, cache_size=0, shards=1, cache=None, selector=None, archive_extractor=None)
-        Create a CacheLoader with custom configuration parameters.
-    create_default(cache_size=0, shards=4, selector=None)
-        Create a CacheLoader with sensible defaults for typical usage.
+    Uses the generic factory pattern to eliminate boilerplate code.
 
     Examples
     --------
     Create with custom settings:
-    >>> loader = CacheLoaderFactory.create(
-    ...     cache_size=100,
-    ...     shards=4,
-    ...     selector=custom_selector_func
-    ... )
+    >>> factory = CacheLoaderFactory()
+    >>> loader = factory.create("custom", cache_size=100, shards=4)
 
     Create with defaults:
-    >>> loader = CacheLoaderFactory.create_default(cache_size=100)
+    >>> loader = factory.create("default", cache_size=100)
     """
 
-    @staticmethod
-    def create(
-        *,
-        cache_size: int = 0,
-        shards: int = 1,
-        cache: Optional[CacheProtocol[NDArray[np.float64]]] = None,
-        selector: Optional[SelectorProtocol] = None,
-        archive_extractor: Optional[ArchiveExtractorProtocol] = None,
-    ) -> CacheLoader:
-        """Factory to create a configured CacheLoader.
+    def __init__(self):
+        """Initialize factory with standard builders."""
+        super().__init__()
+        self._register_standard_builders()
 
-        Parameters
-        ----------
-        cache_size : int, default=0
-            Maximum number of items for a default in-memory LRU cache.
-            If zero, no default cache is created.
-        shards : int, default=1
-            Number of shards for a sharded LRU (only used when creating
-            the default cache).
-        cache : CacheProtocol, optional
-            An optional, caller-provided cache instance (must implement the
-            CacheProtocol). If provided, it will be used as-is and the factory
-            will not create a default cache regardless of ``cache_size``.
-        selector : SelectorProtocol, optional
-            Optional selector callable used by the returned CacheLoader.
-        archive_extractor : ArchiveExtractorProtocol, optional
-            Optional callable used to extract arrays from NPZ archives.
+    def _register_standard_builders(self):
+        """Register standard cache loader builders."""
 
-        Returns
-        -------
-        CacheLoader
-            A configured CacheLoader instance.
-
-        Notes
-        -----
-        The factory honors an injected ``cache`` instance. If ``cache`` is
-        None, a default LRU or ShardedLRU is constructed only when
-        ``cache_size > 0``.
-        """
-        # If a cache instance was explicitly provided, honor it. Otherwise,
-        # create a default cache only when cache_size > 0.
-        if cache is None:
-            if cache_size > 0:
+        @self.register("custom")
+        def create_custom(
+            cache_size: int = 0,
+            shards: int = 1,
+            cache: Optional[CacheProtocol[NDArray[np.float64]]] = None,
+            selector: Optional[SelectorProtocol] = None,
+            archive_extractor: Optional[ArchiveExtractorProtocol] = None,
+        ) -> CacheLoader:
+            """Create a CacheLoader with custom configuration."""
+            if cache is None and cache_size > 0:
                 if shards > 1:
                     cache = ShardedLRUCache[NDArray[np.float64]](
                         maxsize=cache_size, shards=shards
@@ -1045,43 +848,49 @@ class CacheLoaderFactory:
                 else:
                     cache = LRUCache[NDArray[np.float64]](cache_size)
 
-        return CacheLoader(
-            selector=selector,
-            cache=cache,
-            cache_size=cache_size,
-            archive_extractor=archive_extractor,
-        )
+            return CacheLoader(
+                selector=selector,
+                cache=cache,
+                cache_size=cache_size,
+                archive_extractor=archive_extractor,
+            )
+
+        @self.register("default")
+        def create_default(
+            cache_size: int = 0,
+            shards: int = 4,
+            selector: Optional[SelectorProtocol] = None,
+        ) -> CacheLoader:
+            """Create a CacheLoader with sensible defaults."""
+            cache = None
+            if cache_size > 0:
+                cache = ShardedLRUCache[NDArray[np.float64]](
+                    maxsize=cache_size, shards=shards
+                )
+            return CacheLoader(
+                selector=(selector or CacheLoader.default_selector),
+                cache=cache,
+                cache_size=cache_size,
+                archive_extractor=CacheLoader.default_archive_extractor,
+            )
+
+    # Backward compatibility static methods
+    @staticmethod
+    def create(**kwargs) -> CacheLoader:
+        """Legacy static method for backward compatibility."""
+        factory = CacheLoaderFactory()
+        return factory._create_custom(**kwargs)
 
     @staticmethod
-    def create_default(
-        cache_size: int = 0,
-        shards: int = 4,
-        selector: Optional[SelectorProtocol] = None,
-    ) -> CacheLoader:
-        """Create a CacheLoader with sensible defaults.
+    def create_default(**kwargs) -> CacheLoader:
+        """Legacy static method for backward compatibility."""
+        factory = CacheLoaderFactory()
+        return factory._create_default(**kwargs)
 
-        Parameters
-        ----------
-        cache_size : int, default=0
-            Maximum number of items for the LRU cache.
-        shards : int, default=4
-            Number of shards for the ShardedLRU cache.
-        selector : SelectorProtocol, optional
-            Optional custom selector. Uses CacheLoader.default_selector if None.
+    def _create_custom(self, **kwargs) -> CacheLoader:
+        """Internal method that calls the registered builder."""
+        return super().create("custom", **kwargs)
 
-        Returns
-        -------
-        CacheLoader
-            A CacheLoader with default selector and archive extractor.
-        """
-        cache = None
-        if cache_size > 0:
-            cache = ShardedLRUCache[NDArray[np.float64]](
-                maxsize=cache_size, shards=shards
-            )
-        return CacheLoader(
-            selector=(selector or CacheLoader.default_selector),
-            cache=cache,
-            cache_size=cache_size,
-            archive_extractor=CacheLoader.default_archive_extractor,
-        )
+    def _create_default(self, **kwargs) -> CacheLoader:
+        """Internal method that calls the registered builder."""
+        return super().create("default", **kwargs)

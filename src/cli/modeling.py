@@ -133,8 +133,14 @@ def run_modeling(
     # Resample each property
     props_time = {}
     for k, v in props_depth.items():
+        if v is None:
+            props_time[k] = None
+            continue
         was_q = hasattr(v, "array")
         data_arr = v.array if was_q else v
+        # Ensure data_arr is a numpy array
+        if not isinstance(data_arr, np.ndarray):
+            data_arr = np.asarray(data_arr)
         data_time, _ = resampler.depth_to_time_cube(data_arr, vp_for_twt, plan=plan)
         props_time[k] = Quantity(data_time, v.unit) if was_q else data_time
 

@@ -118,18 +118,22 @@ class GSLibReader:
 
         reshaped = data_column.reshape(shape, order="F")
 
+        # Flip z-axis: GSLIB stores data bottom-to-top (deepest first)
+        # We want top-to-bottom (shallowest first) for standard visualization
+        reshaped = reshaped[:, :, ::-1]
+
         # Debug logging with safe min/max computation
         try:
             min_val = float(np.min(reshaped))
             max_val = float(np.max(reshaped))
             self._logger.debug(
                 f"Loaded {filepath}: shape={reshaped.shape}, dtype={reshaped.dtype}, "
-                f"min={min_val:.4f}, max={max_val:.4f}"
+                f"min={min_val:.4f}, max={max_val:.4f} (z-axis flipped)"
             )
         except (TypeError, ValueError):
             # Fallback if min/max computation fails
             self._logger.debug(
-                f"Loaded {filepath}: shape={reshaped.shape}, dtype={reshaped.dtype}"
+                f"Loaded {filepath}: shape={reshaped.shape}, dtype={reshaped.dtype} (z-axis flipped)"
             )
 
         return reshaped

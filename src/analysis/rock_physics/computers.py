@@ -183,12 +183,17 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
             # Mark invalid traces (where coefficients are NaN)
             self._mark_invalid_traces(intercept, gradient, k, ni, nj)
 
-        product = intercept * gradient
-        scaled_gradient = gradient / (np.abs(intercept) + EPSILON)
+        # Pad to match input dimensions (nk) by repeating last layer
+        # This ensures consistency with lambda_rho, mu_rho which have shape (ni, nj, nk)
+        intercept_padded = np.concatenate([intercept, intercept[:, :, -1:]], axis=2)
+        gradient_padded = np.concatenate([gradient, gradient[:, :, -1:]], axis=2)
+
+        product = intercept_padded * gradient_padded
+        scaled_gradient = gradient_padded / (np.abs(intercept_padded) + EPSILON)
 
         return {
-            "intercept": intercept,
-            "gradient": gradient,
+            "intercept": intercept_padded,
+            "gradient": gradient_padded,
             "product": product,
             "scaled_gradient": scaled_gradient,
         }

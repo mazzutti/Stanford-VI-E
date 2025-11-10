@@ -132,52 +132,54 @@ class FaciesCorrelationAnalyzer(
         if not self.is_initialized:
             self.initialize()
 
+    def _get_or_create(self, name: str, factory: Callable):
+        """Get injected processor or create default."""
+        return self._injected_processors.get(name) or factory()
+
     def _validate_config(self) -> None:
         """Validate configuration (template method from BaseAnalyzer)."""
-        if not self.config or not isinstance(self.config, FaciesCorrelationConfig):
+        if not isinstance(self.config, FaciesCorrelationConfig):
             raise ValueError("Invalid FaciesCorrelationConfig")
         if not hasattr(self.config, "dilation_window"):
             raise ValueError("Config missing dilation_window")
 
     def _setup(self) -> None:
         """Setup processors (template method from BaseAnalyzer)."""
-        # Initialize processors using ServiceLocator or injected dependencies
-        self._boundary_detector = (
-            self._injected_processors.get("boundary_detector")
-            or ServiceLocator.create_boundary_detector()
+        # Initialize all processors
+        self._boundary_detector = self._get_or_create(
+            "boundary_detector", ServiceLocator.create_boundary_detector
         )
-        self._cube_aligner = (
-            self._injected_processors.get("cube_aligner")
-            or ServiceLocator.create_cube_aligner()
+        self._cube_aligner = self._get_or_create(
+            "cube_aligner", ServiceLocator.create_cube_aligner
         )
-        self._boundary_amp_extractor = self._injected_processors.get(
-            "boundary_amp_extractor"
-        ) or ServiceLocator.create_boundary_amp_extractor(
-            dilation_window=self.config.dilation_window
+        self._boundary_amp_extractor = self._get_or_create(
+            "boundary_amp_extractor",
+            lambda: ServiceLocator.create_boundary_amp_extractor(
+                dilation_window=self.config.dilation_window
+            ),
         )
-        self._gradient_calculator = (
-            self._injected_processors.get("gradient_calculator")
-            or ServiceLocator.create_gradient_calculator()
+        self._gradient_calculator = self._get_or_create(
+            "gradient_calculator", ServiceLocator.create_gradient_calculator
         )
-        self._interface_analyzer = (
-            self._injected_processors.get("interface_analyzer")
-            or ServiceLocator.create_interface_analyzer()
+        self._interface_analyzer = self._get_or_create(
+            "interface_analyzer", ServiceLocator.create_interface_analyzer
         )
-        self._facies_discriminator = (
-            self._injected_processors.get("facies_discriminator")
-            or ServiceLocator.create_facies_discriminator()
+        self._facies_discriminator = self._get_or_create(
+            "facies_discriminator", ServiceLocator.create_facies_discriminator
         )
-        self._domain_handler_factory = (
-            self._injected_processors.get("domain_handler_factory")
-            or DomainHandlerFactory()
+        self._domain_handler_factory = self._get_or_create(
+            "domain_handler_factory", DomainHandlerFactory
         )
 
-        # Add sub-analyzers for composite analysis
-        self.add_sub_analyzer("boundary_detector", self._boundary_detector)
-        self.add_sub_analyzer("cube_aligner", self._cube_aligner)
-        self.add_sub_analyzer("boundary_amp_extractor", self._boundary_amp_extractor)
-        self.add_sub_analyzer("gradient_calculator", self._gradient_calculator)
-        self.add_sub_analyzer("interface_analyzer", self._interface_analyzer)
+        # Register all as sub-analyzers
+        for name in [
+            "boundary_detector",
+            "cube_aligner",
+            "boundary_amp_extractor",
+            "gradient_calculator",
+            "interface_analyzer",
+        ]:
+            self.add_sub_analyzer(name, getattr(self, f"_{name}"))
         self.add_sub_analyzer("facies_discriminator", self._facies_discriminator)
 
     @classmethod
@@ -252,27 +254,14 @@ class FaciesCorrelationAnalyzer(
         return cast(FaciesCorrelationConfig, self._config)
 
     def analyze(self, data: Any) -> Figure:
-        """Execute facies correlation analysis pipeline.
-
-        Implements BaseAnalyzer abstract method.
-
-        Parameters
-        ----------
-        data
-            Input data (typically cache_dir and domain kwargs).
-
-        Returns
-        -------
-        matplotlib.figure.Figure
-            Summary figure with analysis results.
-        """
-        # data is kwargs dict passed from execute()
-        if isinstance(data, dict):
-            cache_dir = data.get("cache_dir", DEFAULT_CACHE_DIR)
-            domain = data.get("domain", DEFAULT_DOMAIN)
-            verbose = data.get("verbose", False)
-            return self.run(cache_dir=cache_dir, domain=domain, verbose=verbose)
-        raise TypeError(f"Expected dict kwargs, got {type(data)}")
+        """Execute facies correlation analysis pipeline (BaseAnalyzer interface)."""
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected dict kwargs, got {type(data)}")
+        return self.run(
+            cache_dir=data.get("cache_dir", DEFAULT_CACHE_DIR),
+            domain=data.get("domain", DEFAULT_DOMAIN),
+            verbose=data.get("verbose", False),
+        )
 
     def run(
         self,
@@ -296,93 +285,38 @@ class FaciesCorrelationAnalyzer(
         vp_depth: NDArray[np.float64],
         grid_spec: "GridSpec",
     ) -> NDArray[np.float64]:
-        """Convert a time-domain seismogram to the depth domain.
-
-        This helper uses the injected ``resampler_factory`` when provided
-        otherwise it falls back to the package default resampler factory.
-
-        Parameters
-        ----------
-        seismogram_time
-            Time-domain seismogram (3D array: i, j, time/k).
-        vp_depth
-            P-wave velocity (depth) array aligned with the seismogram.
-        grid_spec
-            Grid specification used to resolve the resampling plan.
-
-        Returns
-        -------
-        numpy.ndarray
-            Depth-domain seismogram cube (same shape semantics as input
-            but resampled to depth coordinates).
-        """
+        """Convert time-domain seismogram to depth domain."""
         logger.info("Converting seismogram from time to depth domain...")
-        if self._resampler_factory is not None:
-            resampler: Any = self._resampler_factory.get_resampler(grid_spec)
-        else:
-            # Deferred import: avoid circular dependency at module load time.
-            # The resampler module is only imported when actually needed.
-            from src.processing.resampling._resampler import resampler_factory
-
-            resampler = resampler_factory.get_resampler(grid_spec)
-
-        # Deferred import: avoid circular dependency at module load time.
-        # The resample cache module is only imported when actually needed.
-        from src.processing.resampling._cache import get_resample_plan_cache
-
-        plan = get_resample_plan_cache().get_plan(grid_spec, vp_depth)
+        resampler = self._get_resampler(grid_spec)
+        plan = self._get_resample_plan(grid_spec, vp_depth)
         result = resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
         return cast(NDArray[np.float64], result)
+
+    def _get_resampler(self, grid_spec):
+        """Get resampler instance (injected or default)."""
+        if self._resampler_factory is not None:
+            return self._resampler_factory.get_resampler(grid_spec)
+        from src.processing.resampling._resampler import resampler_factory
+
+        return resampler_factory.get_resampler(grid_spec)
+
+    def _get_resample_plan(self, grid_spec, vp_depth):
+        """Get resample plan from cache."""
+        from src.processing.resampling._cache import get_resample_plan_cache
+
+        return get_resample_plan_cache().get_plan(grid_spec, vp_depth)
 
     def detect_facies_boundaries(
         self, facies_cube: NDArray[np.int64]
     ) -> NDArray[np.bool_]:
-        """Detect facies boundaries in a 3D facies cube.
-
-        Delegates to the injected BoundaryDetector processor.
-
-        Parameters
-        ----------
-        facies_cube
-            Integer-valued 3D facies label cube with shape (i, j, k).
-
-        Returns
-        -------
-        numpy.ndarray(dtype=bool)
-            Boolean mask of the same shape (i, j, k) where ``True`` marks
-            facies-boundary voxels.
-
-        Raises
-        ------
-        ValueError
-            If ``facies_cube`` is not a 3-dimensional array.
-        """
+        """Detect facies boundaries in a 3D cube."""
         self._ensure_initialized()
         return cast(NDArray[np.bool_], self._boundary_detector(facies_cube))
 
     def _align_cubes(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
     ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
-        """Crop two 3D cubes to their minimum common shape.
-
-        Delegates to the injected CubeAligner processor.
-
-        Parameters
-        ----------
-        seismic_cube, facies_cube
-            The two 3D arrays to align and crop. Both must be 3-dimensional.
-
-        Returns
-        -------
-        tuple
-            Tuple of (seismic_cropped, facies_cropped) where each array has
-            been sliced to the minimum common shape along each axis.
-
-        Raises
-        ------
-        ValueError
-            If either input is not a 3-dimensional array.
-        """
+        """Crop cubes to minimum common shape."""
         self._ensure_initialized()
         return cast(
             tuple[NDArray[np.float64], NDArray[np.int64]],
@@ -395,29 +329,7 @@ class FaciesCorrelationAnalyzer(
         boundaries: NDArray[np.bool_],
         window: Optional[int] = None,
     ) -> BoundaryAmpsResult:
-        """Extract amplitudes at and away from facies boundaries.
-
-        Delegates to the injected BoundaryAmplitudeExtractor processor.
-
-        Parameters
-        ----------
-        seismic_cube
-            3D seismic amplitude cube with shape (i, j, k).
-        boundaries
-            Boolean mask of the same shape indicating facies-boundary
-            voxels.
-        window
-            Optional dilation radius (in iterations). When ``None`` the
-            analyzer's configuration value ``self.config.dilation_window``
-            is used.
-
-        Returns
-        -------
-        BoundaryAmpsResult
-            Named result containing arrays for amplitudes ``at_boundaries``
-            and ``away_from_boundaries`` together with the boolean
-            ``boundary_mask`` that was used.
-        """
+        """Extract amplitudes at and away from facies boundaries."""
         self._ensure_initialized()
         return cast(
             BoundaryAmpsResult,
@@ -427,18 +339,7 @@ class FaciesCorrelationAnalyzer(
     def calculate_gradient_correlation(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
     ) -> GradientCorrelationResult:
-        """Compute correlation between absolute vertical gradient and
-        facies boundaries.
-
-        Delegates to the injected GradientCorrelationCalculator processor.
-
-        Returns
-        -------
-        GradientCorrelationResult
-            Contains Pearson and Spearman correlations and p-values, the
-            computed absolute gradient array and the boolean boundary mask
-            used for the calculation.
-        """
+        """Compute correlation between gradient and facies boundaries."""
         self._ensure_initialized()
         return cast(
             GradientCorrelationResult,
@@ -448,17 +349,7 @@ class FaciesCorrelationAnalyzer(
     def analyze_interface_reflections(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
     ) -> InterfaceReflectionResult:
-        """Aggregate reflection amplitudes observed at facies interfaces.
-
-        Delegates to the injected InterfaceReflectionAnalyzer processor.
-
-        Returns
-        -------
-        InterfaceReflectionResult
-            ``summary`` maps Transition -> statistics dict (or ``None`` when
-            no samples) and ``interface_stats`` maps Transition -> raw
-            NumPy array of observed amplitudes.
-        """
+        """Aggregate reflection amplitudes at facies interfaces."""
         self._ensure_initialized()
         return cast(
             InterfaceReflectionResult,
@@ -468,10 +359,7 @@ class FaciesCorrelationAnalyzer(
     def calculate_facies_discrimination(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
     ) -> FaciesDiscriminationResult:
-        """Measure how well seismic amplitudes discriminate between facies types.
-
-        Delegates to the injected FaciesDiscriminationCalculator processor.
-        """
+        """Measure how well amplitudes discriminate between facies."""
         self._ensure_initialized()
         return self._facies_discriminator(seismic_cube, facies_cube)
 
@@ -509,55 +397,15 @@ class FaciesCorrelationAnalyzer(
     def create_summary_plots(
         self, avo_results: AvoResults, cache_dir: str, domain: Domain = Domain.DEPTH
     ) -> Figure:
-        """Create and return summary Figure for AVO analysis results.
-
-        This method delegates rendering to the injected ``plotter``
-        instance. If no plotter was injected the library's default
-        ``FaciesPlotter`` is lazily instantiated.
-
-        Parameters
-        ----------
-        avo_results
-            An ``AvoResults`` dataclass produced by analysis pipeline.
-        cache_dir
-            Directory path containing AVO/cache artifacts used by some
-            plotters to annotate or save outputs.
-        domain
-            A :class:`Domain` enum value (``Domain.DEPTH`` or ``Domain.TIME``)
-            passed to the plotter to control axis labels and annotations.
-
-        Returns
-        -------
-        matplotlib.figure.Figure
-            Figure returned by the configured plotter.
-        """
-
-        # Lazily instantiate the default plotter if none was injected.
-        # Deferred import: avoid circular dependency at module load time.
-        # The plotter module is only imported when actually needed.
+        """Create summary Figure for AVO analysis results."""
         if self._plotter is None:
             from src.plotting.facies_plotter import FaciesPlotter
 
             self._plotter = FaciesPlotter()
-
-        # Delegate plotting to the plotter instance and return the Figure.
         return self._plotter.create_summary_plots(avo_results, cache_dir, domain=domain)
 
     def get_processor_info(self) -> Dict[str, str]:
-        """Get information about configured processors (useful for testing).
-
-        Returns
-        -------
-        dict
-            Dictionary mapping processor names to their class names.
-
-        Example
-        -------
-        >>> analyzer = FaciesCorrelationAnalyzer()
-        >>> info = analyzer.get_processor_info()
-        >>> print(info['boundary_detector'])
-        'BoundaryDetector'
-        """
+        """Get configured processor class names."""
         self._ensure_initialized()
         return {
             "boundary_detector": self._boundary_detector.__class__.__name__,
@@ -570,51 +418,55 @@ class FaciesCorrelationAnalyzer(
         }
 
     def get_summary(self) -> str:
-        """Get a comprehensive summary of analyzer configuration and readiness.
-
-        Returns
-        -------
-        str
-            Multi-line formatted summary of the analyzer state.
-
-        Example
-        -------
-        >>> analyzer = FaciesCorrelationAnalyzer()
-        >>> print(analyzer.get_summary())
-        """
+        """Get a comprehensive summary of analyzer configuration and readiness."""
         self._ensure_initialized()
-        lines = []
-        lines.append("=" * 70)
-        lines.append("FaciesCorrelationAnalyzer Configuration Summary")
-        lines.append("=" * 70)
+        return "\n".join(
+            [
+                "=" * 70,
+                "FaciesCorrelationAnalyzer Configuration Summary",
+                "=" * 70,
+                self._get_status_summary(),
+                self._get_config_summary(),
+                self._get_dependencies_summary(),
+                self._get_processors_summary(),
+                "=" * 70,
+            ]
+        )
 
-        # Status
-        lines.append(f"\nStatus: {'✓ Ready' if self.is_ready else '✗ Not Ready'}")
+    def _get_status_summary(self) -> str:
+        """Get status line."""
+        return f"\nStatus: {'✓ Ready' if self.is_ready else '✗ Not Ready'}"
 
-        # Configuration
-        lines.append("\nConfiguration:")
-        lines.append(f"  Config Type: {self._config.__class__.__name__}")
+    def _get_config_summary(self) -> str:
+        """Get configuration summary."""
+        lines = [
+            "\nConfiguration:",
+            f"  Config Type: {self._config.__class__.__name__}",
+        ]
         if self._config:
             lines.append(f"  Dilation Window: {self._config.dilation_window}")
+        return "\n".join(lines)
 
-        # Dependencies
-        lines.append("\nOptional Dependencies:")
-        lines.append(
-            f"  Resampler Factory: {'✓ Injected' if self._resampler_factory else '○ Lazy'}"
-        )
-        lines.append(
-            f"  Cache Loader: {'✓ Injected' if self._cache_loader else '○ Lazy'}"
-        )
-        lines.append(f"  Plotter: {'✓ Injected' if self._plotter else '○ Lazy'}")
-        vel_model_name = (
+    def _get_dependencies_summary(self) -> str:
+        """Get dependencies summary."""
+        vel_model = (
             self._velocity_model_class.__name__
             if self._velocity_model_class
             else "None"
         )
-        lines.append(f"  Velocity Model: {vel_model_name}")
+        return "\n".join(
+            [
+                "\nOptional Dependencies:",
+                f"  Resampler Factory: {'✓ Injected' if self._resampler_factory else '○ Lazy'}",
+                f"  Cache Loader: {'✓ Injected' if self._cache_loader else '○ Lazy'}",
+                f"  Plotter: {'✓ Injected' if self._plotter else '○ Lazy'}",
+                f"  Velocity Model: {vel_model}",
+            ]
+        )
 
-        # Processors
-        lines.append("\nProcessors:")
+    def _get_processors_summary(self) -> str:
+        """Get processors summary."""
+        lines = ["\nProcessors:"]
         for proc_name, proc_type in self.get_processor_info().items():
             is_injected = getattr(self, f"_{proc_name}") is not None
             status = "✓" if is_injected else "○"
@@ -737,14 +589,7 @@ class FaciesCorrelationAnalyzer(
 
         Delegates to the appropriate domain handler strategy.
         """
-        # Get resampler from factory
-        if self._resampler_factory is not None:
-            resampler: Any = self._resampler_factory.get_resampler(grid_spec)
-        else:
-            from src.processing.resampling._resampler import resampler_factory
-
-            resampler = resampler_factory.get_resampler(grid_spec)
-
+        resampler = self._get_resampler(grid_spec)
         handler = self._domain_handler_factory.get_handler(domain)
         avo_display, facies_display = handler.prepare_display_cubes(
             resampler, facies_depth, avo, grid_spec

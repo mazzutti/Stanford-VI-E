@@ -111,32 +111,6 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
 
         return None
 
-    def _get_impl(
-        self, key: str
-    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
-        """Retrieve and deserialize cached object.
-
-        Parameters
-        ----------
-        key : str
-            Cache key.
-
-        Returns
-        -------
-        Optional[dict[str, str | int | float | bool] | bytes]
-            Deserialized cached data or None if not found.
-        """
-        path = self.get_path_for_key(key)
-        if not path or not path.exists():
-            return None
-
-        try:
-            with np.load(path, allow_pickle=True) as npz:
-                return dict(npz)
-        except Exception as e:
-            self.logger.debug(f"Error loading cache from {path}: {e}")
-            return None
-
     def get(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
         """Retrieve item from cache.
 
@@ -150,43 +124,15 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         Optional[dict[str, str | int | float | bool] | bytes]
             Cached value or None if not found.
         """
-        try:
-            return self._get_impl(key)
-        except Exception as e:
-            self.logger.debug(f"Error retrieving key '{key}': {e}")
+        path = self.get_path_for_key(key)
+        if not path or not path.exists():
             return None
-
-    def _set_impl(
-        self, key: str, value: dict[str, str | int | float | bool] | bytes
-    ) -> None:
-        """Serialize and store object in cache.
-
-        Parameters
-        ----------
-        key : str
-            Cache key.
-        value : dict[str, str | int | float | bool] | bytes
-            Object to cache (should be dict-like or convertible to dict).
-
-        Raises
-        ------
-        Exception
-            If serialization or write fails.
-        """
-        if not isinstance(value, dict):
-            raise ValueError("DiskStore requires dict-like values")
-
-        # Create filename with key and short hash for readability
-        short = key.split("_")[-1][:20]
-        filename = f"{key}_{short}.npz"
-        path = self.cache_dir / filename
-
-        # Ensure parent directory exists
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Save as compressed NPZ
-        np.savez_compressed(path, **value)
-        self.logger.debug(f"Saved cache to {path}")
+        try:
+            with np.load(path, allow_pickle=True) as npz:
+                return dict(npz)
+        except Exception as e:
+            self.logger.debug(f"Error loading cache from {path}: {e}")
+            return None
 
     def set(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Store item in cache.
@@ -198,26 +144,16 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         value : dict[str, str | int | float | bool] | bytes
             Value to cache.
         """
+        if not isinstance(value, dict):
+            raise ValueError("DiskStore requires dict-like values")
+        short = key.split("_")[-1][:20]
+        path = self.cache_dir / f"{key}_{short}.npz"
+        path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            self._set_impl(key, value)
+            np.savez_compressed(path, **value)
+            self.logger.debug(f"Saved cache to {path}")
         except Exception as e:
             self.logger.debug(f"Error storing key '{key}': {e}")
-
-    def _has_impl(self, key: str) -> bool:
-        """Check if cache entry exists.
-
-        Parameters
-        ----------
-        key : str
-            Cache key.
-
-        Returns
-        -------
-        bool
-            True if cache entry exists.
-        """
-        path = self.get_path_for_key(key)
-        return path is not None and path.exists()
 
     def has(self, key: str) -> bool:
         """Check if key exists in cache.
@@ -233,50 +169,11 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             True if key exists, False otherwise.
         """
         try:
-            return self._has_impl(key)
+            path = self.get_path_for_key(key)
+            return path is not None and path.exists()
         except Exception as e:
             self.logger.debug(f"Error checking key '{key}': {e}")
             return False
-
-    def _delete_impl(self, key: str) -> bool:
-        """Delete cache entry.
-
-        Parameters
-        ----------
-        key : str
-            Cache key.
-
-        Returns
-        -------
-        bool
-            True if successfully deleted, False if not found.
-        """
-        path = self.get_path_for_key(key)
-        if not path or not path.exists():
-            return False
-
-        try:
-            path.unlink()
-            self.logger.debug(f"Deleted cache file: {path.name}")
-            return True
-        except Exception as e:
-            self.logger.debug(f"Error deleting cache file {path}: {e}")
-            return False
-
-    def _clear_impl(self) -> None:
-        """Clear all cache entries in directory."""
-        if not self.cache_dir.exists():
-            return
-
-        try:
-            for path in self.cache_dir.glob("*.npz"):
-                try:
-                    path.unlink()
-                except Exception as e:
-                    self.logger.debug(f"Error deleting {path}: {e}")
-            self.logger.debug(f"Cleared cache directory: {self.cache_dir}")
-        except Exception as e:
-            self.logger.debug(f"Error clearing cache directory: {e}")
 
     def total_size_bytes(self) -> int:
         """Get total size of all cache files.
@@ -354,18 +251,30 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         bool
             True if deleted, False if not found.
         """
-        try:
-            return self._delete_impl(key)
-        except Exception as e:
-            self.logger.debug(f"Error deleting key '{key}': {e}")
+        path = self.get_path_for_key(key)
+        if not path or not path.exists():
             return False
+        try:
+            path.unlink()
+            self.logger.debug(f"Deleted cache file: {path.name}")
+            return True
+        except Exception as e:
+            self.logger.debug(f"Error deleting cache file {path}: {e}")
+            return 0
 
     def clear(self) -> None:
         """Clear all cache entries."""
+        if not self.cache_dir.exists():
+            return
         try:
-            self._clear_impl()
+            for path in self.cache_dir.glob("*.npz"):
+                try:
+                    path.unlink()
+                except Exception as e:
+                    self.logger.debug(f"Error deleting {path}: {e}")
+            self.logger.debug(f"Cleared cache directory: {self.cache_dir}")
         except Exception as e:
-            self.logger.debug(f"Error clearing cache: {e}")
+            self.logger.debug(f"Error clearing cache directory: {e}")
 
 
 class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):

@@ -27,14 +27,43 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.analysis.processors.boundary import CubeAligner
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["Processor", "BaseProcessor"]
+__all__ = ["Processor", "BaseProcessor", "AutoLoggingMixin"]
+
+
+class AutoLoggingMixin:
+    """Mixin that automatically configures logging for any class.
+
+    Eliminates the need for module-level logger declarations in every file.
+    Each instance gets a logger named after its module and class.
+    """
+
+    _logger: Optional[logging.Logger] = None
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Lazy logger initialization with class-based naming."""
+        if self._logger is None:
+            self._logger = logging.getLogger(
+                f"{self.__class__.__module__}.{self.__class__.__name__}"
+            )
+        return self._logger
+
+    def log_operation(self, operation: str, level: int = logging.DEBUG) -> None:
+        """Log an operation with automatic context."""
+        self.logger.log(level, f"{self.__class__.__name__}: {operation}")
+
+    def log_error_with_context(self, error: Exception, context: str = "") -> None:
+        """Log error with class context."""
+        self.logger.error(
+            f"{self.__class__.__name__} error in {context}: {error}", exc_info=True
+        )
 
 
 class Processor(ABC):
@@ -76,7 +105,7 @@ class Processor(ABC):
         pass
 
 
-class BaseProcessor(Processor):
+class BaseProcessor(Processor, AutoLoggingMixin):
     """Base class for data processors providing shared initialization and utilities.
 
     Eliminates code duplication across processor classes by providing common
@@ -104,7 +133,7 @@ class BaseProcessor(Processor):
         """Initialize base processor with shared dependencies."""
         # Use lazy initialization to avoid circular imports and infinite recursion
         self._aligner_instance: "CubeAligner | None" = None
-        logger.debug(f"Initialized {self.__class__.__name__}")
+        self.logger.debug(f"Initialized {self.__class__.__name__}")
 
     @property
     def _aligner(self) -> "CubeAligner":
@@ -159,15 +188,20 @@ class BaseProcessor(Processor):
             >>> extractor = BoundaryAmplitudeExtractor()
             >>> result = extractor.process(seismic, boundaries)  # Calls extract()
         """
-        for method_name in self._DOMAIN_METHODS:
-            if hasattr(self, method_name):
-                domain_method = getattr(self, method_name)
-                return domain_method(*args, **kwargs)
-
+        method = self._find_domain_method()
+        if method:
+            return method(*args, **kwargs)
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement one of: "
             f"{', '.join(self._DOMAIN_METHODS)}"
         )
+
+    def _find_domain_method(self):
+        """Find first available domain method."""
+        for method_name in self._DOMAIN_METHODS:
+            if hasattr(self, method_name):
+                return getattr(self, method_name)
+        return None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Make processor callable via process() method.

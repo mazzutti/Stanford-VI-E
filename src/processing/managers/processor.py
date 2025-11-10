@@ -1,6 +1,5 @@
 """Process management utilities with simplified API."""
 
-
 from pathlib import Path
 import logging
 from typing import List, Optional
@@ -58,9 +57,7 @@ class ProcessManager(BaseManager):
         Returns:
             Number of files removed
         """
-        return self.cache.clear(
-            patterns=patterns, cache_dir=cache_dir, prefix=prefix
-        )
+        return self.cache.clear(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
 
     def open_file(
         self, filepath: str, description: Optional[str] = None, prefix: str = ""
@@ -92,9 +89,26 @@ class ProcessManager(BaseManager):
             keys: Optional keys to filter cache entries
             prefix: Prefix for log messages
         """
-        return self.cache.summarize(
-            cache_dir=cache_dir, keys=keys, prefix=prefix
-        )
+        return self.cache.summarize(cache_dir=cache_dir, keys=keys, prefix=prefix)
+
+    # Protocol-compatible aliases for AnalysisCommon
+    def clear_cache(
+        self,
+        patterns: Optional[List[str]] = None,
+        cache_dir: Optional[Path] = None,
+        prefix: str = "",
+    ) -> int:
+        """Alias for clear() to match ProcessManagerProtocol."""
+        return self.clear(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
+
+    def summarize_cache_files(
+        self,
+        cache_dir: str = ".cache",
+        keys: Optional[List[str]] = None,
+        prefix: str = "",
+    ) -> None:
+        """Alias for summarize() to match ProcessManagerProtocol."""
+        return self.summarize(cache_dir=cache_dir, keys=keys, prefix=prefix)
 
 
 class ManagerHub(BaseManager):
@@ -127,9 +141,7 @@ class ManagerHub(BaseManager):
         self.cache = cache_manager or CacheManager(logger=self.logger)
         self.files = file_manager or FileManager(logger=self.logger)
         self.processes = process_manager or ProcessManager(
-            cache_manager=self.cache,
-            file_manager=self.files,
-            logger=self.logger
+            cache_manager=self.cache, file_manager=self.files, logger=self.logger
         )
 
     def clear(
@@ -148,9 +160,7 @@ class ManagerHub(BaseManager):
         Returns:
             Total number of resources cleared
         """
-        return self.cache.clear(
-            patterns=patterns, cache_dir=cache_dir, prefix=prefix
-        )
+        return self.cache.clear(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
 
     def summarize(
         self,

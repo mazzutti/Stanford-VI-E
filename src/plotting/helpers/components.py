@@ -38,31 +38,39 @@ class SliceExtractor:
         """
         self.ni, self.nj, self.nk = shape
 
-    def extract_inline(self, cube: NDArray[np.floating[Any]], idx: int) -> Tuple[NDArray[np.floating[Any]], str, str]:
-        """Extract inline slice at index idx.
+    def extract_inline(
+        self, cube: NDArray[np.floating[Any]], idx: int
+    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
+        """Extract inline slice at inline index idx.
 
         Args:
             cube: 3D data array (I, J, K)
-            idx: Inline index
+            idx: Inline index (I axis) - fixes this position
 
         Returns:
             Tuple of (slice_data, xlabel, ylabel)
+            Extracts cube[idx, :, :] giving shape (J, K)
+            Transpose to (K, J): x-axis is J (Crossline), y-axis is K (Depth)
+            Shows crossline-depth plane at inline position idx
         """
-        return cube[idx, :, :], "Crossline (J)", "Depth Index (K)"
+        return cube[idx, :, :].T, "Crossline (J)", "Depth Index (K)"
 
     def extract_crossline(
         self, cube: NDArray[np.floating[Any]], idx: int
     ) -> Tuple[NDArray[np.floating[Any]], str, str]:
-        """Extract crossline slice at index idx.
+        """Extract crossline slice at crossline index idx.
 
         Args:
             cube: 3D data array (I, J, K)
-            idx: Crossline index
+            idx: Crossline index (J axis) - fixes this position
 
         Returns:
             Tuple of (slice_data, xlabel, ylabel)
+            Extracts cube[:, idx, :] giving shape (I, K)
+            Transpose to (K, I): x-axis is I (Inline), y-axis is K (Depth)
+            Shows inline-depth plane at crossline position idx
         """
-        return cube[:, idx, :], "Inline (I)", "Depth Index (K)"
+        return cube[:, idx, :].T, "Inline (I)", "Depth Index (K)"
 
     def extract_depthslice(
         self, cube: NDArray[np.floating[Any]], idx: int
@@ -71,12 +79,15 @@ class SliceExtractor:
 
         Args:
             cube: 3D data array (I, J, K)
-            idx: Depth index
+            idx: Depth index (K axis)
 
         Returns:
             Tuple of (slice_data, xlabel, ylabel)
+            Extracts cube[:, :, idx] giving shape (I, J)
+            Returns transposed so shape becomes (J, I)
+            Displays with J on y-axis, I on x-axis
         """
-        return cube[:, :, idx], "Inline (I)", "Crossline (J)"
+        return cube[:, :, idx].T, "Inline (I)", "Crossline (J)"
 
     def extract_by_orientation(
         self, cube: NDArray[np.floating[Any]], idx: int, orientation: str
@@ -249,6 +260,7 @@ class ImageRenderer:
             origin="upper",
             interpolation=interpolation,
             extent=extent,
+            aspect="auto",
         )
 
         # Add colorbar if requested

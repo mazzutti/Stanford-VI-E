@@ -109,51 +109,12 @@ class ProcessorMetadata:
     dependencies: List[str] = field(default_factory=list)
 
     def matches_tags(self, required_tags: List[str]) -> bool:
-        """Check if this processor has all required tags.
-
-        Parameters
-        ----------
-        required_tags : List[str]
-            Tags that must be present.
-
-        Returns
-        -------
-        bool
-            True if processor has all required tags.
-        """
+        """Check if processor has all required tags."""
         return all(tag in self.tags for tag in required_tags)
 
 
 class ProcessorRegistry:
-    """Central registry for processor creation and management.
-
-    Manages processor factories, metadata, and provides methods to:
-    - Register new processors
-    - Create processor instances
-    - Query available processors
-    - List processors by domain/tags
-
-    Examples
-    --------
-    Register processors:
-
-    >>> registry = ProcessorRegistry()
-    >>> registry.register(
-    ...     name="boundary_detector_v1",
-    ...     factory=lambda: BoundaryDetector(),
-    ...     domain="facies",
-    ...     tags=["boundary", "detection"],
-    ... )
-
-    Create processor instances:
-
-    >>> detector = registry.create("boundary_detector_v1")
-
-    List processors:
-
-    >>> facies_processors = registry.list_processors(domain="facies")
-    >>> detection_processors = registry.list_processors(tags=["detection"])
-    """
+    """Central registry for processor creation and management."""
 
     def __init__(self) -> None:
         """Initialize an empty processor registry."""
@@ -171,32 +132,7 @@ class ProcessorRegistry:
         description: str = "",
         dependencies: Optional[List[str]] = None,
     ) -> None:
-        """Register a processor factory.
-
-        Parameters
-        ----------
-        name : str
-            Unique identifier for this processor.
-        factory : Callable[[], Any]
-            Callable that creates processor instances (no-arg constructor).
-        domain : str, optional
-            Domain/category of processor (default: "default").
-        version : str, optional
-            Version identifier (default: "1.0").
-        tags : List[str], optional
-            Keywords describing processor (default: empty list).
-        description : str, optional
-            Human-readable description (default: empty).
-        dependencies : List[str], optional
-            Names of other required processors (default: empty list).
-
-        Raises
-        ------
-        ValueError
-            If processor with same name already registered.
-        TypeError
-            If factory is not callable.
-        """
+        """Register a processor factory."""
         if not callable(factory):
             raise TypeError(f"factory must be callable, got {type(factory)}")
 
@@ -290,22 +226,7 @@ class ProcessorRegistry:
         tags: Optional[List[str]] = None,
         version: Optional[str] = None,
     ) -> List[str]:
-        """List registered processor names with optional filtering.
-
-        Parameters
-        ----------
-        domain : str, optional
-            Filter by domain (e.g., 'facies', 'avo').
-        tags : List[str], optional
-            Filter by all required tags (AND logic).
-        version : str, optional
-            Filter by version.
-
-        Returns
-        -------
-        List[str]
-            Names of processors matching all filters.
-        """
+        """List registered processor names with optional filtering."""
         results = []
         for name, meta in self._metadata.items():
             if domain and meta.domain != domain:
@@ -340,28 +261,11 @@ class ProcessorRegistry:
         return self._metadata[name]
 
     def has(self, name: str) -> bool:
-        """Check if a processor is registered.
-
-        Parameters
-        ----------
-        name : str
-            Name of processor to check.
-
-        Returns
-        -------
-        bool
-            True if processor is registered.
-        """
+        """Check if a processor is registered."""
         return name in self._processors
 
     def get_all_metadata(self) -> Dict[str, ProcessorMetadata]:
-        """Get metadata for all registered processors.
-
-        Returns
-        -------
-        Dict[str, ProcessorMetadata]
-            Mapping of processor names to their metadata.
-        """
+        """Get metadata for all registered processors."""
         return dict(self._metadata)
 
     def __repr__(self) -> str:
@@ -376,13 +280,7 @@ _default_registry: Optional[ProcessorRegistry] = None
 
 
 def get_default_processor_registry() -> ProcessorRegistry:
-    """Get or create the global default processor registry.
-
-    Returns
-    -------
-    ProcessorRegistry
-        The shared default registry for the application.
-    """
+    """Get or create the global default processor registry."""
     global _default_registry
     if _default_registry is None:
         _default_registry = ProcessorRegistry()
@@ -742,24 +640,9 @@ def filter_finite_values(
 def flatten_and_filter_finite(
     arr: NDArray[np.float64], bool_mask: NDArray[np.bool_]
 ) -> Tuple[Optional[NDArray[np.float64]], Optional[NDArray[np.float64]]]:
-    """Flatten array and boolean mask, then filter finite values.
-
-    Parameters
-    ----------
-    arr : numpy.ndarray(dtype=float64)
-        Array to flatten and filter.
-    bool_mask : numpy.ndarray(dtype=bool)
-        Boolean mask to flatten and convert to float.
-
-    Returns
-    -------
-    tuple
-        (flattened_arr, flattened_mask) if sufficient valid samples exist
-        else (None, None).
-    """
+    """Flatten and filter finite values from array and mask."""
     arr_flat = arr.flatten()
     mask_flat = bool_mask.flatten().astype(float)
-
     arr_filtered, mask_filtered, _ = filter_finite_values(arr_flat, mask_flat)
     return arr_filtered, mask_filtered
 

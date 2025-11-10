@@ -103,19 +103,19 @@ class WaveletConvolver:
         Preserves trace length using 'same' mode.
 
         Args:
-            cube: 3D seismic cube (nz, nx, ny)
+            cube: 3D seismic cube (ni, nj, nk) where k is depth/time axis
             wavelet: 1D source wavelet
 
         Returns:
             Convolved cube same shape as input
         """
-        _, nx, ny = cube.shape
+        ni, nj, _ = cube.shape
         result = np.zeros_like(cube, dtype=np.float32)
 
-        for ix in range(nx):
-            for iy in range(ny):
-                trace = cube[:, ix, iy]
-                result[:, ix, iy] = convolve(
+        for i in range(ni):
+            for j in range(nj):
+                trace = cube[i, j, :]  # Extract trace along depth axis
+                result[i, j, :] = convolve(
                     trace, wavelet, mode="same", method="fft"
                 ).astype(np.float32)
 

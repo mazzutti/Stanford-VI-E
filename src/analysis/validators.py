@@ -156,6 +156,30 @@ class RangeValidator(Validator):
         self.validate_range(float(value), actual_min, actual_max, name)
 
     @staticmethod
+    def _validate_with_nan_handling(
+        value: float,
+        min_val: float,
+        max_val: float,
+        name: str,
+        allow_nan: bool,
+        context: str,
+    ) -> None:
+        """Helper to validate range with NaN handling."""
+        import math
+
+        if math.isnan(value):
+            if not allow_nan:
+                raise ValidationError(f"{name} is NaN, which is not allowed.")
+            logger.debug(f"{name} is NaN (allowed)")
+            return
+
+        if not (min_val <= value <= max_val):
+            raise ValidationError(
+                f"{name}={value} is outside valid range [{min_val}, {max_val}]. {context}"
+            )
+        logger.debug(f"{name}={value} is valid")
+
+    @staticmethod
     def validate_correlation(
         value: float,
         name: str = "correlation",
@@ -184,23 +208,14 @@ class RangeValidator(Validator):
         >>> RangeValidator.validate_correlation(0.95, name="spearman_r")
         >>> RangeValidator.validate_correlation(float('nan'), allow_nan=True)
         """
-        import math
-
-        if math.isnan(value):
-            if not allow_nan:
-                raise ValidationError(
-                    f"{name} is NaN, which is not allowed. "
-                    "Pass allow_nan=True to permit NaN values."
-                )
-            logger.debug(f"{name} is NaN (allowed)")
-            return
-
-        if not (-1.0 <= value <= 1.0):
-            raise ValidationError(
-                f"{name}={value} is outside valid range [-1, 1]. "
-                "Correlation coefficients must be between -1 and 1."
-            )
-        logger.debug(f"{name}={value} is valid")
+        RangeValidator._validate_with_nan_handling(
+            value,
+            -1.0,
+            1.0,
+            name,
+            allow_nan,
+            "Correlation coefficients must be between -1 and 1.",
+        )
 
     @staticmethod
     def validate_pvalue(
@@ -230,20 +245,9 @@ class RangeValidator(Validator):
         >>> RangeValidator.validate_pvalue(0.05)
         >>> RangeValidator.validate_pvalue(0.05, name="spearman_pvalue")
         """
-        import math
-
-        if math.isnan(value):
-            if not allow_nan:
-                raise ValidationError(f"{name} is NaN, which is not allowed.")
-            logger.debug(f"{name} is NaN (allowed)")
-            return
-
-        if not (0.0 <= value <= 1.0):
-            raise ValidationError(
-                f"{name}={value} is outside valid range [0, 1]. "
-                "P-values must be between 0 and 1."
-            )
-        logger.debug(f"{name}={value} is valid")
+        RangeValidator._validate_with_nan_handling(
+            value, 0.0, 1.0, name, allow_nan, "P-values must be between 0 and 1."
+        )
 
     @staticmethod
     def validate_range(

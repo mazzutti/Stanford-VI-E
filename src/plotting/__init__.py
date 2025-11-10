@@ -5,6 +5,7 @@ Provides plotters for all visualization tasks:
 - OverlayPlotter: Seismic with facies overlay
 - FaciesPlotter: Facies correlation summary figures
 - RockPhysicsPlotter: Rock physics attributes
+- SeismogramPlotter: Seismogram visualizations (time and depth)
 - PlotlyPlotter: Interactive 3D visualizations
 
 Plus composition-based components for maximum flexibility:
@@ -51,6 +52,7 @@ from src.plotting.slice_plotter import SlicePlotter
 from src.plotting.overlay_plotter import OverlayPlotter
 from src.plotting.facies_plotter import FaciesPlotter
 from src.plotting.rock_physics_plotter import RockPhysicsPlotter
+from src.plotting.seismogram_plotter import SeismogramPlotter
 from src.plotting.plotly_plotter import PlotlyPlotter
 
 plt, np = init_plotting(backend="Agg")
@@ -72,6 +74,7 @@ __all__ = [
     "OverlayPlotter",
     "FaciesPlotter",
     "RockPhysicsPlotter",
+    "SeismogramPlotter",
     "PlotlyPlotter",
 ]
 
