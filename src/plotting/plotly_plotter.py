@@ -385,12 +385,12 @@ class PlotlyPlotter(BasePlotter):
         # Parametrize JavaScript with configuration constants using string substitution
         # Use __VARIABLE pattern for replacement to avoid conflicts with JS braces
         js_replacements = {
-            "_WHEEL_ZOOM_SENSITIVITY": str(_WHEEL_ZOOM_SENSITIVITY),
-            "_COLORBAR_MIN_LEN": str(_COLORBAR_MIN_LEN),
-            "_COLORBAR_MAX_LEN": str(_COLORBAR_MAX_LEN),
-            "_COLORBAR_DEFAULT_LEN": str(_COLORBAR_DEFAULT_LEN),
-            "_RESIZE_THROTTLE_MS": str(_RESIZE_THROTTLE_MS),
-            "_RETRY_ATTEMPTS": str(_RETRY_ATTEMPTS),
+            "WHEEL_ZOOM_SENSITIVITY": str(_WHEEL_ZOOM_SENSITIVITY),
+            "COLORBAR_MIN_LEN": str(_COLORBAR_MIN_LEN),
+            "COLORBAR_MAX_LEN": str(_COLORBAR_MAX_LEN),
+            "COLORBAR_DEFAULT_LEN": str(_COLORBAR_DEFAULT_LEN),
+            "RESIZE_THROTTLE_MS": str(int(_RESIZE_THROTTLE_MS)),
+            "RETRY_ATTEMPTS": str(int(_RETRY_ATTEMPTS)),
         }
 
         for var_name, var_value in js_replacements.items():
