@@ -181,6 +181,8 @@ class PlotlyPlotter(BasePlotter):
                 yaxis_title="Crossline (J)",
                 zaxis_title="Time/Depth (K)",
             ),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
         )
 
         return fig
@@ -201,5 +203,13 @@ class PlotlyPlotter(BasePlotter):
             fig: Plotly Figure object
             filepath: Output HTML file path
         """
-        fig.write_html(filepath)
+        fig.write_html(
+            filepath,
+            config={
+                "responsive": True,
+                "displayModeBar": True,
+                "displaylogo": False,
+                "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+            },
+        )
         self._log_info(f"saved interactive figure to {filepath}")

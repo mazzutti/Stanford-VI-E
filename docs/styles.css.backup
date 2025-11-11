@@ -872,61 +872,6 @@ Navigation Styles */
   display: inline-block;
 }
 
-/* Scrolled/Sticky State - Circular Icon Buttons (Small Screens Only) */
-@media (max-width: 768px) {
-  .tab-navigation.scrolled {
-    padding-right: 1rem;
-    justify-content: flex-end;
-  }
-
-  .tab-navigation.scrolled .tab-button {
-    flex: 0 0 auto;
-    width: 48px;
-    height: 48px;
-    max-width: 48px;
-    padding: 0;
-    margin-left: -2.4rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .tab-navigation.scrolled .tab-button i {
-    margin-right: 0;
-    font-size: 1.2rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .tab-navigation.scrolled .tab-button::after {
-    content: attr(data-label);
-    position: absolute;
-    bottom: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.3s ease;
-    z-index: 1000;
-  }
-
-  .tab-navigation.scrolled .tab-button:hover::after {
-    opacity: 1;
-    bottom: -35px;
-  }
-}
-
 /* Tab Content
 Styles */
 .tab-content {
@@ -6248,23 +6193,11 @@ h1,
   background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
 }
 
-.grid-spec-icon.grid-spec-icon-indigo {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
-}
-
 .gradient-box .grid-spec-icon.grid-spec-icon-cyan {
   background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%) !important;
 }
 
-.grid-spec-icon.grid-spec-icon-cyan {
-  background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%) !important;
-}
-
 .gradient-box .grid-spec-icon.grid-spec-icon-purple {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%) !important;
-}
-
-.grid-spec-icon.grid-spec-icon-purple {
   background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%) !important;
 }
 
@@ -7471,35 +7404,6 @@ tr,
   .tab-header-stats,
   .stats-bar {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* Stack ALL grid items - change from multi-column to 1 column */
-  .u-merged-023,
-  .grid-list,
-  .grid-list-2x2,
-  .grid-2,
-  .grid-2col,
-  .grid-2col-98,
-  .grid-3,
-  .grid-3col,
-  .grid-3col-98,
-  .grid-3col-99,
-  .grid-4,
-  .grid-4col,
-  .grid-auto,
-  .grid-auto-280,
-  .grid-auto-250,
-  .grid-auto-280-105,
-  .grid-auto-150-100,
-  .grid-auto-150-101,
-  .grid-auto-200-102,
-  .grid-auto-200-96,
-  .grid-auto-200-97,
-  .grid-auto-220-103,
-  .grid-auto-250-104,
-  .grid-auto-280-105,
-  .grid-auto-280-106 {
-    grid-template-columns: 1fr !important;
   }
 
   .text-5xl,
@@ -8993,6 +8897,257 @@ to,
    Breakpoints: 480px (small mobile), 640px (mobile), 768px (tablet),
    1024px (landscape tablet/small laptop), 1200px (desktop), 1400px+ (wide)
    =================================================================== */
+
+/* ==================== ULTRA-SMALL SCREENS (< 480px) ==================== */
+@media (max-width: 479px) {
+
+  /* Base typography */
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    font-size: 0.95rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  /* Container & Spacing */
+  .container {
+    max-width: 100%;
+    padding: 1rem;
+    margin: 0;
+    box-shadow: none;
+    min-height: auto;
+  }
+
+  header {
+    padding: 2rem 1rem 2rem;
+    margin-bottom: 0;
+  }
+
+  /* Hero section */
+  .hero-content-wrapper {
+    padding: 0;
+  }
+
+  .hero-logo {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+    margin-top: 0.3rem;
+  }
+
+  .hero-link {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Stats and data display */
+  .tab-header-stats {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .tab-header-stat {
+    padding: 0.75rem;
+    border-radius: 4px;
+  }
+
+  .tab-header-stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tab-header-stat-value {
+    font-size: 1.1rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Tab header styling */
+  .tab-header {
+    padding: 1.25rem;
+    margin: 1rem 0;
+  }
+
+  .tab-header-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tab-header-title i {
+    font-size: 1rem;
+  }
+
+  .tab-header-description {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+  }
+
+  /* Cards and boxes */
+  .gradient-box-bordered {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .info-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .icon-box {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  /* Content sections */
+  .content-section {
+    padding: 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .insight-box {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+  }
+
+  .insight-box h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Buttons */
+  button {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .tab-button {
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .tab-button i {
+    font-size: 0.9rem;
+    margin-right: 0.4rem;
+  }
+
+  /* Grids */
+  .grid-list {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .grid-2col,
+  .grid-3col,
+  .grid-4col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Images and media */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Modals */
+  .viewer-modal-content {
+    width: 95%;
+    height: 95%;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .viewer-modal-close {
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  /* Utility adjustments */
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Fixed buttons */
+  .back-to-top,
+  .domain-toggle-fixed {
+    width: 40px;
+    height: 40px;
+    font-size: 0.9rem;
+    bottom: 1rem;
+    right: 1rem;
+  }
+
+  /* Lists */
+  ul,
+  ol {
+    padding-left: 1.25rem;
+    margin: 0.5rem 0;
+  }
+
+  li {
+    margin: 0.25rem 0;
+    line-height: 1.5;
+  }
+
+  /* Code blocks */
+  pre {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+    overflow-x: auto;
+  }
+
+  code {
+    font-size: 0.8rem;
+  }
+
+  /* Tables */
+  table {
+    font-size: 0.85rem;
+  }
+
+  td,
+  th {
+    padding: 0.5rem 0.4rem;
+  }
+}
 
 /* ==================== SMALL MOBILE SCREENS (480px - 639px) ==================== */
 @media (min-width: 480px) and (max-width: 639px) {

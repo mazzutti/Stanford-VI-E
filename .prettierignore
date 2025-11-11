@@ -1,0 +1,9 @@
+# Ignore JavaScript files in docs folder to prevent auto-minification
+docs/script.js
+
+# Other files to ignore
+node_modules/
+dist/
+build/
+*.min.js
+*.min.css

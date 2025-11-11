@@ -1,4 +1,99 @@
 // ================================================
+// PLOTLY 3D ZOOM ADJUSTMENT FOR RESPONSIVE DESIGN
+// ================================================
+
+// Store original camera positions to avoid cumulative scaling
+const originalCameras = new Map();
+
+/**
+ * Adjusts Plotly 3D camera zoom based on screen size and container dimensions
+ * Ensures plots are visible and properly scaled on all device sizes
+ */
+function updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect) {
+  try {
+    if (!plotlyDiv || !plotlyWindow || !plotlyWindow.Plotly || !plotlyDiv.data) {
+      return;
+    }
+
+    // Get current window and container dimensions
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const containerWidth = plotlyRect.width;
+    const containerHeight = plotlyRect.height;
+    
+    // Calculate aspect ratio and determine zoom factor
+    const aspectRatio = containerWidth / (containerHeight || 1);
+    let eyeScale = 1;
+
+    // Mobile devices (≤480px) - extreme zoom adjustment
+    if (windowWidth <= 480) {
+      eyeScale = 1.75;
+    }
+    // Small mobile/tablets (481-767px) - very aggressive zoom adjustment
+    else if (windowWidth <= 767) {
+      eyeScale = 1.65;
+    }
+    // Tablets (768-1023px) - aggressive zoom adjustment
+    else if (windowWidth <= 1023) {
+      eyeScale = 1.45;
+    }
+    // Desktop (>1024px) - normal zoom (no adjustment)
+    else {
+      eyeScale = 1;
+    }
+
+    // Update camera for all scenes in the plot
+    const layout = plotlyDiv.layout || {};
+    const scenes = Object.keys(layout).filter(key => key.startsWith('scene'));
+
+    if (scenes.length === 0 && layout.scene) {
+      scenes.push('scene');
+    }
+
+    if (scenes.length > 0) {
+      const updates = {};
+      const divId = plotlyDiv.id || 'plotly-div';
+
+      scenes.forEach(sceneName => {
+        const sceneKey = `${divId}-${sceneName}`;
+        const scene = layout[sceneName];
+        
+        if (scene && scene.camera) {
+          // Get or store the original camera position
+          let originalEye;
+          if (!originalCameras.has(sceneKey)) {
+            originalEye = scene.camera.eye || { x: 1.5, y: 1.5, z: 1.3 };
+            originalCameras.set(sceneKey, originalEye);
+          } else {
+            originalEye = originalCameras.get(sceneKey);
+          }
+
+          // Always scale from the original, not from the current
+          updates[sceneName] = {
+            camera: {
+              eye: {
+                x: originalEye.x * eyeScale,
+                y: originalEye.y * eyeScale,
+                z: originalEye.z * eyeScale
+              },
+              center: scene.camera.center || { x: 0, y: 0, z: 0 },
+              up: scene.camera.up || { x: 0, y: 0, z: 1 }
+            }
+          };
+        }
+      });
+
+      // Apply the updates if we have any
+      if (Object.keys(updates).length > 0) {
+        plotlyWindow.Plotly.relayout(plotlyDiv, updates);
+      }
+    }
+  } catch (e) {
+    console.debug('Plotly zoom adjustment error:', e);
+  }
+}
+
+// ================================================
 // MODAL MANAGEMENT WITH ACCESSIBILITY
 // ================================================
 
@@ -95,6 +190,172 @@ function openViewer(url) {
       if (iframeLoadTimeout) {
         clearTimeout(iframeLoadTimeout);
         iframeLoadTimeout = null;
+      }
+      
+      // Inject styles and force sizing on the iframe document
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        if (iframeDoc) {
+          // Create and inject a style tag to force full height/width
+          const style = iframeDoc.createElement('style');
+          style.textContent = `
+            * {
+              box-sizing: border-box;
+            }
+            html, body {
+              height: 100% !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+            }
+            body > div {
+              height: 100% !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .plotly-graph-div {
+              height: 100% !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            #scene {
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+              position: absolute !important;
+            }
+            .gl-container {
+              width: 100% !important;
+              height: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            svg.main-svg {
+              width: 100% !important;
+              height: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .user-select-none {
+              width: 100% !important;
+              height: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .modebar-container {
+              position: fixed !important;
+              top: 0 !important;
+              right: 0 !important;
+              z-index: 1000 !important;
+            }
+          `;
+          iframeDoc.head.appendChild(style);
+          
+          // Also set inline styles as backup
+          iframeDoc.documentElement.style.cssText = 'height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important;';
+          iframeDoc.body.style.cssText = 'height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important;';
+          
+          // Force the wrapper div
+          const wrapperDiv = iframeDoc.body.firstElementChild;
+          if (wrapperDiv) {
+            wrapperDiv.style.cssText = 'height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important;';
+          }
+          
+          const plotlyDiv = iframeDoc.querySelector('.plotly-graph-div');
+          if (plotlyDiv) {
+            plotlyDiv.style.cssText = 'height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important;';
+          }
+          
+          // Force scene div if it exists
+          const sceneDiv = iframeDoc.querySelector('#scene');
+          if (sceneDiv) {
+            sceneDiv.style.cssText = 'position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important;';
+          }
+          
+          // Force gl-container if it exists
+          const glContainer = iframeDoc.querySelector('.gl-container');
+          if (glContainer) {
+            glContainer.style.cssText = 'width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important;';
+          }
+          
+          // Force SVG elements
+          const svgs = iframeDoc.querySelectorAll('svg.main-svg');
+          svgs.forEach(svg => {
+            svg.style.cssText = 'width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important;';
+          });
+          
+          // Force user-select-none containers
+          const userSelectDivs = iframeDoc.querySelectorAll('.user-select-none');
+          userSelectDivs.forEach(div => {
+            div.style.cssText = 'width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important;';
+          });
+        }
+      } catch (e) {
+        console.debug('Could not inject styles into iframe:', e);
+      }
+      
+      // Trigger Plotly to recalculate size
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const plotlyDiv = iframeDoc.querySelector('.plotly-graph-div');
+        const plotlyWindow = iframe.contentWindow;
+        
+        if (plotlyDiv && plotlyWindow && plotlyWindow.Plotly) {
+          const resizePlotly = () => {
+            try {
+              // Measure the plotly div within its own document context
+              const plotlyRect = plotlyDiv.getBoundingClientRect();
+              
+              // Force scene/canvas to take full size of the plotly div
+              const sceneDiv = iframeDoc.querySelector('#scene');
+              if (sceneDiv) {
+                sceneDiv.style.cssText = `position: absolute !important; left: 0 !important; top: 0 !important; width: ${plotlyRect.width}px !important; height: ${plotlyRect.height}px !important;`;
+              }
+              
+              const glContainer = iframeDoc.querySelector('.gl-container');
+              if (glContainer) {
+                glContainer.style.cssText = `width: ${plotlyRect.width}px !important; height: ${plotlyRect.height}px !important; margin: 0 !important; padding: 0 !important;`;
+              }
+              
+              // Force all SVGs and containers to match
+              const svgs = iframeDoc.querySelectorAll('svg.main-svg');
+              svgs.forEach(svg => {
+                svg.style.cssText = `width: ${plotlyRect.width}px !important; height: ${plotlyRect.height}px !important; margin: 0 !important; padding: 0 !important;`;
+              });
+              
+              const userSelectDivs = iframeDoc.querySelectorAll('.user-select-none');
+              userSelectDivs.forEach(div => {
+                div.style.cssText = `width: ${plotlyRect.width}px !important; height: ${plotlyRect.height}px !important; margin: 0 !important; padding: 0 !important;`;
+              });
+              
+              // Now trigger Plotly resize
+              plotlyWindow.Plotly.Plots.resize(plotlyDiv);
+              
+              // Adjust camera zoom based on screen size for better visibility
+              updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect);
+            } catch (e) {
+              console.debug('Plotly resize error:', e);
+            }
+          };
+          
+          // Multiple attempts to ensure it takes effect
+          setTimeout(resizePlotly, 50);
+          setTimeout(resizePlotly, 150);
+          setTimeout(resizePlotly, 400);
+          setTimeout(resizePlotly, 800);
+          
+          // Add resize listener to update zoom when container size changes
+          const resizeObserver = new ResizeObserver(() => {
+            setTimeout(resizePlotly, 100);
+          });
+          resizeObserver.observe(plotlyDiv);
+        }
+      } catch (e) {
+        console.debug('Could not trigger Plotly resize:', e);
       }
     };
     const onError = function() {
@@ -217,6 +478,43 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ================================================
+// WINDOW RESIZE LISTENER FOR 3D PLOT ZOOM
+// ================================================
+
+let resizeDebounceTimer;
+window.addEventListener('resize', function() {
+  // Debounce resize events with shorter delay for smooth adaptation
+  if (resizeDebounceTimer) {
+    clearTimeout(resizeDebounceTimer);
+  }
+  
+  resizeDebounceTimer = setTimeout(function() {
+    try {
+      const modal = document.getElementById('viewer3DModal');
+      const iframe = document.getElementById('viewer3DIframe');
+      
+      // Only update zoom if modal is open and iframe has content
+      if (modal && modal.classList.contains('active') && iframe && iframe.src) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          const plotlyDiv = iframeDoc.querySelector('.plotly-graph-div');
+          const plotlyWindow = iframe.contentWindow;
+          
+          if (plotlyDiv && plotlyWindow && plotlyWindow.Plotly) {
+            const plotlyRect = plotlyDiv.getBoundingClientRect();
+            updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect);
+          }
+        } catch (e) {
+          console.debug('Could not update Plotly zoom on resize:', e);
+        }
+      }
+    } catch (e) {
+      console.debug('Resize handler error:', e);
+    }
+  }, 100);  // Reduced from 250ms for smoother, more responsive adaptation
+}, { passive: true });
+
+// ================================================
 // SCROLL PROGRESS INDICATOR WITH DEBOUNCE
 // ================================================
 
@@ -249,6 +547,23 @@ window.addEventListener('scroll', function() {
         backToTop.classList.add('visible');
       } else {
         backToTop.classList.remove('visible');
+      }
+    }
+
+    // Tab Navigation Scroll Detection - Convert to Circular Icons (Small Screens Only)
+    // Only apply on screens <= 768px
+    if (window.innerWidth <= 768) {
+      const tabNav = document.querySelector('.tab-navigation');
+      if (tabNav) {
+        // Check if nav is stuck (scrolled past header)
+        const navRect = tabNav.getBoundingClientRect();
+        const isStuck = navRect.top <= 0;
+        
+        if (isStuck && window.scrollY > 200) {
+          tabNav.classList.add('scrolled');
+        } else {
+          tabNav.classList.remove('scrolled');
+        }
       }
     }
   });

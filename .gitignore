@@ -45,6 +45,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.playwright-mcp/
 .test_cache
 nosetests.xml
 coverage.xml

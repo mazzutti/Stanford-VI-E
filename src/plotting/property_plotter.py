@@ -503,13 +503,22 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
                         center=dict(x=0, y=0, z=0),
                     ),
                 ),
-                width=1200,
-                height=900,
+                autosize=True,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
             )
 
             # Save HTML file
             output_file = self.output_dir / f"rock_physics_{prop_key}_3d.html"
-            fig.write_html(str(output_file))
+            fig.write_html(
+                str(output_file),
+                config={
+                    "responsive": True,
+                    "displayModeBar": True,
+                    "displaylogo": False,
+                    "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+                },
+            )
             generated_files.append(str(output_file))
             logger.info(f"  ✓ Saved: {output_file}")
 
@@ -714,13 +723,22 @@ class OriginalPropertyPlotter(PropertyPlotter):
                         center=dict(x=0, y=0, z=0),
                     ),
                 ),
-                width=1200,
-                height=900,
+                autosize=True,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
             )
 
             # Save HTML file
             output_file = self.output_dir / f"original_{prop_key}_3d.html"
-            fig.write_html(str(output_file))
+            fig.write_html(
+                str(output_file),
+                config={
+                    "responsive": True,
+                    "displayModeBar": True,
+                    "displaylogo": False,
+                    "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+                },
+            )
             generated_files.append(str(output_file))
             logger.info(f"  ✓ Saved: {output_file}")
 
