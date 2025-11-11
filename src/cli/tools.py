@@ -17,6 +17,7 @@ __all__ = [
     "cleanup_cache",
     "plot_3d_interactive",
     "plot_3d_slices",
+    "plot_seismic_full_stack",
     "plot_rock_physics_attributes",
     "plot_original_properties",
     "analysis_rock_physics",
@@ -141,6 +142,33 @@ def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
     avo_fn = loader.select_cache_file(args.cache_dir, args.domain)
 
     return {"avo": avo_fn or ""}
+
+
+@tool
+def plot_seismic_full_stack(domain: str = "time", cache_dir: str = ".cache", out_dir: str = "docs/images") -> None:
+    """Generate interactive seismic full-stack 3D HTML for a domain.
+
+    Parameters
+    ----------
+    domain : str
+        'time' or 'depth'
+    cache_dir : str
+        Cache directory
+    out_dir : str
+        Output directory for HTML files
+    """
+    if domain not in ("time", "depth"):
+        raise ValueError("domain must be 'time' or 'depth'")
+
+    from src.plotting.seismic_plotter import SeismicPlotter
+
+    plotter = SeismicPlotter(cache_dir=cache_dir, out_dir=out_dir)
+    generated = plotter.generate_from_caches(domain=domain)
+    if generated:
+        for p in generated:
+            print(f"[INFO] Generated: {p}")
+    else:
+        print(f"[INFO] No caches found for domain: {domain}")
 
 
 @tool
