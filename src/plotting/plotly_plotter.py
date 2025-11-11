@@ -375,34 +375,112 @@ function enableAggressiveZoom() {
   // Store the default wheel scale - INCREASED for much more aggressive zoom
   let wheelScale = 2.5; // Much more aggressive - 2.5x sensitivity
   
-  // Capture wheel events and amplify them
-  div.addEventListener('wheel', function(e) {
+  // Centralized wheel handling: zoom camera + recreate depth trace with scaled colorbar.
+  // Recreating the trace (vs restyle) forces Plotly's renderer to redraw the colorbar visually.
+  function performWheelZoom(e, source) {
     // Get current camera eye position
-    if (div._fullLayout && div._fullLayout.scene && div._fullLayout.scene.camera) {
-      const camera = div._fullLayout.scene.camera;
+    const sceneCamera = (div && div._fullLayout && div._fullLayout.scene && div._fullLayout.scene.camera) ? div._fullLayout.scene.camera : null;
+    if (sceneCamera) {
+      const camera = sceneCamera;
       const eye = camera.eye;
-      
+
       // Calculate zoom direction based on wheel delta - more aggressive multiplier
       const zoomFactor = e.deltaY > 0 ? (1 + (wheelScale - 1) * 0.5) : (1 - (wheelScale - 1) * 0.5);
-      
+
       // New camera position (zoom towards/away from center)
       const newEye = {
         x: eye.x / zoomFactor,
         y: eye.y / zoomFactor,
         z: eye.z / zoomFactor
       };
-      
-      // Apply the new camera position
-      Plotly.relayout(div, {
-        'scene.camera.eye': newEye
+
+      // Apply camera change via relayout (use promise API when available)
+      try {
+        const rel = Plotly.relayout(div, {'scene.camera.eye': newEye});
+      } catch(e) {
+        // Silently handle relayout errors
+      }
+
+      // Scale colorbar by recreating trace with new colorbar.len
+      if (window._originalColorbars && Array.isArray(window._originalColorbars)) {
+        window._originalColorbars.forEach(function(cb) {
+          try {
+            const traceIdx = cb.index;
+            if (div && div.data && div.data[traceIdx]) {
+              const origLen = (cb && cb.len) ? cb.len : 0.5;
+              const newLen = Math.max(0.15, Math.min(0.95, origLen / zoomFactor));
+              
+              const currentTrace = div.data[traceIdx];
+              const updatedTrace = JSON.parse(JSON.stringify(currentTrace));
+              if (updatedTrace.colorbar) {
+                updatedTrace.colorbar.len = newLen;
+                Plotly.deleteTraces(div, [traceIdx]);
+                Plotly.addTraces(div, [updatedTrace], [traceIdx]);
+              }
+            }
+          } catch(e) {
+            // Silently handle trace recreation errors
+          }
+        });
+      }
+    }
+  }
+
+  // Scale colorbar when window is resized (responsive scaling based on viewport)
+  let lastWindowWidth = window.innerWidth;
+  let lastWindowHeight = window.innerHeight;
+  
+  function scaleColorbarOnResize() {
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+    const widthRatio = currentWidth / (lastWindowWidth || currentWidth);
+    const heightRatio = currentHeight / (lastWindowHeight || currentHeight);
+    
+    // Use geometric mean to scale colorbar proportionally
+    const resizeRatio = Math.sqrt(widthRatio * heightRatio);
+    
+    if (window._originalColorbars && Array.isArray(window._originalColorbars)) {
+      window._originalColorbars.forEach(function(cb) {
+        try {
+          const traceIdx = cb.index;
+          if (div && div.data && div.data[traceIdx]) {
+            const origLen = (cb && cb.len) ? cb.len : 0.5;
+            const newLen = Math.max(0.15, Math.min(0.95, origLen * resizeRatio));
+            
+            // Clone and recreate trace with new colorbar length
+            const currentTrace = div.data[traceIdx];
+            const updatedTrace = JSON.parse(JSON.stringify(currentTrace));
+            if (updatedTrace.colorbar) {
+              updatedTrace.colorbar.len = newLen;
+              Plotly.deleteTraces(div, [traceIdx]);
+              Plotly.addTraces(div, [updatedTrace], [traceIdx]);
+            }
+          }
+        } catch(e) {
+          // Silently handle trace recreation errors
+        }
       });
     }
+    
+    // Update last dimensions for next resize
+    lastWindowWidth = currentWidth;
+    lastWindowHeight = currentHeight;
+  }
+  
+  // Throttle resize events (max once per 300ms)
+  let resizeTimer = null;
+  window.addEventListener('resize', function() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(scaleColorbarOnResize, 300);
   }, false);
 }
 
 // CRITICAL: Ensure Z-axis reversed and titles persist on all layout changes
 const div = document.querySelector('.plotly-graph-div');
 window._isApplyingFix = false;
+// When true, restoreAxisProperties will reapply captured colorbar lengths.
+// Default=false to allow dynamic colorbar scaling during user interactions.
+window._forceRestoreColorbars = false;
 window._originalTitles = null;
 
 if (div) {
@@ -424,9 +502,9 @@ if (div) {
         return false;
       }
       
-      const xAxis = scene.xaxis;
-      const yAxis = scene.yaxis;
-      const zAxis = scene.zaxis;
+  const xAxis = scene.xaxis;
+  const yAxis = scene.yaxis;
+  const zAxis = scene.zaxis;
       
       // Extract title - could be string or object with text property
       const xTitle = xAxis && xAxis.title ? (typeof xAxis.title === 'object' ? xAxis.title.text : xAxis.title) : null;
@@ -439,6 +517,22 @@ if (div) {
           yaxis: {text: yTitle},
           zaxis: {text: zTitle}
         };
+        // Capture original colorbar lengths (if present) from traces in _fullData
+        try {
+          const fd = div._fullData || div.data || [];
+          const cbs = [];
+          for (let i = 0; i < fd.length; i++) {
+            const t = fd[i];
+            if (t && t.colorbar) {
+              // colorbar.len may be undefined; default to 0.5
+              const len = t.colorbar.len || 0.5;
+              cbs.push({index: i, len: len});
+            }
+          }
+          if (cbs.length) {
+            window._originalColorbars = cbs;
+          }
+        } catch(e) { }
         return true;
       } else {
         return false;
@@ -483,6 +577,11 @@ if (div) {
       }
     }
     
+    // Automatic colorbar restoration intentionally disabled.
+    // Restoring colorbar lengths here would interfere with user-driven
+    // dynamic scaling during wheel zoom or window resize.
+
+    // Apply other layout updates (titles, z autorange)
     Plotly.relayout(div, updates);
   }
   
@@ -554,9 +653,26 @@ if (div) {
 </script>
             """
 
-            # Insert script before </body>
+            # Insert script before </body>.
+            # First remove any previously injected script block to avoid duplicates
+            # (older runs appended the same script repeatedly).
+            start_marker = "<!-- BEGIN_PLOTLY_3D_INJECTION -->"
+            end_marker = "<!-- END_PLOTLY_3D_INJECTION -->"
+            wrapped = start_marker + "\n" + script + "\n" + end_marker
+
+            try:
+                if start_marker in html_content and end_marker in html_content:
+                    s = html_content.index(start_marker)
+                    e = html_content.index(end_marker, s) + len(end_marker)
+                    html_content = html_content[:s] + html_content[e:]
+            except Exception:
+                # If something goes wrong, fall back to a safer replace of markers
+                html_content = html_content.replace(start_marker, "").replace(
+                    end_marker, ""
+                )
+
             if "</body>" in html_content:
-                html_content = html_content.replace("</body>", script + "\n</body>")
+                html_content = html_content.replace("</body>", wrapped + "\n</body>")
                 with open(filepath, "w", encoding="utf-8") as f:
                     f.write(html_content)
         except Exception as e:
