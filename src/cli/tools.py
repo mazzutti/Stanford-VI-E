@@ -27,6 +27,7 @@ __all__ = [
     "regenerate_seismograms",
     "regenerate_rock_physics",
     "rock_physics_attributes",
+    "regenerate_all_3d_plots",
 ]
 
 
@@ -145,7 +146,9 @@ def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
 
 
 @tool
-def plot_seismic_full_stack(domain: str = "time", cache_dir: str = ".cache", out_dir: str = "docs/images") -> None:
+def plot_seismic_full_stack(
+    domain: str = "time", cache_dir: str = ".cache", out_dir: str = "docs/images"
+) -> None:
     """Generate interactive seismic full-stack 3D HTML for a domain.
 
     Parameters
@@ -876,4 +879,168 @@ def plot_original_properties(
             "generated": [],
             "count": 0,
             "properties": [],
+        }
+
+
+@tool
+def regenerate_all_3d_plots(
+    data_dir: str = ".",
+    cache_dir: str = ".cache",
+    output_dir: str = "docs/images",
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Regenerate all 3D interactive plots (original properties, rock physics, seismic).
+
+    This tool regenerates 8 interactive Plotly HTML visualizations:
+    - 3 Original properties (Vp, Vs, Rho)
+    - 3 Rock physics attributes (Lambda-Rho, Mu-Rho, Intercept, Gradient)
+    - 2 Seismic full stack (Time-domain, Depth-domain)
+
+    All plots include aggressive zoom controls (2.5x sensitivity),
+    persistent axis titles on resize, and fullscreen CSS.
+
+    Parameters
+    ----------
+    data_dir : str
+        Root directory containing Stanford VI-E property data, default: .
+    cache_dir : str
+        Cache directory for rock physics and seismic data, default: .cache
+    output_dir : str
+        Output directory for generated HTML files, default: docs/images
+    verbose : bool
+        Enable verbose logging, default: False
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary with generation results including file counts and paths
+
+    Examples
+    --------
+    $ python -m src regenerate_all_3d_plots
+    $ python -m src regenerate_all_3d_plots --output-dir custom/output
+    """
+    from pathlib import Path
+
+    if verbose:
+        ParserFactory.configure_logging(True)
+
+    try:
+        from src.plotting.property_plotter import (
+            OriginalPropertyPlotter,
+            RockPhysicsPropertyPlotter,
+        )
+        from src.plotting.seismic_plotter import SeismicPlotter
+
+        logger.info("=" * 80)
+        logger.info("REGENERATING ALL 3D INTERACTIVE PLOTS")
+        logger.info("=" * 80)
+
+        all_files = []
+        results = {
+            "original_properties": [],
+            "rock_physics": [],
+            "seismic": [],
+        }
+
+        # 1. Original Properties (3 plots: Vp, Vs, Rho)
+        logger.info("\n[1/3] Regenerating ORIGINAL PROPERTIES 3D plots...")
+        try:
+            plotter = OriginalPropertyPlotter(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                verbose=verbose,
+            )
+            plotter.load_data()
+            files = plotter.generate_3d_plotly_visualizations()
+            results["original_properties"] = files
+            all_files.extend(files)
+            logger.info(f"✓ Generated {len(files)} original property plots:")
+            for f in files:
+                logger.info(f"  - {Path(f).name}")
+        except Exception as e:
+            logger.error(f"Error generating original properties: {e}", exc_info=True)
+            return {
+                "error": str(e),
+                "original_properties": [],
+                "rock_physics": [],
+                "seismic": [],
+                "total_count": 0,
+            }
+
+        # 2. Rock Physics Attributes (3 plots: Lambda-Rho, Mu-Rho, Intercept, Gradient)
+        logger.info("\n[2/3] Regenerating ROCK PHYSICS ATTRIBUTES 3D plots...")
+        try:
+            plotter_rp = RockPhysicsPropertyPlotter(
+                cache_dir=cache_dir,
+                output_dir=output_dir,
+                verbose=verbose,
+            )
+            plotter_rp.load_data()
+            files_rp = plotter_rp.generate_3d_plotly_visualizations()
+            results["rock_physics"] = files_rp
+            all_files.extend(files_rp)
+            logger.info(f"✓ Generated {len(files_rp)} rock physics plots:")
+            for f in files_rp:
+                logger.info(f"  - {Path(f).name}")
+        except Exception as e:
+            logger.error(f"Error generating rock physics: {e}", exc_info=True)
+            return {
+                "error": str(e),
+                "original_properties": results["original_properties"],
+                "rock_physics": [],
+                "seismic": [],
+                "total_count": len(all_files),
+            }
+
+        # 3. Seismic Full Stack (2 plots: Time-domain, Depth-domain)
+        logger.info("\n[3/3] Regenerating SEISMIC FULL STACK 3D plots...")
+        try:
+            plotter_seismic = SeismicPlotter(
+                cache_dir=cache_dir,
+                out_dir=output_dir,
+                verbose=verbose,
+            )
+            files_seismic_time = plotter_seismic.generate_from_caches(domain="time")
+            files_seismic_depth = plotter_seismic.generate_from_caches(domain="depth")
+            files_seismic = files_seismic_time + files_seismic_depth
+            results["seismic"] = [str(p) for p in files_seismic]
+            all_files.extend(files_seismic)
+            logger.info(f"✓ Generated {len(files_seismic)} seismic plots:")
+            for f in files_seismic:
+                logger.info(f"  - {Path(f).name}")
+        except Exception as e:
+            logger.error(f"Error generating seismic plots: {e}", exc_info=True)
+            return {
+                "error": str(e),
+                "original_properties": results["original_properties"],
+                "rock_physics": results["rock_physics"],
+                "seismic": [],
+                "total_count": len(all_files),
+            }
+
+        logger.info("\n" + "=" * 80)
+        logger.info(f"✓ ALL 3D PLOTS REGENERATED SUCCESSFULLY!")
+        logger.info("=" * 80)
+
+        # Verify all files were created
+        plot_files = sorted(Path(output_dir).glob("*_3d.html"))
+        logger.info(f"\nVerifying {len(plot_files)} plot files in {output_dir}:")
+        for f in plot_files:
+            logger.info(f"  ✓ {f.name}")
+
+        results["total_count"] = len(all_files)
+        results["verified_count"] = len(plot_files)
+
+        return results
+
+    except Exception as e:
+        error_msg = f"Failed to regenerate 3D plots: {e}"
+        logger.error(error_msg, exc_info=True)
+        return {
+            "error": error_msg,
+            "original_properties": [],
+            "rock_physics": [],
+            "seismic": [],
+            "total_count": 0,
         }

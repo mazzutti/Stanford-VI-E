@@ -4,6 +4,8 @@
 
 // Store original camera positions to avoid cumulative scaling
 const originalCameras = new Map();
+// Store original axis titles to prevent them from being reset
+const originalAxisTitles = new Map();
 
 /**
  * Adjusts Plotly 3D camera zoom based on screen size and container dimensions
@@ -68,6 +70,21 @@ function updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect) {
             originalEye = originalCameras.get(sceneKey);
           }
 
+          // Store original axis titles if not already stored
+          if (!originalAxisTitles.has(sceneKey)) {
+            const titles = {};
+            if (scene.xaxis && scene.xaxis.title) {
+              titles.xaxis = scene.xaxis.title;
+            }
+            if (scene.yaxis && scene.yaxis.title) {
+              titles.yaxis = scene.yaxis.title;
+            }
+            if (scene.zaxis && scene.zaxis.title) {
+              titles.zaxis = scene.zaxis.title;
+            }
+            originalAxisTitles.set(sceneKey, titles);
+          }
+
           // Always scale from the original, not from the current
           updates[sceneName] = {
             camera: {
@@ -80,6 +97,25 @@ function updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect) {
               up: scene.camera.up || { x: 0, y: 0, z: 1 }
             }
           };
+
+          // Restore axis titles
+          const titles = originalAxisTitles.get(sceneKey);
+          if (titles) {
+            if (titles.xaxis) {
+              updates[`${sceneName}.xaxis.title`] = titles.xaxis;
+            }
+            if (titles.yaxis) {
+              updates[`${sceneName}.yaxis.title`] = titles.yaxis;
+            }
+            if (titles.zaxis) {
+              updates[`${sceneName}.zaxis.title`] = titles.zaxis;
+            }
+          }
+
+          // Scale colorbar thickness based on zoom
+          // Colorbar thickness scales with eyeScale to remain proportional
+          const scaledColorbarThickness = Math.max(15, 20 * eyeScale);
+          updates[`${sceneName}.coloraxis.colorbar.thickness`] = scaledColorbarThickness;
         }
       });
 
@@ -252,6 +288,17 @@ function openViewer(url) {
               right: 0 !important;
               z-index: 1000 !important;
             }
+            /* Colorbar responsive sizing */
+            .cbbg, .cbfill, .cbtick {
+              fill: currentColor;
+            }
+            .colorbar {
+              position: absolute !important;
+              right: 10px !important;
+            }
+            g.colorbar text {
+              font-size: 12px !important;
+            }
           `;
           iframeDoc.head.appendChild(style);
           
@@ -332,8 +379,54 @@ function openViewer(url) {
                 div.style.cssText = `width: ${plotlyRect.width}px !important; height: ${plotlyRect.height}px !important; margin: 0 !important; padding: 0 !important;`;
               });
               
+              // Store the current axis configuration before resize
+              const layout = plotlyDiv.layout || {};
+              const sceneAxisConfig = {};
+              ['scene', 'scene2', 'scene3', 'scene4'].forEach(sceneName => {
+                if (layout[sceneName]) {
+                  sceneAxisConfig[sceneName] = {
+                    xaxis: layout[sceneName].xaxis ? JSON.parse(JSON.stringify(layout[sceneName].xaxis)) : null,
+                    yaxis: layout[sceneName].yaxis ? JSON.parse(JSON.stringify(layout[sceneName].yaxis)) : null,
+                    zaxis: layout[sceneName].zaxis ? JSON.parse(JSON.stringify(layout[sceneName].zaxis)) : null
+                  };
+                }
+              });
+              
+              // Store colorbar configuration from traces
+              const colorbarConfig = {};
+              if (plotlyDiv.data) {
+                plotlyDiv.data.forEach((trace, idx) => {
+                  if (trace.colorbar) {
+                    colorbarConfig[`trace_${idx}`] = JSON.parse(JSON.stringify(trace.colorbar));
+                  }
+                });
+              }
+              
               // Now trigger Plotly resize
               plotlyWindow.Plotly.Plots.resize(plotlyDiv);
+              
+              // Restore axis configuration after resize
+              if (Object.keys(sceneAxisConfig).length > 0) {
+                const updates = {};
+                Object.entries(sceneAxisConfig).forEach(([sceneName, axes]) => {
+                  if (axes.xaxis) updates[`${sceneName}.xaxis`] = axes.xaxis;
+                  if (axes.yaxis) updates[`${sceneName}.yaxis`] = axes.yaxis;
+                  if (axes.zaxis) updates[`${sceneName}.zaxis`] = axes.zaxis;
+                });
+                if (Object.keys(updates).length > 0) {
+                  plotlyWindow.Plotly.relayout(plotlyDiv, updates);
+                }
+              }
+              
+              // Restore colorbar configuration
+              if (Object.keys(colorbarConfig).length > 0) {
+                Object.entries(colorbarConfig).forEach(([traceKey, colorbar]) => {
+                  const traceIdx = parseInt(traceKey.split('_')[1]);
+                  if (plotlyDiv.data && plotlyDiv.data[traceIdx]) {
+                    plotlyDiv.data[traceIdx].colorbar = colorbar;
+                  }
+                });
+              }
               
               // Adjust camera zoom based on screen size for better visibility
               updatePlotlyZoom(plotlyDiv, plotlyWindow, plotlyRect);

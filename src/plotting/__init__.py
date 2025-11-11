@@ -52,7 +52,7 @@ from src.plotting.slice_plotter import SlicePlotter
 from src.plotting.overlay_plotter import OverlayPlotter
 from src.plotting.facies_plotter import FaciesPlotter
 from src.plotting.rock_physics_plotter import RockPhysicsPlotter
-from src.plotting.seismogram_plotter import SeismogramPlotter
+from src.plotting.seismic_plotter import SeismicPlotter
 from src.plotting.plotly_plotter import PlotlyPlotter
 
 plt, np = init_plotting(backend="Agg")
@@ -74,7 +74,7 @@ __all__ = [
     "OverlayPlotter",
     "FaciesPlotter",
     "RockPhysicsPlotter",
-    "SeismogramPlotter",
+    "SeismicPlotter",
     "PlotlyPlotter",
 ]
 

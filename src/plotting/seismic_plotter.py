@@ -5,6 +5,7 @@ create interactive 3D HTML visualizations for full-stack seismograms in
 both time and depth domains. Designed to mirror the project's OOP style
 and integrate with the CLI tool registry.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,7 +37,13 @@ class SeismicPlotter(BasePlotter):
     SeismogramPlotter functionality so consumers can use a single class.
     """
 
-    def __init__(self, cache_dir: str = ".cache", out_dir: str = "docs/images", backend: str = "Agg", verbose: bool = False):
+    def __init__(
+        self,
+        cache_dir: str = ".cache",
+        out_dir: str = "docs/images",
+        backend: str = "Agg",
+        verbose: bool = False,
+    ):
         # Initialize BasePlotter (may set Matplotlib backend)
         super().__init__(backend=backend)
         self.cache_dir = Path(cache_dir)
@@ -52,15 +59,17 @@ class SeismicPlotter(BasePlotter):
         pattern = "avo_time*.npz" if domain == "time" else "avo_depth*.npz"
         candidates = list(self.cache_dir.glob(pattern))
         if not candidates:
-            logger.warning("No AVO cache found for pattern %s in %s", pattern, self.cache_dir)
+            logger.warning(
+                "No AVO cache found for pattern %s in %s", pattern, self.cache_dir
+            )
             return None
         return candidates[0]
 
     def _load_full_stack(self, npz_path: Path) -> np.ndarray:
         npz = np.load(npz_path, allow_pickle=True)
-        if 'full_stack' not in npz:
+        if "full_stack" not in npz:
             raise KeyError(f"'full_stack' key not found in {npz_path}")
-        return npz['full_stack']
+        return npz["full_stack"]
 
     # --------- Plotly (interactive) -------------------------------------------------
     def generate_from_caches(self, domain: str = "time") -> List[Path]:
@@ -78,14 +87,23 @@ class SeismicPlotter(BasePlotter):
         ni, nj, nk = cube.shape
         slice_indices = (ni // 2, nj // 2, nk // 2)
 
-        title = "Full-Stack AVO Seismogram (Time Domain)" if domain == "time" else "Full-Stack AVO Seismogram (Depth Domain)"
+        title = (
+            "Full-Stack AVO Seismogram (Time Domain)"
+            if domain == "time"
+            else "Full-Stack AVO Seismogram (Depth Domain)"
+        )
+
+        # Use the project's seismic colormap (matplotlib 'seismic') as default
+        config = PlotConfig.for_seismic(k_unit="")
+        cmap_name = config.cmap or "seismic"
+
         traces = self._plotly.create_3d_volume(
             cube,
             slice_indices=slice_indices,
             title=title,
             k_label="Time/Depth",
             k_unit="",
-            colorscale="RdBu",
+            colorscale=cmap_name,
             show_colorbar=True,
         )
 
@@ -272,7 +290,9 @@ class SeismicPlotter(BasePlotter):
             )
             generated_files["full_stack"].append(output_file)
 
-        total_files = len(generated_files["angle_stacks"]) + len(generated_files["full_stack"])
+        total_files = len(generated_files["angle_stacks"]) + len(
+            generated_files["full_stack"]
+        )
         logger.info(f"✓ Generated {total_files} seismogram plot(s) ({domain} domain)")
 
         return generated_files

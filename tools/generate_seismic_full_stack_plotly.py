@@ -7,6 +7,7 @@ PlotlyPlotter helper.
 Usage: run this script from the repository root with Python 3. Example:
   python tools/generate_seismic_full_stack_plotly.py
 """
+
 from pathlib import Path
 from src.plotting.seismic_plotter import SeismicPlotter
 

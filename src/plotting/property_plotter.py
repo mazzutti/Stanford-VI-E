@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
+from src.plotting.plotly_plotter import PlotlyPlotter
+
 logger = logging.getLogger(__name__)
 
 
@@ -485,18 +487,23 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )
 
             fig.update_layout(
+                template=None,
                 title=dict(
                     text=f"Rock Physics: {prop_info['name']}",
                     x=0.5,
                     xanchor="center",
                 ),
                 scene=dict(
-                    xaxis_title="Crossline (j)",
-                    yaxis_title="Inline (i)",
-                    zaxis_title="Depth (k)",
+                    xaxis=dict(
+                        title="Inline (i)",
+                    ),
+                    yaxis=dict(
+                        title="Crossline (j)",
+                    ),
                     zaxis=dict(
-                        autorange="reversed"
-                    ),  # Reverse z-axis so depth increases downward
+                        title="Depth (k)",
+                        autorange="reversed",
+                    ),
                     aspectmode="data",
                     camera=dict(
                         eye=dict(x=1.5, y=1.5, z=1.3),
@@ -519,6 +526,10 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
                     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
                 },
             )
+
+            # Inject CSS and JavaScript for fullscreen display using centralized PlotlyPlotter method
+            PlotlyPlotter.inject_3d_interaction_script(str(output_file))
+
             generated_files.append(str(output_file))
             logger.info(f"  ✓ Saved: {output_file}")
 
@@ -705,18 +716,23 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )
 
             fig.update_layout(
+                template=None,
                 title=dict(
                     text=f"Original Data: {prop_info['name']}",
                     x=0.5,
                     xanchor="center",
                 ),
                 scene=dict(
-                    xaxis_title="Crossline (j)",
-                    yaxis_title="Inline (i)",
-                    zaxis_title="Depth (k)",
+                    xaxis=dict(
+                        title="Inline (i)",
+                    ),
+                    yaxis=dict(
+                        title="Crossline (j)",
+                    ),
                     zaxis=dict(
-                        autorange="reversed"
-                    ),  # Reverse z-axis so depth increases downward
+                        title="Depth (k)",
+                        autorange="reversed",
+                    ),
                     aspectmode="data",
                     camera=dict(
                         eye=dict(x=1.5, y=1.5, z=1.3),
@@ -739,6 +755,10 @@ class OriginalPropertyPlotter(PropertyPlotter):
                     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
                 },
             )
+
+            # Inject CSS and JavaScript for fullscreen display using centralized PlotlyPlotter method
+            PlotlyPlotter.inject_3d_interaction_script(str(output_file))
+
             generated_files.append(str(output_file))
             logger.info(f"  ✓ Saved: {output_file}")
 
