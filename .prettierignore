@@ -1,6 +1,10 @@
 # Ignore JavaScript files in docs folder to prevent auto-minification
 docs/script.js
 
+# Ignore resource files - should not be minified
+src/plotting/resources/*.js
+src/plotting/resources/*.css
+
 # Other files to ignore
 node_modules/
 dist/
