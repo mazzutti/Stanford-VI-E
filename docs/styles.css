@@ -399,7 +399,7 @@ pre,
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
   font-size: 0.95rem;
   line-height: 1.45;
-  color: var(--text-primary);
+  color: var(--text-muted);
 }
 
 /* Container for code-block with a copy button */
@@ -2184,7 +2184,7 @@ toggle with smooth transitions */
     linear-gradient(135deg, var(--color-white)fff 0%, #f8f9fa 100%);
   padding: 3rem;
   margin: 3rem var(--spacing-xl);
-  border-radius: 0;
+  border-radius: 0px;
   box-shadow: var(--shadow-lg);
   text-align: center;
   border: 2px solid rgba(99, 102, 241, 0.08);
@@ -2198,6 +2198,7 @@ toggle with smooth transitions */
   font-weight: 800;
 }
 
+/* badge badge-md badge-purple */
 /* Improved layout for domain selector: title left, controls right (grid) */
 .domain-selector {
   display: grid;
@@ -2206,7 +2207,7 @@ toggle with smooth transitions */
   align-items: center;
   padding: 1rem 1.25rem;
   background: linear-gradient(180deg, rgba(247, 246, 255, 0.6), rgba(255, 255, 255, 0.45));
-  border-radius: 10px;
+  /* border-radius: 10px; */
   border: 1px solid rgba(99, 102, 241, 0.06);
 }
 
@@ -5569,8 +5570,9 @@ Variants - see consolidated definitions above */
 .card-border-pink,
 .card-border-purple,
 .card-border-blue {
-  background: white;
+  background: rgb(255, 255, 255);
   padding: var(--spacing-base);
+  border: 1px solid #cbd5e1;
 }
 
 .card-border-teal {
@@ -5608,7 +5610,7 @@ Variants - see consolidated definitions above */
 .badge-blue-light,
 .badge-purple-light {
   padding: 0.25rem var(--spacing-xs);
-  border-radius: 4px;
+  /* border-radius: 4px; */
   font-size: 0.85rem;
 }
 
@@ -7178,8 +7180,8 @@ tr,
 .card-indigo-bordered-md {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(129, 140, 248, 0.08) 100%);
   border-radius: 0;
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
+  padding: 5px;
+  margin-bottom: 5px;
   border: 2px solid rgba(99, 102, 241, 0.2);
 }
 
@@ -7795,6 +7797,7 @@ h2,
   background: white;
   border-radius: 0;
   padding: var(--spacing-base);
+  border: 1px solid #cbd5e1;
 }
 
 /* Border utilities */
@@ -7834,21 +7837,21 @@ h2,
 .badge,
 .badge-sm {
   padding: 0.35rem var(--spacing-sm);
-  border-radius: 6px;
+  /* border-radius: 6px; */
   font-size: var(--spacing-sm);
   font-weight: 600;
 }
 
 .badge-md {
   /* padding: 0.5rem var(--spacing-base); */
-  border-radius: 8px;
+  /* border-radius: 8px; */
   /* font-size: 0.85rem; */
   font-weight: 600;
 }
 
 .badge-lg {
   padding: 0.6rem 1.2rem;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -7904,6 +7907,7 @@ h2,
   color: rgba(154, 52, 18, 0.95);
   border: 1px solid rgba(249, 115, 22, 0.3);
   text-shadow: none;
+  border-radius: 8px;
 }
 
 .badge-cyan {
@@ -8489,7 +8493,7 @@ to,
 .card-purple-vibrant .badge-md {
   background: rgba(255, 255, 255, 0.04);
   padding: 0.9rem;
-  border-radius: 10px;
+  /* border-radius: 10px; */
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -8542,7 +8546,7 @@ to,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 0 !important;
+  border-radius: 8px !important;
   padding: 0 !important;
   font-size: 0.95rem !important;
 }
