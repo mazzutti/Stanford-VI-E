@@ -13,7 +13,8 @@ from typing import Any, Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, Colormap
+from matplotlib.colors import ListedColormap, Colormap, BoundaryNorm
+import matplotlib.patches as mpatches
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 from matplotlib.colorbar import Colorbar
@@ -236,37 +237,96 @@ class ImageRenderer:
         Returns:
             Tuple of (image, colorbar)
         """
-        if vmin is None or vmax is None:
-            vmin, vmax = DataNormalizer.compute_limits(
-                data, is_categorical=config.is_categorical, percentile=config.percentile
+        # For categorical data we use a discrete ListedColormap and a
+        # BoundaryNorm so values map to discrete colors. For continuous
+        # data we fall back to previous behavior.
+        ax.clear()
+        if config.is_categorical:
+            # Determine categories and number of colors
+            try:
+                categories = np.unique(data.astype(int))
+            except Exception:
+                categories = np.array([0])
+
+            # Determine number of categories: explicit config or derived
+            n_colors = (
+                config.n_categories
+                if config.n_categories is not None
+                else int(categories.max()) + 1
+                if categories.size
+                else 1
             )
 
-        # Choose colormap and interpolation based on data type
-        cmap: Colormap | str
-        if config.is_categorical:
-            cmap = DataNormalizer.get_discrete_colormap(4)
-            interpolation = "nearest"
-        else:
-            cmap = config.cmap
-            interpolation = "bilinear"
+            cmap = DataNormalizer.get_discrete_colormap(n_colors)
 
-        # Render image
-        ax.clear()
-        im = ax.imshow(
-            data,
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
-            origin="upper",
-            interpolation=interpolation,
-            extent=extent,
-            aspect="auto",
-        )
+            # Create integer boundaries centered on integer values
+            boundaries = np.arange(-0.5, n_colors + 0.5, 1.0)
+            norm = BoundaryNorm(boundaries, ncolors=n_colors)
+
+            im = ax.imshow(
+                data,
+                cmap=cmap,
+                norm=norm,
+                origin="upper",
+                interpolation="nearest",
+                extent=extent,
+                aspect="auto",
+            )
+        else:
+            if vmin is None or vmax is None:
+                vmin, vmax = DataNormalizer.compute_limits(
+                    data, is_categorical=False, percentile=config.percentile
+                )
+            cmap = config.cmap
+            im = ax.imshow(
+                data,
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                origin="upper",
+                interpolation="bilinear",
+                extent=extent,
+                aspect="auto",
+            )
 
         # Add colorbar if requested
         cbar = None
         if config.show_colorbar:
             cbar = AxisStyler.add_colorbar(im, ax, config.colorbar_label)
+
+        # If categorical, also add a legend mapping category -> color when
+        # category labels are available (or derive labels from integers).
+        if config.is_categorical:
+            # Determine labels
+            if config.category_labels:
+                labels_map = config.category_labels
+            else:
+                # Fallback: label by integer facies
+                labels_map = {int(k): f"Facies {int(k)}" for k in categories}
+
+            # Build legend patches using colors from ListedColormap
+            patches = []
+            for cat in sorted(labels_map.keys()):
+                if hasattr(cmap, "colors"):
+                    try:
+                        color = cmap.colors[int(cat) % len(cmap.colors)]
+                    except Exception:
+                        color = cmap(int(cat) / max(1, n_colors - 1))
+                else:
+                    color = cmap(int(cat) / max(1, n_colors - 1))
+
+                patch = mpatches.Patch(color=color, label=labels_map[cat])
+                patches.append(patch)
+
+            if patches:
+                # Place legend outside the axis to the right
+                ax.legend(
+                    handles=patches,
+                    title=config.colorbar_label,
+                    bbox_to_anchor=(1.05, 1),
+                    loc="upper left",
+                    fontsize=8,
+                )
 
         # Style the axis
         AxisStyler.style_axis(

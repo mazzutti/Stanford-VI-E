@@ -128,6 +128,7 @@ class OverlayPlotter(BasePlotter):
         ax: Axes,
         facies_slice: NDArray[np.floating[Any]],
         config: Optional[PlotConfig] = None,
+        category_labels: dict[int, str] | None = None,
     ) -> Tuple[AxesImage, Colorbar | None]:
         """Plot facies data only with discrete colormap.
 
@@ -140,6 +141,10 @@ class OverlayPlotter(BasePlotter):
             Tuple of (image, colorbar)
         """
         config = config or PlotConfig.for_categorical()
+
+        # Allow callers to provide human-friendly category labels
+        if category_labels:
+            config = config.update(category_labels=category_labels)
 
         config = config.update(
             xlabel="Crossline (J)",

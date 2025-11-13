@@ -5,10 +5,10 @@ including cache cleanup, plotting, analysis, and regeneration workflows.
 """
 
 from __future__ import annotations
-
-import logging
-from typing import Any
-
+    from src.gen.seismogram import (
+        SeismogramTopLayersExtractor,
+        DefaultCacheProvider as SeismogramDefaultCacheProvider,
+    )
 from src.cli.parsers import ParserFactory, tool
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,8 @@ __all__ = [
     "regenerate_rock_physics",
     "rock_physics_attributes",
     "regenerate_all_3d_plots",
+    "export_top_seismogram_layers",
+    "export_top_facies_layers",
 ]
 
 
@@ -53,10 +55,10 @@ def cleanup_cache(
     """
     try:
         ParserFactory.configure_logging(verbose)
-    except Exception:
-        pass
-
-    from pathlib import Path
+        from src.gen.facies import (
+            FaciesTopLayersExtractor,
+            DefaultCacheProvider as FaciesDefaultCacheProvider,
+        )
     from src.io.pruning import Pruner, PruneStrategy
 
     cache_path = Path(cache_dir)
@@ -518,6 +520,272 @@ def plot_seismograms(
     # Find cache files (they may have hash suffixes)
     time_files_list = list(cache_dir.glob("avo_time*.npz"))
     depth_files_list = list(cache_dir.glob("avo_depth*.npz"))
+    return True
+
+
+@tool
+def export_top_seismogram_layers(
+    cache_dir: str = ".cache",
+    n_layers: int = 2,
+    force: bool = False,
+    out: str | None = None,
+    plot: bool = False,
+    plot_out: str | None = None,
+    geology: bool = False,
+    save_to_cache: bool = False,
+    matplotlib_only: bool = False,
+) -> dict[str, str | tuple[int, int, int]]:
+    """Extract the top N layers from the depth-domain seismogram cache.
+
+    Parameters
+    ----------
+    cache_dir: str
+        Directory where `.cache/avo_depth_*.npz` files live.
+    n_layers: int
+        Number of top layers to extract (default 2).
+    force: bool
+        If True, force regeneration of the depth-domain seismogram cache.
+    out: str | None
+        If provided, path to save the extracted top-layers as an NPZ.
+
+    Returns
+    -------
+    dict
+        Information about the saved file and the shape of the extracted cube.
+    """
+    ParserFactory.configure_logging(False)
+
+    from pathlib import Path
+
+    from src.gen.seismogram_extractor import (
+        SeismogramTopLayersExtractor,
+        DefaultCacheProvider,
+    )
+
+    provider = DefaultCacheProvider(cache_dir=cache_dir)
+    extractor = SeismogramTopLayersExtractor.from_cache_or_generate(
+        cache_provider=provider, cache_dir=cache_dir, generate_if_missing=True, force_generate=force
+    )
+
+    if geology:
+        # Extract the top two geological layers (Stanford VI: 80 m + 40 m)
+        top = extractor.extract_top_two_geological_layers()
+    else:
+        top = extractor.extract_top_layers(n_layers)
+
+    result: dict[str, str | tuple[int, int, int]] = {}
+    result["shape"] = top.shape
+    if out:
+        p = Path(out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        import numpy as _np
+
+        _np.savez_compressed(p, top=top)
+        result["saved"] = str(p)
+
+    # Optionally save into cache directory for future reloads
+    if save_to_cache:
+        try:
+            cache_path = Path(cache_dir)
+            cache_path.mkdir(parents=True, exist_ok=True)
+            import time
+
+            ts = int(time.time())
+            cache_file = cache_path / f"seismogram_depth_top_layers_{ts}.npz"
+            import numpy as _np
+
+            _np.savez_compressed(cache_file, top=top)
+            result["cache"] = str(cache_file)
+        except Exception as e:
+            logger.warning("Failed to save top layers to cache: %s", e)
+
+    # Optionally create plots. If `matplotlib_only` is True, use SeismicPlotter (Matplotlib)
+    if plot:
+        if matplotlib_only:
+            try:
+                from src.plotting.seismic_plotter import SeismicPlotter
+
+                out_dir = Path(plot_out) if plot_out else Path("docs/images")
+                out_dir.mkdir(parents=True, exist_ok=True)
+                png_path = out_dir / f"seismic_top_layers_matplotlib_{n_layers}.png"
+                sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(out_dir))
+                sp.plot_full_stack(top, output_path=png_path, domain="depth")
+                result["png"] = str(png_path)
+            except Exception as e:
+                logger.warning("Matplotlib-only plotting failed: %s", e)
+        else:
+            try:
+                from src.plotting.plotly_plotter import PlotlyPlotter
+
+                # Determine output HTML path
+                if plot_out:
+                    html_path = Path(plot_out)
+                elif out:
+                    # If an NPZ path was provided, place HTML next to it
+                    html_path = Path(out).with_suffix(".html")
+                else:
+                    # Default to docs/images to match project convention
+                    html_path = Path("docs/images") / f"seismic_top_layers_{n_layers}_depth.html"
+
+                html_path.parent.mkdir(parents=True, exist_ok=True)
+
+                plotter = PlotlyPlotter()
+
+                # Choose central slices for inline/crossline/depth (exact middle)
+                ni, nj, nk = top.shape
+                inline_idx = ni // 2
+                crossline_idx = nj // 2
+                depth_idx = nk // 2
+
+                traces = plotter.create_3d_volume(
+                    top, (inline_idx, crossline_idx, depth_idx), title=f"Top {n_layers} layers",
+                )
+                fig = plotter.create_figure(traces, title=f"Top {n_layers} layers")
+                plotter.save_figure(fig, str(html_path))
+                result["html"] = str(html_path)
+                # Also attempt to export a static PNG similar to seismic_full_stack_depth.png
+                try:
+                    png_path = html_path.with_suffix(".png")
+                    # write_image requires plotly[kaleido] or orca; attempt first
+                    fig.write_image(str(png_path))
+                    result["png"] = str(png_path)
+                except Exception as e:
+                    logger.info("Plotly PNG export failed: %s; falling back to Matplotlib renderer", e)
+                    try:
+                        # Use SeismicPlotter's Matplotlib renderer to create a comparable PNG
+                        from src.plotting.seismic_plotter import SeismicPlotter
+
+                        sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(html_path.parent))
+                        # Use a descriptive filename matching project convention
+                        png_path = html_path.with_name(f"seismic_full_stack_top_layers_depth.png")
+                        sp.plot_full_stack(top, output_path=png_path, domain="depth")
+                        result["png"] = str(png_path)
+                    except Exception as e2:
+                        logger.info("Matplotlib fallback PNG export failed: %s", e2)
+            except Exception as e:
+                logger.warning("Failed to create interactive plot: %s", e)
+
+    return result
+
+
+@tool
+def export_top_facies_layers(
+    cache_dir: str = ".cache",
+    n_layers: int = 2,
+    force: bool = False,
+    out: str | None = None,
+    plot: bool = False,
+    plot_out: str | None = None,
+    geology: bool = False,
+    save_to_cache: bool = False,
+    matplotlib_only: bool = False,
+) -> dict[str, str | tuple[int, int, int]]:
+    """Extract the top N layers from a facies depth cache (CLI wrapper).
+
+    Mirrors `export_top_seismogram_layers` behavior but for facies data.
+    """
+    ParserFactory.configure_logging(False)
+
+    from pathlib import Path
+
+    from src.gen.facies_extractor import (
+        FaciesTopLayersExtractor,
+        DefaultCacheProvider as FaciesDefaultCacheProvider,
+    )
+
+    provider = FaciesDefaultCacheProvider(cache_dir=cache_dir)
+    extractor = FaciesTopLayersExtractor.from_cache_or_generate(
+        cache_provider=provider, cache_dir=cache_dir, generate_if_missing=True, force_generate=force
+    )
+
+    if geology:
+        top = extractor.extract_top_two_geological_layers()
+    else:
+        top = extractor.extract_top_layers(n_layers)
+
+    result: dict[str, str | tuple[int, int, int]] = {}
+    result["shape"] = top.shape
+    if out:
+        p = Path(out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        import numpy as _np
+
+        _np.savez_compressed(p, facies=top)
+        result["saved"] = str(p)
+
+    if save_to_cache:
+        try:
+            cache_path = Path(cache_dir)
+            cache_path.mkdir(parents=True, exist_ok=True)
+            import time
+
+            ts = int(time.time())
+            cache_file = cache_path / f"facies_depth_top_layers_{ts}.npz"
+            import numpy as _np
+
+            _np.savez_compressed(cache_file, facies=top)
+            result["cache"] = str(cache_file)
+        except Exception as e:
+            logger.warning("Failed to save facies top layers to cache: %s", e)
+
+    # Plotting behavior mirrors seismogram tool (Matplotlib or Plotly)
+    if plot:
+        if matplotlib_only:
+            try:
+                from src.plotting.seismic_plotter import SeismicPlotter
+
+                out_dir = Path(plot_out) if plot_out else Path("docs/images")
+                out_dir.mkdir(parents=True, exist_ok=True)
+                png_path = out_dir / f"facies_top_layers_matplotlib_{n_layers}.png"
+                sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(out_dir))
+                sp.plot_full_stack(top, output_path=png_path, domain="depth")
+                result["png"] = str(png_path)
+            except Exception as e:
+                logger.warning("Matplotlib-only facies plotting failed: %s", e)
+        else:
+            try:
+                from src.plotting.plotly_plotter import PlotlyPlotter
+
+                if plot_out:
+                    html_path = Path(plot_out)
+                elif out:
+                    html_path = Path(out).with_suffix(".html")
+                else:
+                    html_path = Path("docs/images") / f"facies_top_layers_{n_layers}_depth.html"
+
+                html_path.parent.mkdir(parents=True, exist_ok=True)
+
+                plotter = PlotlyPlotter()
+                ni, nj, nk = top.shape
+                inline_idx = ni // 2
+                crossline_idx = nj // 2
+                depth_idx = nk // 2
+
+                traces = plotter.create_3d_volume(
+                    top, (inline_idx, crossline_idx, depth_idx), title=f"Facies Top {n_layers} layers",
+                )
+                fig = plotter.create_figure(traces, title=f"Facies Top {n_layers} layers")
+                plotter.save_figure(fig, str(html_path))
+                result["html"] = str(html_path)
+                try:
+                    png_path = html_path.with_suffix(".png")
+                    fig.write_image(str(png_path))
+                    result["png"] = str(png_path)
+                except Exception:
+                    # fallback to Matplotlib
+                    try:
+                        from src.plotting.seismic_plotter import SeismicPlotter
+
+                        sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(html_path.parent))
+                        png_path = html_path.with_name(f"facies_full_stack_top_layers_depth.png")
+                        sp.plot_full_stack(top, output_path=png_path, domain="depth")
+                        result["png"] = str(png_path)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning("Failed to create facies interactive plot: %s", e)
+
+    return result
 
     if not time_files_list and not depth_files_list:
         logger.error("No cache files found. Run 'analysis_seismograms' first.")

@@ -138,12 +138,20 @@ class SeismicPlotter(BasePlotter):
         extractor = SliceExtractor(shape=(ni, nj, nk))
 
         k_label = "Time (ms)" if domain == "time" else "Depth (m)"
-        config = PlotConfig.for_seismic(k_unit=k_label)
-        config = config.update(cmap="seismic", show_colorbar=True)
+        # If the provided data is integer (facies), use categorical plotting
+        if np.issubdtype(seismogram.dtype, np.integer) or np.allclose(
+            seismogram, seismogram.astype(int)
+        ):
+            config = PlotConfig.for_categorical()
+            config = config.update(show_colorbar=True)
+            # Do not compute vmin/vmax for categorical data
+        else:
+            config = PlotConfig.for_seismic(k_unit=k_label)
+            config = config.update(cmap="seismic", show_colorbar=True)
 
-        vmax = np.percentile(np.abs(seismogram), 99)
-        vmin = -vmax
-        config = config.update(extra_kwargs={"vmin": vmin, "vmax": vmax})
+            vmax = np.percentile(np.abs(seismogram), 99)
+            vmin = -vmax
+            config = config.update(extra_kwargs={"vmin": vmin, "vmax": vmax})
 
         inline_data, xlabel, ylabel = extractor.extract_inline(seismogram, mid_i)
         config_inline = config.update(
@@ -199,12 +207,20 @@ class SeismicPlotter(BasePlotter):
         extractor = SliceExtractor(shape=(ni, nj, nk))
 
         k_label = "Time (ms)" if domain == "time" else "Depth (m)"
-        config = PlotConfig.for_seismic(k_unit=k_label)
-        config = config.update(cmap="seismic", show_colorbar=True)
+        # If the provided data looks like categorical facies (integers), switch
+        # to categorical PlotConfig so the ImageRenderer draws discrete colors
+        if np.issubdtype(full_stack.dtype, np.integer) or np.allclose(
+            full_stack, full_stack.astype(int)
+        ):
+            config = PlotConfig.for_categorical()
+            config = config.update(show_colorbar=True)
+        else:
+            config = PlotConfig.for_seismic(k_unit=k_label)
+            config = config.update(cmap="seismic", show_colorbar=True)
 
-        vmax = np.percentile(np.abs(full_stack), 99)
-        vmin = -vmax
-        config = config.update(extra_kwargs={"vmin": vmin, "vmax": vmax})
+            vmax = np.percentile(np.abs(full_stack), 99)
+            vmin = -vmax
+            config = config.update(extra_kwargs={"vmin": vmin, "vmax": vmax})
 
         inline_data, xlabel, ylabel = extractor.extract_inline(full_stack, mid_i)
         config_inline = config.update(

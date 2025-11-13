@@ -30,6 +30,10 @@ class PlotConfig:
     # Visual properties
     cmap: str = "RdBu"
     is_categorical: bool = False
+    # When plotting categorical data, n_categories and category_labels
+    # allow specifying the number of categories and human-friendly labels
+    n_categories: int | None = None
+    category_labels: dict[int, str] | None = None
     show_colorbar: bool = True
 
     # Axis styling
