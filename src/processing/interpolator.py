@@ -19,7 +19,7 @@ import logging
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import interp1d
-from typing import cast, Any
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,8 @@ class BatchedInterpolator:
                     bounds_error=False,
                     fill_value=0.0,
                 )
-                return cast(NDArray[Any], interp_func(time_axis_arr))
+                res: NDArray[Any] = interp_func(time_axis_arr)
+                return res
 
             out = np.zeros((nt, ntr), dtype=depth_padded_flat.dtype)
             for start in range(0, ntr, self.block_size):
@@ -155,7 +156,6 @@ class BatchedInterpolator:
                 end = min(start + self.block_size, ntr)
                 out[:, start:end] = depth_padded_flat[nearest_idx, start:end]
             return out
-
         # 2D twt_padded: compute nearest per-block. For each target time sample
         # and each trace in the block compute whether lower or upper is closer.
         out = np.zeros((nt, ntr), dtype=depth_padded_flat.dtype)

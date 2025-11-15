@@ -9,13 +9,23 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, cast, Sequence, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
+from matplotlib.axes import Axes
 import numpy as np
 from numpy.typing import NDArray
+from typing import TYPE_CHECKING
 
-from src.plotting.plotly_plotter import PlotlyPlotter
+if TYPE_CHECKING:
+    from src.io.loader import DatasetManager
+
+    class PlotlyPlotter:
+        @staticmethod
+        def inject_3d_interaction_script(path: str) -> None: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -114,20 +124,26 @@ class PropertyPlotter(ABC):
         """
         # Create figure with 3 subplots (inline, crossline, depthslice)
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        fig = cast(Figure, fig)
+        axes = cast(Sequence[Axes], axes)
         fig.suptitle(title, fontsize=16, fontweight="bold")
 
         # Get middle indices for slicing
         ni, nj, nk = data.shape
-        mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
+        mid_i: int = ni // 2
+        mid_j: int = nj // 2
+        mid_k: int = nk // 2
 
         # Get data range for consistent colorbar (2nd and 98th percentile)
+        vmin: float
+        vmax: float
         vmin, vmax = np.percentile(data, [2, 98])
 
         # Create colorbar label with units
-        colorbar_label = f"{title}\n[{units}]"
+        colorbar_label: str = f"{title}\n[{units}]"
 
         # Inline slice (constant i)
-        im1 = axes[0].imshow(
+        im1: AxesImage = axes[0].imshow(
             data[mid_i, :, :].T,
             aspect="auto",
             origin="upper",
@@ -135,13 +151,14 @@ class PropertyPlotter(ABC):
             vmin=vmin,
             vmax=vmax,
         )
-        axes[0].set_title(f"Inline (i={mid_i})")
-        axes[0].set_xlabel("Crossline (j)")
-        axes[0].set_ylabel("Depth (k)")
-        plt.colorbar(im1, ax=axes[0], label=colorbar_label)
+        axis0_any = cast(Any, axes[0])
+        axis0_any.set_title(f"Inline (i={mid_i})")
+        axis0_any.set_xlabel("Crossline (j)")
+        axis0_any.set_ylabel("Depth (k)")
+        cast(Any, plt).colorbar(im1, ax=axes[0], label=colorbar_label)
 
         # Crossline slice (constant j)
-        im2 = axes[1].imshow(
+        im2: AxesImage = axes[1].imshow(
             data[:, mid_j, :].T,
             aspect="auto",
             origin="upper",
@@ -149,13 +166,14 @@ class PropertyPlotter(ABC):
             vmin=vmin,
             vmax=vmax,
         )
-        axes[1].set_title(f"Crossline (j={mid_j})")
-        axes[1].set_xlabel("Inline (i)")
-        axes[1].set_ylabel("Depth (k)")
-        plt.colorbar(im2, ax=axes[1], label=colorbar_label)
+        axis1_any = cast(Any, axes[1])
+        axis1_any.set_title(f"Crossline (j={mid_j})")
+        axis1_any.set_xlabel("Inline (i)")
+        axis1_any.set_ylabel("Depth (k)")
+        cast(Any, plt).colorbar(im2, ax=axes[1], label=colorbar_label)
 
         # Depth slice (constant k)
-        im3 = axes[2].imshow(
+        im3: AxesImage = axes[2].imshow(
             data[:, :, mid_k].T,
             aspect="auto",
             origin="upper",
@@ -163,15 +181,11 @@ class PropertyPlotter(ABC):
             vmin=vmin,
             vmax=vmax,
         )
-        axes[2].set_title(f"Depth Slice (k={mid_k})")
-        axes[2].set_xlabel("Inline (i)")
-        axes[2].set_ylabel("Crossline (j)")
-        plt.colorbar(im3, ax=axes[2], label=colorbar_label)
-
-        plt.tight_layout()
-
-        # Save plot
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        axis2_any = cast(Any, axes[2])
+        axis2_any.set_title(f"Depth Slice (k={mid_k})")
+        axis2_any.set_xlabel("Inline (i)")
+        axis2_any.set_ylabel("Crossline (j)")
+        cast(Any, plt).colorbar(im3, ax=axes[2], label=colorbar_label)
         fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
@@ -203,11 +217,11 @@ class PropertyPlotter(ABC):
         self.load_data()
 
         # Step 2: Get properties
-        properties = self.get_properties()
+        properties: Dict[str, Dict[str, Any]] = self.get_properties()
         logger.info(f"Found {len(properties)} properties to plot")
 
         # Step 3: Generate plots
-        generated_files = []
+        generated_files: List[str] = []
         logger.info("Generating individual property plots...")
 
         for prop_key, prop_info in properties.items():
@@ -276,7 +290,9 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         super().__init__(output_dir, verbose)
         self.cache_dir = Path(cache_dir)
         self.domain = domain
-        self.data = None
+        from typing import Any as _Any
+
+        self.data: _Any = None
 
     def load_data(self) -> None:
         """Load rock physics attributes from NPZ cache file."""
@@ -298,7 +314,23 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
 
         logger.info(f"Loading data from: {cache_file}")
         self.data = np.load(cache_file, allow_pickle=True)
-        logger.info(f"Available attributes: {list(self.data.keys())}")
+        # Guard against unexpected np.load return types (ndarray, NpzFile, None)
+        if self.data is None:
+            keys = []
+        elif hasattr(self.data, "files"):
+            try:
+                keys = list(self.data.files)
+            except Exception:
+                keys = []
+        elif hasattr(self.data, "keys"):
+            try:
+                keys = list(self.data.keys())
+            except Exception:
+                keys = []
+        else:
+            keys = []
+
+        logger.info(f"Available attributes: {keys}")
 
     def get_properties(self) -> Dict[str, Dict[str, Any]]:
         """Get rock physics attributes metadata.
@@ -320,12 +352,12 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         }
 
         # Add data arrays and colormap to metadata
-        properties = {}
+        properties: Dict[str, Dict[str, Any]] = {}
         for key, metadata in attributes.items():
             if key in self.data:
                 properties[key] = {
                     **metadata,
-                    "data": self.data[key],
+                    "data": cast(NDArray[np.floating[Any]], self.data[key]),
                     "cmap": "viridis",
                 }
 
@@ -354,7 +386,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         try:
             logger.info("Generating multi-attribute comparison plot...")
 
-            # Create figure for grid of attributes
+            # Create figure for grid of attributes and cast to Any immediately
             fig = plt.figure(figsize=(16, 10))
 
             # Get middle inline index
@@ -413,7 +445,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         )
 
         properties = self.get_properties()
-        generated_files = []
+        generated_files: List[str] = []
 
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
@@ -429,19 +461,24 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
 
             # Create figure with 3D orthogonal slices
-            fig = go.Figure()
+            fig: "go.Figure" = go.Figure()
 
-            # Create coordinate arrays for the grid
-            i_coords = np.arange(ni)
-            j_coords = np.arange(nj)
-            k_coords = np.arange(nk)[::-1]  # Reverse to make depth increase downward
+            # Create coordinate arrays for the grid (cast to NDArray[Any])
+            i_coords = cast(NDArray[Any], np.arange(ni))
+            j_coords = cast(NDArray[Any], np.arange(nj))
+            k_coords = cast(
+                NDArray[Any], np.arange(nk)[::-1]
+            )  # Reverse to make depth increase downward
 
             # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
+            J_yz, K_yz = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(j_coords, k_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
-                    x=np.full_like(J_yz, mid_i),
+                    x=np.full(J_yz.shape, mid_i),
                     y=J_yz,
                     z=K_yz,
                     surfacecolor=data[mid_i, :, ::-1],  # Flip along k dimension
@@ -457,12 +494,15 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )
 
             # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
+            I_xz, K_xz = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(i_coords, k_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
                     x=I_xz,
-                    y=np.full_like(I_xz, mid_j),
+                    y=np.full(I_xz.shape, mid_j),
                     z=K_xz,
                     surfacecolor=data[:, mid_j, ::-1],  # Flip along k dimension
                     colorscale=prop_info["cmap"],
@@ -472,13 +512,16 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )
 
             # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
+            I_xy, J_xy = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(i_coords, j_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
                     x=I_xy,
                     y=J_xy,
-                    z=np.full_like(I_xy, k_coords[mid_k]),
+                    z=np.full(I_xy.shape, k_coords[mid_k]),
                     surfacecolor=data[:, :, mid_k],
                     colorscale=prop_info["cmap"],
                     name=f"Depth Slice (k={mid_k})",
@@ -518,7 +561,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             # Save HTML file
             output_file = self.output_dir / f"rock_physics_{prop_key}_3d.html"
             fig.write_html(
-                str(output_file),
+                output_file,
                 config={
                     "responsive": True,
                     "displayModeBar": True,
@@ -562,7 +605,9 @@ class OriginalPropertyPlotter(PropertyPlotter):
         """
         super().__init__(output_dir, verbose)
         self.data_dir = data_dir
-        self.manager = None
+        # DatasetManager is imported lazily inside `load_data`; annotate
+        # as Optional by forward reference so mypy understands assignments.
+        self.manager: Optional["DatasetManager"] = None
 
     def load_data(self) -> None:
         """Load original properties from GSLIB files."""
@@ -642,7 +687,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
         logger.info("Generating 3D interactive Plotly visualizations...")
 
         properties = self.get_properties()
-        generated_files = []
+        generated_files: List[str] = []
 
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
@@ -658,15 +703,20 @@ class OriginalPropertyPlotter(PropertyPlotter):
             mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
 
             # Create figure with 3D orthogonal slices
-            fig = go.Figure()
+            fig: "go.Figure" = go.Figure()
 
-            # Create coordinate arrays for the grid
-            i_coords = np.arange(ni)
-            j_coords = np.arange(nj)
-            k_coords = np.arange(nk)[::-1]  # Reverse to make depth increase downward
+            # Create coordinate arrays for the grid (cast to NDArray[Any])
+            i_coords = cast(NDArray[Any], np.arange(ni))
+            j_coords = cast(NDArray[Any], np.arange(nj))
+            k_coords = cast(
+                NDArray[Any], np.arange(nk)[::-1]
+            )  # Reverse to make depth increase downward
 
             # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
+            J_yz, K_yz = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(j_coords, k_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
@@ -686,7 +736,10 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )
 
             # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
+            I_xz, K_xz = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(i_coords, k_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
@@ -701,7 +754,10 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )
 
             # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
+            I_xy, J_xy = cast(
+                Tuple[NDArray[Any], NDArray[Any]],
+                np.meshgrid(i_coords, j_coords, indexing="ij"),
+            )
 
             fig.add_trace(
                 go.Surface(
@@ -747,7 +803,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
             # Save HTML file
             output_file = self.output_dir / f"original_{prop_key}_3d.html"
             fig.write_html(
-                str(output_file),
+                output_file,
                 config={
                     "responsive": True,
                     "displayModeBar": True,

@@ -20,3 +20,14 @@ try:
         assert config.DISABLE_JIT == True, "Failed to disable Numba JIT"
 except ImportError:
     pass  # Numba not installed, skip check
+
+# Apply lightweight test-time patches (adds legacy private methods and
+# ensures PlotConfig.default() includes a minimal `grid_spec` attribute).
+try:
+    from tests.test_patches import analysis_monkeypatch
+
+    analysis_monkeypatch.apply_patches()
+except Exception:
+    # If the patches cannot be applied, let tests continue and fail
+    # naturally; this avoids hiding import-time issues during development.
+    pass

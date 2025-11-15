@@ -59,7 +59,11 @@ def validate_backend_result(obj: BackendResult | object) -> bool:
     try:
         import numpy as _np
 
-        return _np.asarray(obj.array) is not None
+        # np.asarray(...) will either return an ndarray or raise; if it returns,
+        # the backend provided a convertible array-like object so the validation
+        # succeeds.
+        _np.asarray(obj.array)
+        return True
     except Exception:
         return False
 

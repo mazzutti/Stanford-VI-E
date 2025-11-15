@@ -5,7 +5,7 @@ different unit systems (e.g., km/s ↔ m/s, g/cc ↔ kg/m³).
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -24,7 +24,7 @@ class UnitConverter(ABC):
     """
 
     @abstractmethod
-    def is_likely_in_unit(self, arr: NDArray[np.floating]) -> bool:
+    def is_likely_in_unit(self, arr: NDArray[Any]) -> bool:
         """Check if array is likely already in target unit.
 
         Parameters
@@ -41,8 +41,8 @@ class UnitConverter(ABC):
 
     @abstractmethod
     def convert_if_needed(
-        self, arr: NDArray[np.floating], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[np.floating], bool]:
+        self, arr: NDArray[Any], copy_on_convert: bool = True
+    ) -> Tuple[NDArray[Any], bool]:
         """Convert array to target unit if needed.
 
         Parameters
@@ -59,7 +59,7 @@ class UnitConverter(ABC):
         """
         pass
 
-    def _nanmax_abs(self, a: NDArray[np.floating]) -> float:
+    def _nanmax_abs(self, a: NDArray[Any]) -> float:
         """Helper to safely get max absolute value, handling NaNs.
 
         Parameters
@@ -77,7 +77,7 @@ class UnitConverter(ABC):
         except Exception:
             return float("inf")
 
-    def _ensure_numeric(self, arr: NDArray) -> NDArray[np.floating]:
+    def _ensure_numeric(self, arr: NDArray[Any]) -> NDArray[Any]:
         """Ensure array is numeric type.
 
         Parameters
@@ -123,7 +123,7 @@ class VelocityConverter(UnitConverter):
         self.threshold = threshold
         self.conversion_factor = 1000.0
 
-    def is_likely_in_unit(self, arr: NDArray[np.floating]) -> bool:
+    def is_likely_in_unit(self, arr: NDArray[Any]) -> bool:
         """Check if array is likely in m/s (not km/s).
 
         Parameters
@@ -140,8 +140,8 @@ class VelocityConverter(UnitConverter):
         return maxabs >= self.threshold
 
     def convert_if_needed(
-        self, arr: NDArray[np.floating], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[np.floating], bool]:
+        self, arr: NDArray[Any], copy_on_convert: bool = True
+    ) -> Tuple[NDArray[Any], bool]:
         """Convert from km/s to m/s if needed.
 
         Parameters
@@ -200,7 +200,7 @@ class DensityConverter(UnitConverter):
         self.threshold = threshold
         self.conversion_factor = 1000.0
 
-    def is_likely_in_unit(self, arr: NDArray[np.floating]) -> bool:
+    def is_likely_in_unit(self, arr: NDArray[Any]) -> bool:
         """Check if array is likely in kg/m³ (not g/cc).
 
         Parameters
@@ -217,8 +217,8 @@ class DensityConverter(UnitConverter):
         return maxabs >= self.threshold
 
     def convert_if_needed(
-        self, arr: NDArray[np.floating], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[np.floating], bool]:
+        self, arr: NDArray[Any], copy_on_convert: bool = True
+    ) -> Tuple[NDArray[Any], bool]:
         """Convert from g/cc to kg/m³ if needed.
 
         Parameters

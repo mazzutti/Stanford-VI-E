@@ -16,10 +16,10 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional, Type, TypeVar, Any, Callable
+from typing import Optional, Type, TypeVar, Any, Callable, cast
+from src.analysis.patterns.dependency_injection import ServiceProvider
 
 from src.analysis.service_container import (
-    create_service_provider,
     ServiceContainerBuilder,
 )
 from src.analysis.patterns.dependency_injection import Container
@@ -67,7 +67,9 @@ def create_analyzer_with_patterns(
         event_bus = EventBus()
 
     # Create base analyzer using service provider
-    facies_analyzer = container.resolve("FaciesCorrelationAnalyzer")
+    facies_analyzer = cast(
+        FaciesCorrelationAnalyzer, container.resolve("FaciesCorrelationAnalyzer")
+    )
 
     # Create integrated analyzer with patterns
     analyzer = IntegratedAnalyzer(
@@ -90,8 +92,13 @@ def _attach_event_bus_to_analyzer(
         analyzer: IntegratedAnalyzer instance
         event_bus: EventBus instance
     """
-    # Store reference to event bus
-    analyzer._event_bus = event_bus
+    # Store reference to event bus via public API if available, otherwise set a public attribute
+    set_bus = getattr(analyzer, "set_event_bus", None)
+    if callable(set_bus):
+        set_bus(event_bus)
+    else:
+        # Avoid directly writing protected attribute; create/overwrite public attribute
+        setattr(analyzer, "event_bus", event_bus)
 
     # Create adapter observer that publishes to event bus
     class EventBusAdapter:
@@ -100,19 +107,41 @@ def _attach_event_bus_to_analyzer(
         def __init__(self, bus: EventBus):
             self.bus = bus
 
-        def on_result_computed(self, result_type: str, result: Any):
+        def on_result_computed(self, result_type: str, result: Any) -> None:
             """Publish result event."""
             # This will be called by observer pattern
             # Publish to event bus for decoupled handling
             logger.debug(f"Publishing result event: {result_type}")
 
-        def on_data_changed(self, data_type: str, _new_data: Any):
+        def on_data_changed(self, data_type: str, _new_data: Any) -> None:
             """Publish data changed event."""
             logger.debug(f"Publishing data changed event: {data_type}")
 
-        def on_error(self, error: Exception, context: str):
+        def on_error(self, error: Exception, context: str) -> None:
             """Publish error event."""
             logger.warning(f"Publishing error event from {context}: {error}")
+
+    # Instantiate and attach the adapter so the class is used and available for the analyzer.
+    adapter = EventBusAdapter(event_bus)
+    # Keep a reference on the analyzer for lifecycle and debugging.
+    cast(Any, analyzer)._event_bus_adapter = adapter
+
+    # If the analyzer exposes an observer registration API, try to register the adapter.
+    try:
+        # Use getattr and callable checks to avoid static attribute access
+        # which can trigger type-checker errors if the methods are not declared.
+        _register = getattr(analyzer, "register_observer", None)
+        _add = getattr(analyzer, "add_observer", None)
+        if callable(_register):
+            _register(adapter)
+        elif callable(_add):
+            _add(adapter)
+    except Exception:
+        # Don't fail analyzer creation if registration is not supported or raises.
+        logger.debug(
+            "Failed to register EventBusAdapter with analyzer (registration not supported)",
+            exc_info=True,
+        )
 
     # Note: The actual integration will be handled by the modified IntegratedAnalyzer
     # This demonstrates the pattern connection point
@@ -137,9 +166,7 @@ def create_event_handler(
     logger.info(f"Creating event handler: {handler_class.__name__}")
 
     if container is None:
-        provider = create_service_provider()
-    else:
-        provider = container.create_service_provider()
+        container = ServiceContainerBuilder().build()
 
     # Instantiate handler with dependencies
     handler = handler_class(**kwargs)
@@ -201,7 +228,7 @@ class ComponentFactory:
         self,
         container: Optional[Container] = None,
         event_bus: Optional[EventBus] = None,
-    ):
+    ) -> None:
         """Initialize component factory.
 
         Args:
@@ -215,8 +242,23 @@ class ComponentFactory:
             self.container = container
 
         self.event_bus = event_bus or EventBus()
-        # Access the service provider from the container
-        self.service_provider = self.container._service_provider
+        # Access the service provider from the container using public API if available
+        service_provider = getattr(self.container, "service_provider", None)
+        if service_provider is None:
+            # Try a getter method if present
+            get_sp = getattr(self.container, "get_service_provider", None)
+            if callable(get_sp):
+                service_provider = get_sp()
+        if service_provider is None:
+            # Fallback to protected attribute only as a last resort and warn
+            service_provider = getattr(self.container, "_service_provider", None)
+            if service_provider is None:
+                raise RuntimeError("ServiceProvider not available on container")
+            logger.warning(
+                "Accessing protected attribute '_service_provider' as a fallback"
+            )
+
+        self.service_provider: ServiceProvider = cast(ServiceProvider, service_provider)
 
         logger.info("ComponentFactory initialized")
 
@@ -238,7 +280,10 @@ class ComponentFactory:
             FaciesCorrelationAnalyzer instance
         """
         logger.info("Creating FaciesCorrelationAnalyzer")
-        return self.service_provider.resolve("FaciesCorrelationAnalyzer")
+        return cast(
+            FaciesCorrelationAnalyzer,
+            self.service_provider.resolve("FaciesCorrelationAnalyzer"),
+        )
 
     def get_service(self, service_name: str) -> Any:
         """Get a service from the container.
@@ -289,6 +334,6 @@ class ComponentFactory:
     def __repr__(self) -> str:
         return (
             f"ComponentFactory("
-            f"services={len(self.service_provider._providers)}, "
+            f"services={len(self.container.get_services())}, "
             f"event_bus={self.event_bus})"
         )

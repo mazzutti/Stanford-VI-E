@@ -6,23 +6,15 @@ This is intentionally small and aligned with the existing
 dependency injection when needed.
 """
 
-
 from __future__ import annotations
 
 
 from typing import Dict, List, Optional
-from dataclasses import dataclass
 
 
 from src.processing.resampling.backends._base import ResamplerBackend
 from src.processing.resampling._plan import ResamplePlan
 from typing import Tuple
-
-
-@dataclass
-class _BackendEntry:
-    name: str
-    backend: ResamplerBackend
 
 
 class BackendManager:

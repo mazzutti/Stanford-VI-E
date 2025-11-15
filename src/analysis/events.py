@@ -15,7 +15,7 @@ Event Categories:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, cast
 from enum import Enum
 from datetime import datetime
 
@@ -92,10 +92,10 @@ class AnalysisStartedEvent(Event):
     analysis_type: str = ""
     domain: str = ""
     cache_dir: str = ""
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = AnalysisEventType.STARTED.value
         self.priority = 50
@@ -109,9 +109,9 @@ class AnalysisCompletedEvent(Event):
     domain: str = ""
     result_summary: str = ""
     execution_time_seconds: float = 0.0
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = AnalysisEventType.COMPLETED.value
         self.priority = 50
@@ -126,9 +126,9 @@ class AnalysisFailedEvent(Event):
     error: str = ""
     error_type: str = ""
     traceback: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = AnalysisEventType.FAILED.value
         self.priority = 100
@@ -140,9 +140,9 @@ class CacheHitEvent(Event):
 
     key: str = ""
     cache_type: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = CacheEventType.HIT.value
         self.priority = 20
@@ -154,9 +154,9 @@ class CacheMissEvent(Event):
 
     key: str = ""
     cache_type: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = CacheEventType.MISS.value
         self.priority = 20
@@ -166,12 +166,12 @@ class CacheMissEvent(Event):
 class CacheInvalidatedEvent(Event):
     """Event fired when cache is invalidated."""
 
-    keys: list = field(default_factory=list)
+    keys: List[str] = field(default_factory=lambda: cast(List[str], []))
     cache_type: str = ""
     reason: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = CacheEventType.INVALIDATED.value
         self.priority = 60
@@ -183,10 +183,10 @@ class ProcessorExecutionStartedEvent(Event):
 
     processor_name: str = ""
     processor_type: str = ""
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = ProcessorEventType.EXECUTION_STARTED.value
         self.priority = 30
@@ -200,9 +200,9 @@ class ProcessorExecutionCompletedEvent(Event):
     processor_type: str = ""
     result_type: str = ""
     execution_time_seconds: float = 0.0
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = ProcessorEventType.EXECUTION_COMPLETED.value
         self.priority = 30
@@ -216,9 +216,9 @@ class ProcessorExecutionFailedEvent(Event):
     processor_type: str = ""
     error: str = ""
     error_type: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = ProcessorEventType.EXECUTION_FAILED.value
         self.priority = 90
@@ -229,12 +229,12 @@ class ConfigurationChangedEvent(Event):
     """Event fired when configuration changes."""
 
     config_name: str = ""
-    changed_keys: list = field(default_factory=list)
-    old_values: Dict[str, Any] = field(default_factory=dict)
-    new_values: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    changed_keys: List[str] = field(default_factory=lambda: cast(List[str], []))
+    old_values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    new_values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = ConfigurationEventType.CHANGED.value
         self.priority = 40
@@ -247,11 +247,11 @@ class ErrorOccurredEvent(Event):
     error_message: str = ""
     error_type: str = ""
     source: str = ""
-    context: Dict[str, Any] = field(default_factory=dict)
     is_critical: bool = False
-    timestamp: datetime = field(default_factory=datetime.now)
+    context: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize event metadata."""
         self.event_type = (
             ErrorEventType.CRITICAL.value

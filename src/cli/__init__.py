@@ -11,8 +11,8 @@ Key components:
     - Modeling: Data loading and workflow orchestration
 """
 
-from src.cli.parsers import ParserFactory, tool
-from src.cli import tools as _tools  # noqa: F401 - register tools
-from src.cli import modeling  # noqa: F401 - utilities
+from src.cli.parsers import ParserFactory
+from src.cli import tools
+from src.cli import modeling
 
-__all__ = ["ParserFactory", "tool", "modeling"]
+__all__ = ["ParserFactory", "tools", "modeling"]

@@ -99,8 +99,7 @@ class CachePolicy:
 
     def __post_init__(self) -> None:
         """Ensure cache_dir is a Path object."""
-        if not isinstance(self.cache_dir, Path):
-            self.cache_dir = Path(self.cache_dir)
+        self.cache_dir = Path(self.cache_dir)
 
 
 @dataclass

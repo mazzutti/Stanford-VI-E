@@ -5,7 +5,7 @@ This module contains models for AVO technique analysis and comparison.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, TYPE_CHECKING
+from typing import Dict, Optional, List, Any, TYPE_CHECKING, cast
 from functools import cached_property
 
 import numpy as np
@@ -60,8 +60,6 @@ class TechniqueComparison:
             raise ValueError("winner cannot be empty")
         if self.difference < 0:
             raise ValueError("difference cannot be negative")
-        if self.avo is None:
-            raise ValueError("avo statistics cannot be None")
 
     def is_significant(self, threshold: float = 0.05) -> bool:
         """Check if difference is statistically significant."""
@@ -144,7 +142,7 @@ class AvoStats(FormattableModel):
     """
 
     # generic container for other numeric metrics (optional)
-    extras: Dict[str, float] = field(default_factory=dict)
+    extras: Dict[str, float] = field(default_factory=lambda: cast(Dict[str, float], {}))
     pearson_correlation: Optional[float] = None
     pearson_pvalue: Optional[float] = None
     spearman_correlation: Optional[float] = None
@@ -256,7 +254,7 @@ class AvoStats(FormattableModel):
             pearson_pvalue=data.get("pearson_pvalue"),
             spearman_correlation=data.get("spearman_correlation"),
             spearman_pvalue=data.get("spearman_pvalue"),
-            extras=data.get("extras", {}),
+            extras=ModelUtilities.safe_get_dict(data, "extras"),
         )
 
     def get_stats_dict(self) -> Dict[str, float]:
@@ -276,9 +274,11 @@ class AvoResults:
     boundary_amps: Optional[BoundaryAmpsResult] = None
     gradient_correlation: Optional[GradientCorrelationResult] = None
     separation_matrix: Optional[NDArray[np.float64]] = None
-    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(default_factory=dict)
-    interface_stats_summary: Dict[Transition, Optional[FaciesStats]] = field(
-        default_factory=dict
+    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(Dict[int, NDArray[np.float64]], {})
+    )
+    interface_stats_summary: TransitionStatsMap = field(
+        default_factory=lambda: cast(TransitionStatsMap, {})
     )
 
     @cached_property

@@ -51,13 +51,18 @@ class ZoeppritzSolver:
             shaped like the inputs.
         """
         spatial_shape = vp1.shape
-        N = int(np.prod(spatial_shape)) if spatial_shape else 1
-        vp1f = vp1.reshape(N)
-        vs1f = vs1.reshape(N)
-        rho1f = rho1.reshape(N)
-        vp2f = vp2.reshape(N)
-        vs2f = vs2.reshape(N)
-        rho2f = rho2.reshape(N)
+        if spatial_shape:
+            n = 1
+            for s in spatial_shape:
+                n *= int(s)
+        else:
+            n = 1
+        vp1f = vp1.reshape(n)
+        vs1f = vs1.reshape(n)
+        rho1f = rho1.reshape(n)
+        vp2f = vp2.reshape(n)
+        vs2f = vs2.reshape(n)
+        rho2f = rho2.reshape(n)
 
         theta1 = np.deg2rad(theta1_deg)
         p_flat = np.sin(theta1) / vp1f

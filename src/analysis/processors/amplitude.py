@@ -1,7 +1,7 @@
 """Boundary amplitude extraction processor."""
 
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 from scipy.ndimage import binary_dilation
@@ -108,7 +108,9 @@ class BoundaryAmplitudeExtractor(BaseProcessor):
         boundaries_aligned = boundaries_aligned.astype(np.bool_)
 
         # Dilate boundaries to create a window
-        boundary_zone = binary_dilation(boundaries_aligned, iterations=window)
+        boundary_zone = cast(
+            NDArray[np.bool_], binary_dilation(boundaries_aligned, iterations=window)
+        )
 
         # Extract amplitudes using boundary mask
         at_boundaries = ExtractionOps.extract_by_mask(

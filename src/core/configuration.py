@@ -35,6 +35,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 import logging
 
@@ -87,6 +88,10 @@ class ConfigProfile(Enum):
             raise ValueError(f"Invalid profile '{value}'. Valid profiles: {valid}")
 
 
+# Type alias for validator callables to improve type inference
+Validator = Callable[[Any], bool]
+
+
 @dataclass
 class ConfigRule:
     """Configuration validation rule.
@@ -107,8 +112,10 @@ class ConfigRule:
 
     key: str
     required: bool = False
-    expected_type: Optional[Type] = None
-    validators: List[Callable] = field(default_factory=list)
+    expected_type: Optional[Type[Any]] = None
+    validators: List[Validator] = field(
+        default_factory=lambda: cast(List[Validator], [])
+    )
     description: str = ""
 
     def validate(self, value: Any) -> tuple[bool, Optional[str]]:
@@ -204,15 +211,18 @@ class ConfigValidator:
         tuple[bool, List[str]]
             (is_valid, list_of_errors)
         """
-        errors = []
+        errors: List[str] = []
 
         for key, rule in self.rules.items():
             value = config.get(key)
             is_valid, error = rule.validate(value)
 
             if not is_valid:
-                errors.append(error)
-                logger.error(error)
+                # error is Optional[str] from ConfigRule.validate, but when
+                # is_valid is False we expect a string message. Cast to str
+                # to satisfy static analysis.
+                errors.append(cast(str, error))
+                logger.error(cast(str, error))
 
         return len(errors) == 0, errors
 
@@ -268,7 +278,7 @@ class ConfigSourceRegistry:
         """
         from src.analysis.config_manager import JsonSource
 
-        return JsonSource(path)
+        return cast(ConfigSource, JsonSource(path))
 
     @staticmethod
     def create_yaml_source(path: Union[str, Path]) -> ConfigSource:
@@ -286,7 +296,7 @@ class ConfigSourceRegistry:
         """
         from src.analysis.config_manager import YamlSource
 
-        return YamlSource(path)
+        return cast(ConfigSource, YamlSource(path))
 
     @staticmethod
     def create_env_source(prefix: str = "APP_") -> ConfigSource:
@@ -304,7 +314,7 @@ class ConfigSourceRegistry:
         """
         from src.analysis.config_manager import EnvironmentSource
 
-        return EnvironmentSource(prefix)
+        return cast(ConfigSource, EnvironmentSource(prefix))
 
 
 class BaseConfig(ABC):
@@ -561,7 +571,12 @@ class BaseConfig(ABC):
                 and key in target
                 and isinstance(target[key], dict)
             ):
-                self._merge_config(target[key], value)
+                # Cast both sides to Dict[str, Any] so the type checker knows
+                # we are passing the correct types to the recursive call.
+                self._merge_config(
+                    cast(Dict[str, Any], target[key]),
+                    cast(Dict[str, Any], value),
+                )
             else:
                 target[key] = value
 

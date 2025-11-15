@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:
     from src.analysis.processors.boundary import CubeAligner
@@ -196,11 +196,13 @@ class BaseProcessor(Processor, AutoLoggingMixin):
             f"{', '.join(self._DOMAIN_METHODS)}"
         )
 
-    def _find_domain_method(self):
-        """Find first available domain method."""
+    def _find_domain_method(self) -> Optional[Callable[..., Any]]:
+        """Find first available domain method and return it if callable."""
         for method_name in self._DOMAIN_METHODS:
             if hasattr(self, method_name):
-                return getattr(self, method_name)
+                attr = getattr(self, method_name)
+                if callable(attr):
+                    return cast(Callable[..., Any], attr)
         return None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:

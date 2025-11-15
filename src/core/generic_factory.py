@@ -4,7 +4,18 @@ Eliminates duplicate factory code across CacheLoaderFactory, ExtractorFactory,
 ResamplerFactory, etc. by providing a reusable base class.
 """
 
-from typing import TypeVar, Generic, Dict, Callable, Type, Any, Optional
+from typing import (
+    TypeVar,
+    Generic,
+    Dict,
+    Callable,
+    Type,
+    Any,
+    Optional,
+    overload,
+    Union,
+    cast,
+)
 
 __all__ = ["GenericFactory"]
 
@@ -30,17 +41,35 @@ class GenericFactory(Generic[T]):
         >>> loader = factory.create("default", cache_size=200)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize factory with empty registries."""
         self._builders: Dict[str, Callable[..., T]] = {}
         self._configs: Dict[str, Dict[str, Any]] = {}
+
+    @overload
+    def register(
+        self,
+        name: str,
+        builder: None = ...,
+        default_config: Optional[Dict[str, Any]] = None,
+    ) -> Callable[[Callable[..., T]], Callable[..., T]]:  # pragma: no cover - overload
+        ...
+
+    @overload
+    def register(
+        self,
+        name: str,
+        builder: Callable[..., T],
+        default_config: Optional[Dict[str, Any]] = None,
+    ) -> Callable[..., T]:  # pragma: no cover - overload
+        ...
 
     def register(
         self,
         name: str,
         builder: Optional[Callable[..., T]] = None,
         default_config: Optional[Dict[str, Any]] = None,
-    ) -> Callable:
+    ) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
         """Register a builder with optional default config.
 
         Can be used as a decorator or called directly.
@@ -80,7 +109,11 @@ class GenericFactory(Generic[T]):
         Example:
             >>> factory.register_class("mmap", CacheLoader, cache_size=0)
         """
-        self.register(name, lambda **kw: cls(**{**default_kwargs, **kw}))
+
+        def _builder(**kw: Any) -> T:
+            return cls(**{**default_kwargs, **kw})
+
+        self.register(name, cast(Callable[..., T], _builder))
 
     def create(self, name: str, **kwargs: Any) -> T:
         """Create instance using registered builder.

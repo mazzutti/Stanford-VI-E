@@ -13,7 +13,10 @@ Example
 >>> builder = AnalyzerFactory.builder()
 """
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 from src.analysis.factories.builder import AnalyzerBuilder
 from src.analysis.models import FaciesCorrelationConfig
@@ -25,7 +28,9 @@ from src.analysis.processors import (
     FaciesDiscriminationCalculator,
 )
 from src.analysis.domain import DomainHandlerFactory
-from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
+
+if TYPE_CHECKING:
+    from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 
 logger = logging.getLogger(__name__)
 

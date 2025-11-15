@@ -1,7 +1,7 @@
 """AVO validation and analysis utilities."""
 
 from dataclasses import dataclass
-from typing import Optional, List, Any
+from typing import Optional, List, Any, cast
 from numpy.typing import NDArray
 import numpy as np
 import logging
@@ -210,52 +210,14 @@ class AVOValidator(Validator):
         assert vs_val is not None
         assert rho_val is not None
 
-        # The validate method returns a dict that we reconstruct as a report
-        result = self.validate(vp_val, vs_val, rho_val)
-        report_dict: dict[str, float | bool | list[float] | None] = result
-
-        # Extract with proper type handling
-        max_angle_val = report_dict.get("max_angle")
-        contrast_vp_val = report_dict.get("contrast_vp")
-        contrast_vs_val = report_dict.get("contrast_vs")
-        contrast_rho_val = report_dict.get("contrast_rho")
-        contrast_flag_val = report_dict.get("contrast_flag")
-        angle_flag_val = report_dict.get("angle_flag")
-        suggested_angles_val = report_dict.get("suggested_angles")
-
-        # Ensure all values are present
-        if not all(
-            [
-                max_angle_val is not None,
-                contrast_vp_val is not None,
-                contrast_vs_val is not None,
-                contrast_rho_val is not None,
-                contrast_flag_val is not None,
-                angle_flag_val is not None,
-            ]
-        ):
-            raise ValueError("Invalid report dictionary from validate()")
-
-        # Type narrowing: after None checks above, cast to appropriate types
-        assert isinstance(max_angle_val, (float, int))
-        assert isinstance(contrast_vp_val, (float, int))
-        assert isinstance(contrast_vs_val, (float, int))
-        assert isinstance(contrast_rho_val, (float, int))
-        assert isinstance(contrast_flag_val, bool)
-        assert isinstance(angle_flag_val, bool)
-
-        report = AVOValidityReport(
-            max_angle=float(max_angle_val),
-            contrast_vp=float(contrast_vp_val),
-            contrast_vs=float(contrast_vs_val),
-            contrast_rho=float(contrast_rho_val),
-            contrast_flag=contrast_flag_val,
-            angle_flag=angle_flag_val,
-            suggested_angles=(
-                suggested_angles_val if isinstance(suggested_angles_val, list) else None
-            ),
-        )
-        return report.is_valid(self.contrast_threshold)
+        # Use validate() to obtain report. Accept either the dataclass
+        # directly (preferred) or a legacy dict for backward compatibility.
+        report = self.validate(vp_val, vs_val, rho_val)
+        if isinstance(report, dict):
+            report_obj = AVOValidityReport(**cast(dict[str, Any], report))
+        else:
+            report_obj = report
+        return report_obj.is_valid(self.contrast_threshold)
 
     @staticmethod
     def _compute_fractional_contrast(arr: NDArray[Any]) -> float:

@@ -17,7 +17,7 @@ from src.modeling.modeling import (
     AngleModel,
     AVOSynthesizer,
     SynthesisConfig,
-    _unwrap_quantity,
+    unwrap_quantity,
 )
 from src.modeling.processors import ReflectivityComputer, WaveletConvolver
 from src.modeling.model_cache import CacheManager
@@ -384,7 +384,7 @@ class TestUnwrapQuantity:
         arr = np.array([1, 2, 3])
         qty = Quantity(arr, "m/s")
 
-        result = _unwrap_quantity(qty)
+        result = unwrap_quantity(qty)
 
         assert np.allclose(result, arr)
         assert isinstance(result, np.ndarray)
@@ -393,7 +393,7 @@ class TestUnwrapQuantity:
         """Test passing through ndarray."""
         arr = np.array([1, 2, 3])
 
-        result = _unwrap_quantity(arr)
+        result = unwrap_quantity(arr)
 
         assert np.allclose(result, arr)
         assert isinstance(result, np.ndarray)

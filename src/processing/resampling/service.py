@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Any
 
 
-import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import logging
 
@@ -26,7 +25,7 @@ from src.io.grid import GridSpec
 from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling._cache import get_resample_plan_cache
 from src.processing.resampling.backends._manager import BackendManager
-from src.utils.quantity import Quantity
+from src.utils.quantity import Quantity, to_ndarray
 
 
 __all__ = ["ResamplerService"]
@@ -71,9 +70,7 @@ class ResamplerService:
         vp_depth (if `use_cache` is True) before creating a new one.
         """
         # unwrap quantities to compute plan key
-        vp_arr = (
-            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
-        )
+        vp_arr = to_ndarray(vp_depth)
         if use_cache:
             if self.cache is not None:
                 plan = self.cache.get_plan(
@@ -90,14 +87,8 @@ class ResamplerService:
 
         # Delegate to the inner resampler
         # Cast to proper types to ensure type safety
-        data_arr = (
-            data_depth.array
-            if isinstance(data_depth, Quantity)
-            else np.asarray(data_depth)
-        )
-        vp_arr_resampler = (
-            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
-        )
+        data_arr = to_ndarray(data_depth)
+        vp_arr_resampler = to_ndarray(vp_depth)
         out = self._inner.depth_to_time_cube(data_arr, vp_arr_resampler, plan=plan)
         return out
 
@@ -111,9 +102,7 @@ class ResamplerService:
 
         Uses the shared cache similarly to `depth_to_time`.
         """
-        vp_arr = (
-            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
-        )
+        vp_arr = to_ndarray(vp_depth)
         if use_cache:
             if self.cache is not None:
                 plan = self.cache.get_plan(self.grid_spec, vp_arr)
@@ -123,13 +112,7 @@ class ResamplerService:
             plan = ResamplePlan.create(self.grid_spec, vp_arr)
 
         # Cast to proper types to ensure type safety
-        data_arr = (
-            seismogram_time.array
-            if isinstance(seismogram_time, Quantity)
-            else np.asarray(seismogram_time)
-        )
-        vp_arr_resampler = (
-            vp_depth.array if isinstance(vp_depth, Quantity) else np.asarray(vp_depth)
-        )
+        data_arr = to_ndarray(seismogram_time)
+        vp_arr_resampler = to_ndarray(vp_depth)
         out = self._inner.time_to_depth_cube(data_arr, vp_arr_resampler, plan=plan)
         return out

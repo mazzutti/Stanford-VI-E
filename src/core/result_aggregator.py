@@ -3,7 +3,7 @@
 Replaces complex dictionary manipulation with clean, chainable methods.
 """
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Callable, cast
 from dataclasses import dataclass, field
 
 __all__ = ["ResultAggregator", "ResultSummary"]
@@ -13,10 +13,12 @@ __all__ = ["ResultAggregator", "ResultSummary"]
 class ResultSummary:
     """Simple result summary container."""
 
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    metrics: Dict[str, float] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
+    attributes: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    metrics: Dict[str, float] = field(
+        default_factory=lambda: cast(Dict[str, float], {})
+    )
+    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    errors: List[str] = field(default_factory=lambda: cast(List[str], []))
 
     def has_errors(self) -> bool:
         """Check if any errors occurred."""
@@ -42,7 +44,7 @@ class ResultAggregator:
     Replaces nested dictionary operations with clear method calls.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize aggregator."""
         self._results: Dict[str, Any] = {}
 
@@ -60,7 +62,9 @@ class ResultAggregator:
         self, data: Dict[str, Any], prefix: Optional[str] = None
     ) -> "ResultAggregator":
         """Add attributes from dictionary, optionally with prefix."""
-        items = {f"{prefix}_{k}": v for k, v in data.items()} if prefix else data
+        items: Dict[str, Any] = (
+            {f"{prefix}_{k}": v for k, v in data.items()} if prefix else data
+        )
         self._results.update(items)
         return self
 
@@ -80,7 +84,7 @@ class ResultAggregator:
         self._results = {k: v for k, v in self._results.items() if k not in keys}
         return self
 
-    def transform(self, key: str, func: callable) -> "ResultAggregator":
+    def transform(self, key: str, func: Callable[[Any], Any]) -> "ResultAggregator":
         """Transform a specific result value."""
         if key in self._results:
             self._results[key] = func(self._results[key])
@@ -102,8 +106,11 @@ class ResultAggregator:
         """Build a structured summary separating metrics from attributes."""
         summary = ResultSummary()
         for key, value in self._results.items():
-            target = summary.metrics if self._is_metric(value) else summary.attributes
-            target[key] = value
+            if self._is_metric(value):
+                # store numeric metrics as float
+                summary.metrics[key] = float(value)
+            else:
+                summary.attributes[key] = value
         return summary
 
     @staticmethod
@@ -112,7 +119,7 @@ class ResultAggregator:
         return isinstance(value, (int, float))
 
 
-class ChainableDict(dict):
+class ChainableDict(dict[str, Any]):
     """Dictionary with chainable operations for cleaner code."""
 
     def set(self, key: str, value: Any) -> "ChainableDict":

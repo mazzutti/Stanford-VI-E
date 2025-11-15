@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import List, Optional
 import os
+import logging
 
 from src.processing.managers.resource_manager import ResourceManager
 
@@ -65,9 +66,8 @@ class CacheClearStrategy:
 class CacheSummarizeStrategy:
     """Strategy for summarizing cache files."""
 
-    def __init__(self, logger=None):
-        import logging
-
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+        """Initialize summarize strategy with an optional logger."""
         self.logger = logger or logging.getLogger(self.__class__.__name__)
 
     def summarize(self, resource_dir: Path, keys: Optional[List[str]] = None) -> None:
@@ -112,7 +112,9 @@ class CacheSummarizeStrategy:
 class CacheManager(ResourceManager[Path]):
     """Manages cache directory operations: clearing and summarizing cache files."""
 
-    def __init__(self, cache_dir: Path = None, logger=None):
+    def __init__(
+        self, cache_dir: Optional[Path] = None, logger: Optional[logging.Logger] = None
+    ) -> None:
         """Initialize cache manager.
 
         Args:

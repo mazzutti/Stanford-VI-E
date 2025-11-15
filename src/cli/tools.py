@@ -5,10 +5,11 @@ including cache cleanup, plotting, analysis, and regeneration workflows.
 """
 
 from __future__ import annotations
-    from src.gen.seismogram import (
-        SeismogramTopLayersExtractor,
-        DefaultCacheProvider as SeismogramDefaultCacheProvider,
-    )
+
+import logging
+from pathlib import Path
+from typing import Any, cast
+
 from src.cli.parsers import ParserFactory, tool
 
 logger = logging.getLogger(__name__)
@@ -53,12 +54,7 @@ def cleanup_cache(
     tuple[int, float]
         (number of files removed, MB freed)
     """
-    try:
-        ParserFactory.configure_logging(verbose)
-        from src.gen.facies import (
-            FaciesTopLayersExtractor,
-            DefaultCacheProvider as FaciesDefaultCacheProvider,
-        )
+    ParserFactory.configure_logging(verbose)
     from src.io.pruning import Pruner, PruneStrategy
 
     cache_path = Path(cache_dir)
@@ -476,54 +472,6 @@ def regenerate_seismograms() -> bool:
 
 
 @tool
-def plot_seismograms(
-    time_cache: str = ".cache/avo_time.npz",
-    depth_cache: str = ".cache/avo_depth.npz",
-    output_dir: str = "docs/images",
-) -> bool:
-    """Generate all seismogram PNG plots from cache files.
-
-    Generates plots for both time and depth domains:
-    - Full stack plots
-    - Individual angle stack plots
-
-    Parameters
-    ----------
-    time_cache : str
-        Path to time domain cache file, default: .cache/avo_time.npz
-    depth_cache : str
-        Path to depth domain cache file, default: .cache/avo_depth.npz
-    output_dir : str
-        Output directory for PNG files, default: docs/images
-
-    Returns
-    -------
-    bool
-        True if successful
-
-    Examples
-    --------
-    $ python -m src plot_seismograms
-    $ python -m src plot_seismograms --time_cache .cache/avo_time.npz
-    """
-    from pathlib import Path
-
-    from src.plotting import SeismogramPlotter
-
-    logger.info("%s", "=" * 70)
-    logger.info("SEISMOGRAM PLOT GENERATION")
-    logger.info("%s", "=" * 70)
-
-    cache_dir = Path(".cache")
-    out_dir = Path(output_dir)
-
-    # Find cache files (they may have hash suffixes)
-    time_files_list = list(cache_dir.glob("avo_time*.npz"))
-    depth_files_list = list(cache_dir.glob("avo_depth*.npz"))
-    return True
-
-
-@tool
 def export_top_seismogram_layers(
     cache_dir: str = ".cache",
     n_layers: int = 2,
@@ -557,14 +505,17 @@ def export_top_seismogram_layers(
 
     from pathlib import Path
 
-    from src.gen.seismogram_extractor import (
+    from src.gen.seismogram import (
         SeismogramTopLayersExtractor,
         DefaultCacheProvider,
     )
 
     provider = DefaultCacheProvider(cache_dir=cache_dir)
     extractor = SeismogramTopLayersExtractor.from_cache_or_generate(
-        cache_provider=provider, cache_dir=cache_dir, generate_if_missing=True, force_generate=force
+        cache_provider=provider,
+        cache_dir=cache_dir,
+        generate_if_missing=True,
+        force_generate=force,
     )
 
     if geology:
@@ -572,6 +523,9 @@ def export_top_seismogram_layers(
         top = extractor.extract_top_two_geological_layers()
     else:
         top = extractor.extract_top_layers(n_layers)
+    import numpy as _np
+
+    top = _np.asarray(top)
 
     result: dict[str, str | tuple[int, int, int]] = {}
     result["shape"] = top.shape
@@ -625,7 +579,10 @@ def export_top_seismogram_layers(
                     html_path = Path(out).with_suffix(".html")
                 else:
                     # Default to docs/images to match project convention
-                    html_path = Path("docs/images") / f"seismic_top_layers_{n_layers}_depth.html"
+                    html_path = (
+                        Path("docs/images")
+                        / f"seismic_top_layers_{n_layers}_depth.html"
+                    )
 
                 html_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -638,7 +595,8 @@ def export_top_seismogram_layers(
                 depth_idx = nk // 2
 
                 traces = plotter.create_3d_volume(
-                    top, (inline_idx, crossline_idx, depth_idx), title=f"Top {n_layers} layers",
+                    top,
+                    (inline_idx, crossline_idx, depth_idx),
                 )
                 fig = plotter.create_figure(traces, title=f"Top {n_layers} layers")
                 plotter.save_figure(fig, str(html_path))
@@ -650,14 +608,21 @@ def export_top_seismogram_layers(
                     fig.write_image(str(png_path))
                     result["png"] = str(png_path)
                 except Exception as e:
-                    logger.info("Plotly PNG export failed: %s; falling back to Matplotlib renderer", e)
+                    logger.info(
+                        "Plotly PNG export failed: %s; falling back to Matplotlib renderer",
+                        e,
+                    )
                     try:
                         # Use SeismicPlotter's Matplotlib renderer to create a comparable PNG
                         from src.plotting.seismic_plotter import SeismicPlotter
 
-                        sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(html_path.parent))
+                        sp = SeismicPlotter(
+                            cache_dir=cache_dir, out_dir=str(html_path.parent)
+                        )
                         # Use a descriptive filename matching project convention
-                        png_path = html_path.with_name(f"seismic_full_stack_top_layers_depth.png")
+                        png_path = html_path.with_name(
+                            "seismic_full_stack_top_layers_depth.png"
+                        )
                         sp.plot_full_stack(top, output_path=png_path, domain="depth")
                         result["png"] = str(png_path)
                     except Exception as e2:
@@ -688,20 +653,26 @@ def export_top_facies_layers(
 
     from pathlib import Path
 
-    from src.gen.facies_extractor import (
+    from src.gen.facies import (
         FaciesTopLayersExtractor,
         DefaultCacheProvider as FaciesDefaultCacheProvider,
     )
 
     provider = FaciesDefaultCacheProvider(cache_dir=cache_dir)
     extractor = FaciesTopLayersExtractor.from_cache_or_generate(
-        cache_provider=provider, cache_dir=cache_dir, generate_if_missing=True, force_generate=force
+        cache_provider=provider,
+        cache_dir=cache_dir,
+        generate_if_missing=True,
+        force_generate=force,
     )
 
     if geology:
         top = extractor.extract_top_two_geological_layers()
     else:
         top = extractor.extract_top_layers(n_layers)
+    import numpy as _np
+
+    top = _np.asarray(top)
 
     result: dict[str, str | tuple[int, int, int]] = {}
     result["shape"] = top.shape
@@ -728,102 +699,72 @@ def export_top_facies_layers(
         except Exception as e:
             logger.warning("Failed to save facies top layers to cache: %s", e)
 
-    # Plotting behavior mirrors seismogram tool (Matplotlib or Plotly)
+    # Plotting behavior now delegates to FaciesTopLayersExtractor helpers
     if plot:
+        # Create an extractor for the top cube so plotting helpers operate on it
+        top_extractor = FaciesTopLayersExtractor(top)
+        full_cube = None
+        try:
+            # try to obtain the full-depth cube from provider (useful for embedding)
+            full_cube = provider.load_latest_depth()
+        except Exception:
+            full_cube = None
+
+        # Determine a safe output directory. If `plot_out` is a file path,
+        # use its parent directory to avoid creating a directory with the
+        # same name as the intended file.
+        if plot_out:
+            base_out_dir = Path(plot_out).parent
+        else:
+            base_out_dir = Path("docs/images")
+        # Ensure we have a well-named output directory variable for compatibility
+        out_dir = base_out_dir
+        base_out_dir.mkdir(parents=True, exist_ok=True)
+
         if matplotlib_only:
             try:
-                from src.plotting.seismic_plotter import SeismicPlotter
-
-                out_dir = Path(plot_out) if plot_out else Path("docs/images")
-                out_dir.mkdir(parents=True, exist_ok=True)
                 png_path = out_dir / f"facies_top_layers_matplotlib_{n_layers}.png"
-                sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(out_dir))
-                sp.plot_full_stack(top, output_path=png_path, domain="depth")
-                result["png"] = str(png_path)
+                saved = top_extractor.save_matplotlib_png(png_path, domain="depth")
+                result["png"] = str(saved)
             except Exception as e:
                 logger.warning("Matplotlib-only facies plotting failed: %s", e)
         else:
             try:
-                from src.plotting.plotly_plotter import PlotlyPlotter
-
+                # Save Plotly HTML embedding the top layers into the full depth (if available)
                 if plot_out:
                     html_path = Path(plot_out)
                 elif out:
                     html_path = Path(out).with_suffix(".html")
                 else:
-                    html_path = Path("docs/images") / f"facies_top_layers_{n_layers}_depth.html"
+                    html_path = out_dir / f"facies_top_layers_{n_layers}_depth.html"
 
                 html_path.parent.mkdir(parents=True, exist_ok=True)
 
-                plotter = PlotlyPlotter()
-                ni, nj, nk = top.shape
-                inline_idx = ni // 2
-                crossline_idx = nj // 2
-                depth_idx = nk // 2
-
-                traces = plotter.create_3d_volume(
-                    top, (inline_idx, crossline_idx, depth_idx), title=f"Facies Top {n_layers} layers",
+                saved_html = top_extractor.save_plotly_html(
+                    str(html_path),
+                    full_depth=full_cube,
+                    embed_in_full_depth=True if full_cube is not None else False,
+                    is_categorical=False,
+                    title=f"Facies Top {n_layers} layers",
                 )
-                fig = plotter.create_figure(traces, title=f"Facies Top {n_layers} layers")
-                plotter.save_figure(fig, str(html_path))
-                result["html"] = str(html_path)
-                try:
-                    png_path = html_path.with_suffix(".png")
-                    fig.write_image(str(png_path))
-                    result["png"] = str(png_path)
-                except Exception:
-                    # fallback to Matplotlib
-                    try:
-                        from src.plotting.seismic_plotter import SeismicPlotter
+                result["html"] = str(saved_html)
 
-                        sp = SeismicPlotter(cache_dir=cache_dir, out_dir=str(html_path.parent))
-                        png_path = html_path.with_name(f"facies_full_stack_top_layers_depth.png")
-                        sp.plot_full_stack(top, output_path=png_path, domain="depth")
-                        result["png"] = str(png_path)
-                    except Exception:
-                        pass
+                # Also provide a static PNG via Matplotlib fallback (no kaleido)
+                try:
+                    png_path = html_path.with_name(
+                        "facies_full_stack_top_layers_depth.png"
+                    )
+                    saved_png = top_extractor.save_matplotlib_png(
+                        png_path, domain="depth"
+                    )
+                    result["png"] = str(saved_png)
+                except Exception:
+                    # If fallback fails, we still return the HTML
+                    pass
             except Exception as e:
                 logger.warning("Failed to create facies interactive plot: %s", e)
 
     return result
-
-    if not time_files_list and not depth_files_list:
-        logger.error("No cache files found. Run 'analysis_seismograms' first.")
-        return False
-
-    plotter = SeismogramPlotter(verbose=True)
-
-    # Generate time domain plots
-    if time_files_list:
-        time_path = time_files_list[0]  # Use most recent
-        logger.info(f"\nGenerating TIME DOMAIN seismogram plots...")
-        logger.info(f"  Cache: {time_path}")
-        logger.info(f"  Output: {out_dir}")
-        time_files = plotter.plot_from_cache(time_path, out_dir, domain="time")
-        logger.info(
-            f"✓ Generated {len(time_files['angle_stacks']) + len(time_files['full_stack'])} time domain plot(s)\n"
-        )
-    else:
-        logger.warning(f"Time domain cache not found in {cache_dir}")
-
-    # Generate depth domain plots
-    if depth_files_list:
-        depth_path = depth_files_list[0]  # Use most recent
-        logger.info(f"\nGenerating DEPTH DOMAIN seismogram plots...")
-        logger.info(f"  Cache: {depth_path}")
-        logger.info(f"  Output: {out_dir}")
-        depth_files = plotter.plot_from_cache(depth_path, out_dir, domain="depth")
-        logger.info(
-            f"✓ Generated {len(depth_files['angle_stacks']) + len(depth_files['full_stack'])} depth domain plot(s)\n"
-        )
-    else:
-        logger.warning(f"Depth domain cache not found in {cache_dir}")
-
-    logger.info("%s", "=" * 70)
-    logger.info("✓ SEISMOGRAM PLOTS GENERATED SUCCESSFULLY")
-    logger.info("%s", "=" * 70)
-
-    return True
 
 
 @tool
@@ -857,7 +798,7 @@ def regenerate_rock_physics() -> bool:
         ],
     )
 
-    regen.clear_cache()
+    cast(Any, regen).clear_cache()
 
     try:
         rpa = RockPhysicsAnalyzer()
@@ -991,7 +932,14 @@ def resample_rock_physics_to_time(
     try:
         dm = DatasetManager.from_stanfordsix(".", file_map, grid_spec)
         vp_prop = dm.get_property("vp")
-        vp_depth = vp_prop.array if hasattr(vp_prop, "array") else vp_prop
+        if vp_prop is None:
+            error_msg = "Vp property not found in dataset manager"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+        # Unwrap array-like wrappers (Quantity-like objects) safely
+        from src.utils.quantity import to_ndarray
+
+        vp_depth = to_ndarray(vp_prop)
         logger.info(f"Loaded Vp shape: {vp_depth.shape}")
     except Exception as e:
         error_msg = f"Could not load Vp: {e}"
@@ -1021,8 +969,8 @@ def resample_rock_physics_to_time(
         "discrimination",
     ]
 
-    resampled_attrs = {}
-    resampled_names = []
+    resampled_attrs: dict[str, Any] = {}
+    resampled_names: list[str] = []
 
     for attr_name in attributes_to_resample:
         if attr_name not in rp_data:
@@ -1040,7 +988,7 @@ def resample_rock_physics_to_time(
 
         try:
             # Resample to time
-            attr_time, dt = resampler.depth_to_time_cube(attr_data, vp_depth, plan=plan)
+            attr_time, _ = resampler.depth_to_time_cube(attr_data, vp_depth, plan=plan)
             logger.info(f"    → {attr_time.shape}")
             resampled_attrs[attr_name] = attr_time
             resampled_names.append(attr_name)
@@ -1204,8 +1152,8 @@ def regenerate_all_3d_plots(
         logger.info("REGENERATING ALL 3D INTERACTIVE PLOTS")
         logger.info("=" * 80)
 
-        all_files = []
-        results = {
+        all_files: list[str] = []
+        results: dict[str, Any] = {
             "original_properties": [],
             "rock_physics": [],
             "seismic": [],
@@ -1220,12 +1168,13 @@ def regenerate_all_3d_plots(
                 verbose=verbose,
             )
             plotter.load_data()
-            files = plotter.generate_3d_plotly_visualizations()
+            files_paths = plotter.generate_3d_plotly_visualizations()
+            files = [str(p) for p in files_paths]
             results["original_properties"] = files
             all_files.extend(files)
             logger.info(f"✓ Generated {len(files)} original property plots:")
-            for f in files:
-                logger.info(f"  - {Path(f).name}")
+            for fp in files:
+                logger.info(f"  - {Path(fp).name}")
         except Exception as e:
             logger.error(f"Error generating original properties: {e}", exc_info=True)
             return {
@@ -1245,12 +1194,13 @@ def regenerate_all_3d_plots(
                 verbose=verbose,
             )
             plotter_rp.load_data()
-            files_rp = plotter_rp.generate_3d_plotly_visualizations()
+            files_rp_paths = plotter_rp.generate_3d_plotly_visualizations()
+            files_rp = [str(p) for p in files_rp_paths]
             results["rock_physics"] = files_rp
             all_files.extend(files_rp)
             logger.info(f"✓ Generated {len(files_rp)} rock physics plots:")
-            for f in files_rp:
-                logger.info(f"  - {Path(f).name}")
+            for fp in files_rp:
+                logger.info(f"  - {Path(fp).name}")
         except Exception as e:
             logger.error(f"Error generating rock physics: {e}", exc_info=True)
             return {
@@ -1271,12 +1221,13 @@ def regenerate_all_3d_plots(
             )
             files_seismic_time = plotter_seismic.generate_from_caches(domain="time")
             files_seismic_depth = plotter_seismic.generate_from_caches(domain="depth")
-            files_seismic = files_seismic_time + files_seismic_depth
-            results["seismic"] = [str(p) for p in files_seismic]
+            files_seismic_paths = files_seismic_time + files_seismic_depth
+            files_seismic = [str(p) for p in files_seismic_paths]
+            results["seismic"] = files_seismic
             all_files.extend(files_seismic)
             logger.info(f"✓ Generated {len(files_seismic)} seismic plots:")
-            for f in files_seismic:
-                logger.info(f"  - {Path(f).name}")
+            for fp in files_seismic:
+                logger.info(f"  - {Path(fp).name}")
         except Exception as e:
             logger.error(f"Error generating seismic plots: {e}", exc_info=True)
             return {
@@ -1288,14 +1239,14 @@ def regenerate_all_3d_plots(
             }
 
         logger.info("\n" + "=" * 80)
-        logger.info(f"✓ ALL 3D PLOTS REGENERATED SUCCESSFULLY!")
+        logger.info("✓ ALL 3D PLOTS REGENERATED SUCCESSFULLY!")
         logger.info("=" * 80)
 
         # Verify all files were created
         plot_files = sorted(Path(output_dir).glob("*_3d.html"))
         logger.info(f"\nVerifying {len(plot_files)} plot files in {output_dir}:")
-        for f in plot_files:
-            logger.info(f"  ✓ {f.name}")
+        for p in plot_files:
+            logger.info(f"  ✓ {p.name}")
 
         results["total_count"] = len(all_files)
         results["verified_count"] = len(plot_files)

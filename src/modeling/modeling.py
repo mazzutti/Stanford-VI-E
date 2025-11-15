@@ -35,13 +35,18 @@ __all__ = [
 ]
 
 
-def _unwrap_quantity(
+def unwrap_quantity(
     value: Quantity | NDArray[np.floating[Any]],
 ) -> NDArray[np.floating[Any]]:
     """Extract array from Quantity or return as ndarray."""
     if isinstance(value, Quantity):
         return value.array
     return np.asarray(value)
+
+
+# Backwards-compatible alias: some tests and callers expect a private
+# helper named `_unwrap_quantity`. Keep an alias to avoid breaking imports.
+_unwrap_quantity = unwrap_quantity
 
 
 @dataclass
@@ -206,13 +211,13 @@ class AVOSynthesizer:
         config = config or SynthesisConfig()
 
         # Unwrap Quantity objects to numeric arrays
-        vp = _unwrap_quantity(props_time["vp"])
-        vs = _unwrap_quantity(props_time["vs"])
-        rho = _unwrap_quantity(props_time["rho"])
+        vp = unwrap_quantity(props_time["vp"])
+        vs = unwrap_quantity(props_time["vs"])
+        rho = unwrap_quantity(props_time["rho"])
 
         ni, nj, nk = vp.shape
-        angle_stacks = []
-        full_stack = np.zeros((ni, nj, nk), dtype=np.float32)
+        angle_stacks: list[NDArray[np.floating[Any]]] = []
+        full_stack: NDArray[np.floating[Any]] = np.zeros((ni, nj, nk), dtype=np.float32)
         n_angles = len(angles)
 
         debug_mode = sys.gettrace() is not None

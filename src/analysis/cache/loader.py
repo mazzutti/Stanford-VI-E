@@ -40,6 +40,7 @@ from src.analysis.types.protocols import (
     ArchiveExtractorProtocol,
 )
 from src.utils.lru import LRUCache, ShardedLRUCache
+from src.core.generic_factory import GenericFactory
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ class CacheConfig(NamedTuple):
     archive_extractor: Optional[ArchiveExtractorProtocol] = None
     selector: Optional[SelectorProtocol] = None
     cache: Optional[CacheProtocol[NDArray[np.float64]]] = None
-    np_load: Callable[..., Union[NDArray[np.float64], NpzFile]] = np.load
+    np_load: Callable[..., Union[NDArray[Any], NpzFile]] = np.load
 
 
 class CacheLoader:
@@ -203,7 +204,7 @@ class CacheLoader:
     def __init__(
         self,
         selector: Optional[SelectorProtocol] = None,
-        np_load: Callable[..., Union[NDArray[np.float64], NpzFile]] = np.load,
+        np_load: Callable[..., Union[NDArray[Any], NpzFile]] = np.load,
         *,
         cache: Optional[CacheProtocol[NDArray[np.float64]]] = None,
         cache_size: int = 0,
@@ -356,7 +357,7 @@ class CacheLoader:
 
     def _get_selection_strategies(
         self, cache_path: Path, domain: str, prefer_latest: bool, allow_npy: bool
-    ):
+    ) -> List[Callable[[], Optional[str]]]:
         """Get ordered list of selection strategies to try."""
         strategies = [
             lambda: self._try_custom_selector(cache_path, domain),
@@ -432,14 +433,14 @@ class CacheLoader:
         if allow_npy:
             patterns.append(f"{_FILE_PREFIX}*{domain}*{_NPY_EXTENSION}")
 
-        matches = []
+        matches: List[Path] = []
         for pattern in patterns:
             matches.extend(p for p in cache_path.glob(pattern) if p.exists())
         return matches
 
     def _call_loader(
         self, path: Path, *, mmap_mode: Optional[str] = None
-    ) -> Union[NDArray[np.float64], NpzFile]:
+    ) -> Union[NDArray[Any], NpzFile]:
         """Load file using numpy loader with optional memory mapping."""
         mmap_str = (
             f"with mmap_mode='{mmap_mode}'" if mmap_mode else "without memory mapping"
@@ -478,11 +479,11 @@ class CacheLoader:
         """Convert array to float64."""
         return np.asarray(arr).astype(np.float64)
 
-    def _process_loaded_data(self, loaded, p: Path):
+    def _process_loaded_data(self, loaded: Any, p: Path) -> Optional[NDArray[Any]]:
         """Process loaded data based on type (memmap, NPZ, or regular array)."""
         if isinstance(loaded, np.memmap):
-            logger.debug(f"Loaded memory-mapped array from {p.name}")
-            return loaded
+            logger.debug("Loaded memory-mapped array from %s", p.name)
+            return cast(NDArray[Any], loaded)
 
         if isinstance(loaded, NpzFile):
             return self._extract_from_npz(loaded, p)
@@ -490,12 +491,14 @@ class CacheLoader:
         logger.debug(f"Loaded and converted array from {p.name} to float64")
         return np.asarray(loaded)
 
-    def _extract_from_npz(self, npz_file: NpzFile, p: Path):
+    def _extract_from_npz(
+        self, npz_file: Any, p: Path
+    ) -> Optional[NDArray[np.float64]]:
         """Extract array from NPZ archive using configured or default extractor."""
         with npz_file as archive:
             # Try custom extractor first
             if self._archive_extractor is not None:
-                result = self._try_custom_extractor(archive, p)
+                result = self._try_custom_extractor(self._archive_extractor, archive, p)
                 if result is not None:
                     return result
 
@@ -505,10 +508,12 @@ class CacheLoader:
                 logger.debug(f"Extracted array from NPZ {p.name}")
             return result
 
-    def _try_custom_extractor(self, archive: NpzFile, p: Path):
+    def _try_custom_extractor(
+        self, extractor: ArchiveExtractorProtocol, archive: NpzFile, p: Path
+    ) -> Optional[NDArray[np.float64]]:
         """Try custom archive extractor with error handling."""
         try:
-            result = self._archive_extractor(archive)
+            result = extractor(archive)
             if result is not None:
                 logger.debug(
                     f"Extracted array from NPZ {p.name} using custom extractor"
@@ -526,9 +531,7 @@ class CacheLoader:
         *,
         mmap_mode: Optional[str] = None,
         raise_on_error: bool = False,
-    ) -> Union[
-        NDArray[np.float64], np.ndarray[tuple[int, ...], np.dtype[np.generic]], None
-    ]:
+    ) -> Optional[NDArray[Any]]:
         """Load a file without consulting the cache.
 
         Handles both single-array files (.npy) and multi-array archives (.npz).
@@ -711,9 +714,7 @@ class CacheLoader:
         *,
         mmap_mode: Optional[str] = None,
         raise_on_error: bool = False,
-    ) -> Union[
-        NDArray[np.float64], np.ndarray[tuple[int, ...], np.dtype[np.generic]], None
-    ]:
+    ) -> Optional[NDArray[Any]]:
         """Load AVO full stack array from cache file.
 
         Main entry point for loading data. Automatically handles caching:
@@ -785,9 +786,7 @@ class CacheLoader:
             ):
                 try:
                     # Only cache if arr is a floating point array
-                    if isinstance(arr, np.ndarray) and np.issubdtype(
-                        arr.dtype, np.floating
-                    ):
+                    if hasattr(arr, "dtype") and np.issubdtype(arr.dtype, np.floating):
                         self._cache.set(
                             cache_key,
                             self._as_float64(cast(NDArray[np.floating[Any]], arr)),
@@ -805,9 +804,6 @@ class CacheLoader:
         return None
 
 
-from src.core.generic_factory import GenericFactory
-
-
 class CacheLoaderFactory(GenericFactory["CacheLoader"]):
     """Factory for creating CacheLoader instances with various configurations.
 
@@ -823,12 +819,12 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
     >>> loader = factory.create("default", cache_size=100)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize factory with standard builders."""
         super().__init__()
         self._register_standard_builders()
 
-    def _register_standard_builders(self):
+    def _register_standard_builders(self) -> None:
         """Register standard cache loader builders."""
 
         @self.register("custom")
@@ -874,23 +870,25 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
                 archive_extractor=CacheLoader.default_archive_extractor,
             )
 
+        del create_custom, create_default
+
     # Backward compatibility static methods
     @staticmethod
-    def create(**kwargs) -> CacheLoader:
+    def create(**kwargs: Any) -> CacheLoader:  # type: ignore[override]
         """Legacy static method for backward compatibility."""
         factory = CacheLoaderFactory()
         return factory._create_custom(**kwargs)
 
     @staticmethod
-    def create_default(**kwargs) -> CacheLoader:
+    def create_default(**kwargs: Any) -> CacheLoader:
         """Legacy static method for backward compatibility."""
         factory = CacheLoaderFactory()
         return factory._create_default(**kwargs)
 
-    def _create_custom(self, **kwargs) -> CacheLoader:
+    def _create_custom(self, **kwargs: Any) -> CacheLoader:
         """Internal method that calls the registered builder."""
         return super().create("custom", **kwargs)
 
-    def _create_default(self, **kwargs) -> CacheLoader:
+    def _create_default(self, **kwargs: Any) -> CacheLoader:
         """Internal method that calls the registered builder."""
         return super().create("default", **kwargs)

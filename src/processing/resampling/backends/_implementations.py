@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 
-from typing import Optional, TYPE_CHECKING, Any
+from typing import Optional, Any
 
 
 from numpy.typing import NDArray
+import numpy as np
 import logging
+from src.utils.quantity import Quantity
 
 
 from src.processing.resampling.backends._base import (
@@ -14,11 +16,6 @@ from src.processing.resampling.backends._base import (
 )
 from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling.backends._manager import BackendManager
-from src.utils.quantity import Quantity
-
-
-if TYPE_CHECKING:
-    pass
 
 
 # Try to import BatchedInterpolator at runtime
@@ -53,11 +50,12 @@ class VectorizedBackend:
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out, dt = resampler.depth_to_time_cube(data, vp, plan=plan)
-        # Ensure we extract the array if it's a Quantity
-        if isinstance(out, Quantity):
-            arr = out.array
-        else:
-            arr = out
+        # Ensure we extract the array if it's a Quantity-like object with an
+        # `.array` attribute and convert to an ndarray at runtime. Converting
+        # with `np.asarray` both preserves runtime behavior and satisfies the
+        # static type `NDArray[Any]` expected by `BackendResult`.
+        arr_like = out.array if isinstance(out, Quantity) else out
+        arr = np.asarray(arr_like)
         return BackendResult(array=arr, dt=dt)
 
     def time_to_depth(
@@ -67,11 +65,10 @@ class VectorizedBackend:
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)
-        # time_to_depth returns array or Quantity; ensure we pass raw array
-        if hasattr(out, "array"):
-            arr = out.array
-        else:
-            arr = out
+        # time_to_depth returns array or Quantity; ensure we pass a numpy
+        # ndarray into BackendResult by using `np.asarray`.
+        arr_like = out.array if isinstance(out, Quantity) else out
+        arr = np.asarray(arr_like)
         return BackendResult(array=arr)
 
 
@@ -111,10 +108,8 @@ class BatchedInterpolatorBackend:
 
         resampler = resampler_factory.get_resampler(plan.grid_spec)
         out = resampler.time_to_depth_cube(data, vp, plan=plan)
-        if hasattr(out, "array"):
-            arr = out.array
-        else:
-            arr = out
+        arr_like = out.array if isinstance(out, Quantity) else out
+        arr = np.asarray(arr_like)
         return BackendResult(array=arr)
 
 

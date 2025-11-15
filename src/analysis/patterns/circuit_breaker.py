@@ -31,7 +31,7 @@ Usage:
 from enum import Enum
 from threading import RLock
 from time import time
-from typing import Any, Callable, Dict, Optional, List
+from typing import Any, Callable, Dict, Optional, Type
 from dataclasses import dataclass, field
 from functools import wraps
 import logging
@@ -109,9 +109,9 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: type = Exception,
+        expected_exception: Type[BaseException] = Exception,
         name: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Initialize circuit breaker.
 
@@ -162,7 +162,7 @@ class CircuitBreaker:
             self._state = new_state
             self._state_changed_at = time()
 
-    def call(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
+    def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         Execute function through circuit breaker.
 
@@ -193,7 +193,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self._on_success()
             return result
-        except self.expected_exception as e:
+        except self.expected_exception:
             self._on_failure()
             raise
 
@@ -267,7 +267,7 @@ class CircuitBreakerPool:
     Manages multiple circuit breakers for different services.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize circuit breaker pool."""
         self._breakers: Dict[str, CircuitBreaker] = {}
         self._lock = RLock()
@@ -277,7 +277,7 @@ class CircuitBreakerPool:
         name: str,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: type = Exception,
+        expected_exception: Type[BaseException] = Exception,
     ) -> CircuitBreaker:
         """
         Get or create a circuit breaker.
@@ -344,8 +344,8 @@ def circuit_breaker(
     name: Optional[str] = None,
     failure_threshold: int = 5,
     recovery_timeout: int = 60,
-    expected_exception: type = Exception,
-):
+    expected_exception: Type[BaseException] = Exception,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for circuit breaker protection.
 
@@ -364,7 +364,7 @@ def circuit_breaker(
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         breaker_name = name or f"{func.__module__}.{func.__name__}"
         breaker = _global_pool.get_breaker(
             breaker_name,

@@ -36,7 +36,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Callable, TypeVar
+from typing import Any, Dict, Optional, Callable, TypeVar, cast
 from dataclasses import dataclass
 from collections import OrderedDict
 from threading import Lock, RLock
@@ -318,7 +318,7 @@ class LFUCache(CacheStrategy):
             # Evict if over capacity
             while len(self._cache) > self.max_size:
                 # Find least frequently used
-                min_key = min(self._frequency, key=self._frequency.get)
+                min_key = min(self._frequency, key=lambda k: self._frequency.get(k, 0))
                 del self._cache[min_key]
                 del self._frequency[min_key]
                 self._evictions += 1
@@ -436,7 +436,7 @@ class TTLCache(CacheStrategy):
             # Evict if over capacity
             if len(self._cache) > self.max_size:
                 # Remove earliest expiring item
-                min_key = min(self._expiry, key=self._expiry.get)
+                min_key = min(self._expiry, key=lambda k: self._expiry.get(k, 0))
                 del self._cache[min_key]
                 del self._expiry[min_key]
                 self._evictions += 1
@@ -607,7 +607,7 @@ class CacheManager:
     and statistics aggregation.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize cache manager."""
         self._caches: Dict[str, CacheStrategy] = {}
         self._lock = Lock()
@@ -677,7 +677,7 @@ def cache_result(
     max_size: int = 1000,
     ttl: Optional[int] = None,
     strategy: str = "lru",
-) -> Callable:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to cache function results.
 
     Args:
@@ -693,7 +693,8 @@ def cache_result(
         ... def expensive_function(x: int) -> int:
         ...     return x * x
     """
-    # Create cache instance
+    # Create cache instance (use the abstract type for annotations)
+    cache: CacheStrategy
     if strategy == "lru":
         cache = LRUCache(max_size=max_size)
     elif strategy == "lfu":
@@ -705,9 +706,9 @@ def cache_result(
     else:
         raise ValueError(f"Unknown cache strategy: {strategy}")
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Build cache key from function name and arguments
             cache_key = f"{func.__name__}:{args}:{kwargs}"
 
@@ -723,10 +724,11 @@ def cache_result(
             cache.set(cache_key, result)
             return result
 
-        # Attach cache for direct access
-        wrapper.cache = cache
-        wrapper.stats = cache.stats
+        # Attach cache for direct access (use cast to appease mypy)
+        wrapper_cast = cast(Callable[..., Any], wrapper)
+        wrapper_cast.cache = cache  # type: ignore[attr-defined]
+        wrapper_cast.stats = cache.stats  # type: ignore[attr-defined]
 
-        return wrapper
+        return wrapper_cast
 
     return decorator

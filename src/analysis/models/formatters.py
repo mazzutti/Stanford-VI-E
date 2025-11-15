@@ -9,7 +9,7 @@ for flexible, reusable formatting behavior.
 """
 
 from __future__ import annotations
-from typing import Dict, ClassVar
+from typing import Dict, ClassVar, List
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -71,7 +71,7 @@ class StatisticsFormatter:
         Returns:
             Multi-line formatted string with right-aligned names
         """
-        lines = []
+        lines: List[str] = []
         max_key_len = max(len(k) for k in stats_dict.keys()) if stats_dict else 0
 
         for k, v in stats_dict.items():

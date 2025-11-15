@@ -16,7 +16,7 @@ import time
 import logging
 import subprocess
 from subprocess import CompletedProcess
-from typing import Optional, Generator
+from typing import Optional, Generator, Any
 from contextlib import contextmanager
 
 
@@ -76,7 +76,7 @@ class SeismogramAnalyzer:
             self._logger.info("%s✓ Completed in %.1f seconds", prefix, elapsed)
 
     def run_command(
-        self, cmd: str, description: str = "", prefix: str = ""
+        self, cmd: Any, description: str = "", prefix: str = ""
     ) -> Optional[CompletedProcess[bytes]]:
         """Run a shell command with timing and error reporting.
 
@@ -91,7 +91,10 @@ class SeismogramAnalyzer:
         Raises:
             ValueError: If cmd is empty or invalid.
         """
-        if not cmd or not isinstance(cmd, str) or not cmd.strip():
+        if not isinstance(cmd, str):
+            raise ValueError("Command must be a non-empty string")
+
+        if not cmd.strip():
             raise ValueError("Command must be a non-empty string")
 
         try:
@@ -200,7 +203,7 @@ class SeismogramAnalyzer:
             ValueError: If cache_dir is invalid.
             RuntimeError: If the seismic modeling process fails.
         """
-        if not cache_dir or not isinstance(cache_dir, str):
+        if not cache_dir or type(cache_dir) is not str:
             raise ValueError("cache_dir must be a non-empty string")
 
         if verbose:
@@ -223,6 +226,8 @@ class SeismogramAnalyzer:
 
                 run_full_modeling(
                     cache_dir=cache_dir,
+                    skip_cleanup=skip_cleanup,
+                    verbose=verbose,
                     add_avo_noise=False,
                 )
             self._logger.info("✓ Seismic modeling pipeline completed successfully")

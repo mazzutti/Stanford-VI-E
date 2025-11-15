@@ -151,11 +151,11 @@ class Validator(ABC):
     """
 
     @abstractmethod
-    def validate(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> dict[str, Any]:
+    def validate(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> Any:
         """Validate input and return report.
 
         Returns:
-            Dictionary with validation results
+            Validation report (type depends on implementation)
         """
         pass
 

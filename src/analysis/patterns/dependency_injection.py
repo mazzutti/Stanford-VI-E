@@ -30,8 +30,8 @@ Example:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Generic
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+from functools import partial
 from enum import Enum
 import logging
 from datetime import datetime
@@ -79,12 +79,12 @@ class ServiceDescriptor:
     def __init__(
         self,
         name: str,
-        service_type: Type,
+        service_type: Type[Any],
         implementation: Any,
         lifecycle: Lifecycle,
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., Any]] = None,
         dependencies: Optional[List[str]] = None,
-    ):
+    ) -> None:
         """Initialize service descriptor.
 
         Args:
@@ -116,7 +116,7 @@ class ServiceDescriptor:
 class LifecycleManager:
     """Manages component lifecycle and instance caching."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize lifecycle manager."""
         self._singletons: Dict[str, Any] = {}
         self._scopes: Dict[str, Dict[str, Any]] = {}
@@ -125,7 +125,7 @@ class LifecycleManager:
     def get_instance(
         self,
         descriptor: ServiceDescriptor,
-        factory: Callable,
+        factory: Callable[[], Any],
         scope_id: Optional[str] = None,
     ) -> Any:
         """Get or create instance based on lifecycle.
@@ -164,13 +164,18 @@ class LifecycleManager:
 
         raise ResolutionError(f"Unknown lifecycle: {descriptor.lifecycle}")
 
-    def clear_singletons(self):
+    def clear_singletons(self) -> None:
         """Clear all singleton instances."""
         with self._lock:
             self._singletons.clear()
         logger.info("Singleton instances cleared")
 
-    def clear_scope(self, scope_id: str):
+    def singleton_count(self) -> int:
+        """Return number of registered singleton instances."""
+        with self._lock:
+            return len(self._singletons)
+
+    def clear_scope(self, scope_id: str) -> None:
         """Clear instances for a specific scope.
 
         Args:
@@ -188,7 +193,7 @@ class ServiceProvider:
         self,
         descriptors: Dict[str, ServiceDescriptor],
         lifecycle_manager: LifecycleManager,
-    ):
+    ) -> None:
         """Initialize service provider.
 
         Args:
@@ -230,15 +235,17 @@ class ServiceProvider:
         # Resolve dependencies
         self._resolution_stack.append(service_name)
         try:
-            kwargs = {}
+            kwargs: Dict[str, Any] = {}
             for dep_name in descriptor.dependencies:
                 kwargs[dep_name] = self.resolve(dep_name, scope_id)
 
-            # Create factory
-            if descriptor.factory:
-                factory = lambda: descriptor.factory(**kwargs)
+            # Create factory as a zero-argument callable using functools.partial
+            if descriptor.factory is not None:
+                fact = descriptor.factory
+                factory = partial(fact, **kwargs)
             else:
-                factory = lambda: descriptor.implementation(**kwargs)
+                impl = descriptor.implementation
+                factory = partial(impl, **kwargs)
 
             # Get instance from lifecycle manager
             instance = self._lifecycle_manager.get_instance(
@@ -278,7 +285,7 @@ class ServiceProvider:
 class Container:
     """Dependency injection container for service registration and resolution."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize container."""
         self._descriptors: Dict[str, ServiceDescriptor] = {}
         self._lifecycle_manager = LifecycleManager()
@@ -288,11 +295,17 @@ class Container:
         )
         logger.info("Dependency Injection Container initialized")
 
+    def clear(self) -> None:
+        """Clear all registrations and cached instances."""
+        self._descriptors.clear()
+        self._lifecycle_manager.clear_singletons()
+        logger.info("Container cleared")
+
     def register_singleton(
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., Any]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> Container:
         """Register a singleton service.
@@ -322,7 +335,7 @@ class Container:
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., Any]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> Container:
         """Register a transient service (new instance each time).
@@ -352,7 +365,7 @@ class Container:
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., Any]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> Container:
         """Register a scoped service (single instance per scope).
@@ -427,24 +440,29 @@ class Container:
         """
         return self._descriptors.copy()
 
-    def clear(self):
-        """Clear all registrations and cached instances."""
-        self._descriptors.clear()
-        self._lifecycle_manager.clear_singletons()
-        logger.info("Container cleared")
+    @property
+    def service_provider(self) -> ServiceProvider:
+        """Return the underlying ServiceProvider instance.
+
+        This provides read-only access to the container's service resolver
+        for advanced use-cases (testing, inspection, or custom resolution
+        flows).
+        """
+        return self._service_provider
+
+    # Note: `clear` implemented above at construction time; keep __repr__ below.
 
     def __repr__(self) -> str:
-        return (
-            f"Container("
-            f"services={len(self._descriptors)}, "
-            f"singletons={len(self._lifecycle_manager._singletons)})"
-        )
+        # Use public accessors to avoid referencing protected attributes
+        services = len(self.get_services())
+        singletons = self._lifecycle_manager.singleton_count()
+        return f"Container(services={services}, singletons={singletons})"
 
 
 class ContainerBuilder:
     """Fluent builder for Container configuration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize container builder."""
         self._container = Container()
 
@@ -452,7 +470,7 @@ class ContainerBuilder:
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., T]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> ContainerBuilder:
         """Register singleton service.
@@ -478,7 +496,7 @@ class ContainerBuilder:
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., T]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> ContainerBuilder:
         """Register transient service.
@@ -504,7 +522,7 @@ class ContainerBuilder:
         self,
         name: str,
         implementation: Type[T],
-        factory: Optional[Callable] = None,
+        factory: Optional[Callable[..., T]] = None,
         dependencies: Optional[List[str]] = None,
     ) -> ContainerBuilder:
         """Register scoped service.
@@ -533,7 +551,7 @@ class ContainerBuilder:
             Configured Container instance
         """
         logger.info(
-            f"Built container with {len(self._container._descriptors)} "
+            f"Built container with {len(self._container.get_services())} "
             f"registered services"
         )
         return self._container

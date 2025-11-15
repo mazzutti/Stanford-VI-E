@@ -25,5 +25,4 @@ __all__ = [
     "DataNormalizer",
     "AxisStyler",
     "ImageRenderer",
-    "formatting",
 ]

@@ -1,8 +1,7 @@
 """Generic resource manager with strategy pattern for operations."""
 
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Generic, TypeVar, Protocol, Optional, List
+from typing import Generic, TypeVar, Protocol, Optional, List, Any
 import logging
 
 from src.processing.managers.base import BaseManager
@@ -127,14 +126,14 @@ class ResourceManager(BaseManager, Generic[T]):
         target = Path(cache_dir) if cache_dir else self.resource_dir
         self._summarize_strategy.summarize(target, keys)
 
-    def _log_info(self, message: str, *args) -> None:
+    def _log_info(self, message: str, *args: Any) -> None:
         """Log info message."""
         self.logger.info(message, *args)
 
-    def _log_warning(self, message: str, *args) -> None:
+    def _log_warning(self, message: str, *args: Any) -> None:
         """Log warning message."""
         self.logger.warning(message, *args)
 
-    def _log_error(self, message: str, *args) -> None:
+    def _log_error(self, message: str, *args: Any) -> None:
         """Log error message."""
         self.logger.error(message, *args)

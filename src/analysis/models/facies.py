@@ -15,7 +15,8 @@ import numpy as np
 
 from .base import ModelUtilities
 from .formatters import FormattableModel
-from ..validators import CountValidator, QuantileValidator, ValidationError
+
+# Import validators lazily inside methods to avoid circular imports
 
 __all__ = [
     "FaciesStats",
@@ -42,6 +43,9 @@ class FaciesStats(FormattableModel):
 
     def __post_init__(self) -> None:
         """Validate statistical consistency."""
+        # Local import to break circular import between models and validators
+        from ..validators import CountValidator, QuantileValidator, ValidationError
+
         try:
             CountValidator.validate_count(self.count, "count", allow_zero=True)
         except ValidationError as e:

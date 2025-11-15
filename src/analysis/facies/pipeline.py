@@ -19,6 +19,7 @@ from src.io.loader import DatasetManager
 from src.analysis.models import (
     CacheLoadResult,
     DisplayCubesResult,
+    AvoResults,
     AvoAnalysisResult,
 )
 from src.analysis.processors.validators import PathValidator
@@ -75,19 +76,29 @@ class AnalysisPipeline:
         # Stage 2: Load dataset
         # Extract necessary info from plot_cfg if it has these attributes,
         # otherwise they should be passed separately
-        if (
-            hasattr(plot_cfg, "data_path")
-            and hasattr(plot_cfg, "file_map")
-            and hasattr(plot_cfg, "grid_spec")
-        ):
-            dm = self._stage_load_dataset(
-                plot_cfg.data_path, plot_cfg.file_map, plot_cfg.grid_spec
-            )
-        else:
+        data_path_attr = getattr(plot_cfg, "data_path", None)
+        file_map_attr = getattr(plot_cfg, "file_map", None)
+        grid_spec_attr = getattr(plot_cfg, "grid_spec", None)
+
+        if data_path_attr is None or file_map_attr is None or grid_spec_attr is None:
             # If PlotConfig doesn't have these, they need to be provided separately
             raise ValueError(
-                "PlotConfig must have data_path, file_map, and grid_spec attributes"
+                "PlotConfig must provide data_path, file_map, and grid_spec "
+                "either as attributes on plot_cfg or passed separately to execute"
             )
+
+        # Normalize types for _stage_load_dataset
+        if not isinstance(data_path_attr, Path):
+            data_path = Path(data_path_attr)
+        else:
+            data_path = data_path_attr
+
+        # Ensure file_map is a plain dict[str, str]
+        file_map = dict(file_map_attr)
+
+        grid_spec = grid_spec_attr
+
+        dm = self._stage_load_dataset(data_path, file_map, grid_spec)
 
         # Stage 3: Align and prepare cubes
         display_res = self._stage_prepare_cubes(avo, dm, domain, plot_cfg)
@@ -126,13 +137,12 @@ class AnalysisPipeline:
         PathValidator.validate_cache_dir(cache_dir)
 
         # prefer injected CacheLoader-like helper
-        if self.analyzer._cache_loader is not None:
-            avo_fn = self.analyzer._cache_loader.select_cache_file(
-                cache_dir, str(domain)
-            )
+        cache_loader = getattr(self.analyzer, "cache_loader", None)
+        if cache_loader is not None:
+            avo_fn = cache_loader.select_cache_file(cache_dir, str(domain))
             if avo_fn is None:
                 raise FileNotFoundError(f"No AVO cache file found in {cache_dir}")
-            avo = self.analyzer._cache_loader.load_full_stack(avo_fn)
+            avo = cache_loader.load_full_stack(avo_fn)
             if avo is None:
                 raise ValueError(f"Failed to load AVO data from {avo_fn}")
         # fall back to using CacheLoader directly
@@ -232,7 +242,7 @@ class AnalysisPipeline:
         vm = VelocityModel(vp=dm.vp, grid_spec=dm.grid_spec)
 
         # Prepare display cubes for requested domain
-        return self.analyzer._prepare_display_cubes(
+        return self.analyzer.prepare_display_cubes(
             vm, facies_depth, avo, domain, dm.grid_spec
         )
 
@@ -256,7 +266,30 @@ class AnalysisPipeline:
             Complete analysis results with all metrics.
         """
         logger.info("\nAVO Seismic-Facies Correlation\n")
-        return self.analyzer._perform_avo_analysis(avo_display, facies_display)
+        # This logic was moved from FaciesCorrelationAnalyzer._perform_avo_analysis
+        # to keep the analysis sequence orchestration within the pipeline.
+        analyzer = self.analyzer
+
+        avo_gradient_corr = analyzer.calculate_gradient_correlation(
+            avo_display, facies_display
+        )
+        avo_boundary_amps = analyzer.extract_boundary_amplitudes(
+            avo_display, avo_gradient_corr.boundaries
+        )
+        avo_interface_result = analyzer.analyze_interface_reflections(
+            avo_display, facies_display
+        )
+        facies_disc = analyzer.calculate_facies_discrimination(
+            avo_display, facies_display
+        )
+
+        return AvoAnalysisResult(
+            gradient_corr=avo_gradient_corr,
+            boundary_amps=avo_boundary_amps,
+            interface_summary=avo_interface_result.transitions_summary,
+            interface_raw=avo_interface_result.interface_stats,
+            facies_disc=facies_disc,
+        )
 
     def _stage_finalize(
         self,
@@ -280,7 +313,29 @@ class AnalysisPipeline:
         matplotlib.figure.Figure
             Summary figure with visualizations.
         """
-        avo_results_obj = self.analyzer._create_results_object(results)
+        # This logic was moved from FaciesCorrelationAnalyzer._create_results_object
+        # to keep the orchestration within the pipeline.
+        facies_disc = results.facies_disc
+        avo_results_obj = AvoResults(
+            boundary_amps=results.boundary_amps,
+            gradient_correlation=results.gradient_corr,
+            separation_matrix=facies_disc.separation_matrix,
+            facies_amplitudes=facies_disc.facies_amplitudes,
+            interface_stats_summary=results.interface_summary,
+        )
+
+        # Persist the AVO results on the analyzer for external inspection
+        # (e.g., undo/redo support in IntegratedAnalyzer).
+        try:
+            self.analyzer.last_avo_results = avo_results_obj
+        except Exception:
+            # Non-fatal: analyzer may not support attribute assignment in
+            # some injection/testing scenarios; continue regardless.
+            logger.debug(
+                "Analyzer does not accept last_avo_results assignment", exc_info=True
+            )
+
+        # Delegate plotting to the analyzer's plotter
         return self.analyzer.create_summary_plots(
             avo_results_obj, cache_dir, domain=domain
         )

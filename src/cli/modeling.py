@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, cast
+from typing import Any, cast, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -58,7 +58,7 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
         try:
             vm = VelocityModel(vp=props_depth["vp"], grid_spec=grid_spec)
             converted = vm.ensure_m_per_s()
-            props_depth["vp"] = vm.vp.array if hasattr(vm.vp, "array") else vm.vp
+            props_depth["vp"] = vm.vp.array if isinstance(vm.vp, Quantity) else vm.vp
         except Exception:
             try:
                 out, converted = UnitRegistry.ensure_m_per_s(
@@ -121,33 +121,40 @@ def run_modeling(
     from src.processing.resampling._cache import get_resample_plan_cache
 
     resampler = resampler_factory.get_resampler(grid_spec)
-    vp_for_twt = (
-        props_depth["vp"].array
-        if hasattr(props_depth["vp"], "array")
-        else props_depth["vp"]
+    _vp_ref = props_depth["vp"]
+    vp_for_twt = cast(
+        NDArray[Any], _vp_ref.array if isinstance(_vp_ref, Quantity) else _vp_ref
     )
 
     plan_cache = get_resample_plan_cache()
     plan = plan_cache.get_plan(grid_spec, vp_for_twt, target_dt=grid_spec.dt)
 
     # Resample each property
-    props_time = {}
+    props_time: dict[str, Optional[Quantity | NDArray[Any]]] = {}
     for k, v in props_depth.items():
         if v is None:
             props_time[k] = None
             continue
-        was_q = hasattr(v, "array")
-        data_arr = v.array if was_q else v
+        was_q = isinstance(v, Quantity)
+        data_arr = cast(NDArray[Any], v.array if isinstance(v, Quantity) else v)
         # Ensure data_arr is a numpy array
-        if not isinstance(data_arr, np.ndarray):
-            data_arr = np.asarray(data_arr)
+        data_arr = np.asarray(data_arr)
         data_time, _ = resampler.depth_to_time_cube(data_arr, vp_for_twt, plan=plan)
         props_time[k] = Quantity(data_time, v.unit) if was_q else data_time
 
-    nt = props_time["vp"].shape[2]
+    vp_time = props_time["vp"]
+    if vp_time is None:
+        raise RuntimeError("vp missing after resampling")
+    # Unwrap Quantity-like wrapper if present
+    if isinstance(vp_time, Quantity):
+        vp_arr = vp_time.array
+    else:
+        vp_arr = vp_time
+
+    nt = vp_arr.shape[2]
     _t1 = time.time()
     logger.info("Depth->Time resampling completed in %.2fs", (_t1 - _t0))
-    nx, ny, nt_samples = props_time["vp"].shape
+    nx, ny, nt_samples = vp_arr.shape
 
     return {
         "props_depth": props_depth,

@@ -15,7 +15,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar, cast
 import numpy as np
 
 from src.io.backends import CacheStore
@@ -150,7 +150,8 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         path = self.cache_dir / f"{key}_{short}.npz"
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            np.savez_compressed(path, **value)
+            # Some numpy stubs interpret kwargs strictly; cast to Any to satisfy type checkers
+            np.savez_compressed(file=str(path), **cast(dict[str, Any], value))
             self.logger.debug(f"Saved cache to {path}")
         except Exception as e:
             self.logger.debug(f"Error storing key '{key}': {e}")
@@ -260,7 +261,7 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             return True
         except Exception as e:
             self.logger.debug(f"Error deleting cache file {path}: {e}")
-            return 0
+            return False
 
     def clear(self) -> None:
         """Clear all cache entries."""

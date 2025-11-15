@@ -6,7 +6,7 @@ and improving maintainability.
 """
 
 from __future__ import annotations
-from typing import Callable, TypeVar, Any, Optional, Type, Union, Sequence
+from typing import Callable, TypeVar, Any, Optional, Type, Union, Tuple, cast, Generator
 from functools import wraps
 from contextlib import contextmanager
 import logging
@@ -27,7 +27,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def safe_call(
     func: Callable[..., Any],
     *args: Any,
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
     default: Any = None,
     log_errors: bool = False,
     **kwargs: Any,
@@ -54,7 +54,7 @@ def safe_call(
 
 
 def ignore_errors(
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
 ) -> Callable[[F], F]:
     """Decorator to silently ignore specified exceptions.
 
@@ -71,7 +71,7 @@ def ignore_errors(
     """
     if isinstance(exceptions, type):
         exceptions = (exceptions,)
-    elif not isinstance(exceptions, tuple):
+    else:
         exceptions = tuple(exceptions)
 
     def decorator(func: F) -> F:
@@ -83,13 +83,13 @@ def ignore_errors(
                 pass
             return None
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator
 
 
 def log_errors(
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
     message: Optional[str] = None,
     level: int = logging.ERROR,
 ) -> Callable[[F], F]:
@@ -110,7 +110,7 @@ def log_errors(
     """
     if isinstance(exceptions, type):
         exceptions = (exceptions,)
-    elif not isinstance(exceptions, tuple):
+    else:
         exceptions = tuple(exceptions)
 
     def decorator(func: F) -> F:
@@ -118,19 +118,19 @@ def log_errors(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except exceptions as e:
+            except exceptions:
                 log_msg = message or f"Error in {func.__name__}"
                 logger.log(level, log_msg, exc_info=True)
                 raise
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator
 
 
 def handle_errors(
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
-    handler: Optional[Callable[[Exception], Any]] = None,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+    handler: Optional[Callable[[BaseException], Any]] = None,
     default: Any = None,
     suppress: bool = False,
 ) -> Callable[[F], F]:
@@ -155,7 +155,7 @@ def handle_errors(
     """
     if isinstance(exceptions, type):
         exceptions = (exceptions,)
-    elif not isinstance(exceptions, tuple):
+    else:
         exceptions = tuple(exceptions)
 
     def decorator(func: F) -> F:
@@ -170,17 +170,17 @@ def handle_errors(
                     return default
                 raise
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator
 
 
-@contextmanager  # type: ignore
+@contextmanager
 def safe_context(
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
-    action: Optional[Callable[[Exception], None]] = None,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+    action: Optional[Callable[[BaseException], None]] = None,
     suppress: bool = False,
-):
+) -> Generator[None, None, None]:
     """Context manager for exception handling.
 
     Args:
@@ -197,7 +197,7 @@ def safe_context(
     """
     if isinstance(exceptions, type):
         exceptions = (exceptions,)
-    elif not isinstance(exceptions, tuple):
+    else:
         exceptions = tuple(exceptions)
 
     try:

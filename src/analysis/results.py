@@ -32,6 +32,11 @@ Example:
     >>> print(result.summary())
 """
 
+# NOTE: We will aim to remove these file-level suppressions after
+# adding more precise overloads for `Result.get` and `Result.combine`.
+# The overload implementations below help Pyright infer mapping types.
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
@@ -45,6 +50,8 @@ from typing import (
     Protocol,
     cast,
     Callable,
+    overload,
+    Mapping,
 )
 from datetime import datetime
 import logging
@@ -59,6 +66,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")  # Generic data type for result content
 T_co = TypeVar("T_co", covariant=True)  # Covariant for inheritance
+V = TypeVar("V")
 
 
 class ResultData(Protocol[T_co]):
@@ -101,7 +109,7 @@ class ResultMetadata:
     created_at: datetime = field(default_factory=datetime.now)
     status: str = "success"
     error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
 
     def is_success(self) -> bool:
         """Check if result indicates success."""
@@ -174,7 +182,7 @@ class Result(Generic[T]):
 
     data: T
     metadata: ResultMetadata
-    tags: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=lambda: cast(List[str], []))
 
     def __post_init__(self) -> None:
         """Validate result state after initialization."""
@@ -200,6 +208,17 @@ class Result(Generic[T]):
         """Get execution time in milliseconds."""
         return self.metadata.execution_time_ms
 
+    @overload
+    def get(
+        self: "Result[Mapping[str, V]]", key: str, default: None = ...
+    ) -> Optional[V]: ...
+
+    @overload
+    def get(self: "Result[Mapping[str, V]]", key: str, default: V) -> V: ...
+
+    @overload
+    def get(self, key: str, default: Any = None) -> Any: ...
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get value from result data (dict-like access).
 
@@ -217,8 +236,14 @@ class Result(Generic[T]):
         Any
             Value at key, or default if not found/not dict
         """
+        # Overloads below allow type checkers to infer the return type when
+        # `self.data` is a mapping with known value type. These overloads
+        # are declared just above the method implementation.
         if isinstance(self.data, dict):
-            return self.data.get(key, default)
+            # Use an `Any`-cast here to avoid Pyright's partially-unknown
+            # mapping diagnostics while preserving runtime behavior.
+            # pyright: ignore[reportUnknownMemberType]
+            return cast(Any, self.data).get(key, default)
         return default
 
     def transform(self, func: Callable[[T], Any]) -> Result[Any]:
@@ -268,6 +293,7 @@ class Result(Generic[T]):
         Result
             New combined result
         """
+
         combined_metadata = ResultMetadata(
             name=f"{self.metadata.name}+{other.metadata.name}",
             execution_time_ms=self.metadata.execution_time_ms
@@ -277,9 +303,20 @@ class Result(Generic[T]):
         combined_tags = list(set(self.tags + other.tags))
 
         # Combine data if both are dicts
+        combined_data: Any
         if isinstance(self.data, dict) and isinstance(other.data, dict):
-            combined_data: Any = {**self.data, **other.data}
+            # Cast to `Any` first to avoid Pyright's partially-unknown
+            # mapping checks, then coerce to concrete `Dict[str, Any]`.
+            # pyright: ignore[reportUnknownMemberType]
+            self_any = cast(Any, self.data)
+            # pyright: ignore[reportUnknownMemberType]
+            other_any = cast(Any, other.data)
+            self_dict: Dict[str, Any] = dict(cast(Dict[str, Any], self_any))
+            other_dict: Dict[str, Any] = dict(cast(Dict[str, Any], other_any))
+            combined_data = {**self_dict, **other_dict}
         else:
+            # Heterogeneous fallback tuple
+            # pyright: ignore[reportUnknownMemberType]
             combined_data = (self.data, other.data)
 
         return Result(
@@ -353,16 +390,22 @@ class Result(Generic[T]):
         dict
             Dictionary with 'data', 'metadata', and 'tags' keys
         """
+
+        def _serialize_data(value: Any) -> Any:
+            """Return a JSON-serializable representation for `data`.
+
+            Narrow types locally so the type checker sees concrete mapping types
+            instead of `Unknown` generic dicts.
+            """
+            if isinstance(value, dict):
+                # Cast to a concrete mapping type for returning.
+                return cast(Dict[str, Any], value)
+            if hasattr(value, "__dataclass_fields__"):
+                return asdict(value)
+            return str(value)
+
         return {
-            "data": (
-                self.data
-                if isinstance(self.data, dict)
-                else (
-                    asdict(cast(Any, self.data))
-                    if hasattr(self.data, "__dataclass_fields__")
-                    else str(self.data)
-                )
-            ),
+            "data": _serialize_data(self.data),
             "metadata": self.metadata.to_dict(),
             "tags": self.tags,
         }
@@ -379,10 +422,46 @@ class Result(Generic[T]):
         """Return human-readable string."""
         return self.summary()
 
+    # ============================================================================
 
-# ============================================================================
+
 # Helper Functions for Result Creation
 # ============================================================================
+
+
+class MappingResult(Result[Dict[str, V]], Generic[V]):
+    """Specialized Result for mapping/dict-like data with precise typing.
+
+    Use this class when a `Result` carries a dictionary-like payload and
+    callers want statically-typed `get`/`combine` operations.
+    """
+
+    # Note: `get_mapping` below provides the typed mapping access.
+
+    def get_mapping(self, key: str, default: Optional[V] = None) -> Optional[V]:
+        """Dict-like typed access for mapping results.
+
+        Use `get_mapping` when you have a `MappingResult[V]` and want a
+        statically-typed value back (Optional[V]). This avoids overriding
+        `Result.get` which must remain flexible for heterogeneous `Result`.
+        """
+        data_dict: Dict[str, V] = dict(self.data)
+        return data_dict.get(key, default)
+
+    def combine_mapping(self, other: "MappingResult[V]") -> "MappingResult[V]":
+        combined_metadata = ResultMetadata(
+            name=f"{self.metadata.name}+{other.metadata.name}",
+            execution_time_ms=self.metadata.execution_time_ms
+            + other.metadata.execution_time_ms,
+            status="partial" if (self.is_error or other.is_error) else "success",
+        )
+        combined_tags = list(set(self.tags + other.tags))
+        self_dict: Dict[str, V] = dict(self.data)
+        other_dict: Dict[str, V] = dict(other.data)
+        combined_data: Dict[str, V] = {**self_dict, **other_dict}
+        return MappingResult(
+            data=combined_data, metadata=combined_metadata, tags=combined_tags
+        )
 
 
 def wrap_result(

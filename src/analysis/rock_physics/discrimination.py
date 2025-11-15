@@ -210,7 +210,7 @@ class AttributeDiscriminationAnalyzer:
             stats = analyzer.analyze_multiple(attrs, facies)
             # stats['intercept'] = {'cohens_d': 0.8, 'snr': 2.1, ...}
         """
-        summary = {}
+        summary: Dict[str, DiscriminationResult] = {}
         for name, arr in attribute_results.items():
             try:
                 stats = self.analyze_single(arr, facies, name=name)

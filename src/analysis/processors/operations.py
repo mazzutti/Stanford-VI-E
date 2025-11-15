@@ -20,7 +20,7 @@ Pattern: Operations/Utilities Pattern
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -37,6 +37,8 @@ __all__ = [
     "StatsOps",
 ]
 
+# pyright: reportUnnecessaryCast=false
+
 
 class AlignmentOps:
     """Stateless operations for cube alignment.
@@ -47,10 +49,10 @@ class AlignmentOps:
 
     @staticmethod
     def align_cubes(
-        aligner: object,
-        seismic_cube: NDArray[np.float64],
-        facies_cube: NDArray[np.int64],
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+        aligner: Any,
+        seismic_cube: NDArray[Any],
+        facies_cube: NDArray[Any],
+    ) -> Tuple[NDArray[Any], NDArray[Any]]:
         """Align seismic and facies cubes to common shape.
 
         Parameters
@@ -67,7 +69,11 @@ class AlignmentOps:
         tuple
             (seismic_aligned, facies_aligned) with matching shapes.
         """
-        return aligner.align(seismic_cube, facies_cube)
+        # aligner.align is dynamically-typed; cast to the declared return
+        # type so static checkers don't treat this as `Any`.
+        return cast(
+            Tuple[NDArray[Any], NDArray[Any]], aligner.align(seismic_cube, facies_cube)
+        )
 
 
 class ReshapeOps:
@@ -75,9 +81,9 @@ class ReshapeOps:
 
     @staticmethod
     def reshape_to_traces(
-        seismic_aligned: NDArray[np.float64],
-        facies_aligned: NDArray[np.int64],
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+        seismic_aligned: NDArray[Any],
+        facies_aligned: NDArray[Any],
+    ) -> Tuple[NDArray[Any], NDArray[Any]]:
         """Reshape 3D cubes to 2D trace-sample format (n_traces, nk).
 
         Consolidates the repeated (ni, nj, nk) → (ni*nj, nk) reshape
@@ -118,7 +124,8 @@ class ReshapeOps:
             )
 
         logger.debug(f"Reshaped cubes from (ni={ni}, nj={nj}, nk={nk}) to traces")
-        return seismic_2d, facies_2d
+        # Ensure the return type matches the annotation (NDArray[Any])
+        return cast(Tuple[NDArray[Any], NDArray[Any]], (seismic_2d, facies_2d))
 
 
 class ExtractionOps:
@@ -126,10 +133,10 @@ class ExtractionOps:
 
     @staticmethod
     def extract_by_mask(
-        data: NDArray[np.float64],
-        mask: NDArray[np.bool_],
+        data: NDArray[Any],
+        mask: NDArray[Any],
         mask_value: bool = True,
-    ) -> NDArray[np.float64]:
+    ) -> NDArray[Any]:
         """Extract data where mask matches specified value.
 
         Parameters
@@ -147,15 +154,15 @@ class ExtractionOps:
             Extracted data where mask == mask_value.
         """
         if mask_value:
-            return data[mask]
+            return cast(NDArray[Any], data[mask])
         else:
-            return data[~mask]
+            return cast(NDArray[Any], data[~mask])
 
     @staticmethod
     def extract_by_labels(
-        seismic_flat: NDArray[np.float64],
-        labels_flat: NDArray[np.int64],
-    ) -> Tuple[Dict[int, NDArray[np.float64]], List[int]]:
+        seismic_flat: NDArray[Any],
+        labels_flat: NDArray[Any],
+    ) -> Tuple[Dict[int, NDArray[Any]], List[int]]:
         """Group flattened seismic data by facies labels.
 
         Creates a dictionary mapping each observed label to its amplitudes,
@@ -196,9 +203,9 @@ class ExtractionOps:
 
     @staticmethod
     def extract_at_transitions(
-        seismic_2d: NDArray[np.float64],
-        facies_2d: NDArray[np.int64],
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64], NDArray[np.int64]]:
+        seismic_2d: NDArray[Any],
+        facies_2d: NDArray[Any],
+    ) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Extract amplitudes and transition information at facies boundaries.
 
         Finds vertical transitions (where facies changes between adjacent samples)

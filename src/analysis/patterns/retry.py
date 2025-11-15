@@ -31,7 +31,7 @@ Usage:
 import time
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, List, Type
+from typing import Any, Callable, Optional, List, Type, cast
 from dataclasses import dataclass, field
 from functools import wraps
 from enum import Enum
@@ -207,7 +207,9 @@ class RetryStats:
     failed_attempts: int = 0
     total_delay: float = 0.0
     last_exception: Optional[Exception] = None
-    exceptions_encountered: List[str] = field(default_factory=list)
+    exceptions_encountered: List[str] = field(
+        default_factory=lambda: cast(List[str], [])
+    )
 
     @property
     def success_rate(self) -> float:
@@ -249,7 +251,7 @@ class RetryPolicy:
         timeout: Optional[float] = None,
         retryable_exceptions: Optional[List[Type[Exception]]] = None,
         name: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Initialize retry policy.
 
@@ -298,7 +300,7 @@ class RetryPolicy:
         elapsed = time.time() - self._start_time
         return elapsed >= self.timeout
 
-    def execute(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
+    def execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         Execute function with retry logic.
 
@@ -391,7 +393,7 @@ class TimeoutError(Exception):
     pass
 
 
-def timeout(seconds: float):
+def timeout(seconds: float) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator to enforce timeout on function execution.
 
@@ -406,7 +408,7 @@ def timeout(seconds: float):
         For cross-platform, use thread-based or process-based timeout.
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.time()
@@ -434,7 +436,7 @@ def retry(
     jitter: bool = True,
     timeout: Optional[float] = None,
     retryable_exceptions: Optional[List[Type[Exception]]] = None,
-):
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for automatic retry logic.
 
@@ -455,7 +457,7 @@ def retry(
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         policy = RetryPolicy(
             max_attempts=max_attempts,
             initial_delay=initial_delay,

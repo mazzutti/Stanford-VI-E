@@ -35,6 +35,7 @@ from typing import (
     Any,
     Type,
     TYPE_CHECKING,
+    cast,
 )
 from abc import ABC, abstractmethod
 import logging
@@ -50,7 +51,9 @@ __all__ = [
     "Buildable",
 ]
 
-T = TypeVar("T")  # Generic type for builder output
+T = TypeVar("T")  # legacy/placeholder TypeVar (unused for builder)
+# R is the concrete analyzer return type used by build()
+R = TypeVar("R")
 
 
 class Buildable(ABC, Generic[T]):
@@ -109,9 +112,9 @@ class AnalysisBuilder:
     """
 
     domain: str
-    dependencies: Dict[str, Any] = field(default_factory=dict)
+    dependencies: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
     config: Optional[Any] = None
-    _metadata: Dict[str, Any] = field(default_factory=dict)
+    _metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
 
     def with_dependency(self, name: str, dependency: Any) -> AnalysisBuilder:
         """Register a dependency for the analyzer.
@@ -222,7 +225,7 @@ class AnalysisBuilder:
         self._metadata[key] = value
         return self
 
-    def build(self, analyzer_class: Type[T]) -> T:
+    def build(self, analyzer_class: Type[Any]) -> Any:
         """Build analyzer with registered dependencies and config.
 
         Instantiates the analyzer class with all configured dependencies
@@ -258,12 +261,14 @@ class AnalysisBuilder:
 
             # Apply configuration if set and analyzer supports it
             if self.config is not None and hasattr(instance, "configure"):
-                instance.configure(self.config)
-                logger.debug(f"Applied configuration to {analyzer_class.__name__}")
+                cfg = getattr(instance, "configure")
+                if callable(cfg):
+                    cfg(self.config)
+                    logger.debug(f"Applied configuration to {analyzer_class.__name__}")
 
             # Store metadata in instance for traceability
             if self._metadata and hasattr(instance, "_builder_metadata"):
-                instance._builder_metadata = self._metadata
+                setattr(instance, "_builder_metadata", self._metadata)
 
             logger.info(
                 f"Built analyzer '{self.domain}' of type {analyzer_class.__name__} "
@@ -290,8 +295,11 @@ class AnalysisBuilder:
             Configured FaciesCorrelationAnalyzer instance
         """
         from src.analysis.facies import FaciesCorrelationAnalyzer
+        from typing import cast
 
-        return self.build(FaciesCorrelationAnalyzer)
+        return cast(
+            "AnalyzerInterface[Any, Any]", self.build(FaciesCorrelationAnalyzer)
+        )
 
     def build_rock_physics_analyzer(self) -> RockPhysicsAnalyzer:
         """Build a RockPhysicsAnalyzer (convenience method).
@@ -302,8 +310,9 @@ class AnalysisBuilder:
             Configured RockPhysicsAnalyzer instance
         """
         from src.analysis.rock_physics import RockPhysicsAnalyzer
+        from typing import cast
 
-        return self.build(RockPhysicsAnalyzer)
+        return cast("RockPhysicsAnalyzer", self.build(RockPhysicsAnalyzer))
 
     def clone(self) -> AnalysisBuilder:
         """Create a copy of this builder for reuse/modification.

@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast, Any, ClassVar
+from typing import TYPE_CHECKING, Optional, cast, Any, ClassVar, Sequence
 
 
 from src.utils.types import ProcessManagerProtocol
@@ -82,7 +82,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
     """
 
     # Required methods that a ProcessManager must implement
-    _REQUIRED_METHODS: ClassVar[tuple[str, ...]] = (
+    _REQUIRED_METHODS: ClassVar[Sequence[str]] = (
         "clear_cache",
         "open_file",
         "summarize_cache_files",
@@ -162,7 +162,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
                 inst = cls(proc)
                 return inst
 
-            inst = cls._instance
+            inst = cast(AnalysisCommon, cls._instance)
             # Allow reconfiguration with new manager
             if proc_manager is not None:
                 inst.validate_protocol(
@@ -208,6 +208,16 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             manager_name = "<uninitialized>"
         return f"<AnalysisCommon singleton proc_manager={manager_name}>"
 
+    @property
+    def is_initialized(self) -> bool:  # type: ignore[override]
+        """Instance-level convenience property for initialization state.
+
+        Many tests and callers expect `instance.is_initialized` to be a
+        boolean property (not the classmethod provided by SingletonMixin).
+        Provide this thin adapter for compatibility.
+        """
+        return getattr(self, "_initialized", False)
+
     def __str__(self) -> str:
         """Return a human-readable string representation."""
         if self._is_fully_initialized:
@@ -224,11 +234,6 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
     def _is_fully_initialized(self, value: bool) -> None:
         """Set the initialization state."""
         self._initialized = value
-
-    @property
-    def is_initialized(self) -> bool:
-        """Check if the singleton is initialized."""
-        return self._is_fully_initialized
 
     @property
     def proc_manager(self) -> ProcessManagerProtocol:

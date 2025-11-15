@@ -33,7 +33,8 @@ import json
 import time
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Callable
+from typing import Any, Dict, Optional, List, Callable, Type, Literal, cast
+from types import TracebackType
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from threading import RLock
@@ -71,7 +72,7 @@ class LogEvent:
     level: str
     message: str
     service: str
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: Dict[str, Any] = field(default_factory=lambda: {})
     exception: Optional[str] = None
 
     def to_json(self) -> str:
@@ -90,7 +91,7 @@ class MetricValue:
     type: MetricType
     value: float
     timestamp: float
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: Dict[str, str] = field(default_factory=lambda: cast(Dict[str, str], {}))
 
     def __str__(self) -> str:
         tags_str = ", ".join(f"{k}={v}" for k, v in self.tags.items())
@@ -109,14 +110,14 @@ class PerformanceMetrics:
     duration: Optional[float] = None
     success: bool = False
     error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
 
     @property
     def is_complete(self) -> bool:
         """Check if operation has completed."""
         return self.end_time is not None
 
-    def complete(self, success: bool = True, error: Optional[str] = None):
+    def complete(self, success: bool = True, error: Optional[str] = None) -> None:
         """Mark operation as complete."""
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
@@ -139,7 +140,7 @@ class StructuredLogger:
         service_name: str,
         log_level: LogLevel = LogLevel.INFO,
         include_context: bool = True,
-    ):
+    ) -> None:
         """
         Initialize structured logger.
 
@@ -156,8 +157,9 @@ class StructuredLogger:
 
     def _get_current_context(self) -> Dict[str, Any]:
         """Get merged context from stack."""
-        merged = {}
+        merged: Dict[str, Any] = {}
         for ctx in self._context_stack:
+            # ctx is a Dict[str, Any], annotating merged makes update type-safe
             merged.update(ctx)
         return merged
 
@@ -219,11 +221,16 @@ class StructuredLogger:
             if self._context_stack:
                 self._context_stack.pop()
 
-    def __enter__(self):
+    def __enter__(self) -> "StructuredLogger":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
+    ) -> None:
         """Context manager exit."""
         pass
 
@@ -233,7 +240,7 @@ class MetricsCollector:
     Collects and aggregates metrics for monitoring.
     """
 
-    def __init__(self, name: str = "default"):
+    def __init__(self, name: str = "default") -> None:
         """
         Initialize metrics collector.
 
@@ -345,26 +352,28 @@ class MetricsCollector:
             values = self._metrics.get(name, [])
             return values[-1] if values else None
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> Dict[str, Dict[str, Any]]:
         """Get summary of all metrics."""
         with self._lock:
-            summary = {}
+            summary: Dict[str, Dict[str, Any]] = {}
             for name, values in self._metrics.items():
                 if not values:
                     continue
 
                 # Get latest value
                 latest = values[-1]
-                metric_values = [v.value for v in values]
+                metric_values = [float(v.value) for v in values]
 
                 summary[name] = {
                     "type": latest.type.value,
-                    "latest": latest.value,
+                    "latest": float(latest.value),
                     "count": len(values),
-                    "sum": sum(metric_values),
-                    "min": min(metric_values) if metric_values else 0,
-                    "max": max(metric_values) if metric_values else 0,
-                    "avg": statistics.mean(metric_values) if metric_values else 0,
+                    "sum": float(sum(metric_values)),
+                    "min": float(min(metric_values)) if metric_values else 0.0,
+                    "max": float(max(metric_values)) if metric_values else 0.0,
+                    "avg": (
+                        float(statistics.mean(metric_values)) if metric_values else 0.0
+                    ),
                     "tags": latest.tags,
                 }
 
@@ -381,7 +390,7 @@ class PerformanceMonitor:
     Context manager for monitoring performance of operations.
     """
 
-    def __init__(self, name: str, logger: Optional[StructuredLogger] = None):
+    def __init__(self, name: str, logger: Optional[StructuredLogger] = None) -> None:
         """
         Initialize performance monitor.
 
@@ -393,13 +402,18 @@ class PerformanceMonitor:
         self.logger = logger
         self.metrics = PerformanceMetrics(name, time.time())
 
-    def __enter__(self):
+    def __enter__(self) -> "PerformanceMonitor":
         """Enter context - operation started."""
         if self.logger:
             self.logger.debug(f"Operation started: {self.name}")
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
+    ) -> Literal[False]:
         """Exit context - operation completed."""
         success = exc_type is None
         error = str(exc_val) if exc_val else None
@@ -452,7 +466,7 @@ class HealthCheck(ABC):
 class SimpleHealthCheck(HealthCheck):
     """Simple callable-based health check."""
 
-    def __init__(self, name: str, check_func: Callable[[], bool]):
+    def __init__(self, name: str, check_func: Callable[[], bool]) -> None:
         """
         Initialize health check.
 
@@ -481,7 +495,7 @@ class HealthCheckRegistry:
     Registry for health checks.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize health check registry."""
         self._checks: Dict[str, HealthCheck] = {}
         self._lock = RLock()
@@ -515,7 +529,7 @@ class HealthCheckRegistry:
             Dict mapping check names to health status
         """
         with self._lock:
-            results = {}
+            results: Dict[str, bool] = {}
             for name, check in self._checks.items():
                 results[name] = check.check()
             return results
@@ -533,7 +547,7 @@ class HealthCheckRegistry:
 def monitor(
     logger: Optional[StructuredLogger] = None,
     metrics: Optional[MetricsCollector] = None,
-):
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for monitoring function execution.
 
@@ -550,7 +564,7 @@ def monitor(
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             monitor_obj = PerformanceMonitor(

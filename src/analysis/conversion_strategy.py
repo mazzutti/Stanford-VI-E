@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict
+from typing import Dict, cast
 
 logger = logging.getLogger(__name__)
 
@@ -445,7 +445,7 @@ class ConversionStrategyFactory:
         >>> result = converter.convert(3.0)
     """
 
-    _CONVERTERS = {
+    _CONVERTERS: Dict[UnitType, type[ConversionStrategy]] = {
         UnitType.VELOCITY: VelocityConversionStrategy,
         UnitType.TIME: TimeConversionStrategy,
         UnitType.DEPTH: DepthConversionStrategy,
@@ -491,7 +491,11 @@ class ConversionStrategyFactory:
         if converter_class is None:
             raise ValueError(f"No converter for unit type: {unit_type}")
 
-        return converter_class(from_unit, to_unit)
+        # Use an Any-cast when calling the class object to satisfy the type
+        # checker across different concrete constructor signatures.
+        from typing import Any as _Any
+
+        return cast(ConversionStrategy, cast(_Any, converter_class)(from_unit, to_unit))
 
     @staticmethod
     def create_velocity(from_unit: str, to_unit: str) -> VelocityConversionStrategy:

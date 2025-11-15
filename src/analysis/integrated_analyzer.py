@@ -43,11 +43,13 @@ Example:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Optional, Callable, Type, cast
+from types import TracebackType
 from dataclasses import dataclass, field
 
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 from src.analysis.facies.config import FaciesAnalysisConfig
+from src.analysis.models import FaciesCorrelationConfig
 from src.analysis.patterns.observer import (
     Observable,
     AnalysisEvent,
@@ -58,7 +60,12 @@ from src.analysis.patterns.command import (
     CommandQueue,
     AnalysisCommand,
 )
-from src.analysis.patterns.event_bus import EventBus, Event
+from src.analysis.patterns.event_bus import (
+    EventBus,
+    Event,
+    SubscriptionHandle,
+    EventHandler,
+)
 from src.analysis.patterns.dependency_injection import Container, ServiceProvider
 from src.analysis.patterns.circuit_breaker import CircuitBreaker
 
@@ -81,7 +88,7 @@ class AnalysisContext:
 
     cache_dir: str
     domain: str
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert context to dictionary.
@@ -117,8 +124,8 @@ class AnalysisOperation(AnalysisCommand):
         super().__init__()
         self.analyzer = analyzer
         self.context = context
-        self.result = None
-        self.previous_results = None
+        self.result: Optional[Any] = None
+        self.previous_results: Optional[Any] = None
 
     def execute(self) -> Any:
         """Execute the analysis operation.
@@ -129,18 +136,19 @@ class AnalysisOperation(AnalysisCommand):
         logger.info(f"Executing analysis: {self.description}")
 
         # Notify observers of operation start
-        self.analyzer._notify_event(
+        self.analyzer.notify_event(
             EventType.COMPUTATION_STARTED,
             {"context": self.context.to_dict()},
         )
 
         try:
-            # Save previous results for undo
-            if hasattr(self.analyzer._facies_analyzer, "_results"):
-                self.previous_results = self.analyzer._facies_analyzer._results
+            # Save previous results for undo (use public `last_avo_results`)
+            prev = getattr(self.analyzer.facies_analyzer, "last_avo_results", None)
+            if prev is not None:
+                self.previous_results = prev
 
-            # Run the underlying analyzer
-            self.result = self.analyzer._facies_analyzer.run(
+            # Run the underlying analyzer via public accessor
+            self.result = self.analyzer.facies_analyzer.run(
                 cache_dir=self.context.cache_dir,
                 domain=self.context.domain,
                 **self.context.parameters,
@@ -149,7 +157,7 @@ class AnalysisOperation(AnalysisCommand):
             self.executed = True
 
             # Notify observers of result
-            self.analyzer._notify_event(
+            self.analyzer.notify_event(
                 EventType.RESULT_COMPUTED,
                 {"result": str(self.result), "context": self.context.to_dict()},
             )
@@ -161,7 +169,7 @@ class AnalysisOperation(AnalysisCommand):
             logger.error(f"Analysis execution failed: {e}")
 
             # Notify observers of error
-            self.analyzer._notify_event(
+            self.analyzer.notify_event(
                 EventType.ERROR_OCCURRED,
                 {"error": str(e), "context": self.context.to_dict()},
             )
@@ -177,16 +185,16 @@ class AnalysisOperation(AnalysisCommand):
         logger.info(f"Undoing analysis: {self.description}")
 
         try:
-            # Restore previous results
+            # Restore previous results (if analyzer exposes the public attr)
             if self.previous_results is not None and hasattr(
-                self.analyzer._facies_analyzer, "_results"
+                self.analyzer.facies_analyzer, "last_avo_results"
             ):
-                self.analyzer._facies_analyzer._results = self.previous_results
+                self.analyzer.facies_analyzer.last_avo_results = self.previous_results
 
             self.result = None
             self.executed = False
 
-            self.analyzer._notify_event(
+            self.analyzer.notify_event(
                 EventType.DATA_CHANGED,
                 {"context": self.context.to_dict()},
             )
@@ -254,7 +262,7 @@ class IntegratedAnalyzer(Observable):
 
         self._config = config or FaciesAnalysisConfig()
         self._facies_analyzer = facies_analyzer or FaciesCorrelationAnalyzer(
-            config=self._config
+            config=cast("FaciesCorrelationConfig", self._config)
         )
         self._command_queue = CommandQueue(max_history=max_command_history)
 
@@ -265,6 +273,11 @@ class IntegratedAnalyzer(Observable):
         self._circuit_breakers: Dict[str, CircuitBreaker] = {}
 
         logger.info("IntegratedAnalyzer initialized with all pattern support")
+
+    @property
+    def facies_analyzer(self) -> FaciesCorrelationAnalyzer:
+        """Public accessor for the underlying FaciesCorrelationAnalyzer."""
+        return self._facies_analyzer
 
     @classmethod
     def from_builder(cls) -> IntegratedAnalyzer:
@@ -297,9 +310,9 @@ class IntegratedAnalyzer(Observable):
         Returns:
             Analysis result
         """
-        logger.info(f"Running analysis directly (no command history)")
+        logger.info("Running analysis directly (no command history)")
 
-        self._notify_event(
+        self.notify_event(
             EventType.COMPUTATION_STARTED,
             {"cache_dir": cache_dir, "domain": domain},
         )
@@ -311,7 +324,7 @@ class IntegratedAnalyzer(Observable):
                 **parameters,
             )
 
-            self._notify_event(
+            self.notify_event(
                 EventType.RESULT_COMPUTED,
                 {"domain": domain},
             )
@@ -320,7 +333,7 @@ class IntegratedAnalyzer(Observable):
 
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
-            self._notify_event(
+            self.notify_event(
                 EventType.ERROR_OCCURRED,
                 {"error": str(e)},
             )
@@ -345,7 +358,7 @@ class IntegratedAnalyzer(Observable):
         Returns:
             Analysis result
         """
-        logger.info(f"Running analysis with command support")
+        logger.info("Running analysis with command support")
 
         # Create context and command
         context = AnalysisContext(
@@ -369,7 +382,7 @@ class IntegratedAnalyzer(Observable):
 
         if not self._command_queue.can_undo:
             logger.warning("Nothing to undo")
-            self._notify_event(
+            self.notify_event(
                 EventType.ERROR_OCCURRED,
                 {"error": "Nothing to undo"},
             )
@@ -378,7 +391,7 @@ class IntegratedAnalyzer(Observable):
         success = self._command_queue.undo()
 
         if success:
-            self._notify_event(
+            self.notify_event(
                 EventType.DATA_CHANGED,
                 {},
             )
@@ -395,7 +408,7 @@ class IntegratedAnalyzer(Observable):
 
         if not self._command_queue.can_redo:
             logger.warning("Nothing to redo")
-            self._notify_event(
+            self.notify_event(
                 EventType.ERROR_OCCURRED,
                 {"error": "Nothing to redo"},
             )
@@ -404,19 +417,19 @@ class IntegratedAnalyzer(Observable):
         success = self._command_queue.redo()
 
         if success:
-            self._notify_event(
+            self.notify_event(
                 EventType.DATA_CHANGED,
                 {},
             )
 
         return success
 
-    def _notify_event(
+    def notify_event(
         self,
         event_type: str,
         data: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """Notify observers of an analysis event.
 
         Args:
@@ -457,7 +470,7 @@ class IntegratedAnalyzer(Observable):
         """Get number of attached observers."""
         return len(self._observers)
 
-    def clear_history(self):
+    def clear_history(self) -> None:
         """Clear all command history."""
         self._command_queue.clear()
         logger.info("Command history cleared")
@@ -479,7 +492,7 @@ class IntegratedAnalyzer(Observable):
         self,
         event_type: str,
         handler: Callable[[Event], None],
-    ) -> Any:
+    ) -> SubscriptionHandle:
         """Subscribe to events from the event bus.
 
         Args:
@@ -490,7 +503,16 @@ class IntegratedAnalyzer(Observable):
             Subscription handle
         """
         logger.debug(f"Subscribing to event type: {event_type}")
-        return self._event_bus.subscribe(event_type, handler)
+
+        # Adapt string-based AnalysisEvent types to EventBus typed subscriptions.
+        class _Adapter(EventHandler):
+            def handle(self, event: Event) -> None:
+                if getattr(event, "event_type", None) == event_type:
+                    handler(event)  # delegate to provided callable
+
+        adapter = _Adapter()
+        # Subscribe to the base Event type and use the adapter to filter by event_type
+        return self._event_bus.subscribe(Event, adapter)
 
     def publish_event(self, event: Event) -> None:
         """Publish an event to the event bus.
@@ -561,7 +583,12 @@ class IntegratedAnalyzer(Observable):
         logger.debug("Entering IntegratedAnalyzer context")
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
+    ) -> None:
         """Exit context manager."""
         logger.debug("Exiting IntegratedAnalyzer context")
         if exc_type is not None:

@@ -11,10 +11,10 @@ import os
 import hashlib
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, Callable
+from typing import Any, Callable, cast
 import logging
 
-from src.modeling.modeling import SynthesisConfig, _unwrap_quantity
+from src.modeling.modeling import SynthesisConfig, unwrap_quantity
 from src.utils.quantity import Quantity
 
 # Configuration constants
@@ -101,7 +101,8 @@ class CacheManager:
                 save_dict[f"angle_{i}"] = angle_stack
 
         filepath = Path(self.cache_dir) / filename
-        np.savez_compressed(filepath, **save_dict)
+        # Cast dict to satisfy type checkers that may have strict numpy stubs
+        np.savez_compressed(file=str(filepath), **cast(dict[str, Any], save_dict))
         logger.info("Saved AVO synthetics to cache: %s", filename)
 
     def load_avo_synthetics(
@@ -194,9 +195,9 @@ class CacheManager:
         config = config or SynthesisConfig()
 
         # Unwrap properties
-        vp = _unwrap_quantity(props_time["vp"])
-        vs = _unwrap_quantity(props_time["vs"])
-        rho = _unwrap_quantity(props_time["rho"])
+        vp = unwrap_quantity(props_time["vp"])
+        vs = unwrap_quantity(props_time["vs"])
+        rho = unwrap_quantity(props_time["rho"])
 
         # Compute cache key and check for force recompute
         key = self.compute_cache_key(
@@ -223,7 +224,7 @@ class CacheManager:
 
         # Unwrap Quantity objects before passing to create_fn
         props_unwrapped: dict[str, NDArray[np.floating[Any]]] = {
-            k: _unwrap_quantity(v) for k, v in props_time.items()
+            k: unwrap_quantity(v) for k, v in props_time.items()
         }
 
         # Create and cache

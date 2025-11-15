@@ -114,8 +114,8 @@ class ConfigBuilder(Generic[T]):
     """
 
     config_class: Type[T]
-    values: Dict[str, Any] = field(default_factory=dict)
-    defaults: Dict[str, Any] = field(default_factory=dict)
+    values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    defaults: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
     _validator: ConfigValidator = field(default_factory=ConfigValidator)
 
     def set(self, key: str, value: Any) -> ConfigBuilder[T]:
@@ -283,15 +283,17 @@ class ConfigBuilder(Generic[T]):
 
         # Instantiate config class
         try:
+            # Declare instance variable once to avoid redefinition warnings
+            instance: T
             if is_dataclass(self.config_class):
                 # For dataclasses, use only fields that exist
                 config_fields = {f.name for f in fields(self.config_class)}
                 filtered_values = {
                     k: v for k, v in final_values.items() if k in config_fields
                 }
-                instance: T = cast(T, self.config_class(**filtered_values))
+                instance = self.config_class(**filtered_values)
             else:
-                instance = cast(T, self.config_class(**final_values))  # type: ignore[redundant-cast]
+                instance = self.config_class(**final_values)
 
             logger.info(
                 f"Built {self.config_class.__name__} with "

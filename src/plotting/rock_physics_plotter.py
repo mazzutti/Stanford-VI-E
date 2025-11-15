@@ -50,6 +50,7 @@ class RockPhysicsPlotter(BasePlotter):
         """
         config = config or PlotConfig.for_attributes("Attribute", cmap="viridis")
 
+        slice_data: NDArray[Any]
         if slice_type == "inline":
             slice_data = data[idx, :, :].T  # Transpose for correct orientation
             xlabel = "Crossline Index"

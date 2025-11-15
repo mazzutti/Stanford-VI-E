@@ -3,6 +3,7 @@
 import logging
 from functools import wraps
 from typing import Any, Callable, Dict, Tuple, TypeVar, cast
+from numpy.typing import NDArray
 
 import numpy as np
 
@@ -134,6 +135,8 @@ class ProcessorDecorators:
             def wrapper(self: Any, cube: Any, *args: Any, **kwargs: Any) -> Any:
                 if not isinstance(cube, np.ndarray):
                     raise TypeError(f"Expected ndarray, got {type(cube).__name__}")
+                # Inform static type checkers that `cube` is an ndarray after the runtime check
+                cube = cast(NDArray[Any], cube)
                 if cube.ndim != expected_dims:
                     raise ValueError(
                         f"{func.__name__}() expects {expected_dims}D cube, "

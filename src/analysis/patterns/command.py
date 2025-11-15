@@ -46,7 +46,7 @@ class AnalysisCommand(ABC):
     serialization, and batch execution.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize command"""
         self.executed = False
         self.timestamp = datetime.now()
@@ -115,7 +115,7 @@ class RunAnalysisCommand(AnalysisCommand):
     undo and redo the operation.
     """
 
-    def __init__(self, analyzer: Any, data: Dict[str, Any]):
+    def __init__(self, analyzer: Any, data: Dict[str, Any]) -> None:
         """Initialize run analysis command.
 
         Args:
@@ -125,8 +125,8 @@ class RunAnalysisCommand(AnalysisCommand):
         super().__init__()
         self.analyzer = analyzer
         self.data = data
-        self.result = None
-        self.previous_cache = None
+        self.result: Optional[Any] = None
+        self.previous_cache: Optional[dict[str, Any]] = None
 
     def execute(self) -> Any:
         """Execute the analysis.
@@ -159,7 +159,7 @@ class RunAnalysisCommand(AnalysisCommand):
             True if undo successful
         """
         if not self.executed:
-            logger.warning(f"Cannot undo command that hasn't been executed")
+            logger.warning("Cannot undo command that hasn't been executed")
             return False
 
         logger.info(f"Undoing {self.description}")
@@ -204,7 +204,9 @@ class MacroCommand(AnalysisCommand):
     together.
     """
 
-    def __init__(self, name: str, commands: Optional[List[AnalysisCommand]] = None):
+    def __init__(
+        self, name: str, commands: Optional[List[AnalysisCommand]] = None
+    ) -> None:
         """Initialize macro command.
 
         Args:
@@ -297,7 +299,7 @@ class CommandQueue:
     undo/redo functionality.
     """
 
-    def __init__(self, max_history: int = 100):
+    def __init__(self, max_history: int = 100) -> None:
         """Initialize command queue.
 
         Args:
@@ -393,7 +395,7 @@ class CommandQueue:
             logger.error(f"Redo failed: {e}")
             return False
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all command history"""
         self.history.clear()
         self.current_index = -1
@@ -429,6 +431,6 @@ class CommandQueue:
 
         for i, cmd in enumerate(self.history):
             marker = "→ " if i == self.current_index else "  "
-            lines.append(f"{marker}{i+1}. {cmd.description}")
+            lines.append(f"{marker}{i + 1}. {cmd.description}")
 
         return "\n".join(lines)

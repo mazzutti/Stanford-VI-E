@@ -5,7 +5,7 @@ conditional chains.
 """
 
 from typing import Any, Dict, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 
 logger = logging.getLogger(__name__)

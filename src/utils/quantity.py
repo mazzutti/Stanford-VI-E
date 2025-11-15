@@ -43,7 +43,7 @@ class Quantity:
         self._registry = registry or get_unit_registry()
 
     @property
-    def array(self) -> NDArray[np.floating[Any]]:
+    def array(self) -> NDArray[Any]:
         """Get underlying numpy array."""
         return self._array
 
@@ -75,11 +75,11 @@ class Quantity:
         except ValueError as e:
             raise ValueError(f"Cannot convert from {self.unit} to {unit}") from e
 
-    def to_numpy(self) -> NDArray[np.floating[Any]]:
+    def to_numpy(self) -> NDArray[Any]:
         """Export as numpy array."""
         return self._array
 
-    def __array__(self) -> NDArray[np.floating[Any]]:
+    def __array__(self) -> NDArray[Any]:
         """Support numpy's array protocol."""
         return self._array
 
@@ -106,9 +106,7 @@ class Quantity:
     @overload
     def __add__(self, other: float | int | NDArray[np.floating[Any]]) -> Quantity: ...
 
-    def __add__(
-        self, other: Quantity | float | int | NDArray[np.floating[Any]]
-    ) -> Quantity:
+    def __add__(self, other: Quantity | float | int | NDArray[Any]) -> Quantity:
         """Addition with automatic unit conversion."""
         if isinstance(other, Quantity):
             if other.unit != self.unit:
@@ -132,19 +130,15 @@ class Quantity:
     ) -> Quantity | NDArray[np.floating[Any]]: ...
 
     def __mul__(
-        self, other: Quantity | float | int | NDArray[np.floating[Any]]
-    ) -> Quantity | NDArray[np.floating[Any]]:
+        self, other: Quantity | float | int | NDArray[Any]
+    ) -> Quantity | NDArray[Any]:
         """Multiplication."""
         if isinstance(other, (int, float)):
             return Quantity(self._array * other, self.unit, self._registry)
         if isinstance(other, Quantity):
             # Ambiguous unit result; return raw product
             arr_result = self._array * other._array
-            return (
-                arr_result
-                if isinstance(arr_result, np.ndarray)
-                else np.asarray(arr_result)
-            )
+            return np.asarray(arr_result)
         # Multiply by ndarray - result is still a Quantity with same unit
         result = self._array * other
         return Quantity(result, self.unit, self._registry)
@@ -157,11 +151,21 @@ class Quantity:
         self, other: NDArray[np.floating[Any]]
     ) -> Quantity | NDArray[np.floating[Any]]: ...
 
-    def __rmul__(
-        self, other: float | int | NDArray[np.floating[Any]]
-    ) -> Quantity | NDArray[np.floating[Any]]:
+    def __rmul__(self, other: float | int | NDArray[Any]) -> Quantity | NDArray[Any]:
         """Right multiplication."""
         return self.__mul__(other)
 
 
 __all__ = ["Quantity"]
+
+
+def to_ndarray(obj: NDArray[Any] | Quantity | Any) -> NDArray[Any]:
+    """Normalize a `Quantity` or array-like into a plain `ndarray[Any]`.
+
+    This helper centralizes the runtime check and gives the type checker a
+    single, well-typed place to convert Quantity->ndarray.
+    """
+    return obj.array if isinstance(obj, Quantity) else np.asarray(obj)
+
+
+__all__.append("to_ndarray")

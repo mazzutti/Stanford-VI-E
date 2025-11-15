@@ -1,7 +1,8 @@
 """File management utilities."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
+import logging
 
 from src.processing.managers.resource_manager import ResourceManager
 
@@ -12,7 +13,7 @@ __all__ = ["FileManager"]
 class FileManager(ResourceManager[Path]):
     """Manages file operations: opening and checking file existence."""
 
-    def __init__(self, logger=None):
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         """Initialize file manager with no-op strategies."""
         super().__init__(resource_dir=Path("."), logger=logger)
 

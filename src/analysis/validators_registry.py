@@ -10,7 +10,7 @@ Example:
 """
 
 from __future__ import annotations
-from typing import Callable, Sequence, ClassVar, Dict
+from typing import Callable, Sequence, ClassVar, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ class ValidatorRegistry:
     point of extension for validation behavior.
     """
 
-    _validators: ClassVar[Dict[str, Callable]] = {}
+    _validators: ClassVar[Dict[str, Callable[..., None]]] = {}
     """Dictionary of registered validators by name"""
 
     @classmethod
-    def register(cls, name: str, validator: Callable) -> None:
+    def register(cls, name: str, validator: Callable[..., None]) -> None:
         """Register a named validator.
 
         Args:
@@ -41,7 +41,7 @@ class ValidatorRegistry:
         logger.debug(f"Registered validator: {name}")
 
     @classmethod
-    def get(cls, name: str) -> Callable:
+    def get(cls, name: str) -> Callable[..., None]:
         """Get a validator by name.
 
         Args:
@@ -153,7 +153,7 @@ class ValidatorRegistry:
             raise ValueError(f"{name} must be in ({min_val}, {max_val}), got {value}")
 
     @classmethod
-    def validate_non_empty(cls, seq: Sequence, name: str = "sequence") -> None:
+    def validate_non_empty(cls, seq: Sequence[Any], name: str = "sequence") -> None:
         """Validate sequence is not empty.
 
         Args:
@@ -168,7 +168,7 @@ class ValidatorRegistry:
 
     @classmethod
     def validate_length(
-        cls, seq: Sequence, expected_len: int, name: str = "sequence"
+        cls, seq: Sequence[Any], expected_len: int, name: str = "sequence"
     ) -> None:
         """Validate sequence has exact length.
 
@@ -185,7 +185,7 @@ class ValidatorRegistry:
 
     @classmethod
     def validate_length_between(
-        cls, seq: Sequence, min_len: int, max_len: int, name: str = "sequence"
+        cls, seq: Sequence[Any], min_len: int, max_len: int, name: str = "sequence"
     ) -> None:
         """Validate sequence length is in range.
 

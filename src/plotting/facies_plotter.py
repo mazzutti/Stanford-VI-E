@@ -5,11 +5,13 @@ Inherits from BasePlotter for consistency and shared utilities.
 """
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Dict, Tuple
 
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import numpy as np
+from numpy.typing import NDArray
 
 from src.plotting.helpers.base import BasePlotter
 
@@ -36,7 +38,7 @@ class FaciesPlotter(BasePlotter):
 
         self._log_debug("create_summary_plots: starting")
 
-        fig = plt.figure(figsize=(18, 12))
+        fig: Figure = plt.figure(figsize=(18, 12))
         domain_label = "Depth Domain" if domain == "depth" else "Time Domain"
         fig.suptitle(
             "Quantitative Seismic-Facies Correlation Analysis:"
@@ -47,8 +49,10 @@ class FaciesPlotter(BasePlotter):
 
         self._log_debug("create_summary_plots: plotting boundary distributions")
         # 1. AVO amplitude distribution (at boundaries vs away)
-        ax1 = plt.subplot(2, 3, 1)
+        ax1: Axes = fig.add_subplot(2, 3, 1)
         boundary_amps = getattr(avo_results, "boundary_amps", None)
+        at_bounds: NDArray[Any]
+        away: NDArray[Any]
         if boundary_amps is None:
             at_bounds = np.array([])
             away = np.array([])
@@ -85,8 +89,8 @@ class FaciesPlotter(BasePlotter):
 
         self._log_debug("create_summary_plots: plotting interface strengths")
         # 2. Reflection strength at different interface types (AVO)
-        ax2 = plt.subplot(2, 3, 2)
-        rows = []
+        ax2: Axes = fig.add_subplot(2, 3, 2)
+        rows: List[Tuple[Tuple[int, int], str, Dict[str, Any]]] = []
         for key, stats in (
             getattr(avo_results, "interface_stats_summary", {}) or {}
         ).items():
@@ -103,16 +107,26 @@ class FaciesPlotter(BasePlotter):
 
         # sort rows for stable display
         rows.sort(key=lambda r: r[0])
-        interface_types = [r[1] for r in rows]
-        avo_means = [r[2].get("mean", 0.0) for r in rows]
-        avo_stds = [r[2].get("std", 0.0) for r in rows]
+        interface_types: List[str] = [r[1] for r in rows]
+        avo_means: List[float] = [r[2].get("mean", 0.0) for r in rows]
+        avo_stds: List[float] = [r[2].get("std", 0.0) for r in rows]
+
+        # Convert to NumPy arrays for ArrayLike parameters (bar, yerr)
+        avo_means_arr = np.asarray(avo_means)
+        avo_stds_arr = np.asarray(avo_stds)
 
         x_pos = np.arange(len(interface_types))
         if len(x_pos):
             ax2.bar(
-                x_pos, avo_means, yerr=avo_stds, alpha=0.7, color="steelblue", capsize=5
+                x_pos,
+                avo_means_arr,
+                yerr=avo_stds_arr,
+                alpha=0.7,
+                color="steelblue",
+                capsize=5,
             )
-            ax2.set_xticks(x_pos)
+            # Convert ndarray to a list of floats to satisfy typing for Sequence[float]
+            ax2.set_xticks(list(x_pos.astype(float)))
             ax2.set_xticklabels(interface_types, rotation=45, ha="right", fontsize=8)
         ax2.set_ylabel("Mean Amplitude")
         ax2.set_title("AVO: Reflection Strength at Interfaces")
@@ -120,9 +134,9 @@ class FaciesPlotter(BasePlotter):
 
         self._log_debug("create_summary_plots: plotting facies discrimination")
         # 3. Facies discrimination - amplitude by facies type (AVO)
-        ax3 = plt.subplot(2, 3, 3)
-        facies_labels = []
-        avo_facies_data = []
+        ax3: Axes = fig.add_subplot(2, 3, 3)
+        facies_labels: List[str] = []
+        avo_facies_data: List[NDArray[Any]] = []
         for facies_val in range(4):
             facies_data = (getattr(avo_results, "facies_amplitudes", {}) or {}).get(
                 facies_val
@@ -130,7 +144,8 @@ class FaciesPlotter(BasePlotter):
             if facies_data is not None:
                 facies_labels.append(f"Facies {facies_val}")
                 sampled = facies_data[:: max(1, len(facies_data) // 1000)]
-                avo_facies_data.append(sampled)
+                # sampled may be any array-like; coerce/annotate as NDArray for typing
+                avo_facies_data.append(np.asarray(sampled))
 
         if avo_facies_data:
             # Use modern matplotlib boxplot API
@@ -138,10 +153,10 @@ class FaciesPlotter(BasePlotter):
             # Set tick labels explicitly
             ax3.set_xticks(range(1, len(avo_facies_data) + 1))
             ax3.set_xticklabels(facies_labels, rotation=0, fontsize=8)
-            for patch, color in zip(
-                bp["boxes"],
-                plt.get_cmap("tab10")(np.linspace(0, 0.4, len(bp["boxes"]))),
-            ):
+            cmap_colors: NDArray[Any] = np.asarray(
+                plt.get_cmap("tab10")(np.linspace(0, 0.4, len(bp["boxes"])))
+            )
+            for patch, color in zip(bp["boxes"], cmap_colors):
                 patch.set_facecolor(color)
         ax3.set_ylabel("AVO Amplitude")
         ax3.set_title("AVO: Amplitude by Facies Type")
@@ -149,7 +164,7 @@ class FaciesPlotter(BasePlotter):
 
         logger.debug("create_summary_plots: plotting boundary vs background")
         # 4. Boundary amplitude comparison (AVO only: at vs away)
-        ax4 = plt.subplot(2, 3, 4)
+        ax4: Axes = fig.add_subplot(2, 3, 4)
         boundary_mean = np.nan
         away_mean = np.nan
         if hasattr(at_bounds, "size") and at_bounds.size:
@@ -162,14 +177,17 @@ class FaciesPlotter(BasePlotter):
             boundary_mean if not np.isnan(boundary_mean) else 0.0,
             away_mean if not np.isnan(away_mean) else 0.0,
         ]
-        ax4.bar(labels, values, color=["steelblue", "lightsteelblue"], alpha=0.8)
+        # Convert to NumPy array to satisfy ArrayLike parameter expectations
+        ax4.bar(
+            labels, np.asarray(values), color=["steelblue", "lightsteelblue"], alpha=0.8
+        )
         ax4.set_ylabel("Mean |Amplitude|")
         ax4.set_title("Boundary vs Background Amplitude (AVO)")
         ax4.grid(True, alpha=0.3, axis="y")
 
         logger.debug("create_summary_plots: plotting separation matrix")
         # 5. Facies separation matrix (Cohen's d) for AVO
-        ax5 = plt.subplot(2, 3, 5)
+        ax5: Axes = fig.add_subplot(2, 3, 5)
         sep = getattr(avo_results, "separation_matrix", None)
         if sep is not None:
             ax5.imshow(sep, cmap="YlOrRd", aspect="auto", vmin=0, vmax=3)

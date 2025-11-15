@@ -253,7 +253,7 @@ class ParserFactory:
 
         def _register(f: Any) -> Any:
             try:
-                cli_names = []
+                cli_names: list[str] = []
                 if name is None:
                     cli_names = [f.__name__]
                 else:
@@ -268,12 +268,10 @@ class ParserFactory:
                 raise TypeError("@ParserFactory.tool must be applied to a function")
 
             # Normalize names
-            norm_names = []
+            norm_names: list[str] = []
             for cli_name in cli_names:
-                if isinstance(cli_name, str):
-                    norm_names.append(cli_name.strip())
-                else:
-                    norm_names.append(str(cli_name).strip())
+                # Coerce to str and strip whitespace (covers str and non-str inputs)
+                norm_names.append(str(cli_name).strip())
 
             for cli_name in norm_names:
                 if cli_name in ParserFactory._registered_tools:
@@ -305,8 +303,7 @@ class ParserFactory:
         kwargs: dict[str, Any] | None = None,
     ) -> Any:
         """Dispatch and run a centralized tool by name."""
-        if isinstance(tool_name, str):
-            tool_name = tool_name.strip()
+        tool_name = tool_name.strip()
 
         registry = getattr(ParserFactory, "_registered_tools", {})
         fn = registry.get(tool_name)

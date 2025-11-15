@@ -69,7 +69,7 @@ class StageResult(Generic[T_Out]):
     output: Optional[T_Out] = None
     error: Optional[Exception] = None
     duration_ms: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
 
     def __str__(self) -> str:
         """Return human-readable representation.
@@ -283,8 +283,9 @@ class Pipeline(Generic[T_In, T_Out]):
         logger.info(f"Starting pipeline execution: {self.name}")
 
         for stage in self._stages:
+            # ensure start_time is always defined before any potential exception
+            start_time = datetime.now()
             try:
-                start_time = datetime.now()
 
                 # Check if stage can execute with current data
                 if not stage.can_execute(current):
@@ -537,7 +538,7 @@ class ParallelPipeline:
         Dict[str, Any]
             Mapping of pipeline names to results.
         """
-        results = {}
+        results: Dict[str, Any] = {}
         for pipeline in self._pipelines:
             results[pipeline.name] = pipeline.execute(input_data)
         return results

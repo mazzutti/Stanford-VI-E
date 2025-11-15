@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, cast
 import numpy as np
 from numpy.typing import NDArray
 
@@ -63,7 +63,9 @@ class DatasetManager:
     facies: Optional[NDArray[np.float64]] = None
     full_stack: Optional[NDArray[np.float64]] = None
 
-    _other: Dict[str, NDArray[np.float64]] = field(default_factory=dict, repr=False)
+    _other: Dict[str, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(Dict[str, NDArray[np.float64]], {}), repr=False
+    )
     _logger: logging.Logger = field(
         default_factory=lambda: logging.getLogger(__name__), init=False, repr=False
     )
@@ -139,7 +141,8 @@ class DatasetManager:
     def __exit__(
         self,
         exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException], _exc_tb: Optional[TracebackType],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
     ) -> None:
         """Context manager exit.
 

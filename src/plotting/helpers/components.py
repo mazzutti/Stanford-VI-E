@@ -8,12 +8,12 @@ Provides focused, single-responsibility classes for common plotting tasks:
 """
 
 import logging
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, cast, List
 
 import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, Colormap, BoundaryNorm
+from matplotlib.colors import Colormap, ListedColormap, BoundaryNorm
 import matplotlib.patches as mpatches
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
@@ -54,7 +54,7 @@ class SliceExtractor:
             Transpose to (K, J): x-axis is J (Crossline), y-axis is K (Depth)
             Shows crossline-depth plane at inline position idx
         """
-        return cube[idx, :, :].T, "Crossline (J)", "Depth Index (K)"
+        return cube[idx, :, :], "Crossline (J)", "Depth Index (K)"
 
     def extract_crossline(
         self, cube: NDArray[np.floating[Any]], idx: int
@@ -71,7 +71,7 @@ class SliceExtractor:
             Transpose to (K, I): x-axis is I (Inline), y-axis is K (Depth)
             Shows inline-depth plane at crossline position idx
         """
-        return cube[:, idx, :].T, "Inline (I)", "Depth Index (K)"
+        return cube[:, idx, :], "Inline (I)", "Depth Index (K)"
 
     def extract_depthslice(
         self, cube: NDArray[np.floating[Any]], idx: int
@@ -88,7 +88,7 @@ class SliceExtractor:
             Returns transposed so shape becomes (J, I)
             Displays with J on y-axis, I on x-axis
         """
-        return cube[:, :, idx].T, "Inline (I)", "Crossline (J)"
+        return cube[:, :, idx], "Inline (I)", "Crossline (J)"
 
     def extract_by_orientation(
         self, cube: NDArray[np.floating[Any]], idx: int, orientation: str
@@ -146,14 +146,14 @@ class DataNormalizer:
         return vmin, vmax
 
     @staticmethod
-    def get_discrete_colormap(n_colors: int = 4) -> ListedColormap:
+    def get_discrete_colormap(n_colors: int = 4) -> Colormap:
         """Get a discrete colormap for categorical data.
 
         Args:
             n_colors: Number of colors (default: 4 for facies)
 
         Returns:
-            ListedColormap with n_colors
+            Colormap with n_colors
         """
         cmap = plt.get_cmap("tab10")
         colors = cmap(np.linspace(0, 0.4, n_colors))
@@ -186,14 +186,16 @@ class AxisStyler:
             grid: Whether to show grid
             grid_alpha: Grid alpha transparency
         """
+        # Cast to Any for member calls to avoid third-party stub noise
+        ax_any = cast(Any, ax)
         if title:
-            ax.set_title(title, fontsize=fontsize_title, fontweight="bold")
+            ax_any.set_title(title, fontsize=fontsize_title, fontweight="bold")
         if xlabel:
-            ax.set_xlabel(xlabel, fontsize=fontsize_labels)
+            ax_any.set_xlabel(xlabel, fontsize=fontsize_labels)
         if ylabel:
-            ax.set_ylabel(ylabel, fontsize=fontsize_labels)
+            ax_any.set_ylabel(ylabel, fontsize=fontsize_labels)
         if grid:
-            ax.grid(True, alpha=grid_alpha)
+            ax_any.grid(True, alpha=grid_alpha)
 
     @staticmethod
     def add_colorbar(im: AxesImage, ax: Axes, label: str = "Value") -> Colorbar:
@@ -207,9 +209,14 @@ class AxisStyler:
         Returns:
             Colorbar object
         """
-        cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label(label, fontsize=10)
-        return cbar
+        plt_any = cast(Any, plt)
+        cbar = plt_any.colorbar(im, ax=ax)
+        # set_label may be partially unknown in stubs; call via Any
+        try:
+            cbar.set_label(label, fontsize=10)
+        except Exception:
+            pass
+        return cast(Colorbar, cbar)
 
 
 class ImageRenderer:
@@ -241,6 +248,14 @@ class ImageRenderer:
         # BoundaryNorm so values map to discrete colors. For continuous
         # data we fall back to previous behavior.
         ax.clear()
+        # cmap may be a matplotlib Colormap or a string name; use Any to
+        # avoid mismatches between different matplotlib Colormap symbols
+        # from pyplot vs. colors modules when type-checking.
+        cmap: Any
+        # Pre-declare these so type checkers see them in all branches
+        categories: NDArray[Any] = np.array([0])
+        n_colors: int = 1
+
         if config.is_categorical:
             # Determine categories and number of colors
             try:
@@ -249,13 +264,13 @@ class ImageRenderer:
                 categories = np.array([0])
 
             # Determine number of categories: explicit config or derived
-            n_colors = (
-                config.n_categories
-                if config.n_categories is not None
-                else int(categories.max()) + 1
-                if categories.size
-                else 1
-            )
+            if config.n_categories is not None:
+                n_colors = config.n_categories
+            else:
+                if categories.size:
+                    n_colors = int(categories.max()) + 1
+                else:
+                    n_colors = 1
 
             cmap = DataNormalizer.get_discrete_colormap(n_colors)
 
@@ -263,31 +278,52 @@ class ImageRenderer:
             boundaries = np.arange(-0.5, n_colors + 0.5, 1.0)
             norm = BoundaryNorm(boundaries, ncolors=n_colors)
 
-            im = ax.imshow(
-                data,
-                cmap=cmap,
-                norm=norm,
-                origin="upper",
-                interpolation="nearest",
-                extent=extent,
-                aspect="auto",
-            )
+            if extent is not None:
+                im = ax.imshow(
+                    data,
+                    cmap=cmap,
+                    norm=norm,
+                    origin="upper",
+                    interpolation="nearest",
+                    extent=extent,
+                    aspect="auto",
+                )
+            else:
+                im = ax.imshow(
+                    data,
+                    cmap=cmap,
+                    norm=norm,
+                    origin="upper",
+                    interpolation="nearest",
+                    aspect="auto",
+                )
         else:
             if vmin is None or vmax is None:
                 vmin, vmax = DataNormalizer.compute_limits(
                     data, is_categorical=False, percentile=config.percentile
                 )
             cmap = config.cmap
-            im = ax.imshow(
-                data,
-                cmap=cmap,
-                vmin=vmin,
-                vmax=vmax,
-                origin="upper",
-                interpolation="bilinear",
-                extent=extent,
-                aspect="auto",
-            )
+            if extent is not None:
+                im = ax.imshow(
+                    data,
+                    cmap=cmap,
+                    vmin=vmin,
+                    vmax=vmax,
+                    origin="upper",
+                    interpolation="bilinear",
+                    extent=extent,
+                    aspect="auto",
+                )
+            else:
+                im = ax.imshow(
+                    data,
+                    cmap=cmap,
+                    vmin=vmin,
+                    vmax=vmax,
+                    origin="upper",
+                    interpolation="bilinear",
+                    aspect="auto",
+                )
 
         # Add colorbar if requested
         cbar = None
@@ -305,15 +341,23 @@ class ImageRenderer:
                 labels_map = {int(k): f"Facies {int(k)}" for k in categories}
 
             # Build legend patches using colors from ListedColormap
-            patches = []
+            patches: List[Any] = []
             for cat in sorted(labels_map.keys()):
+                # Access colors defensively; mypy can't infer attribute presence
                 if hasattr(cmap, "colors"):
                     try:
-                        color = cmap.colors[int(cat) % len(cmap.colors)]
+                        colors = getattr(cmap, "colors")
+                        color = colors[int(cat) % len(colors)]
                     except Exception:
-                        color = cmap(int(cat) / max(1, n_colors - 1))
+                        try:
+                            color = cmap(int(cat) / max(1, n_colors - 1))
+                        except Exception:
+                            color = (0.5, 0.5, 0.5)
                 else:
-                    color = cmap(int(cat) / max(1, n_colors - 1))
+                    try:
+                        color = cmap(int(cat) / max(1, n_colors - 1))
+                    except Exception:
+                        color = (0.5, 0.5, 0.5)
 
                 patch = mpatches.Patch(color=color, label=labels_map[cat])
                 patches.append(patch)

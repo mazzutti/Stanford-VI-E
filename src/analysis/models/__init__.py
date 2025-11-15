@@ -19,10 +19,10 @@ from .base import (
     ValidationConfig,
     ModelUtilities,
     StatisticalResult,
-    _STATS_REPR_PRECISION,
-    _STR_PRECISION,
-    _SUMMARY_PRECISION,
-    _ANALYSIS_COMPONENTS_COUNT,
+    STATS_REPR_PRECISION,
+    STR_PRECISION,
+    SUMMARY_PRECISION,
+    ANALYSIS_COMPONENTS_COUNT,
 )
 
 # Configuration and domain models
@@ -63,10 +63,10 @@ __all__ = [
     "ValidationConfig",
     "ModelUtilities",
     "StatisticalResult",
-    "_STATS_REPR_PRECISION",
-    "_STR_PRECISION",
-    "_SUMMARY_PRECISION",
-    "_ANALYSIS_COMPONENTS_COUNT",
+    "STATS_REPR_PRECISION",
+    "STR_PRECISION",
+    "SUMMARY_PRECISION",
+    "ANALYSIS_COMPONENTS_COUNT",
     # Configuration
     "Transition",
     "FaciesCorrelationConfig",

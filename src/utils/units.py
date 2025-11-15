@@ -218,8 +218,6 @@ class UnitRegistry:
 
     def is_likely_in_unit(self, arr: ArrayLike, unit: str) -> bool:
         """Heuristic check whether array is likely in the requested unit."""
-        if arr is None:
-            return False
 
         a = np.asarray(arr)
         maxabs = _nanmax_abs(a)

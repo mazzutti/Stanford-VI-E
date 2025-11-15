@@ -16,6 +16,7 @@ import os
 import signal
 import time
 import warnings
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +92,47 @@ def main() -> bool:
 
     # Dispatch tool if requested
     if getattr(args, "run_tool", None):
-        result = ParserFactory.run_tool(
-            args.run_tool, argv=tool_argv, kwargs=dict(vars(args))
-        )
+        # Build kwargs from the already-parsed modeling args
+        call_kwargs = dict(vars(args))
+
+        # If the user provided tool-specific argv after `--`, merge them into
+        # the kwargs. We perform a simple, permissive parse: flags (like
+        # `--plot`) become True, `--key value` pairs are converted to the
+        # appropriate Python types when possible (int, bool), and keys are
+        # normalized to underscore style to match Python parameter names.
+        if tool_argv:
+            targv = list(tool_argv)
+            i = 0
+            while i < len(targv):
+                tok = targv[i]
+                if not tok.startswith("--"):
+                    i += 1
+                    continue
+                key = tok.lstrip("-").replace("-", "_")
+                val: Any = True
+                # Peek next token to see if it's a value
+                if i + 1 < len(targv) and not str(targv[i + 1]).startswith("--"):
+                    raw = targv[i + 1]
+                    # Convert common types
+                    low = raw.lower()
+                    if low in ("true", "false"):
+                        val = low == "true"
+                    else:
+                        try:
+                            ival = int(raw)
+                            val = ival
+                        except Exception:
+                            try:
+                                fval = float(raw)
+                                val = fval
+                            except Exception:
+                                val = raw
+                    i += 1
+
+                call_kwargs[key] = val
+                i += 1
+
+        result = ParserFactory.run_tool(args.run_tool, kwargs=call_kwargs)
         return bool(result) if result is not None else True
 
     # Run main modeling pipeline

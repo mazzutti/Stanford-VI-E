@@ -81,7 +81,6 @@ from .validators import (  # noqa: F401
     ArrayValidator,
     ValidationHelpers,
     Validatable,
-    _ValidationErrors,
 )
 from .types import (  # noqa: F401
     BoolArray,
@@ -91,8 +90,6 @@ from .types import (  # noqa: F401
     Float64Array,
     Int64Array,
     OptionalArrayPair,
-    StatsType,
-    T,
 )
 from .boundary import NeighborDirection  # noqa: F401
 from src.core import BaseProcessor, Processor  # noqa: F401

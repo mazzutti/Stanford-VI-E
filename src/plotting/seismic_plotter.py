@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Any, Optional
+from typing import List, Any, Optional, cast, TYPE_CHECKING
 
 import numpy as np
 
@@ -19,11 +19,13 @@ from src.plotting.helpers.base import BasePlotter
 from src.plotting.helpers.config import PlotConfig
 from src.plotting.helpers.components import ImageRenderer, SliceExtractor
 
-import matplotlib
 import matplotlib.pyplot as plt
 from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:  # pragma: no cover - static typing only
+    import plotly.graph_objects as go
 
 
 class SeismicPlotter(BasePlotter):
@@ -65,11 +67,11 @@ class SeismicPlotter(BasePlotter):
             return None
         return candidates[0]
 
-    def _load_full_stack(self, npz_path: Path) -> np.ndarray:
+    def _load_full_stack(self, npz_path: Path) -> NDArray[np.floating[Any]]:
         npz = np.load(npz_path, allow_pickle=True)
         if "full_stack" not in npz:
             raise KeyError(f"'full_stack' key not found in {npz_path}")
-        return npz["full_stack"]
+        return cast(NDArray[np.floating[Any]], npz["full_stack"])
 
     # --------- Plotly (interactive) -------------------------------------------------
     def generate_from_caches(self, domain: str = "time") -> List[Path]:
@@ -97,17 +99,15 @@ class SeismicPlotter(BasePlotter):
         config = PlotConfig.for_seismic(k_unit="")
         cmap_name = config.cmap or "seismic"
 
-        traces = self._plotly.create_3d_volume(
-            cube,
-            slice_indices=slice_indices,
-            title=title,
-            k_label="Time/Depth",
-            k_unit="",
-            colorscale=cmap_name,
-            show_colorbar=True,
+        # Build 3D traces using the PlotlyPlotter. The Plotly wrapper accepts
+        # a restricted set of kwargs (no title/k_label/k_unit). Keep title
+        # separate and pass only supported arguments here.
+        traces: List["go.Surface"] = self._plotly.create_3d_volume(
+            cube, slice_indices, colorscale=cmap_name, show_colorbar=True
         )
 
-        fig = self._plotly.create_figure(traces, title=title)
+        # create_figure accepts traces and we pass title separately
+        fig: "go.Figure" = self._plotly.create_figure(traces, title=title)
         out_name = f"seismic_full_stack_{domain}_3d.html"
         out_path = self.out_dir / out_name
         self._plotly.save_figure(fig, str(out_path))
@@ -159,7 +159,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=f"Inline (i={mid_i})",
         )
-        ImageRenderer.render(axes[0], inline_data, config_inline)
+        _ = cast(Any, ImageRenderer.render(axes[0], inline_data, config_inline))
 
         crossline_data, xlabel, ylabel = extractor.extract_crossline(seismogram, mid_j)
         config_crossline = config.update(
@@ -167,7 +167,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=f"Crossline (j={mid_j})",
         )
-        ImageRenderer.render(axes[1], crossline_data, config_crossline)
+        _ = cast(Any, ImageRenderer.render(axes[1], crossline_data, config_crossline))
 
         depth_data, xlabel, ylabel = extractor.extract_depthslice(seismogram, mid_k)
         slice_label = f"{k_label.split()[0]} Slice"
@@ -176,7 +176,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=f"{slice_label} (k={mid_k})",
         )
-        ImageRenderer.render(axes[2], depth_data, config_depth)
+        _ = cast(Any, ImageRenderer.render(axes[2], depth_data, config_depth))
 
         plt.tight_layout()
 
@@ -228,7 +228,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=f"Inline {mid_i}",
         )
-        ImageRenderer.render(axes[0], inline_data, config_inline)
+        _ = cast(Any, ImageRenderer.render(axes[0], inline_data, config_inline))
 
         crossline_data, xlabel, ylabel = extractor.extract_crossline(full_stack, mid_j)
         config_crossline = config.update(
@@ -236,7 +236,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=f"Crossline {mid_j}",
         )
-        ImageRenderer.render(axes[1], crossline_data, config_crossline)
+        _ = cast(Any, ImageRenderer.render(axes[1], crossline_data, config_crossline))
 
         depth_data, xlabel, ylabel = extractor.extract_depthslice(full_stack, mid_k)
         slice_label = f"{k_label.split()[0]} Slice at {mid_k}{k_label.split()[1][1:-1]}"
@@ -245,7 +245,7 @@ class SeismicPlotter(BasePlotter):
             ylabel=ylabel,
             title=slice_label,
         )
-        ImageRenderer.render(axes[2], depth_data, config_depth)
+        _ = cast(Any, ImageRenderer.render(axes[2], depth_data, config_depth))
 
         plt.tight_layout()
 
@@ -269,7 +269,7 @@ class SeismicPlotter(BasePlotter):
 
         suffix = "_depth" if domain == "depth" else ""
 
-        generated_files = {"angle_stacks": [], "full_stack": []}
+        generated_files: dict[str, list[Path]] = {"angle_stacks": [], "full_stack": []}
 
         # Plot angle stacks
         if "angle_stacks" in data or any(k.startswith("angle_") for k in data.keys()):
@@ -285,7 +285,8 @@ class SeismicPlotter(BasePlotter):
                 if angles is None:
                     angles = [int(k.split("_")[1]) for k in angle_keys]
 
-            for i, (angle_stack, angle) in enumerate(zip(angle_stacks, angles)):
+            angles_iter = cast(List[float], angles)
+            for i, (angle_stack, angle) in enumerate(zip(angle_stacks, angles_iter)):
                 output_file = output_dir / f"seismic_angle_{i}{suffix}.png"
                 self.plot_angle_stack(
                     angle_stack,

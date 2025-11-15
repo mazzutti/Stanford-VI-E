@@ -250,7 +250,7 @@ class TestDependencyInjection:
 # ============================================================================
 
 
-class TestEvent(Event):
+class ExampleEvent(Event):
     """Test event implementation."""
 
     def __init__(self, message: str = "test"):
@@ -258,7 +258,7 @@ class TestEvent(Event):
         self.message = message
 
 
-class TestEventHandler(EventHandler):
+class ExampleEventHandler(EventHandler):
     """Test event handler implementation."""
 
     def __init__(self):
@@ -282,7 +282,7 @@ class TestEventBus:
 
     def test_event_creation(self):
         """Test Event creation."""
-        event = TestEvent("hello")
+        event = ExampleEvent("hello")
 
         assert event.message == "hello"
         assert event.event_id is not None
@@ -290,8 +290,8 @@ class TestEventBus:
 
     def test_event_handler_implementation(self):
         """Test EventHandler implementation."""
-        handler = TestEventHandler()
-        event = TestEvent()
+        handler = ExampleEventHandler()
+        event = ExampleEvent()
 
         handler.handle(event)
 
@@ -301,8 +301,8 @@ class TestEventBus:
     def test_event_filter_matches(self):
         """Test EventFilter matching."""
         # Create test event with message attribute
-        event1 = TestEvent("match")
-        event2 = TestEvent("no_match")
+        event1 = ExampleEvent("match")
+        event2 = ExampleEvent("no_match")
 
         # EventFilter uses kwargs criteria
         filter_obj = EventFilter(message="match")
@@ -313,10 +313,10 @@ class TestEventBus:
     def test_bus_subscribe_and_publish(self):
         """Test subscribe and publish."""
         bus = EventBus()
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
-        bus.subscribe(TestEvent, handler)
-        event = TestEvent("test")
+        bus.subscribe(ExampleEvent, handler)
+        event = ExampleEvent("test")
         bus.publish(event)
 
         assert len(handler.handled_events) == 1
@@ -325,12 +325,12 @@ class TestEventBus:
     def test_bus_unsubscribe(self):
         """Test unsubscribe."""
         bus = EventBus()
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
-        handle = bus.subscribe(TestEvent, handler)
-        bus.unsubscribe(TestEvent, handler)
+        handle = bus.subscribe(ExampleEvent, handler)
+        bus.unsubscribe(ExampleEvent, handler)
 
-        event = TestEvent()
+        event = ExampleEvent()
         bus.publish(event)
 
         assert len(handler.handled_events) == 0
@@ -338,13 +338,13 @@ class TestEventBus:
     def test_bus_event_filter(self):
         """Test event filtering."""
         bus = EventBus()
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
         filter_fn = EventFilter(message="pass")
-        bus.subscribe(TestEvent, handler, filter_fn=filter_fn)
+        bus.subscribe(ExampleEvent, handler, filter_fn=filter_fn)
 
-        bus.publish(TestEvent("pass"))
-        bus.publish(TestEvent("fail"))
+        bus.publish(ExampleEvent("pass"))
+        bus.publish(ExampleEvent("fail"))
 
         assert len(handler.handled_events) == 1
 
@@ -362,13 +362,15 @@ class TestEventBus:
             return PriorityHandler()
 
         # Subscribe in reverse priority order
-        bus.subscribe(TestEvent, make_handler("low"), priority=EventPriority.LOW)
+        bus.subscribe(ExampleEvent, make_handler("low"), priority=EventPriority.LOW)
         bus.subscribe(
-            TestEvent, make_handler("critical"), priority=EventPriority.CRITICAL
+            ExampleEvent, make_handler("critical"), priority=EventPriority.CRITICAL
         )
-        bus.subscribe(TestEvent, make_handler("normal"), priority=EventPriority.NORMAL)
+        bus.subscribe(
+            ExampleEvent, make_handler("normal"), priority=EventPriority.NORMAL
+        )
 
-        bus.publish(TestEvent())
+        bus.publish(ExampleEvent())
 
         # Should be in priority order
         assert call_order == ["critical", "normal", "low"]
@@ -376,11 +378,11 @@ class TestEventBus:
     def test_bus_history(self):
         """Test event history."""
         bus = EventBus()
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
-        bus.subscribe(TestEvent, handler)
-        bus.publish(TestEvent("event1"))
-        bus.publish(TestEvent("event2"))
+        bus.subscribe(ExampleEvent, handler)
+        bus.publish(ExampleEvent("event1"))
+        bus.publish(ExampleEvent("event2"))
 
         history = bus.get_history()
         assert len(history) == 2
@@ -395,7 +397,7 @@ class TestEventBus:
             return True  # Allow event
 
         bus.add_middleware(middleware)
-        bus.publish(TestEvent())
+        bus.publish(ExampleEvent())
 
         assert len(middleware_called) == 1
 
@@ -407,10 +409,10 @@ class TestEventBus:
     def test_async_bus_publish(self):
         """Test AsyncEventBus publish."""
         with AsyncEventBus(worker_threads=1) as bus:
-            handler = TestEventHandler()
-            bus.subscribe(TestEvent, handler)
+            handler = ExampleEventHandler()
+            bus.subscribe(ExampleEvent, handler)
 
-            bus.publish(TestEvent("async"))
+            bus.publish(ExampleEvent("async"))
             time.sleep(0.5)  # Allow async processing
 
             assert len(handler.handled_events) > 0
@@ -419,10 +421,10 @@ class TestEventBus:
         """Test EventDispatcher mapping."""
         bus = EventBus()
         dispatcher = EventDispatcher(bus)
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
-        dispatcher.map_event(TestEvent, handler.handle)
-        dispatcher.dispatch(TestEvent("dispatched"))
+        dispatcher.map_event(ExampleEvent, handler.handle)
+        dispatcher.dispatch(ExampleEvent("dispatched"))
 
         assert len(handler.handled_events) == 1
 
@@ -618,10 +620,10 @@ class TestPhase4Integration:
 
         # This test verifies that DI and EventBus can coexist
         bus = EventBus()
-        handler = TestEventHandler()
+        handler = ExampleEventHandler()
 
-        bus.subscribe(TestEvent, handler)
-        bus.publish(TestEvent("integration"))
+        bus.subscribe(ExampleEvent, handler)
+        bus.publish(ExampleEvent("integration"))
 
         assert len(handler.handled_events) == 1
 
@@ -646,11 +648,11 @@ class TestPhase4Integration:
 
         # Create event bus
         bus = EventBus()
-        handler = TestEventHandler()
-        bus.subscribe(TestEvent, handler)
+        handler = ExampleEventHandler()
+        bus.subscribe(ExampleEvent, handler)
 
         # Publish event
-        bus.publish(TestEvent("all_components"))
+        bus.publish(ExampleEvent("all_components"))
 
         assert config.get("app.name") == "phase4_app"
         assert len(handler.handled_events) == 1

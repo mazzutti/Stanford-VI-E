@@ -11,18 +11,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Optional,
-    Type,
-    TypeVar,
-    TYPE_CHECKING,
-)
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, cast
 
-if TYPE_CHECKING:
-    from src.analysis.models import AvoResults
 
 __all__ = [
     "Computer",
@@ -62,7 +52,7 @@ class ComputationResult(Generic[T_Out]):
     error_message: str = ""
     """Error message if computation failed."""
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
     """Additional metadata about computation (performance, validation details, etc)."""
 
 
@@ -83,7 +73,9 @@ class AnalysisSchema:
     description: str = ""
     """Human-readable description of the analysis."""
 
-    constraints: Dict[str, str] = field(default_factory=dict)
+    constraints: Dict[str, str] = field(
+        default_factory=lambda: cast(Dict[str, str], {})
+    )
     """Any constraints on the analysis (e.g., 'vp >= 1000 m/s')."""
 
 

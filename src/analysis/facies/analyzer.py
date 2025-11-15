@@ -26,7 +26,6 @@ from src.analysis.types.protocols import (
     PlotterProtocol,
 )
 from src.analysis.domain.enum import Domain
-from src.analysis.facies.config import FaciesAnalysisConfig
 from src.analysis.factories.service_factory import ServiceLocator
 from src.analysis.decorators import log_execution, time_operation
 from src.analysis.patterns.circuit_breaker import circuit_breaker
@@ -36,7 +35,6 @@ from src.analysis.models import (
     FaciesCorrelationConfig,
     AvoResults,
     DisplayCubesResult,
-    AvoAnalysisResult,
     TechniqueComparison,
     AvoStats,
     GradientCorrelationResult,
@@ -56,7 +54,7 @@ DEFAULT_DOMAIN = Domain.DEPTH
 
 
 class FaciesCorrelationAnalyzer(
-    CompositeMixin, PipelineAnalyzer[FaciesAnalysisConfig, Figure]
+    CompositeMixin, PipelineAnalyzer[FaciesCorrelationConfig, Figure]
 ):
     """Orchestrator for seismic-facies correlation analysis pipeline.
 
@@ -121,27 +119,35 @@ class FaciesCorrelationAnalyzer(
         self._resampler_factory = resampler_factory
         self._select_cache_files = select_cache_files
         self._cache_loader = cache_loader
+        # Expose injected cache_loader publicly for pipeline compatibility
+        self.cache_loader = cache_loader
         self._velocity_model_class = velocity_model_class or VelocityModel
         self._plotter = plotter
 
         # Store processor dependencies from kwargs (injected by factory or tests)
         self._injected_processors = kwargs
+        # Public slot to keep the last computed AVO results when available.
+        # Populated by the AnalysisPipeline at finalize stage so external
+        # orchestrators (e.g., IntegratedAnalyzer) can inspect/restore results.
+        self.last_avo_results: Optional[AvoResults] = None
 
     def _ensure_initialized(self) -> None:
         """Ensure analyzer is initialized before use."""
         if not self.is_initialized:
             self.initialize()
 
-    def _get_or_create(self, name: str, factory: Callable):
+    def _get_or_create(self, name: str, factory: Callable[[], Any]) -> Any:
         """Get injected processor or create default."""
         return self._injected_processors.get(name) or factory()
 
     def _validate_config(self) -> None:
         """Validate configuration (template method from BaseAnalyzer)."""
-        if not isinstance(self.config, FaciesCorrelationConfig):
-            raise ValueError("Invalid FaciesCorrelationConfig")
-        if not hasattr(self.config, "dilation_window"):
-            raise ValueError("Config missing dilation_window")
+        # The type of self.config is guaranteed by the class definition and __init__.
+        # The type of dilation_window is `int`, so we only need to validate its value.
+        if self.config.dilation_window < 0:
+            raise ValueError(
+                f"Config 'dilation_window' must be a non-negative integer, but got {self.config.dilation_window!r}"
+            )
 
     def _setup(self) -> None:
         """Setup processors (template method from BaseAnalyzer)."""
@@ -232,7 +238,7 @@ class FaciesCorrelationAnalyzer(
         if builder_func is None:
             return cast("FaciesCorrelationAnalyzer", build_facies_analyzer())
 
-        return cast("FaciesCorrelationAnalyzer", builder_func())  # type: ignore[redundant-cast]
+        return builder_func()
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging."""
@@ -257,27 +263,21 @@ class FaciesCorrelationAnalyzer(
         """Execute facies correlation analysis pipeline (BaseAnalyzer interface)."""
         if not isinstance(data, dict):
             raise TypeError(f"Expected dict kwargs, got {type(data)}")
-        return self.run(
-            cache_dir=data.get("cache_dir", DEFAULT_CACHE_DIR),
-            domain=data.get("domain", DEFAULT_DOMAIN),
-            verbose=data.get("verbose", False),
+
+        # Cast to a more specific dict type to resolve Pylance warnings
+        run_kwargs = cast(Dict[str, Any], data)
+        return cast(
+            Figure,
+            self.run(
+                cache_dir=run_kwargs.get("cache_dir", DEFAULT_CACHE_DIR),
+                domain=run_kwargs.get("domain", DEFAULT_DOMAIN),
+                verbose=run_kwargs.get("verbose", False),
+            ),
         )
 
-    def run(
-        self,
-        cache_dir: str = DEFAULT_CACHE_DIR,
-        domain: Domain = DEFAULT_DOMAIN,
-        verbose: bool = False,
-    ) -> Figure:
-        """Execute facies correlation analysis pipeline (original implementation).
-
-        This is the main execution method that coordinates the analysis pipeline.
-        It's called by analyze() method which implements BaseAnalyzer interface.
-        """
-        logger.info(
-            f"Running facies analysis (domain={domain.name}, cache={cache_dir})"
-        )
-        # [Original pipeline execution code continues below...]
+    # NOTE: The concrete `run` implementation with decorators is defined
+    # later in this class. This placeholder was removed to avoid a duplicate
+    # definition that confused static analysis.
 
     def convert_time_to_depth(
         self,
@@ -292,7 +292,7 @@ class FaciesCorrelationAnalyzer(
         result = resampler.time_to_depth_cube(seismogram_time, vp_depth, plan=plan)
         return cast(NDArray[np.float64], result)
 
-    def _get_resampler(self, grid_spec):
+    def _get_resampler(self, grid_spec: GridSpec) -> Any:
         """Get resampler instance (injected or default)."""
         if self._resampler_factory is not None:
             return self._resampler_factory.get_resampler(grid_spec)
@@ -300,7 +300,9 @@ class FaciesCorrelationAnalyzer(
 
         return resampler_factory.get_resampler(grid_spec)
 
-    def _get_resample_plan(self, grid_spec, vp_depth):
+    def _get_resample_plan(
+        self, grid_spec: GridSpec, vp_depth: NDArray[np.float64]
+    ) -> Any:
         """Get resample plan from cache."""
         from src.processing.resampling._cache import get_resample_plan_cache
 
@@ -361,18 +363,25 @@ class FaciesCorrelationAnalyzer(
     ) -> FaciesDiscriminationResult:
         """Measure how well amplitudes discriminate between facies."""
         self._ensure_initialized()
-        return self._facies_discriminator(seismic_cube, facies_cube)
+        return cast(
+            FaciesDiscriminationResult,
+            self._facies_discriminator(seismic_cube, facies_cube),
+        )
 
     def compare_techniques(
-        self, avo_stats: "AvoStats", metric_name: str
+        self, avo_stats: Any, metric_name: str
     ) -> TechniqueComparison:
         """Return a concise AVO-only comparison for the requested metric.
 
         Returns a :class:`TechniqueComparison` dataclass for stronger typing
         and clearer API for downstream callers.
         """
-        if not isinstance(avo_stats, AvoStats):
-            raise TypeError("compare_techniques expects an AvoStats instance")
+
+        # Ensure correct input type
+        from src.analysis.models import AvoStats as _AvoStats
+
+        if not isinstance(avo_stats, _AvoStats):
+            raise TypeError("Expected AvoStats instance for avo_stats")
 
         if metric_name == TechniqueComparison.GRADIENT_CORRELATION:
             return TechniqueComparison(
@@ -387,6 +396,7 @@ class FaciesCorrelationAnalyzer(
                         if avo_stats.spearman_correlation is not None
                         else None
                     ),
+                    extras={},
                 ),
                 winner="AVO",
                 difference=0.0,
@@ -556,28 +566,28 @@ class FaciesCorrelationAnalyzer(
         """
         from src.analysis.facies.pipeline import AnalysisPipeline
 
-        # Configure logging based on verbose flag (for convenience in scripts)
-        if verbose:
-            self.configure_logging(verbose=True)
-
         # Validate inputs early
         domain = DomainValidator.validate_domain(domain, self.VALID_DOMAINS)
         cache_path = PathValidator.validate_cache_dir(cache_dir)
 
-        # default_plot_config is untyped in helpers; treat as PlotConfig
+        # Configure logging based on verbose flag (for convenience in scripts)
+        if verbose:
+            self.configure_logging(verbose=True)
+
+        # The plot_cfg contains grid_spec, but data_path and file_map
+        # are properties of the dataset itself, not the plot configuration.
         plot_cfg = PlotConfig.default()
+        if not hasattr(plot_cfg, "grid_spec"):
+            raise AttributeError("Default PlotConfig is missing 'grid_spec'.")
 
         logger.info("Starting facies correlation analysis in %s domain", domain.value)
         logger.debug("Cache directory: %s", cache_path.resolve())
 
-        # Delegate to pipeline
+        # Delegate to pipeline and let it handle dataset loading internally
         pipeline = AnalysisPipeline(self)
-        return pipeline.execute(cache_dir, domain, plot_cfg)
+        return pipeline.execute(str(cache_path), domain, plot_cfg)
 
-    # ------------------------------------------------------------------
-    # Private helpers (improve organization / testability)
-    # ------------------------------------------------------------------
-    def _prepare_display_cubes(
+    def prepare_display_cubes(
         self,
         vm: VelocityModel,
         facies_depth: NDArray[np.int64],
@@ -596,59 +606,4 @@ class FaciesCorrelationAnalyzer(
         )
         return DisplayCubesResult(
             avo_display=avo_display, facies_display=facies_display
-        )
-
-    def _perform_avo_analysis(
-        self, avo_display: NDArray[np.float64], facies_display: NDArray[np.int64]
-    ) -> AvoAnalysisResult:
-        """Execute the AVO analysis sequence and return aggregated results.
-
-        This helper runs gradient correlation, boundary amplitude extraction
-        interface reflection aggregation and facies discrimination and
-        packages the results into an :class:`AvoAnalysisResult`.
-        """
-        avo_gradient_corr = self.calculate_gradient_correlation(
-            avo_display, facies_display
-        )
-        avo_boundary_amps = self.extract_boundary_amplitudes(
-            avo_display, avo_gradient_corr.boundaries
-        )
-        avo_interface_result = self.analyze_interface_reflections(
-            avo_display, facies_display
-        )
-        facies_disc = self.calculate_facies_discrimination(avo_display, facies_display)
-
-        return AvoAnalysisResult(
-            gradient_corr=avo_gradient_corr,
-            boundary_amps=avo_boundary_amps,
-            interface_summary=avo_interface_result.transitions_summary,
-            interface_raw=avo_interface_result.interface_stats,
-            facies_disc=facies_disc,
-        )
-
-    def _create_results_object(self, avo_analysis: AvoAnalysisResult) -> AvoResults:
-        """Create AvoResults object from analysis results.
-
-        Parameters
-        ----------
-        avo_analysis
-            AvoAnalysisResult from the pipeline.
-
-        Returns
-        -------
-        AvoResults
-            Formatted results object for plotting.
-
-        Notes
-        -----
-        This method extracts the complex result construction logic into
-        a single place for reusability and testability.
-        """
-        facies_disc = avo_analysis.facies_disc
-        return AvoResults(
-            boundary_amps=avo_analysis.boundary_amps,
-            gradient_correlation=avo_analysis.gradient_corr,
-            separation_matrix=facies_disc.separation_matrix,
-            facies_amplitudes=facies_disc.facies_amplitudes,
-            interface_stats_summary=avo_analysis.interface_summary,
         )

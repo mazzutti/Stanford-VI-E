@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import convolve
+from scipy.signal import fftconvolve
 import logging
 
 logger = logging.getLogger(__name__)
@@ -115,8 +115,10 @@ class WaveletConvolver:
         for i in range(ni):
             for j in range(nj):
                 trace = cube[i, j, :]  # Extract trace along depth axis
-                result[i, j, :] = convolve(
-                    trace, wavelet, mode="same", method="fft"
-                ).astype(np.float32)
+                conv = np.asarray(
+                    fftconvolve(trace, wavelet, mode="same"),
+                    dtype=np.float32,
+                )
+                result[i, j, :] = conv
 
         return result

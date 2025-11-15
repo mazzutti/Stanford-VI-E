@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Type
+from types import TracebackType
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -107,13 +108,13 @@ class EventHandler(ABC):
 class EventFilter:
     """Filters events based on criteria."""
 
-    def __init__(self, **criteria):
+    def __init__(self, **criteria: Any) -> None:
         """Initialize filter with criteria.
 
         Args:
             **criteria: Filter criteria as kwargs
         """
-        self.criteria = criteria
+        self.criteria: Dict[str, Any] = criteria
 
     def matches(self, event: Event) -> bool:
         """Check if event matches filter criteria.
@@ -135,7 +136,9 @@ class EventFilter:
 class SubscriptionHandle:
     """Handle for managing event subscriptions."""
 
-    def __init__(self, bus: EventBus, event_type: Type[Event], handler: EventHandler):
+    def __init__(
+        self, bus: "EventBus", event_type: Type[Event], handler: EventHandler
+    ) -> None:
         """Initialize subscription handle.
 
         Args:
@@ -159,13 +162,15 @@ class SubscriptionHandle:
 class EventBus:
     """Synchronous event bus for event-driven architecture."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize event bus."""
-        self._handlers: Dict[Type[Event], List[tuple]] = {}
+        self._handlers: Dict[
+            Type[Event], List[tuple[EventHandler, Optional[EventFilter], EventPriority]]
+        ] = {}
         self._lock = Lock()
         self._event_history: List[Event] = []
         self._max_history = 1000
-        self._middleware: List[Callable] = []
+        self._middleware: List[Callable[[Event], bool]] = []
         logger.info("EventBus initialized (synchronous)")
 
     def subscribe(
@@ -329,17 +334,17 @@ class EventBus:
 class AsyncEventBus(EventBus):
     """Asynchronous event bus for non-blocking event processing."""
 
-    def __init__(self, worker_threads: int = 2):
+    def __init__(self, worker_threads: int = 2) -> None:
         """Initialize async event bus.
 
         Args:
             worker_threads: Number of worker threads
         """
         super().__init__()
-        self._queue: Queue = Queue()
+        self._queue: Queue[Optional[Event]] = Queue()
         self._workers: List[Thread] = []
-        self._running = True
-        self._stop_event = False
+        self._running: bool = True
+        self._stop_event: bool = False
 
         # Start worker threads
         for _ in range(worker_threads):
@@ -366,7 +371,7 @@ class AsyncEventBus(EventBus):
         """Worker thread loop for processing events."""
         while self._running and not self._stop_event:
             try:
-                event = self._queue.get(timeout=0.5)
+                event: Optional[Event] = self._queue.get(timeout=0.5)
                 if event is None:  # Sentinel value to stop
                     break
                 super().publish(event)
@@ -400,7 +405,12 @@ class AsyncEventBus(EventBus):
         """Enter context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
+    ) -> None:
         """Exit context manager."""
         self.stop()
 
@@ -415,13 +425,13 @@ class EventDispatcher:
             bus: Event bus instance
         """
         self.bus = bus
-        self._routes: Dict[Type[Event], Callable] = {}
+        self._routes: Dict[Type[Event], Callable[[Event], None]] = {}
 
     def map_event(
         self,
         event_type: Type[Event],
         handler: Callable[[Event], None],
-    ) -> EventDispatcher:
+    ) -> "EventDispatcher":
         """Map an event type to a handler function.
 
         Args:

@@ -311,6 +311,5 @@ def get_registry() -> ServiceRegistry:
 
 def reset_registry() -> None:
     """Reset the global registry (mainly for testing)."""
-    global _global_registry
     if _global_registry is not None:
         _global_registry.clear()

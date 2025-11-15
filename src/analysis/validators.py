@@ -47,6 +47,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
+from src.analysis.validation_result import ValidationResult
 from src.analysis.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -400,11 +401,6 @@ class CountValidator(Validator):
         >>> CountValidator.validate_count(0, allow_zero=False)  # Error
         >>> CountValidator.validate_count(-1)   # Error
         """
-        if not isinstance(value, int):
-            raise ValidationError(
-                f"{name} must be an integer, got {type(value).__name__}"
-            )
-
         if value < 0:
             raise ValidationError(f"{name} must be non-negative, got {value}")
 
@@ -693,7 +689,6 @@ class CompositeValidator(ValidatorStrategy):
 
         Returns failure on first failed validation.
         """
-        from src.analysis.processors.config import ValidationResult
 
         for result in results:
             if not result.is_valid:
@@ -712,7 +707,6 @@ class CompositeValidator(ValidatorStrategy):
 
         Returns success if any validation passes.
         """
-        from src.analysis.processors.config import ValidationResult
 
         for result in results:
             if result.is_valid:

@@ -7,7 +7,7 @@ available conversion strategies through a single factory interface.
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import Literal, cast, Optional
 
 from src.analysis.strategies import (
     AmplitudeConversionStrategy,
@@ -29,8 +29,9 @@ class ConversionStrategyFactory:
     unnecessary object recreation.
     """
 
-    _instance: ConversionStrategyFactory | None = None
+    _instance: Optional["ConversionStrategyFactory"] = None
     _strategies: dict[str, ConversionStrategy] = {}
+    _initialized: bool = False
 
     def __new__(cls) -> ConversionStrategyFactory:
         """Ensure singleton instance."""
@@ -59,7 +60,7 @@ class ConversionStrategyFactory:
             VelocityConversionStrategy instance
         """
         factory = cls()
-        return factory._strategies["velocity"]
+        return cast(VelocityConversionStrategy, factory._strategies["velocity"])
 
     @classmethod
     def get_time_strategy(cls) -> TimeConversionStrategy:
@@ -69,7 +70,7 @@ class ConversionStrategyFactory:
             TimeConversionStrategy instance
         """
         factory = cls()
-        return factory._strategies["time"]
+        return cast(TimeConversionStrategy, factory._strategies["time"])
 
     @classmethod
     def get_depth_strategy(cls) -> DepthConversionStrategy:
@@ -79,7 +80,7 @@ class ConversionStrategyFactory:
             DepthConversionStrategy instance
         """
         factory = cls()
-        return factory._strategies["depth"]
+        return cast(DepthConversionStrategy, factory._strategies["depth"])
 
     @classmethod
     def get_amplitude_strategy(cls) -> AmplitudeConversionStrategy:
@@ -89,7 +90,7 @@ class ConversionStrategyFactory:
             AmplitudeConversionStrategy instance
         """
         factory = cls()
-        return factory._strategies["amplitude"]
+        return cast(AmplitudeConversionStrategy, factory._strategies["amplitude"])
 
     @classmethod
     def get_strategy(

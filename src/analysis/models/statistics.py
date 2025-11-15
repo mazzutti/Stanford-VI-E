@@ -9,7 +9,7 @@ error handling and reduced code duplication.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, cast
 from functools import cached_property
 
 import numpy as np
@@ -102,7 +102,7 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
             Dictionary mapping stat names to float values suitable for
             formatted display (strongest correlation, boundary count, validity).
         """
-        strongest_method, strongest_value = self.strongest_correlation
+        _, strongest_value = self.strongest_correlation
         return {
             "strongest": float(strongest_value),
             "boundary_count": float(self.boundary_count),
@@ -337,9 +337,11 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
 
     facies_stats: Dict[int, FaciesStats]
     separation_matrix: NDArray[np.float64]
-    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(default_factory=dict)
+    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(Dict[int, NDArray[np.float64]], {})
+    )
     # Order of facies labels that index rows/columns of `separation_matrix`.
-    label_order: List[int] = field(default_factory=list)
+    label_order: List[int] = field(default_factory=lambda: cast(List[int], []))
 
     def __post_init__(self) -> None:
         """Validate consistency of facies data.
@@ -362,9 +364,7 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
             )
 
         # Validate separation matrix dimensions if available
-        matrix_size = (
-            self.separation_matrix.size if self.separation_matrix is not None else 0
-        )
+        matrix_size = self.separation_matrix.size
         if matrix_size > 0:
             if self.separation_matrix.shape != (stats_count, stats_count):
                 raise ValueError(
@@ -516,8 +516,12 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
         Raw lists of amplitudes for each transition key
     """
 
-    transitions_summary: TransitionStatsMap = field(default_factory=dict)
-    interface_stats: TransitionArrayMap = field(default_factory=dict)
+    transitions_summary: TransitionStatsMap = field(
+        default_factory=lambda: cast(TransitionStatsMap, {})
+    )
+    interface_stats: TransitionArrayMap = field(
+        default_factory=lambda: cast(TransitionArrayMap, {})
+    )
 
     def __post_init__(self) -> None:
         """Validate transitions_summary and interface_stats keys match.

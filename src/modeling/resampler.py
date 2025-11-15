@@ -7,13 +7,13 @@ and keeping ModelingPipeline simpler.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
-from src.modeling.modeling import _unwrap_quantity
+from src.modeling.modeling import unwrap_quantity
 from src.analysis.factories import ConversionStrategyFactory
 from src.utils.quantity import Quantity
 
@@ -56,7 +56,9 @@ class ResamplingService:
         vp_source = processed_props.get("vp")
         if isinstance(vp_source, Quantity):
             # Convert to SI units for numerical stability
-            vp_converted = velocity_strategy.convert(vp_source, vp_source.unit, "m/s")
+            vp_converted = cast(
+                Quantity, velocity_strategy.convert(vp_source, vp_source.unit, "m/s")
+            )
             processed_props["vp"] = vp_converted
 
         vs_source = processed_props.get("vs")
@@ -65,7 +67,7 @@ class ResamplingService:
                 vs_source, vs_source.unit, "m/s"
             )
 
-        vp_val = _unwrap_quantity(processed_props["vp"])
+        vp_val = unwrap_quantity(processed_props["vp"])
 
         plan_cache = get_resample_plan_cache()
         plan = plan_cache.get_plan(grid_spec, vp_val, target_dt=grid_spec.dt)
@@ -88,8 +90,11 @@ class ResamplingService:
                     and original_value.unit != result_unit
                 ):
                     if key in {"vp", "vs"}:
-                        quantity_result = velocity_strategy.convert(
-                            quantity_result, result_unit, original_value.unit
+                        quantity_result = cast(
+                            Quantity,
+                            velocity_strategy.convert(
+                                quantity_result, result_unit, original_value.unit
+                            ),
                         )
 
                 if isinstance(original_value, Quantity):

@@ -114,7 +114,7 @@ class AnalysisObserver(ABC):
     """
 
     @abstractmethod
-    def on_result_computed(self, event: AnalysisEvent):
+    def on_result_computed(self, event: AnalysisEvent) -> None:
         """Called when an analysis result is computed.
 
         Args:
@@ -123,7 +123,7 @@ class AnalysisObserver(ABC):
         pass
 
     @abstractmethod
-    def on_data_changed(self, event: AnalysisEvent):
+    def on_data_changed(self, event: AnalysisEvent) -> None:
         """Called when input data changes.
 
         Args:
@@ -132,7 +132,7 @@ class AnalysisObserver(ABC):
         pass
 
     @abstractmethod
-    def on_error(self, event: AnalysisEvent):
+    def on_error(self, event: AnalysisEvent) -> None:
         """Called when an error occurs during analysis.
 
         Args:
@@ -140,7 +140,7 @@ class AnalysisObserver(ABC):
         """
         pass
 
-    def on_progress(self, event: AnalysisEvent):
+    def on_progress(self, event: AnalysisEvent) -> None:
         """Called to report progress updates (optional).
 
         Args:
@@ -168,7 +168,7 @@ class Observable:
         ...         self.notify_observers(event)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize observable with empty observer list"""
         self._observers: List[AnalysisObserver] = []
 
@@ -207,7 +207,7 @@ class Observable:
             return True
         return False
 
-    def notify_observers(self, event: AnalysisEvent):
+    def notify_observers(self, event: AnalysisEvent) -> None:
         """Notify all observers of an event.
 
         Args:
@@ -237,7 +237,7 @@ class Observable:
                     exc_info=True,
                 )
 
-    def clear_observers(self):
+    def clear_observers(self) -> None:
         """Remove all attached observers"""
         self._observers.clear()
         logger.debug(f"Cleared all observers from {self.__class__.__name__}")
@@ -264,27 +264,27 @@ class ProgressObserver(AnalysisObserver):
         self.progress = 0.0
         self.message = ""
 
-    def on_result_computed(self, event: AnalysisEvent):
+    def on_result_computed(self, event: AnalysisEvent) -> None:
         """Handle result computed event"""
         logger.info(f"{self.name}: Result computed - {event.source}")
 
-    def on_data_changed(self, event: AnalysisEvent):
+    def on_data_changed(self, event: AnalysisEvent) -> None:
         """Handle data changed event"""
         logger.info(f"{self.name}: Data changed - {event.source}")
 
-    def on_error(self, event: AnalysisEvent):
+    def on_error(self, event: AnalysisEvent) -> None:
         """Handle error event"""
         error = event.data
         logger.error(f"{self.name}: Error in {event.source} - {error}")
 
-    def on_progress(self, event: AnalysisEvent):
+    def on_progress(self, event: AnalysisEvent) -> None:
         """Handle progress update event"""
         if "progress" in event.context:
             self.progress = event.context["progress"]
         if "message" in event.context:
             self.message = event.context["message"]
 
-        logger.info(f"{self.name}: {self.message} ({self.progress*100:.1f}%)")
+        logger.info(f"{self.name}: {self.message} ({self.progress * 100:.1f}%)")
 
 
 class LoggingObserver(AnalysisObserver):
@@ -302,28 +302,28 @@ class LoggingObserver(AnalysisObserver):
         self.level = level
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def on_result_computed(self, event: AnalysisEvent):
+    def on_result_computed(self, event: AnalysisEvent) -> None:
         """Log result computed event"""
         self.logger.log(
             self.level,
             f"Result computed by {event.source}: {type(event.data).__name__}",
         )
 
-    def on_data_changed(self, event: AnalysisEvent):
+    def on_data_changed(self, event: AnalysisEvent) -> None:
         """Log data changed event"""
         self.logger.log(
             self.level, f"Data changed in {event.source}: {type(event.data).__name__}"
         )
 
-    def on_error(self, event: AnalysisEvent):
+    def on_error(self, event: AnalysisEvent) -> None:
         """Log error event"""
         self.logger.error(
             f"Error in {event.source}: {event.data}",
             exc_info=isinstance(event.data, Exception),
         )
 
-    def on_progress(self, event: AnalysisEvent):
+    def on_progress(self, event: AnalysisEvent) -> None:
         """Log progress event"""
         msg = event.context.get("message", "Progress update")
         progress = event.context.get("progress", 0)
-        self.logger.log(self.level, f"Progress: {msg} ({progress*100:.1f}%)")
+        self.logger.log(self.level, f"Progress: {msg} ({progress * 100:.1f}%)")

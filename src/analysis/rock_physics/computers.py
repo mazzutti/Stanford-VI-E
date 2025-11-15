@@ -12,7 +12,7 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Sequence, cast
+from typing import Any, Dict, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,11 +49,12 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
         bool
             True if inputs are valid.
         """
-        if not isinstance(inputs, tuple) or len(inputs) != 3:
-            return False
-        vp, vs, rho = inputs
         try:
-            self._validate_inputs(vp, vs, rho)
+            vp, vs, rho = inputs
+        except (TypeError, ValueError):
+            return False
+        try:
+            self.validate_inputs(vp, vs, rho)
             return True
         except (ValueError, TypeError):
             return False
@@ -119,7 +120,8 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
 
         Handles the actual computation with logging and timing.
         """
-        self._validate_inputs(vp, vs, rho)
+        # Use the public validation helper defined on the class
+        self.validate_inputs(vp, vs, rho)
 
         # Validate that angles are provided
         if not angles_deg or len(angles_deg) == 0:
@@ -147,12 +149,17 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
             rho1, rho2 = rho[:, :, k], rho[:, :, k + 1]
 
             # reflectivities: shape (n_angles, ni, nj)
-            reflectivities = np.array(
+            # Use natural dtype from solver (may be complex); avoid implicit
+            # casting to float which triggers ComplexWarning. Convert to real
+            # explicitly when assigning coefficients below.
+            reflectivities = np.asarray(
                 [
                     solver.solve(vp1, vs1, rho1, vp2, vs2, rho2, angle)
                     for angle in angles_rad
                 ]
             )
+            # If solver returned complex arrays, coerce to real safely
+            reflectivities = np.real_if_close(reflectivities)
 
             # Vectorized fitting: reshape to (n_angles, ni*nj), fit all traces at once
             # reflectivities_2d shape: (n_angles, ni*nj)
@@ -183,17 +190,13 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
             # Mark invalid traces (where coefficients are NaN)
             self._mark_invalid_traces(intercept, gradient, k, ni, nj)
 
-        # Pad to match input dimensions (nk) by repeating last layer
-        # This ensures consistency with lambda_rho, mu_rho which have shape (ni, nj, nk)
-        intercept_padded = np.concatenate([intercept, intercept[:, :, -1:]], axis=2)
-        gradient_padded = np.concatenate([gradient, gradient[:, :, -1:]], axis=2)
-
-        product = intercept_padded * gradient_padded
-        scaled_gradient = gradient_padded / (np.abs(intercept_padded) + EPSILON)
+        # Return arrays corresponding to nk-1 inter-layer interfaces
+        product = intercept * gradient
+        scaled_gradient = gradient / (np.abs(intercept) + EPSILON)
 
         return {
-            "intercept": intercept_padded,
-            "gradient": gradient_padded,
+            "intercept": intercept,
+            "gradient": gradient,
             "product": product,
             "scaled_gradient": scaled_gradient,
         }
@@ -241,11 +244,12 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
         Returns:
             Design matrix of shape (n_angles, 2) with columns [1, sin²(θ)]
         """
-        sin2_theta = np.sin(angles_rad) ** 2
-        return np.vstack([np.ones(len(sin2_theta)), sin2_theta]).T
+        sin2_theta = np.asarray(np.sin(angles_rad) ** 2, dtype=float)
+        ones = np.ones(len(sin2_theta), dtype=float)
+        return np.vstack([ones, sin2_theta]).T
 
     @staticmethod
-    def _validate_inputs(
+    def validate_inputs(
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
@@ -286,11 +290,12 @@ class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
         bool
             True if inputs are valid.
         """
-        if not isinstance(inputs, tuple) or len(inputs) != 3:
-            return False
-        vp, vs, rho = inputs
         try:
-            AVOAttributesComputer._validate_inputs(vp, vs, rho)
+            vp, vs, rho = inputs
+        except (TypeError, ValueError):
+            return False
+        try:
+            AVOAttributesComputer.validate_inputs(vp, vs, rho)
             return True
         except (ValueError, TypeError):
             return False
@@ -384,9 +389,12 @@ class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
         bool
             True if inputs are valid.
         """
-        if not isinstance(inputs, tuple) or len(inputs) != 2:
+        # Attempt to unpack; this will safely handle non-tuples or wrong-length tuples.
+        try:
+            lambda_rho, mu_rho = inputs
+        except (TypeError, ValueError):
             return False
-        lambda_rho, mu_rho = inputs
+
         try:
             if lambda_rho.shape != mu_rho.shape:
                 return False
@@ -442,4 +450,4 @@ class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
         k: float,
     ) -> FloatingArray:
         """Internal method for fluid factor computation with decorators applied."""
-        return cast(FloatingArray, lambda_rho - k * mu_rho)
+        return lambda_rho - k * mu_rho

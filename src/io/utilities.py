@@ -2,14 +2,14 @@
 
 from typing import Any, Dict, Optional
 from numpy.typing import NDArray
-import numpy as np
 
 from src.io.loader import DatasetManager
+from src.utils.quantity import Quantity
 
 
 def load_depth_properties(
     dm: DatasetManager,
-) -> Dict[str, Optional[NDArray[np.floating[Any]]]]:
+) -> Dict[str, Optional[NDArray[Any] | Quantity]]:
     """Load depth-domain properties from a DatasetManager.
 
     Extracts the standard set of properties (vp, vs, rho, facies, full_stack)
@@ -20,7 +20,7 @@ def load_depth_properties(
 
     Returns:
         Dictionary with keys: vp, vs, rho, facies, full_stack
-        Values are numpy arrays or None if not available
+        Values are numpy arrays, `Quantity` wrappers, or None if not available
     """
     return {
         "vp": dm.vp,

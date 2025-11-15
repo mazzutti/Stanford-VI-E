@@ -7,7 +7,7 @@ Also provides matplotlib initialization utilities.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Tuple, cast
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,8 +32,8 @@ class PlotConfig:
     is_categorical: bool = False
     # When plotting categorical data, n_categories and category_labels
     # allow specifying the number of categories and human-friendly labels
-    n_categories: int | None = None
-    category_labels: dict[int, str] | None = None
+    n_categories: Optional[int] = None
+    category_labels: Optional[Dict[int, str]] = None
     show_colorbar: bool = True
 
     # Axis styling
@@ -52,7 +52,10 @@ class PlotConfig:
     percentile: float = 99.5
 
     # Additional kwargs for matplotlib
-    extra_kwargs: Dict[str, str | float | bool | int] = field(default_factory=dict)
+    # Use Any for extra kwargs to avoid partially-unknown dict typing from callers
+    extra_kwargs: Dict[str, Any] = field(
+        default_factory=lambda: cast(Dict[str, Any], {})
+    )
 
     @classmethod
     def default(cls) -> "PlotConfig":
@@ -86,7 +89,7 @@ class PlotConfig:
             fontsize_title=11,
         )
 
-    def update(self, **kwargs: str | float | bool | int | Dict[str, Any]) -> "PlotConfig":
+    def update(self, **kwargs: Any) -> "PlotConfig":
         """Create a new PlotConfig with updated values.
 
         Args:
@@ -101,7 +104,7 @@ class PlotConfig:
         current_dict.update(kwargs)
         return PlotConfig(**current_dict)
 
-    def to_imshow_kwargs(self) -> Dict[str, str | float | bool | int]:
+    def to_imshow_kwargs(self) -> Dict[str, Any]:
         """Convert config to kwargs suitable for imshow."""
         return {"cmap": self.cmap, "origin": "upper", **self.extra_kwargs}
 
@@ -152,7 +155,7 @@ def setup_matplotlib(backend: Optional[str] = "Agg") -> None:
     plt.rcParams["image.composite_image"] = True
 
 
-def init_plotting(backend: Optional[str] = "Agg") -> tuple[ModuleType, ModuleType]:
+def init_plotting(backend: Optional[str] = "Agg") -> Tuple[ModuleType, ModuleType]:
     """Initialize matplotlib and return (plt, np) for convenience.
 
     Args:

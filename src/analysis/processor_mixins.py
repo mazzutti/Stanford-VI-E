@@ -620,12 +620,15 @@ class MetricsMixin:
         Optional[ExecutionMetrics]
             Current metrics or None if not tracking.
         """
-        # If StateTrackingMixin is being used, get from there
-        if hasattr(self, "_current_metrics"):
-            if self._current_metrics:
-                return cast(ExecutionMetrics | None, self._current_metrics)
-            elif hasattr(self, "_last_metrics"):
-                return cast(ExecutionMetrics | None, self._last_metrics)
+        # If StateTrackingMixin is being used, get from there using getattr to satisfy type checkers
+        current = getattr(self, "_current_metrics", None)
+        if current is not None:
+            return cast(Optional[ExecutionMetrics], current)
+
+        last = getattr(self, "_last_metrics", None)
+        if last is not None:
+            return cast(Optional[ExecutionMetrics], last)
+
         return self._metrics
 
     def record_error(self) -> None:
@@ -663,7 +666,10 @@ class _MetricsContext:
     def __enter__(self) -> ExecutionMetrics:
         """Enter context, start metrics."""
         self.mixin.start_metrics()
-        return self.mixin._metrics  # type: ignore
+        metrics = self.mixin.get_metrics()
+        if metrics is None:
+            raise RuntimeError("Metrics could not be initialized by start_metrics.")
+        return metrics
 
     def __exit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> None:
         """Exit context, end metrics."""

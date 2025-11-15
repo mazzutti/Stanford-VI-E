@@ -37,15 +37,16 @@ import logging
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.models import FaciesStats
 from src.analysis.strategies import (
     ArrayStatisticsStrategy,
     StandardArrayStatistics,
 )
 
+from src.analysis.validation_result import ValidationResult
+
 if TYPE_CHECKING:
-    from numpy.typing import NDArray as NPArray
     from .boundary import CubeAligner
+    from src.analysis.models import FaciesStats
 
 logger = logging.getLogger(__name__)
 
@@ -104,9 +105,9 @@ class ProcessorMetadata:
     name: str
     domain: str = "default"
     version: str = "1.0"
-    tags: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=lambda: cast(List[str], []))
     description: str = ""
-    dependencies: List[str] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=lambda: cast(List[str], []))
 
     def matches_tags(self, required_tags: List[str]) -> bool:
         """Check if processor has all required tags."""
@@ -227,7 +228,7 @@ class ProcessorRegistry:
         version: Optional[str] = None,
     ) -> List[str]:
         """List registered processor names with optional filtering."""
-        results = []
+        results: List[str] = []
         for name, meta in self._metadata.items():
             if domain and meta.domain != domain:
                 continue
@@ -340,7 +341,7 @@ def create_processor(name: str) -> Any:
 # ============================================================================
 
 
-class PadConfig(TypedDict):  # type: ignore
+class PadConfig(TypedDict):
     """Type definition for padding configuration dictionaries.
 
     Used by numpy.pad() function for array padding operations.
@@ -353,7 +354,7 @@ class PadConfig(TypedDict):  # type: ignore
     """Padding mode ('edge', 'constant', 'reflect', etc.)."""
 
 
-class DilationConfig(TypedDict):  # type: ignore
+class DilationConfig(TypedDict):
     """Type definition for binary dilation configuration dictionaries.
 
     Used by scipy.ndimage.binary_dilation() function.
@@ -361,33 +362,6 @@ class DilationConfig(TypedDict):  # type: ignore
 
     iterations: int
     """Number of dilation iterations."""
-
-
-@dataclass(frozen=True)
-class ValidationResult:
-    """Result of array validation operations.
-
-    Frozen to ensure immutability and hashability for caching.
-
-    Attributes
-    ----------
-    is_valid : bool
-        Whether validation passed.
-    arr1 : Optional[NDArray[np.float64]]
-        First validated/filtered array.
-    arr2 : Optional[NDArray[np.float64]]
-        Second validated/filtered array.
-    n_removed : int
-        Number of elements removed during filtering.
-    error_message : str
-        Error message if validation failed.
-    """
-
-    is_valid: bool
-    arr1: Optional[NDArray[np.float64]] = None
-    arr2: Optional[NDArray[np.float64]] = None
-    n_removed: int = 0
-    error_message: str = ""
 
 
 @dataclass(frozen=True)
@@ -782,6 +756,9 @@ def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
     FaciesStats
         Statistical summary. Empty FaciesStats if array is empty.
     """
+    # Lazy import to avoid circular import at module import time.
+    from src.analysis.models import FaciesStats
+
     if amps.size == 0:
         logger.debug("Computing stats for empty amplitude array")
         return FaciesStats()

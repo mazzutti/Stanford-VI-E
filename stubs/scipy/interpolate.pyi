@@ -1,22 +1,5 @@
-# Stub file for scipy.interpolate
-from typing import Callable, Literal, overload
-from numpy.typing import NDArray, ArrayLike
 from typing import Any
 
-class interp1d:
-    """1-D interpolation function.
+# Minimal stub for interp1d used in repository; returns a callable (Any)
 
-    Interpolates a 1-D function using fixed data points.
-    """
-
-    def __init__(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-        kind: str | int = "linear",
-        bounds_error: bool = True,
-        fill_value: float | tuple[float, float] | str = "extrapolate",
-        assume_sorted: bool = False,
-        axis: int = -1,
-    ) -> None: ...
-    def __call__(self, x: ArrayLike) -> NDArray[Any]: ...
+def interp1d(x: Any, y: Any, kind: Any = ..., axis: int = ..., copy: bool = True, bounds_error: bool = False, fill_value: Any = None, assume_sorted: bool = False) -> Any: ...

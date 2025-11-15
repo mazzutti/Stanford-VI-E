@@ -176,7 +176,7 @@ class VelocityConversionStrategy(ConversionStrategy):
     Now delegates to parameterized implementation for DRY principle.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with shared converter."""
         self._converter = ConversionRegistry.VELOCITY
 
@@ -200,7 +200,7 @@ class TimeConversionStrategy(ConversionStrategy):
     Now delegates to parameterized implementation for DRY principle.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with shared converter."""
         self._converter = ConversionRegistry.TIME
 
@@ -224,7 +224,7 @@ class DepthConversionStrategy(ConversionStrategy):
     Now delegates to parameterized implementation for DRY principle.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with shared converter."""
         self._converter = ConversionRegistry.DEPTH
 
@@ -248,7 +248,7 @@ class AmplitudeConversionStrategy(ConversionStrategy):
     Now delegates to parameterized implementation for DRY principle.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with shared converter."""
         self._converter = ConversionRegistry.AMPLITUDE
 

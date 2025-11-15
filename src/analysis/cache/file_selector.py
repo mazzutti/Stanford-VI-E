@@ -18,7 +18,7 @@ class CacheFileSelector:
     FILE_PREFIX = "avo_"
     EXTENSIONS = [".npz", ".npy"]
 
-    def __init__(self, prefer_npz: bool = True):
+    def __init__(self, prefer_npz: bool = True) -> None:
         """Initialize selector.
 
         Args:
@@ -104,7 +104,7 @@ class CacheFileSelector:
         if allow_npy:
             patterns.append(f"{self.FILE_PREFIX}*{domain}*.npy")
 
-        matches = []
+        matches: List[Path] = []
         for pattern in patterns:
             matches.extend(cache_dir.glob(pattern))
 

@@ -35,7 +35,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, cast
 from pathlib import Path
 import logging
 import json
@@ -84,7 +84,7 @@ class EnvironmentSource(ConfigSource):
         Returns:
             Configuration dictionary
         """
-        config = {}
+        config: Dict[str, Any] = {}
 
         for key, value in os.environ.items():
             if key.startswith(self.prefix):
@@ -127,7 +127,17 @@ class JsonSource(ConfigSource):
             return {}
 
         with open(self.path, "r") as f:
-            config = json.load(f)
+            raw = json.load(f)
+
+        if not isinstance(raw, dict):
+            logger.warning(
+                "JSON config at %s did not contain a mapping; ignoring", self.path
+            )
+            return {}
+
+        from typing import cast
+
+        config = cast(Dict[str, Any], raw)
 
         logger.info(f"Loaded configuration from {self.path}")
         return config
@@ -165,7 +175,17 @@ class YamlSource(ConfigSource):
             return {}
 
         with open(self.path, "r") as f:
-            config = yaml.safe_load(f) or {}
+            raw = yaml.safe_load(f)
+
+        if not isinstance(raw, dict):
+            logger.warning(
+                "YAML config at %s did not contain a mapping; ignoring", self.path
+            )
+            return {}
+
+        from typing import cast
+
+        config = cast(Dict[str, Any], raw)
 
         logger.info(f"Loaded configuration from {self.path}")
         return config
@@ -208,7 +228,7 @@ class ConfigManager(BaseConfig):
         manager = cls()
 
         if file_type == "json":
-            source = JsonSource(path)
+            source: ConfigSource = JsonSource(path)
         elif file_type == "yaml" or file_type == "yml":
             source = YamlSource(path)
         else:
@@ -289,7 +309,7 @@ class ConfigManager(BaseConfig):
         """
         return self._config.copy()
 
-    def _merge_config(self, target: Dict, source: Dict) -> None:
+    def _merge_config(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
         """Recursively merge source config into target.
 
         Args:
@@ -302,7 +322,10 @@ class ConfigManager(BaseConfig):
                 and key in target
                 and isinstance(target[key], dict)
             ):
-                self._merge_config(target[key], value)
+                # Cast both sides to Dict[str, Any] so the type checker knows they are mappings
+                self._merge_config(
+                    cast(Dict[str, Any], target[key]), cast(Dict[str, Any], value)
+                )
             else:
                 target[key] = value
 

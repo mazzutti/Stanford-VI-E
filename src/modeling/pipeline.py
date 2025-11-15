@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 import logging
 
 from src.modeling.config import ModelingConfig
-from src.modeling.modeling import AVOSynthesizer, SynthesisConfig, _unwrap_quantity
+from src.modeling.modeling import AVOSynthesizer, SynthesisConfig, unwrap_quantity
 from src.modeling.model_cache import CacheManager
 from src.io.utilities import load_depth_properties
 from src.modeling.resampler import ResamplingService
@@ -58,11 +58,7 @@ class ModelingPipeline:
         )
         self.resampler = ResamplingService()
 
-    def run(
-        self,
-    ) -> dict[
-        str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]
-    ]:
+    def run(self) -> dict[str, Any]:
         """Execute the complete modeling pipeline.
 
         Uses configuration from self.config, delegating to specialized services:
@@ -87,8 +83,8 @@ class ModelingPipeline:
         # Load dataset
         logger.info("Loading dataset from %s...", cfg.data_path)
         dm = DatasetManager.from_stanfordsix(cfg.data_path, cfg.file_map, cfg.grid_spec)
-        props_depth: dict[str, NDArray[np.floating[Any]] | None] = (
-            load_depth_properties(dm)
+        props_depth: dict[str, NDArray[Any] | Quantity | None] = load_depth_properties(
+            dm
         )
         rpm = RockPhysicsModel.from_props(props_depth, cfg.grid_spec)
         rpm.ensure_units()
@@ -131,7 +127,10 @@ class ModelingPipeline:
 
         resampler = resampler_factory.get_resampler(cfg.grid_spec)
         vp_depth = props_depth["vp"]
-        vp_arr = vp_depth.array if hasattr(vp_depth, "array") else vp_depth
+        # Ensure we pass a raw ndarray to the cache/resampler (unwrap Quantity safely)
+        if vp_depth is None:
+            raise ValueError("vp not available for resampling")
+        vp_arr = unwrap_quantity(vp_depth)
 
         plan_cache = get_resample_plan_cache()
         plan = plan_cache.get_plan(cfg.grid_spec, vp_arr)
@@ -140,9 +139,9 @@ class ModelingPipeline:
         full_stack_depth = resampler.time_to_depth_cube(full_stack, vp_arr, plan=plan)
 
         # Convert angle stacks to depth
-        angle_stacks_depth = []
+        angle_stacks_depth: list[NDArray[np.floating[Any]] | Quantity] = []
         if angle_stacks:
-            for i, angle_stack in enumerate(angle_stacks):
+            for angle_stack in angle_stacks:
                 angle_stack_depth = resampler.time_to_depth_cube(
                     angle_stack, vp_arr, plan=plan
                 )
@@ -151,9 +150,9 @@ class ModelingPipeline:
         # Save depth-domain seismograms to cache
         # Compute the same cache key as time-domain (since they're derived from the same inputs)
         key = self.cache_manager.compute_cache_key(
-            _unwrap_quantity(props_time["vp"]),
-            _unwrap_quantity(props_time["vs"]),
-            _unwrap_quantity(props_time["rho"]),
+            unwrap_quantity(props_time["vp"]),
+            unwrap_quantity(props_time["vs"]),
+            unwrap_quantity(props_time["rho"]),
             list(cfg.angles),
             cfg.wavelet,
             use_quality_weighting=syn_cfg.use_quality_weighting,

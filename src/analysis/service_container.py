@@ -27,6 +27,7 @@ from src.analysis.patterns.dependency_injection import (
     Container,
     ContainerBuilder,
 )
+from src.analysis.patterns.dependency_injection import ServiceProvider
 from src.analysis.patterns.event_bus import EventBus
 from src.analysis.patterns.circuit_breaker import CircuitBreakerPool
 from src.analysis.config_manager import ConfigManager
@@ -90,7 +91,7 @@ def create_container() -> Container:
     return builder.build()
 
 
-def create_service_provider(container: Optional[Container] = None):
+def create_service_provider(container: Optional[Container] = None) -> ServiceProvider:
     """Create a service provider from a container.
 
     Args:
@@ -103,7 +104,8 @@ def create_service_provider(container: Optional[Container] = None):
         container = create_container()
 
     logger.debug("Creating service provider")
-    return container.create_service_provider()
+    # Access the container's service provider instance directly
+    return container.service_provider
 
 
 def get_default_container() -> Container:
@@ -134,7 +136,7 @@ class ServiceContainerBuilder:
     Allows for easy extension and customization of the DI container.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize builder."""
         self.builder = ContainerBuilder()
         self._event_bus: Optional[EventBus] = None
@@ -248,11 +250,12 @@ class ServiceContainerBuilder:
         logger.info("Service container built successfully")
         return self.builder.build()
 
-    def build_provider(self):
+    def build_provider(self) -> ServiceProvider:
         """Build and return service provider.
 
         Returns:
             ServiceProvider instance
         """
         container = self.build()
-        return container.create_service_provider()
+        # Access the container's service provider instance directly
+        return container.service_provider

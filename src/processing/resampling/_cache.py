@@ -127,7 +127,7 @@ __all__ = ["ResamplePlanCache", "get_resample_plan_cache", "set_resample_plan_ca
 
 # Module-level default cache (singleton). Consumers may override it by
 # calling `set_resample_plan_cache(...)` prior to first use.
-_DEFAULT_CACHE: Optional[ResamplePlanCache] = None
+_default_cache: Optional[ResamplePlanCache] = None
 
 
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
@@ -135,13 +135,13 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     if necessary. If a different maxsize is required, call this with
     the desired maxsize before other modules import the cache.
     """
-    global _DEFAULT_CACHE
-    if _DEFAULT_CACHE is None:
-        _DEFAULT_CACHE = ResamplePlanCache(maxsize=maxsize)
-    return _DEFAULT_CACHE
+    global _default_cache
+    if _default_cache is None:
+        _default_cache = ResamplePlanCache(maxsize=maxsize)
+    return _default_cache
 
 
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""
-    global _DEFAULT_CACHE
-    _DEFAULT_CACHE = cache
+    global _default_cache
+    _default_cache = cache

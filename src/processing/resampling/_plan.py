@@ -11,7 +11,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, List, Union, cast, Any
+from typing import Optional, Tuple, List, Union, Any
 from numpy.typing import NDArray
 
 
@@ -120,15 +120,15 @@ class ResamplePlan:
         (nz+1, ntr) if non-uniform.
         """
         if self.uniform_twt:
-            return cast(NDArray[Any], np.concatenate([[0.0], self.twt_arr[0, 0, :]]))
+            arr: NDArray[Any] = np.concatenate([[0.0], self.twt_arr[0, 0, :]])
+            return arr
         # build per-column padded twt
         twt_padded = np.concatenate(
             [np.zeros((self.ni, self.nj, 1)), self.twt_arr], axis=2
         )
         # reshape to (nz+1, ntr)
-        return cast(
-            NDArray[Any], twt_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
-        )
+        result: NDArray[Any] = twt_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
+        return result
 
     def prepare_depth_padded_flat(self, data_arr: NDArray[Any]) -> NDArray[Any]:
         """Given a depth-sampled `data_arr` shaped (ni, nj, nz), produce
@@ -138,9 +138,8 @@ class ResamplePlan:
         if data_arr.shape != (self.ni, self.nj, self.nz):
             raise ValueError("data_arr shape must match vp dimensions")
         depth_padded = np.concatenate([data_arr[:, :, 0:1], data_arr], axis=2)
-        return cast(
-            NDArray[Any], depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
-        )
+        result: NDArray[Any] = depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
+        return result
 
     def blocks(self) -> List[Tuple[int, int]]:
         ntr = self.ntr

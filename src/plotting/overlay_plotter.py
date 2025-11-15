@@ -5,7 +5,7 @@ Uses PlotConfig and ImageRenderer for clean, modern design.
 """
 
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -44,11 +44,12 @@ class OverlayPlotter(BasePlotter):
         Returns:
             Binary array marking boundaries
         """
-        smoothed = gaussian_filter(facies_slice.astype(float), sigma=sigma)
-        grad_x = sobel(smoothed, axis=0)
-        grad_y = sobel(smoothed, axis=1)
+        # Cast intermediate results to Any to reduce third-party typing noise
+        smoothed = cast(Any, gaussian_filter(facies_slice.astype(float), sigma=sigma))
+        grad_x = cast(Any, sobel(smoothed, axis=0))
+        grad_y = cast(Any, sobel(smoothed, axis=1))
         gradient_magnitude = np.sqrt(grad_x**2 + grad_y**2)
-        boundaries = gradient_magnitude > threshold
+        boundaries = cast(NDArray[np.bool_], gradient_magnitude > threshold)
 
         self._log_debug(
             f"detected boundaries: {boundaries.sum()} pixels above threshold {threshold}"
@@ -87,16 +88,22 @@ class OverlayPlotter(BasePlotter):
         boundaries = self.detect_facies_boundaries(facies_slice)
 
         nj_facies, nk_facies = facies_slice.shape
-        J = np.arange(nj_facies)
-        K = np.arange(nk_facies) * config.k_scale
-        JJ, KK = np.meshgrid(J, K, indexing="ij")
+        # meshgrid and coordinate arrays can produce partially-unknown types
+        # Use explicit dtypes to give Pyright concrete array types
+        J: NDArray[Any] = np.arange(nj_facies, dtype=float)
+        K: NDArray[Any] = np.arange(nk_facies, dtype=float) * float(config.k_scale)
+        jj, kk = np.meshgrid(J, K, indexing="ij")
+        # Convert meshgrid outputs to concrete ndarrays
+        jj = np.asarray(jj)
+        kk = np.asarray(kk)
 
         # Overlay boundary contours
+        boundary_levels: NDArray[Any] = np.asarray([0.5])
         ax.contour(
-            JJ.T,
-            KK.T,
+            jj.T,
+            kk.T,
             boundaries.T,
-            levels=[0.5],
+            levels=boundary_levels,
             colors="lime",
             linewidths=1.5,
             linestyles="solid",
@@ -104,10 +111,10 @@ class OverlayPlotter(BasePlotter):
         )
 
         # Overlay facies transitions as dashed lines
-        facies_levels = [0.5, 1.5, 2.5]
+        facies_levels: NDArray[Any] = np.asarray([0.5, 1.5, 2.5])
         ax.contour(
-            JJ.T,
-            KK.T,
+            jj.T,
+            kk.T,
             facies_slice.T,
             levels=facies_levels,
             colors="white",
@@ -144,7 +151,9 @@ class OverlayPlotter(BasePlotter):
 
         # Allow callers to provide human-friendly category labels
         if category_labels:
-            config = config.update(category_labels=category_labels)
+            # PlotConfig.update expects JSON-serializable mapping types;
+            # cast to Any so the typed update accepts the dict[int,str].
+            config = config.update(category_labels=cast(Any, category_labels))
 
         config = config.update(
             xlabel="Crossline (J)",

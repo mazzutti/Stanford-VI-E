@@ -567,18 +567,24 @@ class DomainHandlerRegistry:
         Call this when shutting down the application to allow handlers
         to release resources. Continues cleanup even if one handler fails.
         """
-        errors = []
+        errors: list[tuple[Domain, Exception]] = []
         for domain, handler in self._handlers.items():
             try:
                 handler.cleanup()
                 logger.debug(f"Cleaned up handler for domain {domain.name}")
             except Exception as e:
-                error_msg = f"Error cleaning up {domain.name} handler: {e}"
-                logger.exception(error_msg)
-                errors.append(error_msg)
+                logger.exception(
+                    "Error during cleanup of %s handler", domain.name, exc_info=e
+                )
+                errors.append((domain, e))
 
         if errors:
-            logger.warning(f"Cleanup completed with {len(errors)} error(s)")
+            error_details = ", ".join([d.name for d, _ in errors])
+            logger.warning(
+                "Cleanup completed with %d error(s) in handlers: %s",
+                len(errors),
+                error_details,
+            )
         else:
             logger.debug("All handlers cleaned up successfully")
 

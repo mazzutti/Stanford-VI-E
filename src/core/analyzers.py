@@ -42,7 +42,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from types import TracebackType
-from typing import Any, Dict, Generic, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, cast
 
 from src.core import ValidationError
 
@@ -133,6 +133,11 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         self._error: Optional[Exception] = None
 
         logger.debug(f"{self.name}: Created")
+
+    @property
+    def config(self) -> Optional[ConfigT]:
+        """Return the analyzer configuration (may be None)."""
+        return self._config
 
     # ====================================================================
     # Lifecycle Management
@@ -396,7 +401,7 @@ class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
         for stage_name, stage_func in self._pipeline:
             logger.debug(f"{self.name}: Executing stage '{stage_name}'")
             result = stage_func(result)
-        return result
+        return cast(ResultT, result)
 
 
 # ============================================================================
@@ -407,9 +412,11 @@ class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
 class CompositeMixin:
     """Mixin for analyzers that compose multiple sub-analyzers."""
 
+    name: str
+
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize composite."""
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self._sub_analyzers: Dict[str, Any] = {}
 
     def add_sub_analyzer(self, name: str, analyzer: Any) -> None:
@@ -425,9 +432,11 @@ class CompositeMixin:
 class CacheMixin:
     """Mixin for analyzers that use caching."""
 
+    name: str
+
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize cache mixin."""
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self._cache: Dict[str, Any] = {}
         self._cache_enabled = True
 
@@ -450,9 +459,11 @@ class CacheMixin:
 class ValidationMixin:
     """Mixin for analyzers with validation requirements."""
 
+    name: str
+
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize validation mixin."""
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self._validators: list[Any] = []
 
     def add_validator(self, validator: Any) -> None:
@@ -471,9 +482,11 @@ class ValidationMixin:
 class MetricsMixin:
     """Mixin for tracking analysis metrics."""
 
+    name: str
+
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize metrics mixin."""
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self._metrics_history: list[Dict[str, Any]] = []
 
     def record_metric(self, name: str, value: Any) -> None:

@@ -5,10 +5,11 @@ Uses PlotConfig for configuration and ImageRenderer for rendering.
 """
 
 import logging
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union, cast, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
@@ -70,21 +71,27 @@ def plot_3d_slices_to_png(
     ... )
     """
     # Create figure with 3 subplots (inline, crossline, depthslice)
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig: Figure = plt.figure(figsize=(15, 5))
+    # When subplots returns a sequence/iterable of Axes, treat it as a Sequence[Axes]
+    axes = cast(Sequence[Axes], fig.subplots(1, 3))
     fig.suptitle(title, fontsize=16, fontweight="bold")
 
     # Get middle indices for slicing
     ni, nj, nk = data.shape
-    mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
+    mid_i: int = ni // 2
+    mid_j: int = nj // 2
+    mid_k: int = nk // 2
 
     # Get data range for consistent colorbar (2nd and 98th percentile)
+    vmin: float
+    vmax: float
     vmin, vmax = np.percentile(data, [2, 98])
 
     # Create colorbar label with units
-    colorbar_label = f"{title}\n[{units}]"
+    colorbar_label: str = f"{title}\n[{units}]"
 
     # Inline slice (constant i)
-    im1 = axes[0].imshow(
+    im1: AxesImage = axes[0].imshow(
         data[mid_i, :, :].T,
         aspect="auto",
         origin="upper",
@@ -92,13 +99,14 @@ def plot_3d_slices_to_png(
         vmin=vmin,
         vmax=vmax,
     )
-    axes[0].set_title(f"Inline (i={mid_i})")
-    axes[0].set_xlabel("Crossline (j)")
-    axes[0].set_ylabel("Depth (k)")
-    plt.colorbar(im1, ax=axes[0], label=colorbar_label)
+    ax0 = axes[0]
+    ax0.set_title(f"Inline (i={mid_i})")
+    ax0.set_xlabel("Crossline (j)")
+    ax0.set_ylabel("Depth (k)")
+    _ = fig.colorbar(im1, ax=ax0, label=colorbar_label)
 
     # Crossline slice (constant j)
-    im2 = axes[1].imshow(
+    im2: AxesImage = axes[1].imshow(
         data[:, mid_j, :].T,
         aspect="auto",
         origin="upper",
@@ -106,13 +114,14 @@ def plot_3d_slices_to_png(
         vmin=vmin,
         vmax=vmax,
     )
-    axes[1].set_title(f"Crossline (j={mid_j})")
-    axes[1].set_xlabel("Inline (i)")
-    axes[1].set_ylabel("Depth (k)")
-    plt.colorbar(im2, ax=axes[1], label=colorbar_label)
+    ax1 = axes[1]
+    ax1.set_title(f"Crossline (j={mid_j})")
+    ax1.set_xlabel("Inline (i)")
+    ax1.set_ylabel("Depth (k)")
+    _ = fig.colorbar(im2, ax=ax1, label=colorbar_label)
 
     # Depth slice (constant k)
-    im3 = axes[2].imshow(
+    im3: AxesImage = axes[2].imshow(
         data[:, :, mid_k].T,
         aspect="auto",
         origin="upper",
@@ -120,10 +129,11 @@ def plot_3d_slices_to_png(
         vmin=vmin,
         vmax=vmax,
     )
-    axes[2].set_title(f"Depth Slice (k={mid_k})")
-    axes[2].set_xlabel("Inline (i)")
-    axes[2].set_ylabel("Crossline (j)")
-    plt.colorbar(im3, ax=axes[2], label=colorbar_label)
+    ax2 = axes[2]
+    ax2.set_title(f"Depth Slice (k={mid_k})")
+    ax2.set_xlabel("Inline (i)")
+    ax2.set_ylabel("Crossline (j)")
+    _ = fig.colorbar(im3, ax=ax2, label=colorbar_label)
 
     plt.tight_layout()
 
@@ -170,7 +180,9 @@ class SlicePlotter(BasePlotter):
 
         # Extract inline slice
         idx_i, _, _ = slice_indices
-        slice_data = cube[idx_i, :, :]
+        slice_data: NDArray[Any] = cube[idx_i, :, :]
+        # Ensure we pass a concrete ndarray to downstream renderers
+        slice_data = np.asarray(slice_data)
 
         # Update config with slice information
         config = config.update(
@@ -207,7 +219,9 @@ class SlicePlotter(BasePlotter):
         config = config or PlotConfig.default()
 
         _, idx_j, _ = slice_indices
-        slice_data = cube[:, idx_j, :]
+        slice_data: NDArray[Any] = cube[:, idx_j, :]
+        # Ensure we pass a concrete ndarray to downstream renderers
+        slice_data = np.asarray(slice_data)
 
         config = config.update(
             xlabel="Inline (I)",
@@ -244,11 +258,13 @@ class SlicePlotter(BasePlotter):
         config = config or PlotConfig.default()
 
         _, _, idx_k = slice_indices
-        slice_data = cube[:, :, idx_k]
+        slice_data: NDArray[Any] = cube[:, :, idx_k]
+        # Ensure we pass a concrete ndarray to downstream renderers
+        slice_data = np.asarray(slice_data)
 
         config = config.update(
-            xlabel="Crossline (J)",
-            ylabel="Inline (I)",
+            xlabel="Inline (I)",
+            ylabel="Crossline (J)",
             title=config.title or f"Depth {idx_k}",
         )
 
@@ -282,9 +298,9 @@ class SlicePlotter(BasePlotter):
         idx_i, idx_j, idx_k = slice_indices
 
         # Extract 2D slices
-        slice_i = cube[idx_i, :, :]
-        slice_j = cube[:, idx_j, :]
-        slice_k = cube[:, :, idx_k]
+        slice_i = np.asarray(cube[idx_i, :, :])
+        slice_j = np.asarray(cube[:, idx_j, :])
+        slice_k = np.asarray(cube[:, :, idx_k])
 
         # Compute normalization
         vmin, vmax = DataNormalizer.compute_limits(
@@ -293,23 +309,30 @@ class SlicePlotter(BasePlotter):
         )
 
         denom = vmax - vmin if vmax != vmin else 1.0
-        cmap_fn = plt.get_cmap(config.cmap)
+        plt_any = cast(Any, plt)
+        cmap_fn = plt_any.get_cmap(config.cmap)
 
-        # Create coordinate grids
-        J, K = np.mgrid[0:nj, 0:nk]
-        I_j, K_j = np.mgrid[0:ni, 0:nk]
-        I_k, J_k = np.mgrid[0:ni, 0:nj]
+        # Create coordinate grids and annotate explicitly
+        J: NDArray[Any] = np.mgrid[0:nj, 0:nk][0]
+        K: NDArray[Any] = np.mgrid[0:nj, 0:nk][1]
+        I_j: NDArray[Any] = np.mgrid[0:ni, 0:nk][0]
+        K_j: NDArray[Any] = np.mgrid[0:ni, 0:nk][1]
+        I_k: NDArray[Any] = np.mgrid[0:ni, 0:nj][0]
+        J_k: NDArray[Any] = np.mgrid[0:ni, 0:nj][1]
 
-        Xi = np.full_like(J, fill_value=idx_i, dtype=float)
-        Xj = I_j
-        Yj = np.full_like(I_j, fill_value=idx_j, dtype=float)
-        Xk = I_k
-        Yk = J_k
-        Zk = np.full_like(I_k, fill_value=idx_k * config.k_scale, dtype=float)
+        Xi: NDArray[Any] = np.full_like(J, fill_value=idx_i, dtype=float)
+        Xj: NDArray[Any] = I_j
+        Yj: NDArray[Any] = np.full_like(I_j, fill_value=idx_j, dtype=float)
+        Xk: NDArray[Any] = I_k
+        Yk: NDArray[Any] = J_k
+        Zk: NDArray[Any] = np.full_like(
+            I_k, fill_value=idx_k * config.k_scale, dtype=float
+        )
 
         # Plot surfaces (cast to 3D axes for proper typing)
-        ax3d = cast(Axes3D, ax)
-        ax3d.plot_surface(
+        # Avoid referencing Axes3D at runtime (it's TYPE_CHECKING-only); use Any
+        ax3d_any = cast(Any, ax)
+        ax3d_any.plot_surface(
             Xi,
             J,
             K * config.k_scale,
@@ -319,7 +342,7 @@ class SlicePlotter(BasePlotter):
             shade=False,
         )
 
-        ax3d.plot_surface(
+        ax3d_any.plot_surface(
             Xj,
             Yj,
             K_j * config.k_scale,
@@ -329,7 +352,7 @@ class SlicePlotter(BasePlotter):
             shade=False,
         )
 
-        ax3d.plot_surface(
+        ax3d_any.plot_surface(
             Xk,
             Yk,
             Zk,
@@ -340,13 +363,15 @@ class SlicePlotter(BasePlotter):
         )
 
         if config.title:
-            ax3d.set_title(config.title, fontsize=config.fontsize_title, weight="bold")
-        ax3d.set_xlabel("I-axis (Inline)")
-        ax3d.set_ylabel("J-axis (Crossline)")
-        ax3d.set_zlabel(
+            ax3d_any.set_title(
+                config.title, fontsize=config.fontsize_title, weight="bold"
+            )
+        ax3d_any.set_xlabel("I-axis (Inline)")
+        ax3d_any.set_ylabel("J-axis (Crossline)")
+        ax3d_any.set_zlabel(
             f"{config.k_label} ({config.k_unit})" if config.k_unit else config.k_label
         )
-        ax3d.invert_zaxis()
+        ax3d_any.invert_zaxis()
 
         self._log_debug(
             f"plotted 3d slices: indices=({idx_i}, {idx_j}, {idx_k}), "

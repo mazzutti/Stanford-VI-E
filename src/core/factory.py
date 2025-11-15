@@ -42,10 +42,10 @@ from typing import (
     Optional,
     Type,
     TypeVar,
+    cast,
 )
 
 if TYPE_CHECKING:
-    from src.analysis.base import AnalyzerInterface
     from src.analysis.models.config import FaciesCorrelationConfig
 
 logger = logging.getLogger(__name__)
@@ -110,9 +110,13 @@ class FluentBuilder(Generic[T]):
     """
 
     name: str = "component"
-    _components: Dict[str, Any] = field(default_factory=dict)
-    _config: Dict[str, Any] = field(default_factory=dict)
-    _validators: List[Callable[[Dict[str, Any]], bool]] = field(default_factory=list)
+    _components: Dict[str, Any] = field(
+        default_factory=lambda: cast(Dict[str, Any], {})
+    )
+    _config: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    _validators: List[Callable[[Dict[str, Any]], bool]] = field(
+        default_factory=lambda: cast(List[Callable[[Dict[str, Any]], bool]], [])
+    )
 
     def with_config(self, config: Any) -> FluentBuilder[T]:
         """Set component configuration.
@@ -212,15 +216,15 @@ class BuildableFactory(ABC, Generic[T]):
     Consolidates factory creation logic with builder pattern support.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize factory."""
-        self._builders: Dict[str, Type[FluentBuilder]] = {}
+        self._builders: Dict[str, Type[FluentBuilder[Any]]] = {}
         self._creators: Dict[str, Callable[..., T]] = {}
 
     def register_builder(
         self,
         name: str,
-        builder_class: Type[FluentBuilder],
+        builder_class: Type[FluentBuilder[Any]],
     ) -> None:
         """Register a builder class.
 
@@ -249,7 +253,7 @@ class BuildableFactory(ABC, Generic[T]):
         self,
         builder_name: str,
         **builder_args: Any,
-    ) -> T:
+    ) -> Any:
         """Create object using registered builder.
 
         Args:
@@ -298,11 +302,11 @@ class ServiceFactory:
     builder and direct creation patterns.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize service factory."""
         self._services: Dict[str, Callable[..., Any]] = {}
         self._instances: Dict[str, Any] = {}  # For singletons
-        self._singletons: set = set()  # Track which services are singletons
+        self._singletons: set[str] = set()  # Track which services are singletons
 
     def register(
         self,
@@ -351,7 +355,7 @@ class ServiceFactory:
         logger.debug("Cleared singleton instances")
 
 
-class AnalyzerFactory(BuildableFactory):
+class AnalyzerFactory(BuildableFactory[Any]):
     """Specialized factory for creating analyzers.
 
     Consolidates analyzer creation logic with support for
@@ -377,7 +381,8 @@ class AnalyzerFactory(BuildableFactory):
         if config is None:
             from src.analysis.facies.config import FaciesAnalysisConfig
 
-            config = FaciesAnalysisConfig()
+            # FaciesAnalysisConfig and FaciesCorrelationConfig types differ; cast to Any
+            config = cast(Any, FaciesAnalysisConfig())
 
         return FaciesCorrelationAnalyzer(config=config)
 

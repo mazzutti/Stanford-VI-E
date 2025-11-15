@@ -5,7 +5,7 @@ cache files by extracting file loading logic into dedicated classes.
 """
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union, Callable, cast
 from numpy.typing import NDArray
 from numpy.lib.npyio import NpzFile
 import numpy as np
@@ -22,7 +22,9 @@ class NPZExtractor:
     DEFAULT_KEY = "full_stack"
 
     @classmethod
-    def extract(cls, archive: NpzFile, key: Optional[str] = None) -> Optional[NDArray]:
+    def extract(
+        cls, archive: NpzFile, key: Optional[str] = None
+    ) -> Optional[NDArray[Any]]:
         """Extract array from NPZ archive.
 
         Args:
@@ -52,7 +54,11 @@ class NPZExtractor:
 class FileLoader:
     """Simplified file loading with clean separation of concerns."""
 
-    def __init__(self, np_load=np.load, extractor: NPZExtractor = None):
+    def __init__(
+        self,
+        np_load: Callable[..., Any] = np.load,
+        extractor: Optional[NPZExtractor] = None,
+    ) -> None:
         """Initialize file loader.
 
         Args:
@@ -67,7 +73,7 @@ class FileLoader:
         path: Path,
         mmap_mode: Optional[str] = None,
         convert_to_float64: bool = True,
-    ) -> Optional[NDArray]:
+    ) -> Optional[NDArray[Any]]:
         """Load file with simplified logic.
 
         Args:
@@ -102,14 +108,15 @@ class FileLoader:
 
     def _load_file(
         self, path: Path, mmap_mode: Optional[str]
-    ) -> Union[NDArray, NpzFile]:
+    ) -> Union[NDArray[Any], NpzFile]:
         """Load file using NumPy."""
-        kwargs = {"allow_pickle": False}
+        kwargs: dict[str, Any] = {"allow_pickle": False}
         if mmap_mode:
             kwargs["mmap_mode"] = mmap_mode
-        return self._np_load(str(path), **kwargs)
+        # np.load may return different types; cast to the declared union for callers
+        return cast(Union[NDArray[Any], NpzFile], self._np_load(str(path), **kwargs))
 
-    def _handle_npz(self, loaded: NpzFile) -> Optional[NDArray]:
+    def _handle_npz(self, loaded: NpzFile) -> Optional[NDArray[Any]]:
         """Extract array from NPZ archive."""
         with loaded as archive:
             return self._extractor.extract(archive)

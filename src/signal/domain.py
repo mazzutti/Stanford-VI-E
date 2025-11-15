@@ -5,13 +5,13 @@ resamples properties onto regular time grids.
 """
 
 import logging
-from typing import Any, cast
+from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 from numba import njit, prange
 
 from src.io.grid import GridSpec
-from src.utils.quantity import Quantity
+from src.utils.quantity import Quantity, to_ndarray
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +54,7 @@ class DepthTimeConverter:
         logger.info("Converting depth to two-way time (TWT)...")
 
         input_was_quantity = isinstance(vp_depth, Quantity)
-        if input_was_quantity:
-            vp_arr = cast(Quantity, vp_depth).array
-        else:
-            vp_arr = cast(NDArray[np.floating[Any]], vp_depth)
+        vp_arr = to_ndarray(vp_depth)
 
         from src.processing.resampling._cache import get_resample_plan_cache
 
@@ -90,14 +87,10 @@ class DepthTimeConverter:
         """
         # Extract and unwrap Quantity objects
         vp_prop = properties_depth["vp"]
-        vp_arr = vp_prop.array if isinstance(vp_prop, Quantity) else vp_prop
+        vp_arr = to_ndarray(vp_prop)
         ni, nj, _ = vp_arr.shape
 
-        twt_arr = (
-            twt_irregular.array
-            if isinstance(twt_irregular, Quantity)
-            else twt_irregular
-        )
+        twt_arr = to_ndarray(twt_irregular)
 
         # Compute regular time axis
         max_twt = np.max(twt_arr)
@@ -107,7 +100,7 @@ class DepthTimeConverter:
         # Initialize output dictionary
         resampled_properties: dict[str, NDArray[np.floating[Any]] | Quantity] = {}
         for key, cube in properties_depth.items():
-            cube_arr = cube.array if isinstance(cube, Quantity) else cube
+            cube_arr = to_ndarray(cube)
             resampled_properties[key] = np.zeros(
                 (ni, nj, len(time_axis)), dtype=cube_arr.dtype
             )

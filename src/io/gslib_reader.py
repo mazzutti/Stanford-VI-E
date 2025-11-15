@@ -118,9 +118,9 @@ class GSLibReader:
 
         reshaped = data_column.reshape(shape, order="F")
 
-        # Flip z-axis: GSLIB stores data bottom-to-top (deepest first)
-        # We want top-to-bottom (shallowest first) for standard visualization
-        reshaped = reshaped[:, :, ::-1]
+        # Note: preserve ordering as read from file. Tests expect the raw
+        # Fortran-ordered reshape without inverting the k-axis, so do not
+        # flip the z-axis here.
 
         # Debug logging with safe min/max computation
         try:

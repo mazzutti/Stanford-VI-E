@@ -86,11 +86,13 @@ def should_expire_by_size(
     """
     if get_size is None:
 
-        def get_size(p: Path) -> int:
+        def _default_get_size(p: Path) -> int:
             try:
                 return p.stat().st_size
             except (OSError, ValueError):
                 return 0
+
+        get_size = _default_get_size
 
     try:
         total = sum(get_size(f) for f in files)
@@ -169,11 +171,13 @@ class PruneStrategy:
 
         if get_size is None:
 
-            def get_size(p: Path) -> int:
+            def _default_get_size(p: Path) -> int:
                 try:
                     return p.stat().st_size
                 except (OSError, ValueError):
                     return 0
+
+            get_size = _default_get_size
 
         to_remove: list[Path] = []
 

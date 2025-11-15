@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Dict, Optional, TYPE_CHECKING, cast
+from pathlib import Path
 
 from src.analysis.cache.loader import CacheLoader
 from src.analysis.types.protocols import CacheLoaderProtocol
@@ -125,7 +126,26 @@ class CacheServiceFactory(ServiceFactory):
             Cache loader implementation.
         """
         logger.debug("Creating CacheLoader")
-        return CacheLoader(dm)
+
+        # Build a selector that prefers an explicit cache_dir but falls back
+        # to a default cache directory under the provided DatasetManager.
+        def _selector(cache_dir: str, domain: str) -> Optional[str]:
+            try:
+                if cache_dir:
+                    return CacheLoader.default_selector(cache_dir, domain)
+                # Fallback to dataset manager's data path + default cache dir
+                base = Path(dm.data_path) / CacheServiceFactory.DEFAULT_CACHE_DIR
+                return CacheLoader.default_selector(str(base), domain)
+            except Exception:
+                logger.exception(
+                    "Selector wrapper failed; delegating to default selector"
+                )
+                return CacheLoader.default_selector(".", domain)
+
+        # Create loader with the selector wrapper. Cast to the protocol to
+        # satisfy the static checker (CacheLoader implements the protocol
+        # at runtime but signatures are slightly more permissive).
+        return cast(CacheLoaderProtocol, CacheLoader(selector=_selector))
 
 
 class ProcessorServiceFactory(ServiceFactory):
@@ -209,22 +229,31 @@ class ProcessorServiceFactory(ServiceFactory):
             from src.processing.resampling._resampler import DepthTimeResampler
 
             logger.debug(f"Creating DepthTimeResampler with grid_spec: {grid_spec}")
-            resampler = DepthTimeResampler()
-            resampler.grid_spec = grid_spec
-            return resampler
+            # DepthTimeResampler requires GridSpec at construction time
+            return DepthTimeResampler(grid_spec)
         else:
             # Use factory if available
             try:
                 from src.processing.resampling._resampler import resampler_factory
 
                 logger.debug("Creating resampler via factory")
-                return resampler_factory.get_resampler()
+                # Prefer passing grid_spec when available; otherwise attempt
+                # to call the factory without parameters. Use an Any-cast
+                # to allow flexibility across different factory implementations.
+                if grid_spec is not None:
+                    return resampler_factory.get_resampler(grid_spec)
+                return cast(Any, resampler_factory).get_resampler()
             except (ImportError, AttributeError):
                 # Fallback: create empty resampler
                 from src.processing.resampling._resampler import DepthTimeResampler
 
                 logger.debug("Creating DepthTimeResampler (factory not available)")
-                return DepthTimeResampler()
+                if grid_spec is not None:
+                    return DepthTimeResampler(grid_spec)
+                # Cannot create a DepthTimeResampler without a GridSpec
+                raise RuntimeError(
+                    "GridSpec is required to construct DepthTimeResampler when no resampler factory is available"
+                )
 
     @staticmethod
     def create_synthesizer() -> Any:
@@ -460,7 +489,7 @@ class ServiceLocator:
         CacheServiceFactory
             Factory for cache services.
         """
-        return cls._factories["cache"]
+        return cast(CacheServiceFactory, cls._factories["cache"])
 
     @classmethod
     def get_processor_factory(cls) -> ProcessorServiceFactory:
@@ -471,7 +500,7 @@ class ServiceLocator:
         ProcessorServiceFactory
             Factory for processor services.
         """
-        return cls._factories["processor"]
+        return cast(ProcessorServiceFactory, cls._factories["processor"])
 
     @classmethod
     def get_computer_factory(cls) -> ComputerServiceFactory:
@@ -482,7 +511,7 @@ class ServiceLocator:
         ComputerServiceFactory
             Factory for computer services.
         """
-        return cls._factories["computer"]
+        return cast(ComputerServiceFactory, cls._factories["computer"])
 
     @classmethod
     def create_cache_loader(cls, dm: "DatasetManager") -> CacheLoaderProtocol:

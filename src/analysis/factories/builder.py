@@ -24,6 +24,7 @@ from typing import (
     Tuple,
     cast,
     Generator,
+    Any,
 )
 from contextlib import contextmanager
 
@@ -138,7 +139,7 @@ class AnalyzerBuilder:
         str
             String representation showing configuration and processor state.
         """
-        config_items = []
+        config_items: list[str] = []
         if self._resampler_factory is not None:
             config_items.append("resampler_factory=<set>")
         if self._select_cache_files is not None:
@@ -612,7 +613,7 @@ class AnalyzerBuilder:
         return cloned
 
     @classmethod
-    def with_state_snapshot(cls, snapshot: Dict[str, object]) -> "AnalyzerBuilder":
+    def with_state_snapshot(cls, snapshot: Any) -> "AnalyzerBuilder":
         """Create a builder from a previously saved state snapshot.
 
         Allows restoring builder configuration from a saved state.
@@ -632,10 +633,12 @@ class AnalyzerBuilder:
         ValueError
             If snapshot format is invalid.
         """
-        builder = cls()
+        # Ensure snapshot is a mapping/dict-like object; tests expect a
+        # ValueError when given invalid input types.
         if not isinstance(snapshot, dict):
-            raise ValueError("Snapshot must be a dictionary")
+            raise ValueError("snapshot must be a dict representing builder state")
 
+        builder = cls()
         # Restore configuration
         if "resampler_factory" in snapshot:
             builder._resampler_factory = cast(
@@ -709,7 +712,7 @@ class AnalyzerBuilder:
         >>> builder = AnalyzerFactory.builder().with_config(config)
         >>> print(builder.debug_info())
         """
-        lines = []
+        lines: list[str] = []
         lines.append("=" * 70)
         lines.append("ANALYZER BUILDER DEBUG INFO")
         lines.append("=" * 70)

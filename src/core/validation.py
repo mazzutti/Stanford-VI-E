@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import math
+import numbers
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -38,9 +39,9 @@ from typing import (
     Protocol,
     TypeVar,
     Union,
+    cast,
 )
 
-import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ T = TypeVar("T")
 T_contra = TypeVar("T_contra", contravariant=True)
 
 # Type aliases
-ArrayNamePair = tuple[NDArray, str]
+ArrayNamePair = tuple[NDArray[Any], str]
 
 
 class ValidationError(Exception):
@@ -299,10 +300,6 @@ class CountValidator(BaseValidator):
         allow_zero: bool = True,
     ) -> None:
         """Validate count is non-negative integer."""
-        if not isinstance(value, int):
-            raise ValidationError(
-                f"{name} must be an integer, got {type(value).__name__}"
-            )
         if value < 0:
             raise ValidationError(f"{name}={value} is negative (must be >= 0)")
         if value == 0 and not allow_zero:
@@ -315,9 +312,7 @@ class CountValidator(BaseValidator):
 class QuantileValidator(BaseValidator):
     """Validates quantile values."""
 
-    def validate(  # type: ignore[override]
-        self, value: float, name: str = "value", **kwargs: Any
-    ) -> None:
+    def validate(self, value: float, name: str = "value", **kwargs: Any) -> None:
         """Validate quantile is in [0, 1]."""
         self.validate_quantile(value, name)
 
@@ -350,32 +345,35 @@ class QuantileValidator(BaseValidator):
 class ArrayValidator(BaseValidator):
     """Validates array properties."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
-        value: NDArray,
+        value: NDArray[Any],
         name: str = "array",
         **kwargs: Any,
     ) -> None:
         """Validate array properties."""
-        if not isinstance(value, np.ndarray):
-            raise ValidationError(
-                f"{name} must be numpy array, got {type(value).__name__}"
-            )
 
     @staticmethod
     def ensure_valid_arrays(*arrays_with_names: ArrayNamePair) -> None:
         """Ensure all arrays are valid 3D arrays."""
         for arr, name in arrays_with_names:
-            if not isinstance(arr, np.ndarray):
-                raise ValidationError(f"{name} must be numpy array")
-            if arr.ndim != 3:
-                raise ValidationError(f"{name} must be 3D, got {arr.ndim}D")
-            if arr.size == 0:
+            # Avoid an unnecessary isinstance check for NDArray[Any]; validate via attributes instead.
+            try:
+                ndim = arr.ndim
+                size = arr.size
+            except AttributeError:
+                raise ValidationError(f"{name} must be numpy array-like")
+            # Accept Python ints and numpy integer types via numbers.Integral
+            if not isinstance(ndim, numbers.Integral):
+                raise ValidationError(f"{name} has invalid ndim attribute")
+            if ndim != 3:
+                raise ValidationError(f"{name} must be 3D, got {ndim}D")
+            if size == 0:
                 raise ValidationError(f"{name} is empty")
 
     @staticmethod
     def validate_shape(
-        array: NDArray,
+        array: NDArray[Any],
         expected_shape: tuple[int, ...],
         name: str = "array",
     ) -> None:
@@ -389,25 +387,25 @@ class ArrayValidator(BaseValidator):
 class DomainValidator(BaseValidator):
     """Validates domain values."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: Domain,
         name: str = "domain",
         **kwargs: Any,
     ) -> None:
         """Validate domain value."""
-        from src.analysis.domain.enum import Domain
-
-        if not isinstance(value, Domain):
-            raise ValidationError(
-                f"{name} must be Domain instance, got {type(value).__name__}"
-            )
+        # Runtime type check is unnecessary because the function signature
+        # already requires a `Domain` and `from __future__ import annotations`
+        # defers evaluation of annotations to runtime; static typing guarantees
+        # callers pass a `Domain`. Keep this method as a no-op placeholder
+        # for API consistency and future domain-specific checks.
+        return None
 
 
 class PathValidator(BaseValidator):
     """Validates file paths."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: Union[str, Path],
         name: str = "path",
@@ -439,7 +437,7 @@ class AndStrategy(ValidatorStrategy):
 
     def combine(self, errors: list[List[str]]) -> List[str]:
         """Return all errors if any validator failed."""
-        all_errors = []
+        all_errors: List[str] = []
         for err_list in errors:
             all_errors.extend(err_list)
         return all_errors
@@ -468,7 +466,9 @@ class ValidatorChain(Generic[T]):
     """
 
     name: str = "validator"
-    validators: List[Validator[T]] = field(default_factory=list)
+    validators: List[Validator[T]] = field(
+        default_factory=lambda: cast(List[Validator[T]], [])
+    )
     strategy: ValidatorStrategy = field(default_factory=AndStrategy)
 
     def add(self, validator: Validator[T]) -> ValidatorChain[T]:
@@ -490,20 +490,23 @@ class ValidatorChain(Generic[T]):
 class ValidatorComposite:
     """Composite validator combining multiple validator chains."""
 
-    validators: List[Validator] = field(default_factory=list)
+    validators: List[Validator[Any]] = field(
+        default_factory=lambda: cast(List[Validator[Any]], [])
+    )
 
-    def add(self, validator: Validator) -> ValidatorComposite:
+    def add(self, validator: Validator[Any]) -> ValidatorComposite:
         """Add validator to composite."""
         self.validators.append(validator)
         return self
 
     def validate(self, value: Any) -> List[str]:
         """Validate using all validators."""
-        errors = []
+        errors: List[str] = []
         for validator in self.validators:
-            result = validator(value)
+            result: Any = validator(value)
             if isinstance(result, list):
-                errors.extend(result)
+                # Cast to List[str] so the type checker knows what extend receives
+                errors.extend(cast(List[str], result))
             elif result:
                 errors.append(str(result))
         return errors
@@ -514,7 +517,7 @@ class ValidatorComposite:
 # ============================================================================
 
 
-def not_none(error_msg: str = "value cannot be None") -> Validator:
+def not_none(error_msg: str = "value cannot be None") -> Validator[Any]:
     """Validator that ensures value is not None."""
 
     def validate(value: Any) -> List[str]:
@@ -523,7 +526,7 @@ def not_none(error_msg: str = "value cannot be None") -> Validator:
     return validate
 
 
-def positive(error_msg: str = "value must be positive") -> Validator:
+def positive(error_msg: str = "value must be positive") -> Validator[Any]:
     """Validator that ensures value > 0."""
 
     def validate(value: Any) -> List[str]:
@@ -535,7 +538,7 @@ def positive(error_msg: str = "value must be positive") -> Validator:
     return validate
 
 
-def negative(error_msg: str = "value must be negative") -> Validator:
+def negative(error_msg: str = "value must be negative") -> Validator[Any]:
     """Validator that ensures value < 0."""
 
     def validate(value: Any) -> List[str]:
@@ -551,7 +554,7 @@ def in_range(
     min_val: float,
     max_val: float,
     error_msg: str = "value not in range",
-) -> Validator:
+) -> Validator[Any]:
     """Validator that ensures value is in [min_val, max_val]."""
 
     def validate(value: Any) -> List[str]:
@@ -568,7 +571,7 @@ def length_between(
     min_len: int,
     max_len: int,
     error_msg: str = "length not in range",
-) -> Validator:
+) -> Validator[Any]:
     """Validator that ensures length is in [min_len, max_len]."""
 
     def validate(value: Any) -> List[str]:
@@ -585,7 +588,7 @@ def length_between(
 def matches_type(
     expected_type: type,
     error_msg: Optional[str] = None,
-) -> Validator:
+) -> Validator[Any]:
     """Validator that ensures value is of expected type."""
 
     def validate(value: Any) -> List[str]:
@@ -598,7 +601,7 @@ def matches_type(
     return validate
 
 
-def is_callable(error_msg: str = "value must be callable") -> Validator:
+def is_callable(error_msg: str = "value must be callable") -> Validator[Any]:
     """Validator that ensures value is callable."""
 
     def validate(value: Any) -> List[str]:

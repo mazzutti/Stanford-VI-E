@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Sequence, TypeVar, cast
+from typing import Any, Dict, Optional, Sequence, cast
 
 import numpy as np
 
@@ -32,7 +32,7 @@ from src.core import CompositeMixin, PipelineAnalyzer
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
+# Local generics not required in this module
 
 
 @dataclass
@@ -90,10 +90,11 @@ class RockPhysicsAnalyzer(
         ]
 
     def analyze(self, data: Any) -> RockPhysicsPipelineResult:
+        context: PipelineContext
         if data is None:
-            context: PipelineContext = {}
+            context = {}
         elif isinstance(data, dict):
-            context = dict(data)
+            context = dict(cast(PipelineContext, data))
         else:
             raise TypeError(
                 "RockPhysicsAnalyzer.analyze expects a mapping of input parameters"
@@ -123,12 +124,13 @@ class RockPhysicsAnalyzer(
         if angles_list is not None:
             payload["angles_deg"] = tuple(angles_list)
 
-        result = self.execute(payload)
-        output_path = getattr(result, "output_path", None)
+        tmp: Any = self.execute(payload)
+        result = cast(RockPhysicsPipelineResult, tmp)
+        output_path = result.output_path
         if output_path:
             return output_path
 
-        attributes = getattr(result, "attributes", result)
+        attributes = result.attributes
         return bool(attributes)
 
     @property
@@ -164,9 +166,9 @@ class RockPhysicsAnalyzer(
         if "grid_shape" not in context:
             shape = getattr(grid_spec, "shape", None)
             if isinstance(shape, (tuple, list)):
-                context["grid_shape"] = tuple(shape)
+                context["grid_shape"] = tuple(cast(Sequence[int], shape))
             else:
-                context["grid_shape"] = tuple(cfg.grid_shape)
+                context["grid_shape"] = tuple(cast(Sequence[int], cfg.grid_shape))
 
         if "dz" not in context:
             dz_value = getattr(grid_spec, "dz", None)
@@ -186,7 +188,7 @@ class RockPhysicsAnalyzer(
 
     def _get_grid_configuration(self) -> tuple[str, Dict[str, str], GridSpec]:
         cfg = self.config
-        grid_spec = GridSpec(tuple(cfg.grid_shape), dz=cfg.dz, dt=cfg.dt)
+        grid_spec = GridSpec(cfg.grid_shape, dz=cfg.dz, dt=cfg.dt)
         return cfg.data_path, cfg.file_mapping(), grid_spec
 
     def _stage_configure_logging(self, context: PipelineContext) -> PipelineContext:
@@ -209,7 +211,8 @@ class RockPhysicsAnalyzer(
             grid_shape = tuple(context.get("grid_shape", self.config.grid_shape))
             dz = float(context.get("dz", self.config.dz))
             dt = float(context.get("dt", self.config.dt))
-            grid_spec = GridSpec(grid_shape, dz=dz, dt=dt)
+            grid_shape_t = cast(tuple[int, int, int], grid_shape)
+            grid_spec = GridSpec(grid_shape_t, dz=dz, dt=dt)
             context["grid_spec"] = grid_spec
 
         data_path = str(context["data_path"])
@@ -420,12 +423,12 @@ class RockPhysicsAnalyzer(
         FloatingArray | None,
         IntegerArray | None,
     ]:
-        def unwrap(value: Any) -> Optional[T]:
+        def unwrap(value: Any) -> Optional[Any]:
             if value is None:
                 return None
             if hasattr(value, "array"):
-                return cast(T, value.array)
-            return cast(T, value)
+                return cast(Optional[Any], getattr(value, "array"))
+            return cast(Optional[Any], value)
 
         vp = unwrap(dm.vp)
         vs = unwrap(dm.vs)
@@ -495,8 +498,7 @@ class RockPhysicsAnalyzer(
         out_fn = os.path.join(cache_dir, RockPhysicsConstants.OUTPUT_FILENAME)
 
         save_kwargs: Dict[str, Any] = {
-            key: (value if value is not None else np.array([]))
-            for key, value in attribute_results.items()
+            key: value for key, value in attribute_results.items()
         }
         save_kwargs["discrimination"] = np.array([discrimination], dtype=object)
         np.savez_compressed(out_fn, **save_kwargs)

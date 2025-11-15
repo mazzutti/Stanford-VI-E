@@ -21,7 +21,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Callable, cast
 from abc import ABC, abstractmethod
 import logging
 
@@ -46,11 +46,11 @@ class AnalysisBuilderBase(ABC):
     component registration.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the builder"""
         self._components: Dict[str, Any] = {}
         self._config: Dict[str, Any] = {}
-        self._validators: List[callable] = []
+        self._validators: List[Callable[[Dict[str, Any]], bool]] = []
 
     @abstractmethod
     def build(self) -> Any:
@@ -94,7 +94,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
     method chaining.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize facies analyzer builder"""
         super().__init__()
         self._config["transitions"] = []
@@ -254,7 +254,8 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
 
         # Use provided config or create new one
         if "config" not in self._components:
-            config = FaciesAnalysisConfig()
+            # create default config and cast to expected FaciesCorrelationConfig type
+            config = cast(FaciesCorrelationConfig, FaciesAnalysisConfig())
         else:
             config = self._components["config"]
 
@@ -264,12 +265,14 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
         # Add processors if analyzer has this capability
         if hasattr(analyzer, "processors"):
             for name, processor in self._config["processors"].items():
-                analyzer.processors[name] = processor
+                # analyzer may be a typed Analyzer class without 'processors' in its stub
+                # cast to Any to avoid mypy attribute complaints while preserving runtime behavior
+                cast(Any, analyzer).processors[name] = processor
 
         # Add validators if analyzer has this capability
         if hasattr(analyzer, "validators"):
             for name, validator in self._config["validators"].items():
-                analyzer.validators[name] = validator
+                cast(Any, analyzer).validators[name] = validator
 
         logger.info(
             f"Built FaciesCorrelationAnalyzer with "
@@ -288,10 +291,10 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
     and configuration.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize processor chain builder"""
         super().__init__()
-        self._config["processors"] = []
+        self._config["processors"] = cast(List[tuple[str, Any]], [])
 
     def add_processor(
         self,
@@ -334,7 +337,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
 
         val_name = name or validator.__class__.__name__
         if "validators" not in self._config:
-            self._config["validators"] = []
+            self._config["validators"] = cast(List[tuple[str, Any]], [])
 
         self._config["validators"].append((val_name, validator))
         logger.debug(f"Added validator to chain: {val_name}")
@@ -353,7 +356,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
         logger.debug(f"Error handling enabled: {enabled}")
         return self
 
-    def build(self) -> List[tuple]:
+    def build(self) -> List[tuple[str, Any]]:
         """Build and return processor chain.
 
         Returns:
@@ -368,4 +371,4 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
             f"error_handling={self._config.get('error_handling', False)}"
         )
 
-        return self._config["processors"]
+        return cast(List[tuple[str, Any]], self._config["processors"])

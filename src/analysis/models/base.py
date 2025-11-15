@@ -6,7 +6,17 @@ base class for statistical results.
 """
 
 from __future__ import annotations
-from typing import Dict, Optional, List, ClassVar, Any, Callable, Union, TYPE_CHECKING
+from typing import (
+    Dict,
+    Optional,
+    List,
+    ClassVar,
+    Any,
+    Callable,
+    Union,
+    TYPE_CHECKING,
+    cast,
+)
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -20,6 +30,10 @@ __all__ = [
     "ValidationConfig",
     "ModelUtilities",
     "StatisticalResult",
+    "STATS_REPR_PRECISION",
+    "STR_PRECISION",
+    "SUMMARY_PRECISION",
+    "ANALYSIS_COMPONENTS_COUNT",
 ]
 
 
@@ -38,10 +52,10 @@ class ValidationConfig:
 
 
 # Formatting precision constants
-_STATS_REPR_PRECISION = 6  # FaciesStats repr output precision
-_STR_PRECISION = 4  # FaciesStats str output precision
-_SUMMARY_PRECISION = 4  # Default precision for summary string formatting (e.g., 0.0000)
-_ANALYSIS_COMPONENTS_COUNT = 4  # AvoAnalysisResult analysis component count
+STATS_REPR_PRECISION = 6  # FaciesStats repr output precision
+STR_PRECISION = 4  # FaciesStats str output precision
+SUMMARY_PRECISION = 4  # Default precision for summary string formatting (e.g., 0.0000)
+ANALYSIS_COMPONENTS_COUNT = 4  # AvoAnalysisResult analysis component count
 
 
 class ModelUtilities:
@@ -250,7 +264,7 @@ class ModelUtilities:
         if keys1 != keys2:
             missing_in_dict2 = keys1 - keys2
             missing_in_dict1 = keys2 - keys1
-            error_parts = []
+            error_parts: List[str] = []
             if missing_in_dict2:
                 error_parts.append(
                     f"keys in {dict1_name} but not {dict2_name}: {len(missing_in_dict2)}"
@@ -309,9 +323,18 @@ class ModelUtilities:
             The value at data[key] if it exists and is a dict, else default.
         """
         if default_factory is None:
-            default_factory = dict
+            # use a typed empty dict factory to avoid partially unknown dict types
+            def _default_factory() -> Dict[str, Any]:
+                return {}
+
+            default_factory = _default_factory
+
         value = data.get(key, default_factory())
-        return value if isinstance(value, dict) else default_factory()
+        return (
+            cast(Dict[str, Any], value)
+            if isinstance(value, dict)
+            else default_factory()
+        )
 
     # ========================================================================
     # Statistical Computation Utilities
@@ -373,7 +396,7 @@ class ModelUtilities:
         from .config import Transition
         from .facies import FaciesStats
 
-        result = {}
+        result: Dict["Transition", Optional["FaciesStats"]] = {}
         for transition_data, stats_dict in ModelUtilities.safe_get_dict(
             data, key
         ).items():
@@ -401,7 +424,7 @@ class ModelUtilities:
         """
         from .config import Transition
 
-        result = {}
+        result: Dict["Transition", Optional[NDArray[np.float64]]] = {}
         for transition_data, amps in ModelUtilities.safe_get_dict(data, key).items():
             transition = Transition.from_string_key(transition_data)
             result[transition] = np.array(amps) if amps else None

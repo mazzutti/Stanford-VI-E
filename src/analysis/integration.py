@@ -18,6 +18,9 @@ from __future__ import annotations
 
 import logging
 from typing import Optional, Callable, Any, List
+from types import TracebackType
+
+from src.analysis.patterns.event_bus import Event, EventHandler
 
 from src.analysis.service_container import (
     ServiceContainerBuilder,
@@ -54,6 +57,18 @@ class EventSubscriber:
         self.event_bus = event_bus
         self._subscriptions: List[Any] = []
 
+    def _wrap_handler(self, fn: Callable[[Any], None]) -> EventHandler:
+        """Wrap a simple callable into an EventHandler instance."""
+
+        class _FuncHandler(EventHandler):
+            def __init__(self, f: Callable[[Any], None]) -> None:
+                self._f = f
+
+            def handle(self, event: Event) -> None:
+                self._f(event)
+
+        return _FuncHandler(fn)
+
     def on_analysis_started(
         self, handler: Callable[[events.AnalysisStartedEvent], None]
     ) -> EventSubscriber:
@@ -66,14 +81,9 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.AnalysisStartedEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.AnalysisEventType.STARTED.value,
-            event_handler,
-        )
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(events.AnalysisStartedEvent, handler_obj)
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to analysis started events")
         return self
 
@@ -89,14 +99,9 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.AnalysisCompletedEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.AnalysisEventType.COMPLETED.value,
-            event_handler,
-        )
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(events.AnalysisCompletedEvent, handler_obj)
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to analysis completed events")
         return self
 
@@ -112,14 +117,9 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.AnalysisFailedEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.AnalysisEventType.FAILED.value,
-            event_handler,
-        )
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(events.AnalysisFailedEvent, handler_obj)
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to analysis failed events")
         return self
 
@@ -135,14 +135,9 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.ErrorOccurredEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.ErrorEventType.OCCURRED.value,
-            event_handler,
-        )
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(events.ErrorOccurredEvent, handler_obj)
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to error events")
         return self
 
@@ -158,14 +153,9 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.CacheHitEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.CacheEventType.HIT.value,
-            event_handler,
-        )
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(events.CacheHitEvent, handler_obj)
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to cache hit events")
         return self
 
@@ -181,14 +171,11 @@ class EventSubscriber:
             Self for chaining
         """
 
-        def event_handler(event):
-            if isinstance(event, events.ProcessorExecutionStartedEvent):
-                handler(event)
-
-        self.event_bus.subscribe(
-            events.ProcessorEventType.EXECUTION_STARTED.value,
-            event_handler,
+        handler_obj = self._wrap_handler(handler)
+        sub = self.event_bus.subscribe(
+            events.ProcessorExecutionStartedEvent, handler_obj
         )
+        self._subscriptions.append(sub)
         logger.debug("Subscribed to processor execution started events")
         return self
 
@@ -199,7 +186,7 @@ class SystemConfiguration:
     Controls behavior of all integrated patterns.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize configuration."""
         self.max_retries: int = 3
         self.retry_delay: float = 1.0
@@ -243,7 +230,7 @@ class AnalysisSystem:
         >>> result = analyzer.run_with_command(cache_dir=".cache", domain="depth")
     """
 
-    def __init__(self, configuration: Optional[SystemConfiguration] = None):
+    def __init__(self, configuration: Optional[SystemConfiguration] = None) -> None:
         """Initialize analysis system.
 
         Args:
@@ -388,7 +375,12 @@ class AnalysisSystem:
         logger.debug("Entering AnalysisSystem context")
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
+    ) -> None:
         """Exit context manager."""
         logger.debug("Exiting AnalysisSystem context")
         if exc_type is not None:

@@ -42,6 +42,7 @@ from typing import (
     Generic,
     Callable,
     Any,
+    cast,
 )
 from enum import Enum
 import logging
@@ -131,7 +132,9 @@ class ValidatorChain(Generic[T]):
     """
 
     name: str
-    validators: List[Validator[T]] = field(default_factory=list)
+    validators: List[Validator[T]] = field(
+        default_factory=lambda: cast(List[Validator[T]], [])
+    )
     stop_on_first_error: bool = False
 
     def add(self, validator: Validator[T]) -> ValidatorChain[T]:
@@ -180,10 +183,10 @@ class ValidatorChain(Generic[T]):
         list[str]
             List of error messages (empty if all pass)
         """
-        errors = []
+        errors: List[str] = []
         for validator in self.validators:
             try:
-                validator_errors = validator(value)
+                validator_errors: List[str] = validator(value)
                 errors.extend(validator_errors)
                 if self.stop_on_first_error and errors:
                     break
@@ -233,10 +236,22 @@ class ValidatorChain(Generic[T]):
             Description of validators in chain
         """
         count = len(self.validators)
-        names = ", ".join(
-            v.__name__ if hasattr(v, "__name__") else str(v)
-            for v in self.validators[:3]
-        )
+
+        def _validator_name(v: Any) -> str:
+            # Prefer the function name if available, otherwise try sensible fallbacks.
+            name = getattr(v, "__name__", None)
+            if isinstance(name, str):
+                return name
+            # If it's a callable object, use its class name; otherwise use str()
+            try:
+                if callable(v):
+                    # __name__ may be dynamically typed; ensure a `str` is returned
+                    return str(v.__class__.__name__)
+            except Exception:
+                pass
+            return str(v)
+
+        names = ", ".join(_validator_name(v) for v in self.validators[:3])
         return f"ValidatorChain({self.name}, {count} validators: {names}...)"
 
     def __repr__(self) -> str:
@@ -270,7 +285,9 @@ class ValidatorComposite(Generic[T]):
     """
 
     name: str
-    chains: List[ValidatorChain[T]] = field(default_factory=list)
+    chains: List[ValidatorChain[T]] = field(
+        default_factory=lambda: cast(List[ValidatorChain[T]], [])
+    )
 
     def add_chain(self, chain: ValidatorChain[T]) -> ValidatorComposite[T]:
         """Add a validator chain.
@@ -304,7 +321,7 @@ class ValidatorComposite(Generic[T]):
         if not self.chains:
             return []
 
-        all_errors = []
+        all_errors: List[str] = []
         for chain in self.chains:
             errors = chain.validate(value)
             if not errors:

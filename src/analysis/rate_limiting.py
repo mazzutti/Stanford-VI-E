@@ -32,7 +32,7 @@ Usage:
 
 import time
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, Any, Dict
+from typing import Optional, Callable, Any, Dict, Deque
 from dataclasses import dataclass, field
 from threading import RLock
 from collections import deque
@@ -45,7 +45,7 @@ class RateLimitExceeded(Exception):
 
     def __init__(
         self, message: str = "Rate limit exceeded", retry_after: Optional[float] = None
-    ):
+    ) -> None:
         """
         Initialize rate limit exceeded exception.
 
@@ -119,7 +119,9 @@ class TokenBucketLimiter(RateLimiter):
     Good for: APIs that can handle occasional bursts.
     """
 
-    def __init__(self, capacity: float, refill_rate: float, name: str = "token_bucket"):
+    def __init__(
+        self, capacity: float, refill_rate: float, name: str = "token_bucket"
+    ) -> None:
         """
         Initialize token bucket limiter.
 
@@ -208,7 +210,7 @@ class SlidingWindowLimiter(RateLimiter):
 
     def __init__(
         self, max_requests: int, window_size: float, name: str = "sliding_window"
-    ):
+    ) -> None:
         """
         Initialize sliding window limiter.
 
@@ -225,7 +227,7 @@ class SlidingWindowLimiter(RateLimiter):
         self.max_requests = max_requests
         self.window_size = window_size
         self.name = name
-        self.request_times: deque = deque()
+        self.request_times: Deque[float] = deque()
         self._lock = RLock()
         self._stats = RateLimitStats()
 
@@ -289,7 +291,10 @@ class SlidingWindowLimiter(RateLimiter):
             self._stats.reset()
 
     def __repr__(self) -> str:
-        return f"SlidingWindowLimiter(name={self.name}, max_requests={self.max_requests}, window_size={self.window_size})"
+        return (
+            f"SlidingWindowLimiter(name={self.name}, "
+            f"max_requests={self.max_requests}, window_size={self.window_size})"
+        )
 
 
 class LeakyBucketLimiter(RateLimiter):
@@ -300,7 +305,9 @@ class LeakyBucketLimiter(RateLimiter):
     Good for: Preventing traffic spikes while processing at consistent rate.
     """
 
-    def __init__(self, capacity: float, leak_rate: float, name: str = "leaky_bucket"):
+    def __init__(
+        self, capacity: float, leak_rate: float, name: str = "leaky_bucket"
+    ) -> None:
         """
         Initialize leaky bucket limiter.
 
@@ -393,7 +400,7 @@ class RateLimitPolicy:
         window_size: float = 60.0,
         capacity: Optional[float] = None,
         rate: Optional[float] = None,
-    ):
+    ) -> None:
         """
         Initialize rate limit policy.
 
@@ -442,7 +449,7 @@ class RateLimitPool:
     Pool of rate limiters for managing multiple named limiters.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize rate limiter pool."""
         self._limiters: Dict[str, RateLimiter] = {}
         self._lock = RLock()
@@ -528,7 +535,9 @@ class RateLimitPool:
             }
 
 
-def rate_limit(limiter: RateLimiter, tokens: int = 1, raise_on_limit: bool = False):
+def rate_limit(
+    limiter: RateLimiter, tokens: int = 1, raise_on_limit: bool = False
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for rate limiting function execution.
 
@@ -548,7 +557,7 @@ def rate_limit(limiter: RateLimiter, tokens: int = 1, raise_on_limit: bool = Fal
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if limiter.allow_request(tokens):

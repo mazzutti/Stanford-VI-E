@@ -22,7 +22,12 @@ logger = logging.getLogger(__name__)
 def run_full_modeling(
     cache_dir: str = ".cache",
     add_avo_noise: bool = False,
-) -> dict[str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]]:
+    *,
+    skip_cleanup: bool = False,
+    verbose: bool = False,
+) -> dict[
+    str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]
+]:
     """Run the full modeling pipeline from depth to time domain.
 
     Orchestrates: data loading, depth-to-time resampling, and AVO synthesis.

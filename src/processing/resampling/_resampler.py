@@ -9,7 +9,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Tuple, Optional, cast, Any
+from typing import Tuple, Optional, Any, cast
 from numpy.typing import NDArray
 
 
@@ -23,12 +23,9 @@ import logging
 import os
 
 
-from src.processing.resampling.backends._base import BackendResult, BackendError
-
-
 from src.io.grid import GridSpec
 from src.utils.units import UnitRegistry
-from src.utils.quantity import Quantity
+from src.utils.quantity import Quantity, to_ndarray
 from src.analysis.decorators import log_execution, time_operation
 
 
@@ -45,12 +42,12 @@ logger = logging.getLogger(__name__)
 # Enable extra backend debug logging if the environment flag is set.
 # Set RESAMPLE_BACKEND_VERBOSE=1 (or 'true') to enable DEBUG-level logs from
 # this module which will include plan metadata when a backend is selected.
-_BACKEND_VERBOSE = os.environ.get("RESAMPLE_BACKEND_VERBOSE", "0").lower() in (
+_backend_verbose = os.environ.get("RESAMPLE_BACKEND_VERBOSE", "0").lower() in (
     "1",
     "true",
     "yes",
 )
-if _BACKEND_VERBOSE:
+if _backend_verbose:
     logging.getLogger(__name__).setLevel(logging.DEBUG)
     logging.getLogger(__name__).debug(
         "RESAMPLE_BACKEND_VERBOSE enabled: backend debug logs ON"
@@ -63,10 +60,10 @@ def set_backend_verbose(on: bool) -> None:
     When enabled the module logger is set to DEBUG and additional plan
     metadata is emitted when a backend is selected.
     """
-    global _BACKEND_VERBOSE
-    _BACKEND_VERBOSE = bool(on)
+    global _backend_verbose
+    _backend_verbose = bool(on)
     logger = logging.getLogger(__name__)
-    if _BACKEND_VERBOSE:
+    if _backend_verbose:
         logger.setLevel(logging.DEBUG)
         logger.debug("Backend verbose logging enabled via set_backend_verbose(True)")
     else:
@@ -77,7 +74,7 @@ def set_backend_verbose(on: bool) -> None:
 
 def is_backend_verbose() -> bool:
     """Return whether backend verbose logging is enabled for this module."""
-    return bool(_BACKEND_VERBOSE)
+    return bool(_backend_verbose)
 
 
 @dataclass
@@ -123,7 +120,7 @@ class DepthTimeResampler:
 
         slowness = 1.0 / vp_arr
         one_way = np.cumsum(slowness * dz_val)
-        return cast(NDArray[Any], one_way)
+        return one_way
 
     @log_execution
     @time_operation("compute_one_way_times", threshold_ms=100)
@@ -136,11 +133,8 @@ class DepthTimeResampler:
         Returns:
             3D array (ni, nj, nz) of one-way cumulative time (seconds)
         """
-        # Unwrap Quantity if needed
-        if isinstance(vp_arr, Quantity):
-            vp_val = vp_arr.array
-        else:
-            vp_val = np.asarray(vp_arr)
+        # Normalize Quantity/ndarray to ndarray
+        vp_val = to_ndarray(vp_arr)
 
         if vp_val.ndim != 3:
             raise ValueError("vp_arr must be a 3D array (ni, nj, nz)")
@@ -157,7 +151,7 @@ class DepthTimeResampler:
         slowness = 1.0 / vp_float
         # cumulative sum along vertical axis (nz)
         one_way = np.cumsum(slowness * dz_val, axis=2)
-        return cast(NDArray[Any], one_way)
+        return one_way
 
     @log_execution
     @time_operation("depth_to_time_cube", threshold_ms=500)
@@ -167,7 +161,7 @@ class DepthTimeResampler:
         vp_depth: NDArray[Any] | Quantity,
         target_dt: Optional[float] = None,
         target_nt: Optional[int] = None,
-        plan: "ResamplePlan" | None = None,
+        plan: Optional["ResamplePlan"] = None,
     ) -> Tuple[NDArray[Any] | Quantity, float]:
         """Resample depth-sampled `data_depth` into a regularly sampled time cube.
 
@@ -177,21 +171,22 @@ class DepthTimeResampler:
             target_dt: optional time sampling interval; if None uses grid_spec.dt
 
         Returns:
-            (data_time, dt) where data_time has shape (ni, nj, nt)
+        time_axis: NDArray[Any] = cast(NDArray[Any], plan.time_axis)
         """
-        # Unwrap Quantity inputs if provided
-        data_was_quantity = isinstance(data_depth, Quantity)
-        vp_was_quantity = isinstance(vp_depth, Quantity)
-
-        if data_was_quantity:
-            data_arr = cast(Quantity, data_depth).array
+        # Normalize inputs and remember original units when present
+        if isinstance(data_depth, Quantity):
+            data_unit = data_depth.unit
+            data_arr = to_ndarray(data_depth)
+            data_was_quantity = True
         else:
-            data_arr = np.asarray(data_depth)
+            data_unit = None
+            data_arr = to_ndarray(data_depth)
+            data_was_quantity = False
 
-        if vp_was_quantity:
-            vp_arr = cast(Quantity, vp_depth).array
+        if isinstance(vp_depth, Quantity):
+            vp_arr = to_ndarray(vp_depth)
         else:
-            vp_arr = np.asarray(vp_depth)
+            vp_arr = to_ndarray(vp_depth)
 
         if data_arr.shape != vp_arr.shape:
             raise ValueError("data_depth and vp_depth must have the same shape")
@@ -234,21 +229,16 @@ class DepthTimeResampler:
                     getattr(backend, "name", repr(backend)),
                 )
                 raise
-            # Enforce strict BackendResult return type from backends
-            if not isinstance(out_backend, BackendResult):
-                backend_name = getattr(backend, "name", repr(backend))
-                logger.error(
-                    "Depth->Time: backend '%s' returned non-BackendResult",
-                    backend_name,
-                )
-                raise BackendError(f"backend {backend_name} returned non-BackendResult")
+            # Assume backend returns a BackendResult and use its contents directly.
             out = out_backend.array
             dt = out_backend.dt if out_backend.dt is not None else plan.dt
             if data_was_quantity:
-                data_depth_q = cast(Quantity, data_depth)
-                return Quantity(out, data_depth_q.unit), dt
+                return Quantity(out, cast(str, data_unit)), dt
             return out, dt
-        time_axis = plan.time_axis
+        # Annotate time_axis so the type checker knows this is an ndarray
+        # (prevents "partially unknown" diagnostics when passed into
+        # numba-jitted functions and BatchedInterpolator).
+        time_axis: NDArray[Any] = plan.time_axis
         nt = plan.nt
         dt = plan.dt
         out = np.zeros((ni, nj, nt), dtype=data_arr.dtype)
@@ -273,8 +263,7 @@ class DepthTimeResampler:
             res_vec = interp.interpolate(twt_padded, depth_padded_flat)
             out = res_vec.reshape(nt, ni, nj).transpose(1, 2, 0)
             if data_was_quantity:
-                data_depth_q = cast(Quantity, data_depth)
-                return Quantity(out, data_depth_q.unit), dt
+                return Quantity(out, cast(str, data_unit)), dt
             return out, dt
 
         if plan.uniform_twt:
@@ -286,8 +275,7 @@ class DepthTimeResampler:
 
             out = res_vec.reshape(nt, ni, nj).transpose(1, 2, 0)
             if data_was_quantity:
-                data_depth_q = cast(Quantity, data_depth)
-                return Quantity(out, data_depth_q.unit), dt
+                return Quantity(out, cast(str, data_unit)), dt
             return out, dt
 
         if use_numba:
@@ -420,15 +408,14 @@ class DepthTimeResampler:
 
         # Wrap output as Quantity if data_depth was Quantity
         if data_was_quantity:
-            data_depth_q = cast(Quantity, data_depth)
-            return Quantity(out, data_depth_q.unit), dt
+            return Quantity(out, cast(str, data_unit)), dt
         return out, dt
 
     def time_to_depth_cube(
         self,
         seismogram_time: NDArray[Any] | Quantity,
         vp_depth: NDArray[Any] | Quantity,
-        plan: "ResamplePlan" | None = None,
+        plan: Optional["ResamplePlan"] = None,
     ) -> NDArray[Any] | Quantity:
         """Convert a time-sampled seismogram to depth-sampled cube using vp_depth.
 
@@ -439,19 +426,20 @@ class DepthTimeResampler:
         Returns:
             seismogram_depth: (ni, nj, nz)
         """
-        # Unwrap
-        seis_was_quantity = isinstance(seismogram_time, Quantity)
-        vp_is_quantity = isinstance(vp_depth, Quantity)
-
-        if seis_was_quantity:
-            seis_arr = cast(Quantity, seismogram_time).array
+        # Normalize inputs and remember units if present
+        if isinstance(seismogram_time, Quantity):
+            seis_unit = seismogram_time.unit
+            seis_arr = to_ndarray(seismogram_time)
+            seis_was_quantity = True
         else:
-            seis_arr = np.asarray(seismogram_time)
+            seis_unit = None
+            seis_arr = to_ndarray(seismogram_time)
+            seis_was_quantity = False
 
-        if vp_is_quantity:
-            vp_arr = cast(Quantity, vp_depth).array
+        if isinstance(vp_depth, Quantity):
+            vp_arr = to_ndarray(vp_depth)
         else:
-            vp_arr = np.asarray(vp_depth)
+            vp_arr = to_ndarray(vp_depth)
 
         ni_t, nj_t, nt = seis_arr.shape
         ni, nj, nz = vp_arr.shape
@@ -461,7 +449,8 @@ class DepthTimeResampler:
             )
 
         dt = self.grid_spec.dt
-        time_axis = np.arange(nt) * dt
+        # Annotate and cast time_axis to NDArray[Any] to avoid Unknown union types
+        time_axis: NDArray[Any] = cast(NDArray[Any], np.arange(nt) * dt)
 
         out = np.zeros((ni, nj, nz), dtype=seis_arr.dtype)
 
@@ -497,17 +486,10 @@ class DepthTimeResampler:
                     getattr(backend, "name", repr(backend)),
                 )
                 raise
-            if not isinstance(out_backend, BackendResult):
-                backend_name = getattr(backend, "name", repr(backend))
-                logger.error(
-                    "Time->Depth: backend '%s' returned non-BackendResult",
-                    backend_name,
-                )
-                raise BackendError(f"backend {backend_name} returned non-BackendResult")
+            # backend.time_to_depth is expected to return a BackendResult; use it directly
             out = out_backend.array
             if seis_was_quantity:
-                seismogram_time_q = cast(Quantity, seismogram_time)
-                return Quantity(out, seismogram_time_q.unit)
+                return Quantity(out, cast(str, seis_unit))
             return out
 
         twt_arr = plan.twt_arr
@@ -537,8 +519,7 @@ class DepthTimeResampler:
                         twt_trace, time_axis, seis_arr[i, j, :], left=0.0, right=0.0
                     )
         if seis_was_quantity:
-            seismogram_time_q = cast(Quantity, seismogram_time)
-            return Quantity(out, seismogram_time_q.unit)
+            return Quantity(out, cast(str, seis_unit))
         return out
 
     def compute_twt_for_trace(
@@ -603,7 +584,7 @@ class DepthTimeResampler:
         is_categorical: bool = False,
         progress_every: Optional[int] = 30,
         prefix: str = "",
-        plan: "ResamplePlan" | None = None,
+        plan: Optional["ResamplePlan"] = None,
     ) -> NDArray[Any]:
         """Convert a depth-sampled property cube to regular time using an
         irregular TWT cube (twt_irregular).

@@ -6,7 +6,7 @@ multiple similar strategy classes with a single parameterized implementation.
 
 from __future__ import annotations
 
-from typing import Dict, Callable, Any, Union
+from typing import Dict, Callable, Any, Union, Optional, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -36,8 +36,8 @@ class ParameterizedConversionStrategy:
         self,
         base_unit: str,
         factors: Dict[str, float],
-        custom_converters: Dict[tuple[str, str], Callable] = None,
-    ):
+        custom_converters: Optional[Dict[tuple[str, str], Callable[[Any], Any]]] = None,
+    ) -> None:
         """Initialize parameterized converter.
 
         Args:
@@ -48,11 +48,13 @@ class ParameterizedConversionStrategy:
         """
         self.base_unit = base_unit
         self._factors = factors
-        self._custom = custom_converters or {}
+        self._custom: Dict[tuple[str, str], Callable[[Any], Any]] = (
+            custom_converters or {}
+        )
 
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: Any,
         from_unit: str,
         to_unit: str,
     ) -> Union[NDArray[Any], Quantity]:
@@ -72,7 +74,10 @@ class ParameterizedConversionStrategy:
             raise ValueError(f"Invalid to_unit: {to_unit}")
 
         is_quantity = isinstance(value, Quantity)
-        arr = value.array if is_quantity else value
+        if is_quantity:
+            arr = cast(Any, value.to_numpy())
+        else:
+            arr = value
 
         # Check for custom converter
         key = (from_unit, to_unit)
