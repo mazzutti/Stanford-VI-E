@@ -1,0 +1,18 @@
+{
+  "exclude": [
+    "tests",
+    "tests/**",
+    ".venv"
+  ],
+  "stubPath": "./stubs"
+}
+{
+	"typeCheckingMode": "strict",
+	"exclude": [
+		"tests",
+		"tests/**",
+		".venv"
+	],
+	"reportMissingTypeStubs": true,
+	"stubPath": "./stubs"
+}
