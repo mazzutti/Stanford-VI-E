@@ -6,11 +6,10 @@ tuples around and gives a single place for grid-related helpers.
 """
 
 from dataclasses import dataclass
-from typing import Tuple
 import logging
 
 # Type alias for clarity
-GridShape = Tuple[int, int, int]
+GridShape = tuple[int, int, int]
 
 
 @dataclass
@@ -23,7 +22,7 @@ class GridSpec:
         dt: time sampling (seconds) for time domain
     """
 
-    shape: Tuple[int, int, int]
+    shape: tuple[int, int, int]
     dz: float = 1.0
     dt: float = 0.001
 
@@ -55,7 +54,7 @@ class GridSpec:
         if nx <= 0 or ny <= 0 or nz <= 0:
             raise ValueError("Grid shape dimensions must be positive integers")
 
-    def as_tuple(self) -> Tuple[Tuple[int, int, int], float, float]:
+    def as_tuple(self) -> tuple[tuple[int, int, int], float, float]:
         return self.shape, self.dz, self.dt
 
 

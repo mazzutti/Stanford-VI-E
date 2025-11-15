@@ -1,7 +1,6 @@
 """Cache management utilities."""
 
 from pathlib import Path
-from typing import List, Optional
 import os
 import logging
 
@@ -14,7 +13,7 @@ __all__ = ["CacheManager", "CacheClearStrategy", "CacheSummarizeStrategy"]
 class CacheClearStrategy:
     """Strategy for clearing cache files."""
 
-    def clear(self, resource_dir: Path, patterns: Optional[List[str]] = None) -> int:
+    def clear(self, resource_dir: Path, patterns: list[str] | None = None) -> int:
         """Clear cache files matching patterns or using size-based pruning."""
         if not resource_dir.exists():
             return 0
@@ -24,7 +23,7 @@ class CacheClearStrategy:
             else self._clear_by_size(resource_dir)
         )
 
-    def _clear_by_pattern(self, resource_dir: Path, patterns: List[str]) -> int:
+    def _clear_by_pattern(self, resource_dir: Path, patterns: list[str]) -> int:
         """Remove files matching glob patterns."""
         removed = 0
         for pattern in patterns:
@@ -66,11 +65,11 @@ class CacheClearStrategy:
 class CacheSummarizeStrategy:
     """Strategy for summarizing cache files."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """Initialize summarize strategy with an optional logger."""
         self.logger = logger or logging.getLogger(self.__class__.__name__)
 
-    def summarize(self, resource_dir: Path, keys: Optional[List[str]] = None) -> None:
+    def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Print a summary of cache files in the directory."""
         if not resource_dir.exists():
             self.logger.info(f"Cache directory not found: {resource_dir}")
@@ -113,7 +112,7 @@ class CacheManager(ResourceManager[Path]):
     """Manages cache directory operations: clearing and summarizing cache files."""
 
     def __init__(
-        self, cache_dir: Optional[Path] = None, logger: Optional[logging.Logger] = None
+        self, cache_dir: Path | None = None, logger: logging.Logger | None = None
     ) -> None:
         """Initialize cache manager.
 

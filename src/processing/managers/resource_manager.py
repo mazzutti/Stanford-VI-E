@@ -1,7 +1,7 @@
 """Generic resource manager with strategy pattern for operations."""
 
 from pathlib import Path
-from typing import Generic, TypeVar, Protocol, Optional, List, Any
+from typing import Generic, TypeVar, Protocol, Any
 import logging
 
 from src.processing.managers.base import BaseManager
@@ -20,7 +20,7 @@ T = TypeVar("T")
 class ClearStrategy(Protocol):
     """Strategy for clearing resources."""
 
-    def clear(self, resource_dir: Path, patterns: Optional[List[str]] = None) -> int:
+    def clear(self, resource_dir: Path, patterns: list[str] | None = None) -> int:
         """Clear resources matching criteria.
 
         Args:
@@ -36,7 +36,7 @@ class ClearStrategy(Protocol):
 class SummarizeStrategy(Protocol):
     """Strategy for summarizing resources."""
 
-    def summarize(self, resource_dir: Path, keys: Optional[List[str]] = None) -> None:
+    def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Print summary of resources.
 
         Args:
@@ -49,7 +49,7 @@ class SummarizeStrategy(Protocol):
 class NoOpClearStrategy:
     """No-operation clear strategy."""
 
-    def clear(self, resource_dir: Path, patterns: Optional[List[str]] = None) -> int:
+    def clear(self, resource_dir: Path, patterns: list[str] | None = None) -> int:
         """Do nothing."""
         return 0
 
@@ -57,7 +57,7 @@ class NoOpClearStrategy:
 class NoOpSummarizeStrategy:
     """No-operation summarize strategy."""
 
-    def summarize(self, resource_dir: Path, keys: Optional[List[str]] = None) -> None:
+    def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Do nothing."""
         pass
 
@@ -72,9 +72,9 @@ class ResourceManager(BaseManager, Generic[T]):
     def __init__(
         self,
         resource_dir: Path,
-        clear_strategy: Optional[ClearStrategy] = None,
-        summarize_strategy: Optional[SummarizeStrategy] = None,
-        logger: Optional[logging.Logger] = None,
+        clear_strategy: ClearStrategy | None = None,
+        summarize_strategy: SummarizeStrategy | None = None,
+        logger: logging.Logger | None = None,
     ):
         """Initialize resource manager.
 
@@ -91,8 +91,8 @@ class ResourceManager(BaseManager, Generic[T]):
 
     def clear(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear resources using configured strategy.
@@ -113,7 +113,7 @@ class ResourceManager(BaseManager, Generic[T]):
     def summarize(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Summarize resources using configured strategy.

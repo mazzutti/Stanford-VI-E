@@ -11,7 +11,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, List, Union, Any
+from typing import Any
 from numpy.typing import NDArray
 
 
@@ -27,7 +27,7 @@ from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
 
 
-IndexTuple = Tuple[int, int, int]
+IndexTuple = tuple[int, int, int]
 
 
 @dataclass
@@ -48,11 +48,11 @@ class ResamplePlan:
     def create(
         cls,
         grid_spec: GridSpec,
-        vp_depth: Union[NDArray[Any], Quantity],
-        target_dt: Optional[float] = None,
-        target_nt: Optional[int] = None,
+        vp_depth: NDArray[Any] | Quantity,
+        target_dt: float | None = None,
+        target_nt: int | None = None,
         block_size: int = 65536,
-    ) -> "ResamplePlan":
+    ) -> ResamplePlan:
         """Construct a ResamplePlan from a vp_depth cube.
 
         vp_depth may be a Quantity or ndarray with shape (ni, nj, nz).
@@ -141,7 +141,7 @@ class ResamplePlan:
         result: NDArray[Any] = depth_padded.transpose(2, 0, 1).reshape(self.nz + 1, -1)
         return result
 
-    def blocks(self) -> List[Tuple[int, int]]:
+    def blocks(self) -> list[tuple[int, int]]:
         ntr = self.ntr
         b = self.block_size
         return [(start, min(start + b, ntr)) for start in range(0, ntr, b)]

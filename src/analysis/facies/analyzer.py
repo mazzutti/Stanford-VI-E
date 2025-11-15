@@ -10,7 +10,8 @@ Integrated Patterns:
 """
 
 import logging
-from typing import Any, Callable, Optional, Type, Dict, cast
+from typing import Any, cast
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -103,13 +104,13 @@ class FaciesCorrelationAnalyzer(
 
     def __init__(
         self,
-        config: Optional[FaciesCorrelationConfig] = None,
+        config: FaciesCorrelationConfig | None = None,
         *,
-        resampler_factory: Optional[ResamplerFactory] = None,
-        select_cache_files: Optional[Callable[[str, str], Optional[str]]] = None,
-        cache_loader: Optional[CacheLoaderProtocol] = None,
-        velocity_model_class: Optional[Type[VelocityModel]] = None,
-        plotter: Optional[PlotterProtocol] = None,
+        resampler_factory: ResamplerFactory | None = None,
+        select_cache_files: Callable[[str, str], str | None] | None = None,
+        cache_loader: CacheLoaderProtocol | None = None,
+        velocity_model_class: type[VelocityModel] | None = None,
+        plotter: PlotterProtocol | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize analyzer with optional dependency injection for testing."""
@@ -129,7 +130,7 @@ class FaciesCorrelationAnalyzer(
         # Public slot to keep the last computed AVO results when available.
         # Populated by the AnalysisPipeline at finalize stage so external
         # orchestrators (e.g., IntegratedAnalyzer) can inspect/restore results.
-        self.last_avo_results: Optional[AvoResults] = None
+        self.last_avo_results: AvoResults | None = None
 
     def _ensure_initialized(self) -> None:
         """Ensure analyzer is initialized before use."""
@@ -190,7 +191,7 @@ class FaciesCorrelationAnalyzer(
 
     @classmethod
     def from_builder(
-        cls, builder_func: Optional[Callable[..., "FaciesCorrelationAnalyzer"]] = None
+        cls, builder_func: Callable[..., "FaciesCorrelationAnalyzer"] | None = None
     ) -> "FaciesCorrelationAnalyzer":
         """Create analyzer using fluent AnalysisBuilder pattern.
 
@@ -265,7 +266,7 @@ class FaciesCorrelationAnalyzer(
             raise TypeError(f"Expected dict kwargs, got {type(data)}")
 
         # Cast to a more specific dict type to resolve Pylance warnings
-        run_kwargs = cast(Dict[str, Any], data)
+        run_kwargs = cast(dict[str, Any], data)
         return cast(
             Figure,
             self.run(
@@ -329,7 +330,7 @@ class FaciesCorrelationAnalyzer(
         self,
         seismic_cube: NDArray[np.float64],
         boundaries: NDArray[np.bool_],
-        window: Optional[int] = None,
+        window: int | None = None,
     ) -> BoundaryAmpsResult:
         """Extract amplitudes at and away from facies boundaries."""
         self._ensure_initialized()
@@ -414,7 +415,7 @@ class FaciesCorrelationAnalyzer(
             self._plotter = FaciesPlotter()
         return self._plotter.create_summary_plots(avo_results, cache_dir, domain=domain)
 
-    def get_processor_info(self) -> Dict[str, str]:
+    def get_processor_info(self) -> dict[str, str]:
         """Get configured processor class names."""
         self._ensure_initialized()
         return {

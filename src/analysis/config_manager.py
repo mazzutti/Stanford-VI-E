@@ -35,7 +35,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Union, cast
+from typing import Any, cast
 from pathlib import Path
 import logging
 import json
@@ -58,7 +58,7 @@ class ConfigSource(ABC):
     """Abstract base for configuration sources."""
 
     @abstractmethod
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration.
 
         Returns:
@@ -78,13 +78,13 @@ class EnvironmentSource(ConfigSource):
         """
         self.prefix = prefix
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration from environment variables.
 
         Returns:
             Configuration dictionary
         """
-        config: Dict[str, Any] = {}
+        config: dict[str, Any] = {}
 
         for key, value in os.environ.items():
             if key.startswith(self.prefix):
@@ -104,7 +104,7 @@ class EnvironmentSource(ConfigSource):
 class JsonSource(ConfigSource):
     """Load configuration from JSON file."""
 
-    def __init__(self, path: Union[str, Path]):
+    def __init__(self, path: str | Path):
         """Initialize JSON source.
 
         Args:
@@ -112,7 +112,7 @@ class JsonSource(ConfigSource):
         """
         self.path = Path(path)
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration from JSON file.
 
         Returns:
@@ -126,7 +126,7 @@ class JsonSource(ConfigSource):
             logger.warning(f"JSON config file not found: {self.path}")
             return {}
 
-        with open(self.path, "r") as f:
+        with open(self.path) as f:
             raw = json.load(f)
 
         if not isinstance(raw, dict):
@@ -137,7 +137,7 @@ class JsonSource(ConfigSource):
 
         from typing import cast
 
-        config = cast(Dict[str, Any], raw)
+        config = cast(dict[str, Any], raw)
 
         logger.info(f"Loaded configuration from {self.path}")
         return config
@@ -146,7 +146,7 @@ class JsonSource(ConfigSource):
 class YamlSource(ConfigSource):
     """Load configuration from YAML file."""
 
-    def __init__(self, path: Union[str, Path]):
+    def __init__(self, path: str | Path):
         """Initialize YAML source.
 
         Args:
@@ -154,7 +154,7 @@ class YamlSource(ConfigSource):
         """
         self.path = Path(path)
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration from YAML file.
 
         Returns:
@@ -164,17 +164,14 @@ class YamlSource(ConfigSource):
             FileNotFoundError: If file not found
             yaml.YAMLError: If file invalid YAML
         """
-        try:
-            import yaml
-        except ImportError:
-            logger.warning("PyYAML not installed, using JSON instead")
-            return {}
+
+        import yaml
 
         if not self.path.exists():
             logger.warning(f"YAML config file not found: {self.path}")
             return {}
 
-        with open(self.path, "r") as f:
+        with open(self.path) as f:
             raw = yaml.safe_load(f)
 
         if not isinstance(raw, dict):
@@ -185,7 +182,7 @@ class YamlSource(ConfigSource):
 
         from typing import cast
 
-        config = cast(Dict[str, Any], raw)
+        config = cast(dict[str, Any], raw)
 
         logger.info(f"Loaded configuration from {self.path}")
         return config
@@ -202,14 +199,14 @@ class ConfigManager(BaseConfig):
     def __init__(self) -> None:
         """Initialize configuration manager."""
         super().__init__()
-        self._sources: List[ConfigSource] = []
+        self._sources: list[ConfigSource] = []
         logger.info("ConfigManager initialized")
 
     @classmethod
     def from_file(
         cls,
-        path: Union[str, Path],
-        file_type: Optional[str] = None,
+        path: str | Path,
+        file_type: str | None = None,
     ) -> ConfigManager:
         """Create manager from configuration file.
 
@@ -293,7 +290,7 @@ class ConfigManager(BaseConfig):
         """
         return self._profile
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """Get entire configuration dictionary.
 
         Returns:
@@ -301,7 +298,7 @@ class ConfigManager(BaseConfig):
         """
         return self._config.copy()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary.
 
         Returns:
@@ -309,7 +306,7 @@ class ConfigManager(BaseConfig):
         """
         return self._config.copy()
 
-    def _merge_config(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
+    def _merge_config(self, target: dict[str, Any], source: dict[str, Any]) -> None:
         """Recursively merge source config into target.
 
         Args:
@@ -322,9 +319,9 @@ class ConfigManager(BaseConfig):
                 and key in target
                 and isinstance(target[key], dict)
             ):
-                # Cast both sides to Dict[str, Any] so the type checker knows they are mappings
+                # Cast both sides to dict[str, Any] so the type checker knows they are mappings
                 self._merge_config(
-                    cast(Dict[str, Any], target[key]), cast(Dict[str, Any], value)
+                    cast(dict[str, Any], target[key]), cast(dict[str, Any], value)
                 )
             else:
                 target[key] = value

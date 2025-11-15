@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
-from typing import Dict, Optional, Union, cast
+from typing import cast
 import numpy as np
 from numpy.typing import NDArray
 
@@ -37,34 +37,35 @@ class DatasetManager:
     ----------
     data_path : str
         Root path to the dataset directory.
-    file_map : Dict[str, str]
+    file_map : dict[str, str]
         Mapping of property keys to their folder names.
     grid_spec : GridSpec
         Grid specification for the dataset.
-    vp : Optional[NDArray[np.float64]]
+    vp : NDArray[np.float64] | None
         P-wave velocity data.
-    vs : Optional[NDArray[np.float64]]
+    vs : NDArray[np.float64] | None
         S-wave velocity data.
-    rho : Optional[NDArray[np.float64]]
+    rho : NDArray[np.float64] | None
         Density data.
-    facies : Optional[NDArray[np.float64]]
+    facies : NDArray[np.float64] | None
         Facies data.
-    full_stack : Optional[NDArray[np.float64]]
+    full_stack : NDArray[np.float64] | None
         Full stack seismic data.
+
     """
 
     data_path: str
-    file_map: Dict[str, str]
+    file_map: dict[str, str]
     grid_spec: GridSpec
 
-    vp: Optional[NDArray[np.float64]] = None
-    vs: Optional[NDArray[np.float64]] = None
-    rho: Optional[NDArray[np.float64]] = None
-    facies: Optional[NDArray[np.float64]] = None
-    full_stack: Optional[NDArray[np.float64]] = None
+    vp: NDArray[np.float64] | None = None
+    vs: NDArray[np.float64] | None = None
+    rho: NDArray[np.float64] | None = None
+    facies: NDArray[np.float64] | None = None
+    full_stack: NDArray[np.float64] | None = None
 
-    _other: Dict[str, NDArray[np.float64]] = field(
-        default_factory=lambda: cast(Dict[str, NDArray[np.float64]], {}), repr=False
+    _other: dict[str, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(dict[str, NDArray[np.float64]], {}), repr=False
     )
     _logger: logging.Logger = field(
         default_factory=lambda: logging.getLogger(__name__), init=False, repr=False
@@ -140,20 +141,21 @@ class DatasetManager:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Context manager exit.
 
         Parameters
         ----------
-        exc_type : Optional[type[BaseException]]
+        exc_type : type[BaseException] | None
             Exception type if an exception occurred.
-        exc_val : Optional[BaseException]
+        exc_val : BaseException | None
             Exception value if an exception occurred.
-        __exc_tb : Optional[TracebackType]
+        __exc_tb : TracebackType | None
             Exception traceback if an exception occurred.
+
         """
         # No cleanup needed currently - provides hook for future resource management
         pass
@@ -185,7 +187,7 @@ class DatasetManager:
         else:
             self._other[key] = arr
 
-    def get_property(self, key: str) -> Optional[NDArray[np.float64]]:
+    def get_property(self, key: str) -> NDArray[np.float64] | None:
         """Get a loaded property by key.
 
         Provides uniform access to both known properties and custom properties.
@@ -197,8 +199,9 @@ class DatasetManager:
 
         Returns
         -------
-        Optional[NDArray[np.float64]]
+        NDArray[np.float64] | None
             The loaded array, or None if not loaded or not found.
+
         """
         if key in GSLibConfig.KNOWN_PROPERTIES:
             return getattr(self, key, None)
@@ -256,10 +259,10 @@ class DatasetManager:
 
     def align_cache_array(
         self,
-        arr: Optional[NDArray[np.float64]],
+        arr: NDArray[np.float64] | None,
         *,
         try_reshape: bool = True,
-    ) -> Optional[NDArray[np.float64]]:
+    ) -> NDArray[np.float64] | None:
         """Validate and align a cache array to this DatasetManager's grid.
 
         Ensures the provided array matches the manager's grid_spec.shape.
@@ -271,14 +274,14 @@ class DatasetManager:
 
         Parameters
         ----------
-        arr : Optional[NDArray[np.float64]]
+        arr : NDArray[np.float64] | None
             The array to align, or None.
         try_reshape : bool, optional
             Whether to attempt reshaping if dimensions match but shape differs.
 
         Returns
         -------
-        Optional[NDArray[np.float64]]
+        NDArray[np.float64] | None
             The aligned array as an ndarray of dtype float64, or None if
             alignment failed or input was None.
         """
@@ -318,7 +321,7 @@ class DatasetManager:
 
     @classmethod
     def from_stanfordsix(
-        cls, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
+        cls, data_path: str, file_map: dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
         """Create a DatasetManager for the Stanford-VI-E layout and load data.
 
@@ -329,7 +332,7 @@ class DatasetManager:
         ----------
         data_path : str
             Root path to the dataset directory.
-        file_map : Dict[str, str]
+        file_map : dict[str, str]
             Mapping of property keys to their folder names.
         grid_spec : GridSpec
             Grid specification for the dataset.
@@ -359,14 +362,15 @@ class GslibLoader:
 
     Attributes
     ----------
-    _instance : Optional[GslibLoader]
+    _instance : GslibLoader | None
         Singleton instance.
-    _reader : Optional[GSLibReader]
+    _reader : GSLibReader | None
         Shared reader instance.
+
     """
 
-    _instance: Optional[GslibLoader] = None
-    _reader: Optional[GSLibReader] = None
+    _instance: GslibLoader | None = None
+    _reader: GSLibReader | None = None
 
     def __new__(cls) -> GslibLoader:
         """Ensure singleton pattern for the default instance."""
@@ -375,14 +379,12 @@ class GslibLoader:
             cls._reader = GSLibReader()
         return cls._instance
 
-    def read(
-        self, filepath: Union[str, Path], grid_spec: GridSpec
-    ) -> NDArray[np.float64]:
+    def read(self, filepath: str | Path, grid_spec: GridSpec) -> NDArray[np.float64]:
         """Read a GSLIB file and return a 3D NumPy array.
 
         Parameters
         ----------
-        filepath : Union[str, Path]
+        filepath : str | Path
             Path to the GSLIB .dat file.
         grid_spec : GridSpec
             Grid specification for reshaping the data.
@@ -391,6 +393,7 @@ class GslibLoader:
         -------
         NDArray[np.float64]
             The loaded data reshaped to the grid specification.
+
         """
         assert self._reader is not None, "GSLibReader not initialized"
         return self._reader.read(filepath, grid_spec.shape)

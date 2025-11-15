@@ -20,7 +20,7 @@ For convenience, a module-level instance is available:
     >>> printer("Title", ["Line 1", "Line 2"])
 """
 
-from typing import Optional, Sequence, Iterator
+from collections.abc import Sequence, Iterator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class HeaderPrinter:
         log_level: int = logging.INFO,
         separator_width: int = 70,
         separator_char: str = "=",
-        logger_obj: Optional[logging.Logger] = None,
+        logger_obj: logging.Logger | None = None,
     ) -> None:
         """Initialize HeaderPrinter with configuration.
 
@@ -134,7 +134,7 @@ class HeaderPrinter:
 
     @classmethod
     def error_header(
-        cls, logger_obj: Optional[logging.Logger] = None
+        cls, logger_obj: logging.Logger | None = None
     ) -> "HeaderPrinter":
         """Create a HeaderPrinter for error messages.
 
@@ -155,7 +155,7 @@ class HeaderPrinter:
 
     @classmethod
     def section_header(
-        cls, logger_obj: Optional[logging.Logger] = None
+        cls, logger_obj: logging.Logger | None = None
     ) -> "HeaderPrinter":
         """Create a HeaderPrinter for section headers.
 
@@ -176,7 +176,7 @@ class HeaderPrinter:
 
     @classmethod
     def info_header(
-        cls, logger_obj: Optional[logging.Logger] = None
+        cls, logger_obj: logging.Logger | None = None
     ) -> "HeaderPrinter":
         """Create a HeaderPrinter for info messages.
 
@@ -197,7 +197,7 @@ class HeaderPrinter:
 
     @classmethod
     def debug_header(
-        cls, logger_obj: Optional[logging.Logger] = None
+        cls, logger_obj: logging.Logger | None = None
     ) -> "HeaderPrinter":
         """Create a HeaderPrinter for debug messages.
 
@@ -243,8 +243,7 @@ class HeaderPrinter:
         yield separator
         yield ""
 
-        for line in description_lines:
-            yield line
+        yield from description_lines
 
         yield ""
 

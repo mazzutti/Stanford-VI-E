@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import logging
-from typing import List, Optional
 
 
 from src.processing.managers.base import BaseManager
@@ -26,9 +25,9 @@ class ProcessManager(BaseManager):
 
     def __init__(
         self,
-        cache_manager: Optional[CacheManager] = None,
-        file_manager: Optional[FileManager] = None,
-        logger: Optional[logging.Logger] = None,
+        cache_manager: CacheManager | None = None,
+        file_manager: FileManager | None = None,
+        logger: logging.Logger | None = None,
     ):
         """Initialize process manager with dependencies.
 
@@ -43,8 +42,8 @@ class ProcessManager(BaseManager):
 
     def clear(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear cache files matching patterns or using size-based pruning.
@@ -60,7 +59,7 @@ class ProcessManager(BaseManager):
         return self.cache.clear(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
 
     def open_file(
-        self, filepath: str, description: Optional[str] = None, prefix: str = ""
+        self, filepath: str, description: str | None = None, prefix: str = ""
     ) -> bool:
         """Open a file using the FileManager.
 
@@ -79,7 +78,7 @@ class ProcessManager(BaseManager):
     def summarize(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Print summary of cache files.
@@ -94,8 +93,8 @@ class ProcessManager(BaseManager):
     # Protocol-compatible aliases for AnalysisCommon
     def clear_cache(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Alias for clear() to match ProcessManagerProtocol."""
@@ -104,7 +103,7 @@ class ProcessManager(BaseManager):
     def summarize_cache_files(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Alias for summarize() to match ProcessManagerProtocol."""
@@ -124,10 +123,10 @@ class ManagerHub(BaseManager):
 
     def __init__(
         self,
-        cache_manager: Optional[CacheManager] = None,
-        file_manager: Optional[FileManager] = None,
-        process_manager: Optional[ProcessManager] = None,
-        logger: Optional[logging.Logger] = None,
+        cache_manager: CacheManager | None = None,
+        file_manager: FileManager | None = None,
+        process_manager: ProcessManager | None = None,
+        logger: logging.Logger | None = None,
     ):
         """Initialize manager hub with dependencies.
 
@@ -146,8 +145,8 @@ class ManagerHub(BaseManager):
 
     def clear(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear all managed resources.
@@ -165,7 +164,7 @@ class ManagerHub(BaseManager):
     def summarize(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Print summary of all managed resources.

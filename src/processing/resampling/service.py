@@ -14,7 +14,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, Any
+from typing import Any
 
 
 from numpy.typing import ArrayLike, NDArray
@@ -60,10 +60,10 @@ class ResamplerService:
         self,
         data_depth: NDArray[Any] | Quantity | ArrayLike,
         vp_depth: NDArray[Any] | Quantity | ArrayLike,
-        target_dt: Optional[float] = None,
-        target_nt: Optional[int] = None,
+        target_dt: float | None = None,
+        target_nt: int | None = None,
         use_cache: bool = True,
-    ) -> Tuple[NDArray[Any] | Quantity, float]:
+    ) -> tuple[NDArray[Any] | Quantity, float]:
         """Resample depth-sampled property to regular time using a ResamplePlan.
 
         This method will attempt to fetch a cached ResamplePlan for the given

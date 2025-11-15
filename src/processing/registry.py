@@ -28,7 +28,8 @@ Example:
 from __future__ import annotations
 
 
-from typing import Optional, TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 import logging
 
 
@@ -76,7 +77,7 @@ class ServiceRegistry:
         _logger: Logger instance
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """Initialize the registry.
 
         Args:
@@ -128,7 +129,7 @@ class ServiceRegistry:
         return self._instances[key]
 
     def get_resampler_service(
-        self, grid_spec: Optional[GridSpec] = None
+        self, grid_spec: GridSpec | None = None
     ) -> ResamplerService:
         """Get or create ResamplerService singleton.
 
@@ -288,7 +289,7 @@ class ServiceRegistry:
 
 
 # Global registry instance (lazy initialization)
-_global_registry: Optional[ServiceRegistry] = None
+_global_registry: ServiceRegistry | None = None
 
 
 def get_registry() -> ServiceRegistry:

@@ -30,7 +30,8 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 from functools import partial
 from enum import Enum
 import logging
@@ -79,11 +80,11 @@ class ServiceDescriptor:
     def __init__(
         self,
         name: str,
-        service_type: Type[Any],
+        service_type: type[Any],
         implementation: Any,
         lifecycle: Lifecycle,
-        factory: Optional[Callable[..., Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        factory: Callable[..., Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> None:
         """Initialize service descriptor.
 
@@ -118,15 +119,15 @@ class LifecycleManager:
 
     def __init__(self) -> None:
         """Initialize lifecycle manager."""
-        self._singletons: Dict[str, Any] = {}
-        self._scopes: Dict[str, Dict[str, Any]] = {}
+        self._singletons: dict[str, Any] = {}
+        self._scopes: dict[str, dict[str, Any]] = {}
         self._lock = Lock()
 
     def get_instance(
         self,
         descriptor: ServiceDescriptor,
         factory: Callable[[], Any],
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> Any:
         """Get or create instance based on lifecycle.
 
@@ -191,7 +192,7 @@ class ServiceProvider:
 
     def __init__(
         self,
-        descriptors: Dict[str, ServiceDescriptor],
+        descriptors: dict[str, ServiceDescriptor],
         lifecycle_manager: LifecycleManager,
     ) -> None:
         """Initialize service provider.
@@ -202,12 +203,12 @@ class ServiceProvider:
         """
         self._descriptors = descriptors
         self._lifecycle_manager = lifecycle_manager
-        self._resolution_stack: List[str] = []
+        self._resolution_stack: list[str] = []
 
     def resolve(
         self,
         service_name: str,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> Any:
         """Resolve a service by name with dependency injection.
 
@@ -235,7 +236,7 @@ class ServiceProvider:
         # Resolve dependencies
         self._resolution_stack.append(service_name)
         try:
-            kwargs: Dict[str, Any] = {}
+            kwargs: dict[str, Any] = {}
             for dep_name in descriptor.dependencies:
                 kwargs[dep_name] = self.resolve(dep_name, scope_id)
 
@@ -264,7 +265,7 @@ class ServiceProvider:
         self,
         service_name: str,
         default: Any = None,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> Any:
         """Try to resolve a service, returning default if not found.
 
@@ -287,7 +288,7 @@ class Container:
 
     def __init__(self) -> None:
         """Initialize container."""
-        self._descriptors: Dict[str, ServiceDescriptor] = {}
+        self._descriptors: dict[str, ServiceDescriptor] = {}
         self._lifecycle_manager = LifecycleManager()
         self._service_provider = ServiceProvider(
             self._descriptors,
@@ -304,9 +305,9 @@ class Container:
     def register_singleton(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> Container:
         """Register a singleton service.
 
@@ -334,9 +335,9 @@ class Container:
     def register_transient(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> Container:
         """Register a transient service (new instance each time).
 
@@ -364,9 +365,9 @@ class Container:
     def register_scoped(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> Container:
         """Register a scoped service (single instance per scope).
 
@@ -391,7 +392,7 @@ class Container:
         logger.debug(f"Registered scoped: {name!r}")
         return self
 
-    def resolve(self, service_name: str, scope_id: Optional[str] = None) -> Any:
+    def resolve(self, service_name: str, scope_id: str | None = None) -> Any:
         """Resolve a service by name.
 
         Args:
@@ -407,7 +408,7 @@ class Container:
         self,
         service_name: str,
         default: Any = None,
-        scope_id: Optional[str] = None,
+        scope_id: str | None = None,
     ) -> Any:
         """Try to resolve a service, returning default if not found.
 
@@ -432,7 +433,7 @@ class Container:
         """
         return service_name in self._descriptors
 
-    def get_services(self) -> Dict[str, ServiceDescriptor]:
+    def get_services(self) -> dict[str, ServiceDescriptor]:
         """Get all registered services.
 
         Returns:
@@ -469,9 +470,9 @@ class ContainerBuilder:
     def register_singleton(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., T]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., T] | None = None,
+        dependencies: list[str] | None = None,
     ) -> ContainerBuilder:
         """Register singleton service.
 
@@ -495,9 +496,9 @@ class ContainerBuilder:
     def register_transient(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., T]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., T] | None = None,
+        dependencies: list[str] | None = None,
     ) -> ContainerBuilder:
         """Register transient service.
 
@@ -521,9 +522,9 @@ class ContainerBuilder:
     def register_scoped(
         self,
         name: str,
-        implementation: Type[T],
-        factory: Optional[Callable[..., T]] = None,
-        dependencies: Optional[List[str]] = None,
+        implementation: type[T],
+        factory: Callable[..., T] | None = None,
+        dependencies: list[str] | None = None,
     ) -> ContainerBuilder:
         """Register scoped service.
 

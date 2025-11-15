@@ -4,7 +4,6 @@ Provides clean, maintainable approaches to finding cache files.
 """
 
 from pathlib import Path
-from typing import Optional, List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class CacheFileSelector:
         domain: str,
         allow_npy: bool = True,
         find_latest: bool = False,
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Select cache file for domain.
 
         Args:
@@ -64,7 +63,7 @@ class CacheFileSelector:
 
     def _find_exact_match(
         self, cache_dir: Path, domain: str, allow_npy: bool
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Find exact filename match."""
         # Try NPZ first (preferred format)
         npz_path = cache_dir / f"{self.FILE_PREFIX}{domain}.npz"
@@ -83,7 +82,7 @@ class CacheFileSelector:
 
     def _find_latest_match(
         self, cache_dir: Path, domain: str, allow_npy: bool
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Find latest file matching pattern."""
         matches = self._find_all_matches(cache_dir, domain, allow_npy)
 
@@ -98,13 +97,13 @@ class CacheFileSelector:
 
     def _find_all_matches(
         self, cache_dir: Path, domain: str, allow_npy: bool
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Find all files matching domain pattern."""
         patterns = [f"{self.FILE_PREFIX}*{domain}*.npz"]
         if allow_npy:
             patterns.append(f"{self.FILE_PREFIX}*{domain}*.npy")
 
-        matches: List[Path] = []
+        matches: list[Path] = []
         for pattern in patterns:
             matches.extend(cache_dir.glob(pattern))
 

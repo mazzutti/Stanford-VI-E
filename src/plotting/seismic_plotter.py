@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Any, Optional, cast, TYPE_CHECKING
+from typing import Any, cast, TYPE_CHECKING
 
 import numpy as np
 
@@ -57,7 +57,7 @@ class SeismicPlotter(BasePlotter):
             logging.basicConfig(level=logging.DEBUG)
             logger.setLevel(logging.DEBUG)
 
-    def _select_cache(self, domain: str) -> Optional[Path]:
+    def _select_cache(self, domain: str) -> Path | None:
         pattern = "avo_time*.npz" if domain == "time" else "avo_depth*.npz"
         candidates = list(self.cache_dir.glob(pattern))
         if not candidates:
@@ -74,9 +74,9 @@ class SeismicPlotter(BasePlotter):
         return cast(NDArray[np.floating[Any]], npz["full_stack"])
 
     # --------- Plotly (interactive) -------------------------------------------------
-    def generate_from_caches(self, domain: str = "time") -> List[Path]:
+    def generate_from_caches(self, domain: str = "time") -> list[Path]:
         """Generate interactive HTML(s) from cache for given domain and return generated paths."""
-        results: List[Path] = []
+        results: list[Path] = []
         cache_file = self._select_cache(domain)
         if cache_file is None:
             logger.error("No cache file available for domain: %s", domain)
@@ -102,12 +102,12 @@ class SeismicPlotter(BasePlotter):
         # Build 3D traces using the PlotlyPlotter. The Plotly wrapper accepts
         # a restricted set of kwargs (no title/k_label/k_unit). Keep title
         # separate and pass only supported arguments here.
-        traces: List["go.Surface"] = self._plotly.create_3d_volume(
+        traces: list[go.Surface] = self._plotly.create_3d_volume(
             cube, slice_indices, colorscale=cmap_name, show_colorbar=True
         )
 
         # create_figure accepts traces and we pass title separately
-        fig: "go.Figure" = self._plotly.create_figure(traces, title=title)
+        fig: go.Figure = self._plotly.create_figure(traces, title=title)
         out_name = f"seismic_full_stack_{domain}_3d.html"
         out_path = self.out_dir / out_name
         self._plotly.save_figure(fig, str(out_path))
@@ -261,7 +261,7 @@ class SeismicPlotter(BasePlotter):
         cache_file: Path,
         output_dir: Path,
         domain: str = "time",
-        angles: Optional[list[float]] = None,
+        angles: list[float] | None = None,
     ) -> dict[str, list[Path]]:
         """Generate all seismogram plots from cache file (angle stacks + full stack)."""
         logger.info(f"Loading seismogram data from: {cache_file}")
@@ -285,7 +285,7 @@ class SeismicPlotter(BasePlotter):
                 if angles is None:
                     angles = [int(k.split("_")[1]) for k in angle_keys]
 
-            angles_iter = cast(List[float], angles)
+            angles_iter = cast(list[float], angles)
             for i, (angle_stack, angle) in enumerate(zip(angle_stacks, angles_iter)):
                 output_file = output_dir / f"seismic_angle_{i}{suffix}.png"
                 self.plot_angle_stack(

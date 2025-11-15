@@ -6,7 +6,7 @@ Tests for abstract base classes that define contracts for processing components.
 import pytest
 import numpy as np
 from abc import ABC
-from typing import Dict, Any
+from typing import Any
 
 from src.processing.core.abstracts import (
     Processor,

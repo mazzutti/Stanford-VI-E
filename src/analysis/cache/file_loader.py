@@ -5,7 +5,8 @@ cache files by extracting file loading logic into dedicated classes.
 """
 
 from pathlib import Path
-from typing import Any, Optional, Union, Callable, cast
+from typing import Any, cast
+from collections.abc import Callable
 from numpy.typing import NDArray
 from numpy.lib.npyio import NpzFile
 import numpy as np
@@ -23,8 +24,8 @@ class NPZExtractor:
 
     @classmethod
     def extract(
-        cls, archive: NpzFile, key: Optional[str] = None
-    ) -> Optional[NDArray[Any]]:
+        cls, archive: NpzFile, key: str | None = None
+    ) -> NDArray[Any] | None:
         """Extract array from NPZ archive.
 
         Args:
@@ -57,7 +58,7 @@ class FileLoader:
     def __init__(
         self,
         np_load: Callable[..., Any] = np.load,
-        extractor: Optional[NPZExtractor] = None,
+        extractor: NPZExtractor | None = None,
     ) -> None:
         """Initialize file loader.
 
@@ -71,9 +72,9 @@ class FileLoader:
     def load(
         self,
         path: Path,
-        mmap_mode: Optional[str] = None,
+        mmap_mode: str | None = None,
         convert_to_float64: bool = True,
-    ) -> Optional[NDArray[Any]]:
+    ) -> NDArray[Any] | None:
         """Load file with simplified logic.
 
         Args:
@@ -107,16 +108,16 @@ class FileLoader:
             return None
 
     def _load_file(
-        self, path: Path, mmap_mode: Optional[str]
-    ) -> Union[NDArray[Any], NpzFile]:
+        self, path: Path, mmap_mode: str | None
+    ) -> NDArray[Any] | NpzFile:
         """Load file using NumPy."""
         kwargs: dict[str, Any] = {"allow_pickle": False}
         if mmap_mode:
             kwargs["mmap_mode"] = mmap_mode
         # np.load may return different types; cast to the declared union for callers
-        return cast(Union[NDArray[Any], NpzFile], self._np_load(str(path), **kwargs))
+        return cast(NDArray[Any] | NpzFile, self._np_load(str(path), **kwargs))
 
-    def _handle_npz(self, loaded: NpzFile) -> Optional[NDArray[Any]]:
+    def _handle_npz(self, loaded: NpzFile) -> NDArray[Any] | None:
         """Extract array from NPZ archive."""
         with loaded as archive:
             return self._extractor.extract(archive)

@@ -2,7 +2,7 @@
 
 import logging
 from enum import Enum
-from typing import cast, Literal, Tuple
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -158,17 +158,17 @@ class BoundaryDetector(BaseProcessor):
             Boolean boundary mask where True indicates a boundary voxel.
         """
         # Pad with edge mode so edge comparisons behave consistently
-        pad_config = {
-            "pad_width": ((0, 0), (1, 1), (1, 1)),
-            "mode": "edge",
-        }
+        pad_width: tuple[tuple[int, int], tuple[int, int], tuple[int, int]] = (
+            (0, 0),
+            (1, 1),
+            (1, 1),
+        )
+        pad_mode: Literal["edge"] = "edge"
+
         padded = np.pad(
             facies_cube,
-            pad_width=cast(
-                Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]],
-                pad_config["pad_width"],
-            ),
-            mode=cast(Literal["edge"], pad_config["mode"]),
+            pad_width=pad_width,
+            mode=pad_mode,
         )
 
         center = padded[
@@ -230,7 +230,7 @@ class CubeAligner(BaseProcessor):
     @ProcessorDecorators.log_debug("Aligning cubes to common shape...")
     def align(
         self, seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
-    ) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Crop two 3D cubes to their minimum common shape.
 
         Enables joint analysis of seismic and facies data by aligning them

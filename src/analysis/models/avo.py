@@ -5,7 +5,7 @@ This module contains models for AVO technique analysis and comparison.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING, cast
 from functools import cached_property
 
 import numpy as np
@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from .statistics import BoundaryAmpsResult, GradientCorrelationResult
 
 # Type aliases for common patterns
-TransitionStatsMap = Dict[Transition, Optional[FaciesStats]]
-TransitionArrayMap = Dict[Transition, Optional[NDArray[np.float64]]]
+TransitionStatsMap = dict[Transition, FaciesStats | None]
+TransitionArrayMap = dict[Transition, NDArray[np.float64] | None]
 
 __all__ = [
     "TechniqueComparison",
@@ -66,7 +66,7 @@ class TechniqueComparison:
         return self.difference > threshold
 
     @property
-    def avo_strength(self) -> Optional[float]:
+    def avo_strength(self) -> float | None:
         """Return the absolute value of primary correlation strength."""
         if self.avo.pearson_correlation is not None:
             return abs(self.avo.pearson_correlation)
@@ -74,7 +74,7 @@ class TechniqueComparison:
             return abs(self.avo.spearman_correlation)
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert comparison to dictionary representation.
 
         Args:
@@ -105,7 +105,7 @@ class TechniqueComparison:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TechniqueComparison:
+    def from_dict(cls, data: dict[str, Any]) -> TechniqueComparison:
         """Create comparison from dictionary representation.
 
         Args:
@@ -142,11 +142,11 @@ class AvoStats(FormattableModel):
     """
 
     # generic container for other numeric metrics (optional)
-    extras: Dict[str, float] = field(default_factory=lambda: cast(Dict[str, float], {}))
-    pearson_correlation: Optional[float] = None
-    pearson_pvalue: Optional[float] = None
-    spearman_correlation: Optional[float] = None
-    spearman_pvalue: Optional[float] = None
+    extras: dict[str, float] = field(default_factory=lambda: cast(dict[str, float], {}))
+    pearson_correlation: float | None = None
+    pearson_pvalue: float | None = None
+    spearman_correlation: float | None = None
+    spearman_pvalue: float | None = None
 
     def __post_init__(self) -> None:
         """Validate correlation and p-value ranges."""
@@ -193,7 +193,7 @@ class AvoStats(FormattableModel):
         return False
 
     @cached_property
-    def strongest_correlation(self) -> tuple[str, Optional[float]]:
+    def strongest_correlation(self) -> tuple[str, float | None]:
         """Get cached strongest correlation method and its value."""
         if self.pearson_correlation is None and self.spearman_correlation is None:
             return "none", None
@@ -209,7 +209,7 @@ class AvoStats(FormattableModel):
             return "Pearson", self.pearson_correlation
         return "Spearman", self.spearman_correlation
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert statistics to dictionary.
 
         Args:
@@ -232,7 +232,7 @@ class AvoStats(FormattableModel):
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AvoStats:
+    def from_dict(cls, data: dict[str, Any]) -> AvoStats:
         """Create statistics from dictionary representation.
 
         Args:
@@ -257,7 +257,7 @@ class AvoStats(FormattableModel):
             extras=ModelUtilities.safe_get_dict(data, "extras"),
         )
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting."""
         return {
             "pearson_correlation": self.pearson_correlation or 0.0,
@@ -271,18 +271,18 @@ class AvoStats(FormattableModel):
 class AvoResults:
     """Structured container for AVO analysis results with computed properties."""
 
-    boundary_amps: Optional[BoundaryAmpsResult] = None
-    gradient_correlation: Optional[GradientCorrelationResult] = None
-    separation_matrix: Optional[NDArray[np.float64]] = None
-    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(
-        default_factory=lambda: cast(Dict[int, NDArray[np.float64]], {})
+    boundary_amps: BoundaryAmpsResult | None = None
+    gradient_correlation: GradientCorrelationResult | None = None
+    separation_matrix: NDArray[np.float64] | None = None
+    facies_amplitudes: dict[int, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(dict[int, NDArray[np.float64]], {})
     )
     interface_stats_summary: TransitionStatsMap = field(
         default_factory=lambda: cast(TransitionStatsMap, {})
     )
 
     @cached_property
-    def available_results(self) -> List[str]:
+    def available_results(self) -> list[str]:
         """Get list of available result components (cached)."""
         return ModelUtilities.build_available_results(
             {
@@ -328,7 +328,7 @@ class AvoResults:
         stats = self.interface_stats_summary.get(transition)
         return stats is not None and stats.count > 0
 
-    def get_transitions_for_facies(self, facies: int) -> List[Transition]:
+    def get_transitions_for_facies(self, facies: int) -> list[Transition]:
         """Get all transitions involving a specific facies.
 
         Args:
@@ -353,7 +353,7 @@ class AvoResults:
         """Get the number of interface transitions analyzed."""
         return len(self.interface_stats_summary)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert results to dictionary representation.
 
         Args:
@@ -382,7 +382,7 @@ class AvoResults:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AvoResults:
+    def from_dict(cls, data: dict[str, Any]) -> AvoResults:
         """Create results from dictionary representation.
 
         Args:

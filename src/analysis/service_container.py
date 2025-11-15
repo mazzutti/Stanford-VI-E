@@ -21,7 +21,6 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from src.analysis.patterns.dependency_injection import (
     Container,
@@ -43,7 +42,7 @@ __all__ = [
 ]
 
 # Global container instance
-_default_container: Optional[Container] = None
+_default_container: Container | None = None
 
 
 def create_container() -> Container:
@@ -91,7 +90,7 @@ def create_container() -> Container:
     return builder.build()
 
 
-def create_service_provider(container: Optional[Container] = None) -> ServiceProvider:
+def create_service_provider(container: Container | None = None) -> ServiceProvider:
     """Create a service provider from a container.
 
     Args:
@@ -139,12 +138,12 @@ class ServiceContainerBuilder:
     def __init__(self) -> None:
         """Initialize builder."""
         self.builder = ContainerBuilder()
-        self._event_bus: Optional[EventBus] = None
-        self._circuit_breaker_pool: Optional[CircuitBreakerPool] = None
-        self._config_manager: Optional[ConfigManager] = None
+        self._event_bus: EventBus | None = None
+        self._circuit_breaker_pool: CircuitBreakerPool | None = None
+        self._config_manager: ConfigManager | None = None
 
     def with_event_bus(
-        self, event_bus: Optional[EventBus] = None
+        self, event_bus: EventBus | None = None
     ) -> ServiceContainerBuilder:
         """Configure event bus.
 
@@ -167,7 +166,7 @@ class ServiceContainerBuilder:
         return self
 
     def with_circuit_breaker_pool(
-        self, pool: Optional[CircuitBreakerPool] = None
+        self, pool: CircuitBreakerPool | None = None
     ) -> ServiceContainerBuilder:
         """Configure circuit breaker pool.
 
@@ -190,7 +189,7 @@ class ServiceContainerBuilder:
         return self
 
     def with_config_manager(
-        self, config_manager: Optional[ConfigManager] = None
+        self, config_manager: ConfigManager | None = None
     ) -> ServiceContainerBuilder:
         """Configure config manager.
 

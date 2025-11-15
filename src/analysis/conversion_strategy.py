@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, cast
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ class VelocityConversionStrategy(ConversionStrategy):
     """
 
     # Conversion factors to m/s (SI unit)
-    _FACTORS: Dict[str, float] = {
+    _FACTORS: dict[str, float] = {
         "m/s": 1.0,
         "km/s": 1000.0,
         "ft/s": 0.3048,
@@ -205,7 +205,7 @@ class TimeConversionStrategy(ConversionStrategy):
     """
 
     # Conversion factors to seconds (SI unit)
-    _FACTORS: Dict[str, float] = {
+    _FACTORS: dict[str, float] = {
         "s": 1.0,
         "ms": 1e-3,
         "us": 1e-6,
@@ -283,7 +283,7 @@ class DepthConversionStrategy(ConversionStrategy):
     """
 
     # Conversion factors to meters (SI unit)
-    _FACTORS: Dict[str, float] = {
+    _FACTORS: dict[str, float] = {
         "m": 1.0,
         "km": 1000.0,
         "ft": 0.3048,
@@ -445,7 +445,7 @@ class ConversionStrategyFactory:
         >>> result = converter.convert(3.0)
     """
 
-    _CONVERTERS: Dict[UnitType, type[ConversionStrategy]] = {
+    _CONVERTERS: dict[UnitType, type[ConversionStrategy]] = {
         UnitType.VELOCITY: VelocityConversionStrategy,
         UnitType.TIME: TimeConversionStrategy,
         UnitType.DEPTH: DepthConversionStrategy,

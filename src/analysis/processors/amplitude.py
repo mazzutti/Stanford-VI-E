@@ -1,7 +1,7 @@
 """Boundary amplitude extraction processor."""
 
 import logging
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
 from scipy.ndimage import binary_dilation
@@ -53,7 +53,7 @@ class BoundaryAmplitudeExtractor(BaseProcessor):
         self,
         seismic_cube: NDArray[np.float64],
         boundaries: NDArray[np.bool_],
-        window: Optional[int] = None,
+        window: int | None = None,
     ) -> BoundaryAmpsResult:
         """Extract amplitudes at and away from facies boundaries.
 

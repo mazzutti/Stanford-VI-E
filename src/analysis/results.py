@@ -43,16 +43,12 @@ from dataclasses import dataclass, field, asdict
 from typing import (
     Generic,
     TypeVar,
-    Optional,
-    Dict,
     Any,
-    List,
     Protocol,
     cast,
-    Callable,
     overload,
-    Mapping,
 )
+from collections.abc import Callable, Mapping
 from datetime import datetime
 import logging
 
@@ -108,8 +104,8 @@ class ResultMetadata:
     execution_time_ms: float
     created_at: datetime = field(default_factory=datetime.now)
     status: str = "success"
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
     def is_success(self) -> bool:
         """Check if result indicates success."""
@@ -123,7 +119,7 @@ class ResultMetadata:
         """Check if result has warning status."""
         return self.status == "warning"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary."""
         return asdict(self)
 
@@ -182,7 +178,7 @@ class Result(Generic[T]):
 
     data: T
     metadata: ResultMetadata
-    tags: List[str] = field(default_factory=lambda: cast(List[str], []))
+    tags: list[str] = field(default_factory=lambda: cast(list[str], []))
 
     def __post_init__(self) -> None:
         """Validate result state after initialization."""
@@ -210,11 +206,11 @@ class Result(Generic[T]):
 
     @overload
     def get(
-        self: "Result[Mapping[str, V]]", key: str, default: None = ...
-    ) -> Optional[V]: ...
+        self: Result[Mapping[str, V]], key: str, default: None = ...
+    ) -> V | None: ...
 
     @overload
-    def get(self: "Result[Mapping[str, V]]", key: str, default: V) -> V: ...
+    def get(self: Result[Mapping[str, V]], key: str, default: V) -> V: ...
 
     @overload
     def get(self, key: str, default: Any = None) -> Any: ...
@@ -306,13 +302,13 @@ class Result(Generic[T]):
         combined_data: Any
         if isinstance(self.data, dict) and isinstance(other.data, dict):
             # Cast to `Any` first to avoid Pyright's partially-unknown
-            # mapping checks, then coerce to concrete `Dict[str, Any]`.
+            # mapping checks, then coerce to concrete `dict[str, Any]`.
             # pyright: ignore[reportUnknownMemberType]
             self_any = cast(Any, self.data)
             # pyright: ignore[reportUnknownMemberType]
             other_any = cast(Any, other.data)
-            self_dict: Dict[str, Any] = dict(cast(Dict[str, Any], self_any))
-            other_dict: Dict[str, Any] = dict(cast(Dict[str, Any], other_any))
+            self_dict: dict[str, Any] = dict(cast(dict[str, Any], self_any))
+            other_dict: dict[str, Any] = dict(cast(dict[str, Any], other_any))
             combined_data = {**self_dict, **other_dict}
         else:
             # Heterogeneous fallback tuple
@@ -382,7 +378,7 @@ class Result(Generic[T]):
             f"[{self.metadata.status}]: {data_preview}..."
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Returns
@@ -399,7 +395,7 @@ class Result(Generic[T]):
             """
             if isinstance(value, dict):
                 # Cast to a concrete mapping type for returning.
-                return cast(Dict[str, Any], value)
+                return cast(dict[str, Any], value)
             if hasattr(value, "__dataclass_fields__"):
                 return asdict(value)
             return str(value)
@@ -429,7 +425,7 @@ class Result(Generic[T]):
 # ============================================================================
 
 
-class MappingResult(Result[Dict[str, V]], Generic[V]):
+class MappingResult(Result[dict[str, V]], Generic[V]):
     """Specialized Result for mapping/dict-like data with precise typing.
 
     Use this class when a `Result` carries a dictionary-like payload and
@@ -438,17 +434,18 @@ class MappingResult(Result[Dict[str, V]], Generic[V]):
 
     # Note: `get_mapping` below provides the typed mapping access.
 
-    def get_mapping(self, key: str, default: Optional[V] = None) -> Optional[V]:
+    def get_mapping(self, key: str, default: V | None = None) -> V | None:
         """Dict-like typed access for mapping results.
 
         Use `get_mapping` when you have a `MappingResult[V]` and want a
-        statically-typed value back (Optional[V]). This avoids overriding
+        statically-typed value back (V | None). This avoids overriding
         `Result.get` which must remain flexible for heterogeneous `Result`.
+
         """
-        data_dict: Dict[str, V] = dict(self.data)
+        data_dict: dict[str, V] = dict(self.data)
         return data_dict.get(key, default)
 
-    def combine_mapping(self, other: "MappingResult[V]") -> "MappingResult[V]":
+    def combine_mapping(self, other: MappingResult[V]) -> MappingResult[V]:
         combined_metadata = ResultMetadata(
             name=f"{self.metadata.name}+{other.metadata.name}",
             execution_time_ms=self.metadata.execution_time_ms
@@ -456,9 +453,9 @@ class MappingResult(Result[Dict[str, V]], Generic[V]):
             status="partial" if (self.is_error or other.is_error) else "success",
         )
         combined_tags = list(set(self.tags + other.tags))
-        self_dict: Dict[str, V] = dict(self.data)
-        other_dict: Dict[str, V] = dict(other.data)
-        combined_data: Dict[str, V] = {**self_dict, **other_dict}
+        self_dict: dict[str, V] = dict(self.data)
+        other_dict: dict[str, V] = dict(other.data)
+        combined_data: dict[str, V] = {**self_dict, **other_dict}
         return MappingResult(
             data=combined_data, metadata=combined_metadata, tags=combined_tags
         )
@@ -469,7 +466,7 @@ def wrap_result(
     name: str = "result",
     execution_time_ms: float = 0.0,
     status: str = "success",
-    tags: Optional[List[str]] = None,
+    tags: list[str] | None = None,
 ) -> Result[T]:
     """Wrap data in a Result[T] container.
 

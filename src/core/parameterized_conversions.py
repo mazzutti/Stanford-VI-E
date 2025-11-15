@@ -6,7 +6,8 @@ multiple similar strategy classes with a single parameterized implementation.
 
 from __future__ import annotations
 
-from typing import Dict, Callable, Any, Union, Optional, cast
+from typing import Any, cast
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -35,8 +36,8 @@ class ParameterizedConversionStrategy:
     def __init__(
         self,
         base_unit: str,
-        factors: Dict[str, float],
-        custom_converters: Optional[Dict[tuple[str, str], Callable[[Any], Any]]] = None,
+        factors: dict[str, float],
+        custom_converters: dict[tuple[str, str], Callable[[Any], Any]] | None = None,
     ) -> None:
         """Initialize parameterized converter.
 
@@ -48,7 +49,7 @@ class ParameterizedConversionStrategy:
         """
         self.base_unit = base_unit
         self._factors = factors
-        self._custom: Dict[tuple[str, str], Callable[[Any], Any]] = (
+        self._custom: dict[tuple[str, str], Callable[[Any], Any]] = (
             custom_converters or {}
         )
 
@@ -57,7 +58,7 @@ class ParameterizedConversionStrategy:
         value: Any,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert value between units.
 
         Args:
@@ -100,7 +101,7 @@ class ParameterizedConversionStrategy:
         converted: NDArray[Any],
         was_quantity: bool,
         target_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Preserve Quantity wrapper if input was Quantity."""
         return Quantity(converted, target_unit) if was_quantity else converted
 

@@ -34,11 +34,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    List,
-    Optional,
     Protocol,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -106,7 +103,7 @@ class Validator(Protocol[T_contra]):
     Any callable that takes a value and returns validation errors or empty list.
     """
 
-    def __call__(self, value: T_contra) -> List[str]:
+    def __call__(self, value: T_contra) -> list[str]:
         """Validate a value.
 
         Parameters
@@ -152,7 +149,7 @@ class BaseValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, value: Any, name: str = "value", **kwargs: Any) -> None:
+    def validate(self, value: Any, name: str = "value") -> None:
         """Validate a value and raise ValidationError if invalid.
 
         Parameters
@@ -169,7 +166,7 @@ class BaseValidator(ABC):
         ValidationError
             If value is invalid according to validator rules.
         """
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def _format_error_message(
@@ -184,12 +181,12 @@ class BaseValidator(ABC):
 class RangeValidator(BaseValidator):
     """Validates numeric values fall within expected ranges."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: float,
         name: str = "value",
-        min_val: Optional[float] = None,
-        max_val: Optional[float] = None,
+        min_val: float | None = None,
+        max_val: float | None = None,
     ) -> None:
         """Validate a numeric value is within specified range."""
         actual_min = min_val if min_val is not None else float("-inf")
@@ -283,7 +280,7 @@ class RangeValidator(BaseValidator):
 class CountValidator(BaseValidator):
     """Validates count-like values (non-negative integers)."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: int,
         name: str = "value",
@@ -407,7 +404,7 @@ class PathValidator(BaseValidator):
 
     def validate(
         self,
-        value: Union[str, Path],
+        value: str | Path,
         name: str = "path",
         must_exist: bool = True,
         **kwargs: Any,
@@ -427,7 +424,7 @@ class ValidatorStrategy(ABC):
     """Strategy for combining multiple validators."""
 
     @abstractmethod
-    def combine(self, errors: list[List[str]]) -> List[str]:
+    def combine(self, errors: list[list[str]]) -> list[str]:
         """Combine errors from multiple validators."""
         pass
 
@@ -435,9 +432,9 @@ class ValidatorStrategy(ABC):
 class AndStrategy(ValidatorStrategy):
     """Require all validators to pass."""
 
-    def combine(self, errors: list[List[str]]) -> List[str]:
+    def combine(self, errors: list[list[str]]) -> list[str]:
         """Return all errors if any validator failed."""
-        all_errors: List[str] = []
+        all_errors: list[str] = []
         for err_list in errors:
             all_errors.extend(err_list)
         return all_errors
@@ -446,7 +443,7 @@ class AndStrategy(ValidatorStrategy):
 class OrStrategy(ValidatorStrategy):
     """Require at least one validator to pass."""
 
-    def combine(self, errors: list[List[str]]) -> List[str]:
+    def combine(self, errors: list[list[str]]) -> list[str]:
         """Return errors only if all validators failed."""
         if all(errors):  # All have errors
             return errors[0]  # Return first error
@@ -466,8 +463,8 @@ class ValidatorChain(Generic[T]):
     """
 
     name: str = "validator"
-    validators: List[Validator[T]] = field(
-        default_factory=lambda: cast(List[Validator[T]], [])
+    validators: list[Validator[T]] = field(
+        default_factory=lambda: cast(list[Validator[T]], [])
     )
     strategy: ValidatorStrategy = field(default_factory=AndStrategy)
 
@@ -476,12 +473,12 @@ class ValidatorChain(Generic[T]):
         self.validators.append(validator)
         return self
 
-    def validate(self, value: T) -> List[str]:
+    def validate(self, value: T) -> list[str]:
         """Validate value against all validators."""
         errors = [validator(value) for validator in self.validators]
         return self.strategy.combine(errors)
 
-    def __call__(self, value: T) -> List[str]:
+    def __call__(self, value: T) -> list[str]:
         """Allow using chain as a callable validator."""
         return self.validate(value)
 
@@ -490,8 +487,8 @@ class ValidatorChain(Generic[T]):
 class ValidatorComposite:
     """Composite validator combining multiple validator chains."""
 
-    validators: List[Validator[Any]] = field(
-        default_factory=lambda: cast(List[Validator[Any]], [])
+    validators: list[Validator[Any]] = field(
+        default_factory=lambda: cast(list[Validator[Any]], [])
     )
 
     def add(self, validator: Validator[Any]) -> ValidatorComposite:
@@ -499,14 +496,14 @@ class ValidatorComposite:
         self.validators.append(validator)
         return self
 
-    def validate(self, value: Any) -> List[str]:
+    def validate(self, value: Any) -> list[str]:
         """Validate using all validators."""
-        errors: List[str] = []
+        errors: list[str] = []
         for validator in self.validators:
             result: Any = validator(value)
             if isinstance(result, list):
                 # Cast to List[str] so the type checker knows what extend receives
-                errors.extend(cast(List[str], result))
+                errors.extend(cast(list[str], result))
             elif result:
                 errors.append(str(result))
         return errors
@@ -520,7 +517,7 @@ class ValidatorComposite:
 def not_none(error_msg: str = "value cannot be None") -> Validator[Any]:
     """Validator that ensures value is not None."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         return [] if value is not None else [error_msg]
 
     return validate
@@ -529,7 +526,7 @@ def not_none(error_msg: str = "value cannot be None") -> Validator[Any]:
 def positive(error_msg: str = "value must be positive") -> Validator[Any]:
     """Validator that ensures value > 0."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         try:
             return [] if value > 0 else [error_msg]
         except TypeError:
@@ -541,7 +538,7 @@ def positive(error_msg: str = "value must be positive") -> Validator[Any]:
 def negative(error_msg: str = "value must be negative") -> Validator[Any]:
     """Validator that ensures value < 0."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         try:
             return [] if value < 0 else [error_msg]
         except TypeError:
@@ -557,7 +554,7 @@ def in_range(
 ) -> Validator[Any]:
     """Validator that ensures value is in [min_val, max_val]."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         try:
             valid = min_val <= value <= max_val
             return [] if valid else [error_msg]
@@ -574,7 +571,7 @@ def length_between(
 ) -> Validator[Any]:
     """Validator that ensures length is in [min_len, max_len]."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         try:
             length = len(value)
             valid = min_len <= length <= max_len
@@ -587,11 +584,11 @@ def length_between(
 
 def matches_type(
     expected_type: type,
-    error_msg: Optional[str] = None,
+    error_msg: str | None = None,
 ) -> Validator[Any]:
     """Validator that ensures value is of expected type."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         if error_msg is None:
             msg = f"expected {expected_type.__name__}, got {type(value).__name__}"
         else:
@@ -604,7 +601,7 @@ def matches_type(
 def is_callable(error_msg: str = "value must be callable") -> Validator[Any]:
     """Validator that ensures value is callable."""
 
-    def validate(value: Any) -> List[str]:
+    def validate(value: Any) -> list[str]:
         return [] if callable(value) else [error_msg]
 
     return validate
@@ -622,9 +619,9 @@ class ValidationHelpers:
     def validate_or_return(
         condition: bool,
         error_msg: str,
-        default_value: Optional[T] = None,
+        default_value: T | None = None,
         log_level: str = "warning",
-    ) -> Optional[T]:
+    ) -> T | None:
         """Validate condition or return default with logging."""
         if not condition:
             log_func = getattr(logger, log_level, logger.warning)

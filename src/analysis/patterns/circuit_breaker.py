@@ -31,7 +31,8 @@ Usage:
 from enum import Enum
 from threading import RLock
 from time import time
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
 import logging
@@ -68,7 +69,7 @@ class CircuitBreakerStats:
     successful_calls: int = 0
     failed_calls: int = 0
     rejected_calls: int = 0
-    last_failure_time: Optional[float] = None
+    last_failure_time: float | None = None
     state_changed_at: float = field(default_factory=time)
 
     @property
@@ -109,8 +110,8 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: Type[BaseException] = Exception,
-        name: Optional[str] = None,
+        expected_exception: type[BaseException] = Exception,
+        name: str | None = None,
     ) -> None:
         """
         Initialize circuit breaker.
@@ -130,7 +131,7 @@ class CircuitBreaker:
         self._state = CircuitBreakerState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._state_changed_at = time()
         self._total_calls = 0
         self._rejected_calls = 0
@@ -269,7 +270,7 @@ class CircuitBreakerPool:
 
     def __init__(self) -> None:
         """Initialize circuit breaker pool."""
-        self._breakers: Dict[str, CircuitBreaker] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
         self._lock = RLock()
 
     def get_breaker(
@@ -277,7 +278,7 @@ class CircuitBreakerPool:
         name: str,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: Type[BaseException] = Exception,
+        expected_exception: type[BaseException] = Exception,
     ) -> CircuitBreaker:
         """
         Get or create a circuit breaker.
@@ -301,7 +302,7 @@ class CircuitBreakerPool:
                 )
             return self._breakers[name]
 
-    def get_all_breakers(self) -> Dict[str, CircuitBreaker]:
+    def get_all_breakers(self) -> dict[str, CircuitBreaker]:
         """Get all registered circuit breakers."""
         with self._lock:
             return dict(self._breakers)
@@ -318,7 +319,7 @@ class CircuitBreakerPool:
             for breaker in self._breakers.values():
                 breaker.reset()
 
-    def get_stats_all(self) -> Dict[str, CircuitBreakerStats]:
+    def get_stats_all(self) -> dict[str, CircuitBreakerStats]:
         """Get statistics for all circuit breakers."""
         with self._lock:
             return {
@@ -341,10 +342,10 @@ _global_pool = CircuitBreakerPool()
 
 
 def circuit_breaker(
-    name: Optional[str] = None,
+    name: str | None = None,
     failure_threshold: int = 5,
     recovery_timeout: int = 60,
-    expected_exception: Type[BaseException] = Exception,
+    expected_exception: type[BaseException] = Exception,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for circuit breaker protection.
@@ -377,20 +378,17 @@ def circuit_breaker(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             return breaker.call(func, *args, **kwargs)
 
-        # Attach breaker for testing/inspection
-        wrapper._circuit_breaker = breaker  # type: ignore
-
         return wrapper
 
     return decorator
 
 
-def get_circuit_breaker(name: str) -> Optional[CircuitBreaker]:
+def get_circuit_breaker(name: str) -> CircuitBreaker | None:
     """Get a circuit breaker by name."""
     return _global_pool.get_breaker(name)
 
 
-def get_all_circuit_breakers() -> Dict[str, CircuitBreaker]:
+def get_all_circuit_breakers() -> dict[str, CircuitBreaker]:
     """Get all circuit breakers."""
     return _global_pool.get_all_breakers()
 

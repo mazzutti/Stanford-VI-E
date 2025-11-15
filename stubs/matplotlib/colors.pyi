@@ -1,4 +1,5 @@
-from typing import Protocol, Any, Sequence, Optional
+from typing import Protocol, Any
+from collections.abc import Sequence
 
 class Colormap(Protocol):
     """Minimal Colormap protocol for typing in this repo."""
@@ -13,7 +14,7 @@ class ListedColormap:
     colors: Sequence[Any]
 
     def __init__(
-        self, colors: Sequence[Any], name: Optional[str] = None, N: Optional[int] = None
+        self, colors: Sequence[Any], name: str | None = None, N: int | None = None
     ) -> None: ...
     def __call__(self, x: Any) -> Any: ...
     def __getitem__(self, index: int) -> Any: ...

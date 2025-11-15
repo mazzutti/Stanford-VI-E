@@ -20,7 +20,7 @@ Test Organization:
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any
 from unittest.mock import Mock, patch, MagicMock
 
 import numpy as np
@@ -222,10 +222,10 @@ def test_injected_selector_used(tmp_path: Path) -> None:
 def test_raise_on_error_propagates(tmp_path: Path) -> None:
     """Test error propagation with raise_on_error=True."""
 
-    def bad_loader(_path: str, **kwargs) -> None:  # type: ignore
+    def bad_loader(_path: str, **kwargs) -> None:
         raise RuntimeError("boom")
 
-    loader = CacheLoader(np_load=bad_loader)  # type: ignore
+    loader = CacheLoader(np_load=bad_loader)
     target = tmp_path / "anything.npz"
     target.write_bytes(b"")
     with pytest.raises(RuntimeError):
@@ -366,7 +366,7 @@ class TestDefaultArchiveExtractor:
         mock_npz.files = [FULL_STACK_KEY]
 
         result = CacheLoader.default_archive_extractor(mock_npz)
-        np.testing.assert_array_equal(result, expected_data)  # type: ignore
+        np.testing.assert_array_equal(result, expected_data)
 
     def test_extractor_handles_exception(self) -> None:
         """Test extractor handles extraction errors gracefully."""
@@ -528,13 +528,15 @@ class TestCacheLoaderFactory:
     def test_factory_create_with_custom_params(self) -> None:
         """Test factory.create() with custom parameters."""
         custom_selector = Mock()
-        loader = CacheLoaderFactory.create(cache_size=50, selector=custom_selector)
+        loader = CacheLoaderFactory.create_custom(
+            cache_size=50, selector=custom_selector
+        )
         assert isinstance(loader, CacheLoader)
         assert loader.cache_enabled
 
     def test_factory_create_no_cache(self) -> None:
         """Test factory.create() without cache."""
-        loader = CacheLoaderFactory.create(cache_size=0)
+        loader = CacheLoaderFactory.create_custom(cache_size=0)
         assert isinstance(loader, CacheLoader)
         assert not loader.cache_enabled
 
@@ -628,11 +630,13 @@ class TestCacheLoaderIntegration:
         loader1 = CacheLoaderFactory.create_default(cache_size=100)
         assert loader1.cache_enabled
 
-        loader2 = CacheLoaderFactory.create(cache_size=0)
+        loader2 = CacheLoaderFactory.create_custom(cache_size=0)
         assert not loader2.cache_enabled
 
         custom_selector = Mock(return_value=None)
-        loader3 = CacheLoaderFactory.create(cache_size=50, selector=custom_selector)
+        loader3 = CacheLoaderFactory.create_custom(
+            cache_size=50, selector=custom_selector
+        )
         assert loader3.cache_enabled
 
     # =============================================================================
@@ -642,7 +646,9 @@ class TestCacheLoaderIntegration:
     def test_factory_create_with_external_cache_ignores_shards(self) -> None:
         """Test factory.create() uses external cache regardless of shards."""
         mock_cache = Mock()
-        loader = CacheLoaderFactory.create(cache_size=0, shards=4, cache=mock_cache)
+        loader = CacheLoaderFactory.create_custom(
+            cache_size=0, shards=4, cache=mock_cache
+        )
         # Verify through public API that cache was used
         assert loader.cache_enabled is True
 
@@ -695,7 +701,7 @@ class TestCacheLoaderIntegration:
     ) -> None:
         """Test select_cache_file when custom selector raises exception."""
 
-        def bad_selector(cache_dir: str, domain: str) -> Optional[str]:
+        def bad_selector(cache_dir: str, domain: str) -> str | None:
             raise RuntimeError("Selector error")
 
         npz_file = tmp_path / f"{FILE_PREFIX}test{NPZ_EXTENSION}"
@@ -717,7 +723,7 @@ class TestCacheLoaderIntegration:
 
     def test_factory_create_with_cache_none_and_zero_size(self) -> None:
         """Test factory.create() returns loader with no cache when both are None/0."""
-        loader = CacheLoaderFactory.create(cache_size=0, cache=None)
+        loader = CacheLoaderFactory.create_custom(cache_size=0, cache=None)
         assert not loader.cache_enabled
 
     def test_factory_create_default_with_zero_cache_size(self) -> None:
@@ -730,7 +736,7 @@ class TestCacheLoaderIntegration:
     ) -> None:
         """Test that selector exception is caught and fallback occurs."""
 
-        def exception_selector(cache_dir, domain) -> None:  # type: ignore
+        def exception_selector(cache_dir, domain) -> None:
             raise ValueError("Selector broken")
 
         # Create standard cache file for fallback
@@ -744,14 +750,14 @@ class TestCacheLoaderIntegration:
 
     def test_factory_create_with_shards_greater_than_one(self) -> None:
         """Test factory creates ShardedLRUCache when shards > 1."""
-        loader = CacheLoaderFactory.create(cache_size=100, shards=8)
+        loader = CacheLoaderFactory.create_custom(cache_size=100, shards=8)
         assert loader.cache_enabled
         # Verify it was created with multiple shards
         assert loader.cache_maxsize == 100
 
     def test_factory_create_with_shards_equals_one(self) -> None:
         """Test factory creates regular LRUCache when shards=1."""
-        loader = CacheLoaderFactory.create(cache_size=100, shards=1)
+        loader = CacheLoaderFactory.create_custom(cache_size=100, shards=1)
         assert loader.cache_enabled
         assert loader.cache_maxsize == 100
 
@@ -790,7 +796,7 @@ class TestCacheLoaderIntegration:
         """Test select_cache_file when custom selector returns None."""
 
         # Line 497: logger.debug("Custom selector returned None")
-        def selector_returns_none(cache_dir, domain) -> None:  # type: ignore
+        def selector_returns_none(cache_dir, domain) -> None:
             return None
 
         loader = CacheLoader(selector=selector_returns_none, cache_size=0)
@@ -813,10 +819,10 @@ class TestCacheLoaderIntegration:
         p = tmp_path / "test.npy"
         p.write_bytes(b"corrupted")
 
-        def bad_loader(path, **kwargs) -> None:  # type: ignore
+        def bad_loader(path, **kwargs) -> None:
             raise OSError("Permission denied")
 
-        loader = CacheLoader(np_load=bad_loader, cache_size=0)  # type: ignore
+        loader = CacheLoader(np_load=bad_loader, cache_size=0)
         result = loader.load_full_stack(str(p), raise_on_error=False)
         assert result is None
 
@@ -825,10 +831,10 @@ class TestCacheLoaderIntegration:
         p = tmp_path / "test.npy"
         p.write_bytes(b"corrupted")
 
-        def bad_loader(path, **kwargs) -> None:  # type: ignore
+        def bad_loader(path, **kwargs) -> None:
             raise ValueError("Invalid data format")
 
-        loader = CacheLoader(np_load=bad_loader, cache_size=0)  # type: ignore
+        loader = CacheLoader(np_load=bad_loader, cache_size=0)
         result = loader.load_full_stack(str(p), raise_on_error=False)
         assert result is None
 
@@ -840,10 +846,10 @@ class TestCacheLoaderIntegration:
         p = tmp_path / "test.npy"
         p.write_bytes(b"data")
 
-        def bad_loader(path, **kwargs) -> None:  # type: ignore
+        def bad_loader(path, **kwargs) -> None:
             raise RuntimeError("Unexpected error")
 
-        loader = CacheLoader(np_load=bad_loader, cache_size=0)  # type: ignore
+        loader = CacheLoader(np_load=bad_loader, cache_size=0)
         result = loader.load_full_stack(str(p), raise_on_error=False)
         assert result is None
 
@@ -860,10 +866,10 @@ class TestCacheLoaderIntegration:
         p = tmp_path / "test.npz"
         np.savez(p, full_stack=np.array([[1, 2]]))
 
-        def bad_loader(path, **kwargs) -> None:  # type: ignore
+        def bad_loader(path, **kwargs) -> None:
             raise ValueError("Data error")
 
-        loader = CacheLoader(np_load=bad_loader, cache_size=100)  # type: ignore
+        loader = CacheLoader(np_load=bad_loader, cache_size=100)
         # This should raise in the try block and return None at line 959
         result = loader.load_full_stack(str(p), raise_on_error=False)
         assert result is None

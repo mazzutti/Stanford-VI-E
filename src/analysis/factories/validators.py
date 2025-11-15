@@ -7,7 +7,7 @@ to src.analysis.exceptions for centralized exception handling.
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

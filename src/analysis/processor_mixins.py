@@ -30,7 +30,8 @@ Example Usage:
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Dict, List, TypeVar, cast
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
 
@@ -68,7 +69,7 @@ class ExecutionMetrics:
     ----------
     start_time : float
         Unix timestamp when execution started.
-    end_time : Optional[float]
+    end_time : float | None
         Unix timestamp when execution ended (None if still running).
     duration : float
         Total execution duration in seconds.
@@ -80,10 +81,11 @@ class ExecutionMetrics:
         Number of cache hits.
     cache_misses : int
         Number of cache misses.
+
     """
 
     start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
+    end_time: float | None = None
     duration: float = 0.0
     memory_bytes: int = 0
     error_count: int = 0
@@ -114,14 +116,15 @@ class ExecutionRecord:
         When the execution occurred.
     metrics : ExecutionMetrics
         Metrics for the execution.
-    error_message : Optional[str]
+    error_message : str | None
         Error message if state is FAILED.
+
     """
 
     state: ProcessorState
     timestamp: datetime = field(default_factory=datetime.now)
     metrics: ExecutionMetrics = field(default_factory=ExecutionMetrics)
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class LoggingMixin:
@@ -174,7 +177,7 @@ class CachingMixin:
 
     Attributes
     ----------
-    _cache : Dict[str, Any]
+    _cache : dict[str, Any]
         Internal cache store mapping arguments to results.
     _cache_enabled : bool
         Whether caching is currently enabled.
@@ -191,7 +194,7 @@ class CachingMixin:
 
     def __init__(self) -> None:
         """Initialize caching infrastructure."""
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._cache_enabled: bool = True
 
     def enable_cache(self) -> None:
@@ -275,7 +278,7 @@ class ValidationMixin:
     """
 
     def validate_input(
-        self, data: Any, predicate: Optional[Callable[[Any], bool]] = None
+        self, data: Any, predicate: Callable[[Any], bool] | None = None
     ) -> Any:
         """Validate processor input.
 
@@ -283,7 +286,7 @@ class ValidationMixin:
         ----------
         data : Any
             Input data to validate.
-        predicate : Optional[Callable]
+        predicate : Callable | None
             Validation predicate. If None, only checks for non-None.
 
         Returns
@@ -295,6 +298,7 @@ class ValidationMixin:
         ------
         ValueError
             If validation fails.
+
         """
         if data is None:
             raise ValueError(f"{self.__class__.__name__}: input cannot be None")
@@ -305,7 +309,7 @@ class ValidationMixin:
         return data
 
     def validate_output(
-        self, data: Any, predicate: Optional[Callable[[Any], bool]] = None
+        self, data: Any, predicate: Callable[[Any], bool] | None = None
     ) -> Any:
         """Validate processor output.
 
@@ -313,7 +317,7 @@ class ValidationMixin:
         ----------
         data : Any
             Output data to validate.
-        predicate : Optional[Callable]
+        predicate : Callable | None
             Validation predicate. If None, only checks for non-None.
 
         Returns
@@ -325,6 +329,7 @@ class ValidationMixin:
         ------
         ValueError
             If validation fails.
+
         """
         if data is None:
             raise ValueError(f"{self.__class__.__name__}: output cannot be None")
@@ -373,10 +378,10 @@ class StateTrackingMixin:
             Maximum number of execution records to keep.
         """
         self._state: ProcessorState = ProcessorState.INITIALIZED
-        self._execution_history: List[ExecutionRecord] = []
+        self._execution_history: list[ExecutionRecord] = []
         self._max_history_size: int = max_history_size
-        self._current_metrics: Optional[ExecutionMetrics] = None
-        self._last_metrics: Optional[ExecutionMetrics] = None
+        self._current_metrics: ExecutionMetrics | None = None
+        self._last_metrics: ExecutionMetrics | None = None
 
     @property
     def state(self) -> ProcessorState:
@@ -384,7 +389,7 @@ class StateTrackingMixin:
         return self._state
 
     def set_state(
-        self, state: ProcessorState, error_message: Optional[str] = None
+        self, state: ProcessorState, error_message: str | None = None
     ) -> None:
         """Set processor state.
 
@@ -392,8 +397,9 @@ class StateTrackingMixin:
         ----------
         state : ProcessorState
             New state.
-        error_message : Optional[str]
+        error_message : str | None
             Error message if state is FAILED.
+
         """
         self._state = state
         if self._current_metrics:
@@ -417,7 +423,7 @@ class StateTrackingMixin:
         """Start tracking execution metrics."""
         self._current_metrics = ExecutionMetrics()
 
-    def get_state_history(self) -> List[ExecutionRecord]:
+    def get_state_history(self) -> list[ExecutionRecord]:
         """Get execution history.
 
         Returns
@@ -427,13 +433,14 @@ class StateTrackingMixin:
         """
         return list(self._execution_history)
 
-    def get_last_execution(self) -> Optional[ExecutionRecord]:
+    def get_last_execution(self) -> ExecutionRecord | None:
         """Get the most recent execution record.
 
         Returns
         -------
-        Optional[ExecutionRecord]
+        ExecutionRecord | None
             Last execution record or None if no executions.
+
         """
         return self._execution_history[-1] if self._execution_history else None
 
@@ -446,7 +453,7 @@ class ErrorHandlingMixin:
 
     Attributes
     ----------
-    _error_handlers : Dict[type, Callable]
+    _error_handlers : dict[type, Callable]
         Mapping of exception types to handler functions.
     _max_retries : int
         Maximum number of retry attempts.
@@ -471,7 +478,7 @@ class ErrorHandlingMixin:
         max_retries : int
             Maximum number of retry attempts.
         """
-        self._error_handlers: Dict[type, Callable[[Exception], Any]] = {}
+        self._error_handlers: dict[type, Callable[[Exception], Any]] = {}
         self._max_retries: int = max_retries
 
     def register_error_handler(
@@ -577,7 +584,7 @@ class MetricsMixin:
 
     def __init__(self) -> None:
         """Initialize metrics tracking."""
-        self._metrics: Optional[ExecutionMetrics] = None
+        self._metrics: ExecutionMetrics | None = None
 
     def track_metrics(self) -> "_MetricsContext":
         """Context manager for tracking execution metrics.
@@ -612,22 +619,23 @@ class MetricsMixin:
             return self._metrics
         return ExecutionMetrics()
 
-    def get_metrics(self) -> Optional[ExecutionMetrics]:
+    def get_metrics(self) -> ExecutionMetrics | None:
         """Get current metrics.
 
         Returns
         -------
-        Optional[ExecutionMetrics]
+        ExecutionMetrics | None
             Current metrics or None if not tracking.
+
         """
         # If StateTrackingMixin is being used, get from there using getattr to satisfy type checkers
         current = getattr(self, "_current_metrics", None)
         if current is not None:
-            return cast(Optional[ExecutionMetrics], current)
+            return cast(ExecutionMetrics | None, current)
 
         last = getattr(self, "_last_metrics", None)
         if last is not None:
-            return cast(Optional[ExecutionMetrics], last)
+            return cast(ExecutionMetrics | None, last)
 
         return self._metrics
 
@@ -702,7 +710,7 @@ class ProcessorMixinManager:
             Processor instance with mixins.
         """
         self.processor = processor
-        self._enabled_mixins: Dict[str, bool] = {}
+        self._enabled_mixins: dict[str, bool] = {}
 
     def enable_mixin(self, mixin_class: type) -> None:
         """Enable a mixin on the processor.
@@ -745,7 +753,7 @@ class ProcessorMixinManager:
         mixin_name = mixin_class.__name__
         return self._enabled_mixins.get(mixin_name, False)
 
-    def get_enabled_mixins(self) -> List[str]:
+    def get_enabled_mixins(self) -> list[str]:
         """Get list of enabled mixin names.
 
         Returns

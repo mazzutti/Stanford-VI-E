@@ -21,16 +21,12 @@ from __future__ import annotations
 
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
     TypeVar,
     TypedDict,
     cast,
     TYPE_CHECKING,
 )
+from collections.abc import Callable
 from dataclasses import dataclass, field
 import logging
 
@@ -45,7 +41,7 @@ from src.analysis.strategies import (
 from src.analysis.validation_result import ValidationResult
 
 if TYPE_CHECKING:
-    from .boundary import CubeAligner
+    from src.analysis.processors.boundary import CubeAligner
     from src.analysis.models import FaciesStats
 
 logger = logging.getLogger(__name__)
@@ -105,11 +101,11 @@ class ProcessorMetadata:
     name: str
     domain: str = "default"
     version: str = "1.0"
-    tags: List[str] = field(default_factory=lambda: cast(List[str], []))
+    tags: list[str] = field(default_factory=lambda: cast(list[str], []))
     description: str = ""
-    dependencies: List[str] = field(default_factory=lambda: cast(List[str], []))
+    dependencies: list[str] = field(default_factory=lambda: cast(list[str], []))
 
-    def matches_tags(self, required_tags: List[str]) -> bool:
+    def matches_tags(self, required_tags: list[str]) -> bool:
         """Check if processor has all required tags."""
         return all(tag in self.tags for tag in required_tags)
 
@@ -119,8 +115,8 @@ class ProcessorRegistry:
 
     def __init__(self) -> None:
         """Initialize an empty processor registry."""
-        self._processors: Dict[str, Callable[[], Any]] = {}
-        self._metadata: Dict[str, ProcessorMetadata] = {}
+        self._processors: dict[str, Callable[[], Any]] = {}
+        self._metadata: dict[str, ProcessorMetadata] = {}
 
     def register(
         self,
@@ -129,9 +125,9 @@ class ProcessorRegistry:
         *,
         domain: str = "default",
         version: str = "1.0",
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
         description: str = "",
-        dependencies: Optional[List[str]] = None,
+        dependencies: list[str] | None = None,
     ) -> None:
         """Register a processor factory."""
         if not callable(factory):
@@ -201,17 +197,17 @@ class ProcessorRegistry:
             logger.error(f"Failed to create processor '{name}': {e}")
             raise
 
-    def create_all(self, names: List[str]) -> Dict[str, Any]:
+    def create_all(self, names: list[str]) -> dict[str, Any]:
         """Create multiple processor instances.
 
         Parameters
         ----------
-        names : List[str]
+        names : list[str]
             Names of processors to create.
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Mapping of processor names to instances.
 
         Raises
@@ -223,12 +219,12 @@ class ProcessorRegistry:
 
     def list_processors(
         self,
-        domain: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        version: Optional[str] = None,
-    ) -> List[str]:
+        domain: str | None = None,
+        tags: list[str] | None = None,
+        version: str | None = None,
+    ) -> list[str]:
         """List registered processor names with optional filtering."""
-        results: List[str] = []
+        results: list[str] = []
         for name, meta in self._metadata.items():
             if domain and meta.domain != domain:
                 continue
@@ -265,19 +261,19 @@ class ProcessorRegistry:
         """Check if a processor is registered."""
         return name in self._processors
 
-    def get_all_metadata(self) -> Dict[str, ProcessorMetadata]:
+    def get_all_metadata(self) -> dict[str, ProcessorMetadata]:
         """Get metadata for all registered processors."""
         return dict(self._metadata)
 
     def __repr__(self) -> str:
         """Return string representation showing registry state."""
         count = len(self._processors)
-        domains = set(m.domain for m in self._metadata.values())
+        domains = {m.domain for m in self._metadata.values()}
         return f"ProcessorRegistry({count} processors in domains: {domains})"
 
 
 # Global default processor registry
-_default_registry: Optional[ProcessorRegistry] = None
+_default_registry: ProcessorRegistry | None = None
 
 
 def get_default_processor_registry() -> ProcessorRegistry:
@@ -479,7 +475,7 @@ class BoundaryComputationConfig:
         """Standard padding: no padding on i-axis, 1 pixel on j and k axes."""
         return {"pad_width": ((0, 0), (1, 1), (1, 1)), "mode": self.pad_mode}
 
-    def get_dilation_config(self, iterations: Optional[int] = None) -> DilationConfig:
+    def get_dilation_config(self, iterations: int | None = None) -> DilationConfig:
         """Get binary dilation configuration with specified iterations.
 
         Parameters
@@ -541,7 +537,7 @@ def get_default_statistics_strategy() -> ArrayStatisticsStrategy:
 
 def convert_numpy_scalars_to_float(
     *values: NDArray[np.floating[Any]] | np.floating[Any],
-) -> Tuple[float, ...] | float:
+) -> tuple[float, ...] | float:
     """Efficiently convert one or more NumPy scalars/arrays to Python floats.
 
     Parameters
@@ -561,7 +557,7 @@ def convert_numpy_scalars_to_float(
     return tuple(float(v.item() if hasattr(v, "item") else v) for v in values)
 
 
-def compute_quartiles(amps: NDArray[np.float64]) -> Tuple[float, float]:
+def compute_quartiles(amps: NDArray[np.float64]) -> tuple[float, float]:
     """Efficiently compute Q1 and Q3 percentiles from amplitude array.
 
     Parameters
@@ -576,13 +572,13 @@ def compute_quartiles(amps: NDArray[np.float64]) -> Tuple[float, float]:
     """
     percentiles = np.percentile(amps, [25, 75])
     result = convert_numpy_scalars_to_float(*percentiles)
-    q1, q3 = cast(Tuple[float, float], result)
+    q1, q3 = cast(tuple[float, float], result)
     return q1, q3
 
 
 def filter_finite_values(
     arr1: NDArray[np.float64], arr2: NDArray[np.float64]
-) -> Tuple[NDArray[np.float64], NDArray[np.float64], int]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """Filter out NaN and Inf values from paired arrays.
 
     Parameters
@@ -613,7 +609,7 @@ def filter_finite_values(
 
 def flatten_and_filter_finite(
     arr: NDArray[np.float64], bool_mask: NDArray[np.bool_]
-) -> Tuple[Optional[NDArray[np.float64]], Optional[NDArray[np.float64]]]:
+) -> tuple[NDArray[np.float64] | None, NDArray[np.float64] | None]:
     """Flatten and filter finite values from array and mask."""
     arr_flat = arr.flatten()
     mask_flat = bool_mask.flatten().astype(float)
@@ -623,7 +619,7 @@ def flatten_and_filter_finite(
 
 def reshape_3d_to_2d(
     seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
-) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     """Reshape 3D cubes to 2D trace-sample format (n_traces, nk).
 
     Parameters
@@ -661,7 +657,7 @@ def align_and_reshape(
     aligner: CubeAligner,
     seismic_cube: NDArray[np.float64],
     facies_cube: NDArray[np.int64],
-) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     """Align 3D cubes and reshape to 2D trace-sample format.
 
     Parameters
@@ -768,7 +764,7 @@ def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
         np.mean(amps), np.std(amps), np.median(amps), np.min(amps), np.max(amps)
     )
     mean_val, std_val, median_val, min_val, max_val = cast(
-        Tuple[float, float, float, float, float], result
+        tuple[float, float, float, float, float], result
     )
 
     # Compute quartiles using helper function

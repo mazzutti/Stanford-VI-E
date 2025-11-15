@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Sequence, cast
+from typing import Any, cast
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -37,27 +38,27 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RockPhysicsPipelineResult:
-    attributes: Dict[str, FloatingArray]
-    discrimination: Dict[str, DiscriminationResult]
-    output_path: Optional[str] = None
+    attributes: dict[str, FloatingArray]
+    discrimination: dict[str, DiscriminationResult]
+    output_path: str | None = None
 
 
-PipelineContext = Dict[str, Any]
+PipelineContext = dict[str, Any]
 
 
 class RockPhysicsAnalyzer(
     CompositeMixin,
     PipelineAnalyzer[RockPhysicsAnalysisConfig, RockPhysicsPipelineResult],
 ):
-    def __init__(self, config: Optional[RockPhysicsAnalysisConfig] = None) -> None:
+    def __init__(self, config: RockPhysicsAnalysisConfig | None = None) -> None:
         super().__init__(
             config=config or RockPhysicsAnalysisConfig(), name="rock_physics"
         )
-        self._avo_computer: Optional[AVOAttributesComputer] = None
-        self._lambda_mu_computer: Optional[LambdaMuRhoComputer] = None
-        self._fluid_computer: Optional[FluidFactorComputer] = None
-        self._discrimination_analyzer: Optional[AttributeDiscriminationAnalyzer] = None
-        self._last_result: Optional[RockPhysicsPipelineResult] = None
+        self._avo_computer: AVOAttributesComputer | None = None
+        self._lambda_mu_computer: LambdaMuRhoComputer | None = None
+        self._fluid_computer: FluidFactorComputer | None = None
+        self._discrimination_analyzer: AttributeDiscriminationAnalyzer | None = None
+        self._last_result: RockPhysicsPipelineResult | None = None
 
     def _validate_config(self) -> None:
         if not isinstance(self._config, RockPhysicsAnalysisConfig):
@@ -111,7 +112,7 @@ class RockPhysicsAnalyzer(
         cache_dir: str = ".cache",
         generate_plots: bool = True,
         save_npz_only: bool = False,
-        angles_list: Optional[Sequence[float]] = None,
+        angles_list: Sequence[float] | None = None,
         verbose: bool = False,
     ) -> bool | str:
         payload: PipelineContext = {
@@ -138,7 +139,7 @@ class RockPhysicsAnalyzer(
         return cast(RockPhysicsAnalysisConfig, self._config)
 
     @classmethod
-    def from_builder(cls, builder_func: Optional[Any] = None) -> "RockPhysicsAnalyzer":
+    def from_builder(cls, builder_func: Any | None = None) -> RockPhysicsAnalyzer:
         from src.analysis.builder import build_rock_physics_analyzer
 
         if builder_func is None:
@@ -186,7 +187,7 @@ class RockPhysicsAnalyzer(
         context.setdefault("mode", context.get("mode", "analysis"))
         return context
 
-    def _get_grid_configuration(self) -> tuple[str, Dict[str, str], GridSpec]:
+    def _get_grid_configuration(self) -> tuple[str, dict[str, str], GridSpec]:
         cfg = self.config
         grid_spec = GridSpec(cfg.grid_shape, dz=cfg.dz, dt=cfg.dt)
         return cfg.data_path, cfg.file_mapping(), grid_spec
@@ -260,9 +261,9 @@ class RockPhysicsAnalyzer(
 
     def _stage_consolidate_results(self, context: PipelineContext) -> PipelineContext:
         attribute_results = self._build_attribute_results(
-            cast(Dict[str, FloatingArray], context["avo_results"]),
-            cast(Dict[str, FloatingArray], context["lambda_mu_results"]),
-            cast(Optional[FloatingArray], context.get("fluid_factor")),
+            cast(dict[str, FloatingArray], context["avo_results"]),
+            cast(dict[str, FloatingArray], context["lambda_mu_results"]),
+            cast(FloatingArray | None, context.get("fluid_factor")),
         )
         context["attribute_results"] = attribute_results
         return context
@@ -292,10 +293,10 @@ class RockPhysicsAnalyzer(
             output_path = self._persist_results(
                 cache_dir=str(context["cache_dir"]),
                 attribute_results=cast(
-                    Dict[str, FloatingArray], context["attribute_results"]
+                    dict[str, FloatingArray], context["attribute_results"]
                 ),
                 discrimination=cast(
-                    Dict[str, DiscriminationResult], context.get("discrimination", {})
+                    dict[str, DiscriminationResult], context.get("discrimination", {})
                 ),
             )
         except Exception as exc:  # noqa: BLE001
@@ -322,11 +323,11 @@ class RockPhysicsAnalyzer(
 
     def _stage_finalize(self, context: PipelineContext) -> RockPhysicsPipelineResult:
         result = RockPhysicsPipelineResult(
-            attributes=cast(Dict[str, FloatingArray], context["attribute_results"]),
+            attributes=cast(dict[str, FloatingArray], context["attribute_results"]),
             discrimination=cast(
-                Dict[str, DiscriminationResult], context.get("discrimination", {})
+                dict[str, DiscriminationResult], context.get("discrimination", {})
             ),
-            output_path=cast(Optional[str], context.get("output_path")),
+            output_path=cast(str | None, context.get("output_path")),
         )
         self._last_result = result
         return result
@@ -336,8 +337,8 @@ class RockPhysicsAnalyzer(
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
-        angles_deg: Optional[Sequence[float]] = None,
-    ) -> Dict[str, FloatingArray]:
+        angles_deg: Sequence[float] | None = None,
+    ) -> dict[str, FloatingArray]:
         self._ensure_initialized()
         assert self._avo_computer is not None
         if angles_deg is None:
@@ -346,7 +347,7 @@ class RockPhysicsAnalyzer(
 
     def compute_lambda_mu_rho(
         self, vp: FloatingArray, vs: FloatingArray, rho: FloatingArray
-    ) -> Dict[str, FloatingArray]:
+    ) -> dict[str, FloatingArray]:
         self._ensure_initialized()
         assert self._lambda_mu_computer is not None
         return self._lambda_mu_computer.compute(vp, vs, rho)
@@ -355,7 +356,7 @@ class RockPhysicsAnalyzer(
         self,
         lambda_rho: FloatingArray,
         mu_rho: FloatingArray,
-        k: Optional[float] = None,
+        k: float | None = None,
     ) -> FloatingArray:
         self._ensure_initialized()
         assert self._fluid_computer is not None
@@ -374,22 +375,22 @@ class RockPhysicsAnalyzer(
 
     def compare_all_attributes(
         self, attribute_results: AttributeArrayDict, facies: IntegerArray
-    ) -> Dict[str, DiscriminationResult]:
+    ) -> dict[str, DiscriminationResult]:
         self._ensure_initialized()
         assert self._discrimination_analyzer is not None
         return self._discrimination_analyzer.analyze_multiple(attribute_results, facies)
 
     def _load_dataset_manager(
-        self, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
+        self, data_path: str, file_map: dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
         return DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
 
     def _build_attribute_results(
         self,
-        avo_results: Dict[str, FloatingArray],
-        lam_mu_rho: Dict[str, FloatingArray],
-        fluid: Optional[FloatingArray],
-    ) -> Dict[str, FloatingArray]:
+        avo_results: dict[str, FloatingArray],
+        lam_mu_rho: dict[str, FloatingArray],
+        fluid: FloatingArray | None,
+    ) -> dict[str, FloatingArray]:
         missing_avo = RockPhysicsConstants.AVO_KEYS - set(avo_results.keys())
         if missing_avo:
             raise ValueError(f"AVO results missing expected keys: {missing_avo}")
@@ -400,7 +401,7 @@ class RockPhysicsAnalyzer(
                 f"Lambda-Mu-Rho results missing expected keys: {missing_lmr}"
             )
 
-        results: Dict[str, FloatingArray] = {
+        results: dict[str, FloatingArray] = {
             "intercept": avo_results["intercept"],
             "gradient": avo_results["gradient"],
             "product": avo_results["product"],
@@ -423,12 +424,12 @@ class RockPhysicsAnalyzer(
         FloatingArray | None,
         IntegerArray | None,
     ]:
-        def unwrap(value: Any) -> Optional[Any]:
+        def unwrap(value: Any) -> Any | None:
             if value is None:
                 return None
             if hasattr(value, "array"):
-                return cast(Optional[Any], getattr(value, "array"))
-            return cast(Optional[Any], value)
+                return cast(Any | None, getattr(value, "array"))
+            return cast(Any | None, value)
 
         vp = unwrap(dm.vp)
         vs = unwrap(dm.vs)
@@ -441,12 +442,12 @@ class RockPhysicsAnalyzer(
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
-        angles_deg: Optional[Sequence[float]] = None,
-        fluid_factor_k: Optional[float] = None,
+        angles_deg: Sequence[float] | None = None,
+        fluid_factor_k: float | None = None,
     ) -> tuple[
-        Dict[str, FloatingArray],
-        Dict[str, FloatingArray],
-        Optional[FloatingArray],
+        dict[str, FloatingArray],
+        dict[str, FloatingArray],
+        FloatingArray | None,
     ]:
         if angles_deg is None:
             angles_deg = self.config.angles_sequence()
@@ -491,13 +492,13 @@ class RockPhysicsAnalyzer(
         self,
         *,
         cache_dir: str,
-        attribute_results: Dict[str, FloatingArray],
-        discrimination: Dict[str, DiscriminationResult],
-    ) -> Optional[str]:
+        attribute_results: dict[str, FloatingArray],
+        discrimination: dict[str, DiscriminationResult],
+    ) -> str | None:
         os.makedirs(cache_dir, exist_ok=True)
         out_fn = os.path.join(cache_dir, RockPhysicsConstants.OUTPUT_FILENAME)
 
-        save_kwargs: Dict[str, Any] = {
+        save_kwargs: dict[str, Any] = {
             key: value for key, value in attribute_results.items()
         }
         save_kwargs["discrimination"] = np.array([discrimination], dtype=object)

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, TypeVar, Union, cast
+from typing import Any, TypeVar, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 from src.utils.quantity import Quantity
 from src.core.parameterized_conversions import ConversionRegistry
 
-T = TypeVar("T", bound=Union[int, float, np.number[Any]])
+T = TypeVar("T", bound=int | float | np.number[Any])
 
 __all__ = [
     # Array Statistics
@@ -53,17 +53,17 @@ class ArrayStatisticsStrategy(ABC):
     """
 
     @abstractmethod
-    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_mean(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute mean of array."""
         pass
 
     @abstractmethod
-    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_std(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute standard deviation of array."""
         pass
 
     @abstractmethod
-    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median of array."""
         pass
 
@@ -71,34 +71,34 @@ class ArrayStatisticsStrategy(ABC):
 class StandardArrayStatistics(ArrayStatisticsStrategy):
     """Standard array statistics using numpy defaults."""
 
-    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_mean(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute mean using numpy."""
-        return cast(Union[int, float, np.number[Any]], np.mean(arr))
+        return cast(int | float | np.number[Any], np.mean(arr))
 
-    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_std(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute standard deviation using numpy."""
-        return cast(Union[int, float, np.number[Any]], np.std(arr))
+        return cast(int | float | np.number[Any], np.std(arr))
 
-    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median using numpy."""
-        return cast(Union[int, float, np.number[Any]], np.median(arr))
+        return cast(int | float | np.number[Any], np.median(arr))
 
 
 class RobustArrayStatistics(ArrayStatisticsStrategy):
     """Robust array statistics using median and IQR."""
 
-    def compute_mean(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_mean(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute robust mean (median)."""
-        return cast(Union[int, float, np.number[Any]], np.median(arr))
+        return cast(int | float | np.number[Any], np.median(arr))
 
-    def compute_std(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_std(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute robust std (IQR)."""
         q75, q25 = np.percentile(arr, [75, 25])
-        return cast(Union[int, float, np.number[Any]], (q75 - q25) / 1.35)
+        return cast(int | float | np.number[Any], (q75 - q25) / 1.35)
 
-    def compute_median(self, arr: NDArray[Any]) -> Union[int, float, np.number[Any]]:
+    def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median."""
-        return cast(Union[int, float, np.number[Any]], np.median(arr))
+        return cast(int | float | np.number[Any], np.median(arr))
 
 
 # ============================================================================
@@ -125,10 +125,10 @@ class ConversionStrategy(ABC):
     @abstractmethod
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: NDArray[Any] | Quantity,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert a value from one unit to another.
 
         Args:
@@ -156,7 +156,7 @@ class ConversionStrategy(ABC):
         converted: NDArray[Any],
         was_quantity: bool,
         target_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Preserve Quantity wrapper if input was Quantity.
 
         Args:
@@ -182,10 +182,10 @@ class VelocityConversionStrategy(ConversionStrategy):
 
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: NDArray[Any] | Quantity,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert velocity between units."""
         return self._converter.convert(value, from_unit, to_unit)
 
@@ -206,10 +206,10 @@ class TimeConversionStrategy(ConversionStrategy):
 
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: NDArray[Any] | Quantity,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert time between units."""
         return self._converter.convert(value, from_unit, to_unit)
 
@@ -230,10 +230,10 @@ class DepthConversionStrategy(ConversionStrategy):
 
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: NDArray[Any] | Quantity,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert depth between units."""
         return self._converter.convert(value, from_unit, to_unit)
 
@@ -254,10 +254,10 @@ class AmplitudeConversionStrategy(ConversionStrategy):
 
     def convert(
         self,
-        value: Union[NDArray[Any], Quantity],
+        value: NDArray[Any] | Quantity,
         from_unit: str,
         to_unit: str,
-    ) -> Union[NDArray[Any], Quantity]:
+    ) -> NDArray[Any] | Quantity:
         """Convert amplitude between scales."""
         return self._converter.convert(value, from_unit, to_unit)
 

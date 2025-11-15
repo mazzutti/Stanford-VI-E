@@ -1,6 +1,7 @@
 """Type aliases and type variables for processor operations."""
 
-from typing import Any, Callable, Optional, Tuple, TypeVar, Dict
+from typing import Any, TypeVar
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,19 +47,19 @@ StatsType = TypeVar("StatsType")
 """Generic type variable for statistics types."""
 
 # Common result type aliases
-FilterResult = Tuple[Float64Array, Float64Array, int]
+FilterResult = tuple[Float64Array, Float64Array, int]
 """Type alias for (filtered_arr1, filtered_arr2, n_removed)."""
 
-CorrelationResult = Tuple[float, float]
+CorrelationResult = tuple[float, float]
 """Type alias for (correlation_coefficient, p_value) result tuples."""
 
-OptionalArrayPair = Tuple[Optional[Float64Array], Optional[Float64Array]]
+OptionalArrayPair = tuple[Float64Array | None, Float64Array | None]
 """Type alias for validation results: (filtered_arr1, filtered_arr2) or (None, None)."""
 
-ArrayNamePair = Tuple[NDArray[Any], str]
+ArrayNamePair = tuple[NDArray[Any], str]
 """Type alias for generic (array, name) tuples used in validation."""
 
-FloatingArrayNamePair = Tuple[FloatingArray, str]
+FloatingArrayNamePair = tuple[FloatingArray, str]
 """Type alias for (floating_array, name) tuples used in array validation."""
 
 CorrelationFunction = Callable[
@@ -66,5 +67,5 @@ CorrelationFunction = Callable[
 ]
 """Type alias for correlation functions: takes two float arrays, returns (coeff, p_value)."""
 
-AttributeArrayDict = Dict[str, FloatingArray]
+AttributeArrayDict = dict[str, FloatingArray]
 """Type alias for dict mapping attribute names to floating-point arrays."""

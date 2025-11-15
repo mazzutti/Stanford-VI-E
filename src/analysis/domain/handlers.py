@@ -17,7 +17,8 @@ Example:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Generator, NamedTuple, Protocol
+from typing import NamedTuple, Protocol
+from collections.abc import Callable, Generator
 from types import TracebackType
 import logging
 from contextlib import contextmanager

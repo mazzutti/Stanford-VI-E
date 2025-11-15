@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import TypedDict, Dict
+from typing import TypedDict
 
 import numpy as np
 
@@ -124,14 +124,24 @@ class AttributeDiscriminationAnalyzer:
                     "ignore", category=RuntimeWarning, message=".*constant.*"
                 )
                 if attr_valid.size > 1:
-                    pr, pv = pearsonr(attr_valid, fac_valid)
-                    pearson_r: float = float(pr)
-                    p_value: float = float(pv)
+                    # Pass numpy arrays directly to pearsonr for efficiency.
+                    # Type-checkers may not expose the `PearsonRResult` symbol
+                    # from the installed scipy; treat the result as Any to
+                    # accept either the NamedTuple or tuple return shape.
+                    from typing import Any as _Any
+
+                    result: _Any = pearsonr(attr_valid, fac_valid)
+                    try:
+                        pearson_r = float(result.statistic)  # NamedTuple style
+                        p_value = float(result.pvalue)
+                    except Exception:
+                        pearson_r = float(result[0])  # tuple-style fallback
+                        p_value = float(result[1])
                 else:
                     pearson_r = 0.0
                     p_value = 1.0
         except Exception as e:
-            logger.debug(f"Pearson correlation failed for {name}: {e}")
+            logger.warning(f"Pearson correlation failed for '{name}': {e}")
             pearson_r = 0.0
             p_value = 1.0
 
@@ -180,17 +190,17 @@ class AttributeDiscriminationAnalyzer:
             Tuple of (mean0, std0, mean1, std1) as floats
         """
         return (
-            float(class0_data.mean()),
-            float(class0_data.std()),
-            float(class1_data.mean()),
-            float(class1_data.std()),
+            class0_data.mean().item(),
+            class0_data.std().item(),
+            class1_data.mean().item(),
+            class1_data.std().item(),
         )
 
     def analyze_multiple(
         self,
-        attribute_results: Dict[str, FloatingArray],
+        attribute_results: dict[str, FloatingArray],
         facies: IntegerArray,
-    ) -> Dict[str, DiscriminationResult]:
+    ) -> dict[str, DiscriminationResult]:
         """Analyze discrimination power for multiple attributes.
 
         Runs analyze_single for each attribute in the dictionary, collecting
@@ -210,7 +220,7 @@ class AttributeDiscriminationAnalyzer:
             stats = analyzer.analyze_multiple(attrs, facies)
             # stats['intercept'] = {'cohens_d': 0.8, 'snr': 2.1, ...}
         """
-        summary: Dict[str, DiscriminationResult] = {}
+        summary: dict[str, DiscriminationResult] = {}
         for name, arr in attribute_results.items():
             try:
                 stats = self.analyze_single(arr, facies, name=name)

@@ -16,7 +16,8 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional, Type, TypeVar, Any, Callable, cast
+from typing import TypeVar, Any, cast
+from collections.abc import Callable
 from src.analysis.patterns.dependency_injection import ServiceProvider
 
 from src.analysis.service_container import (
@@ -42,8 +43,8 @@ T = TypeVar("T")
 
 
 def create_analyzer_with_patterns(
-    event_bus: Optional[EventBus] = None,
-    container: Optional[Container] = None,
+    event_bus: EventBus | None = None,
+    container: Container | None = None,
     enable_circuit_breaker: bool = True,
 ) -> IntegratedAnalyzer:
     """Create analyzer with all patterns integrated.
@@ -149,8 +150,8 @@ def _attach_event_bus_to_analyzer(
 
 
 def create_event_handler(
-    handler_class: Type[T],
-    container: Optional[Container] = None,
+    handler_class: type[T],
+    container: Container | None = None,
     **kwargs: Any,
 ) -> T:
     """Create event handler with dependency injection.
@@ -226,8 +227,8 @@ class ComponentFactory:
 
     def __init__(
         self,
-        container: Optional[Container] = None,
-        event_bus: Optional[EventBus] = None,
+        container: Container | None = None,
+        event_bus: EventBus | None = None,
     ) -> None:
         """Initialize component factory.
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Optional, TYPE_CHECKING, cast
+from typing import Any, ClassVar, TYPE_CHECKING, cast
 from pathlib import Path
 
 from src.analysis.cache.loader import CacheLoader
@@ -111,7 +111,7 @@ class CacheServiceFactory(ServiceFactory):
 
     @staticmethod
     def create_cache_loader(
-        dm: "DatasetManager",
+        dm: DatasetManager,
     ) -> CacheLoaderProtocol:
         """Create a cache loader service.
 
@@ -129,7 +129,7 @@ class CacheServiceFactory(ServiceFactory):
 
         # Build a selector that prefers an explicit cache_dir but falls back
         # to a default cache directory under the provided DatasetManager.
-        def _selector(cache_dir: str, domain: str) -> Optional[str]:
+        def _selector(cache_dir: str, domain: str) -> str | None:
             try:
                 if cache_dir:
                     return CacheLoader.default_selector(cache_dir, domain)
@@ -206,7 +206,7 @@ class ProcessorServiceFactory(ServiceFactory):
             raise ValueError(f"Unknown processor service type: {service_type}")
 
     @staticmethod
-    def create_resampler(grid_spec: Optional[Any] = None) -> Any:
+    def create_resampler(grid_spec: Any | None = None) -> Any:
         """Create a resampler service.
 
         Parameters
@@ -461,7 +461,7 @@ class ServiceLocator:
         >>> avo_computer = ServiceLocator.create_avo_computer()
     """
 
-    _factories: ClassVar[Dict[str, ServiceFactory]] = {
+    _factories: ClassVar[dict[str, ServiceFactory]] = {
         "cache": CacheServiceFactory(),
         "processor": ProcessorServiceFactory(),
         "computer": ComputerServiceFactory(),
@@ -514,7 +514,7 @@ class ServiceLocator:
         return cast(ComputerServiceFactory, cls._factories["computer"])
 
     @classmethod
-    def create_cache_loader(cls, dm: "DatasetManager") -> CacheLoaderProtocol:
+    def create_cache_loader(cls, dm: DatasetManager) -> CacheLoaderProtocol:
         """Create a cache loader service.
 
         Parameters

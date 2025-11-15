@@ -21,7 +21,17 @@ pylint>=2.15.0
 black>=22.0.0
 isort>=5.10.0
 mypy>=0.990
+ruff>=0.1
+flake8>=4.0
+# Typing stubs for third-party libraries used during type-checking
+types-PyYAML>=6.0
+typing-extensions>=4.0
+pre-commit>=2.20
 
 # Documentation (optional)
 sphinx>=5.0.0
 sphinx-rtd-theme>=1.0.0
+
+# Note: Pyright is a TypeScript/Node-based static type checker for Python.
+# Install it via npm if you want to run `pyright` locally:
+#   npm install --save-dev pyright

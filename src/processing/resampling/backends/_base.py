@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Optional, Protocol, Any
+from typing import Protocol, Any
 from numpy.typing import NDArray
 
 
@@ -44,7 +44,7 @@ class BackendResult:
     """
 
     array: NDArray[Any]
-    dt: Optional[float] = None
+    dt: float | None = None
 
 
 def validate_backend_result(obj: BackendResult | object) -> bool:

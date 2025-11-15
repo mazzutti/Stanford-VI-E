@@ -10,7 +10,6 @@ Provides a high-level cache interface with:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional
 
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
@@ -31,8 +30,8 @@ class DiskCache:
         self,
         cache_dir: str = ".cache",
         max_cache_bytes: int = 10 * 1024**3,
-        ttl_seconds: Optional[int] = None,
-        periodic_prune_interval_seconds: Optional[int] = None,
+        ttl_seconds: int | None = None,
+        periodic_prune_interval_seconds: int | None = None,
     ):
         """Create a DiskCache.
 
@@ -61,12 +60,12 @@ class DiskCache:
 
         # Thread pool for background saves
         self._executor = ThreadPoolExecutor(max_workers=2)
-        self._futures: Dict[str, Future[None]] = {}
+        self._futures: dict[str, Future[None]] = {}
         self._lock = threading.Lock()
 
         # Optional periodic pruning thread
         self._prune_event = threading.Event()
-        self._prune_thread: Optional[threading.Thread] = None
+        self._prune_thread: threading.Thread | None = None
         if (
             self.periodic_prune_interval_seconds is not None
             and self.periodic_prune_interval_seconds > 0
@@ -104,14 +103,14 @@ class DiskCache:
         """
         return self.store.make_key(prefix, meta)
 
-    def get_path_for_key(self, key: str) -> Optional[str]:
+    def get_path_for_key(self, key: str) -> str | None:
         # look for files under cache_dir starting with key
         path = self.store.get_path_for_key(key)
         return str(path) if path else None
 
     def load_npz(
         self, key: str
-    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    ) -> dict[str, str | int | float | bool] | bytes | None:
         return self.store.get(key)
 
     def _prune_cache_if_needed(self) -> None:
@@ -252,8 +251,8 @@ class DiskCache:
 def make_disk_cache(
     cache_dir: str = ".cache",
     max_cache_bytes: int = 10 * 1024**3,
-    ttl_seconds: Optional[int] = None,
-    periodic_prune_interval_seconds: Optional[int] = None,
+    ttl_seconds: int | None = None,
+    periodic_prune_interval_seconds: int | None = None,
 ) -> DiskCache:
     return DiskCache(
         cache_dir=cache_dir,
@@ -270,8 +269,8 @@ default_disk_cache: DiskCache = make_disk_cache()
 def get_default_disk_cache(
     cache_dir: str | None = None,
     max_cache_bytes: int = 10 * 1024**3,
-    ttl_seconds: Optional[int] = None,
-    periodic_prune_interval_seconds: Optional[int] = None,
+    ttl_seconds: int | None = None,
+    periodic_prune_interval_seconds: int | None = None,
 ) -> DiskCache:
     """Return the module's default DiskCache instance when cache_dir is None
     or the configured DiskCache for a custom directory.

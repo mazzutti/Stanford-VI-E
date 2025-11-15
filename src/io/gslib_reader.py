@@ -10,7 +10,6 @@ Design:
 
 import logging
 from pathlib import Path
-from typing import FrozenSet, Dict, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
@@ -31,19 +30,19 @@ class GSLibConfig:
         Number of header lines to skip when reading GSLIB files.
     KNOWN_PROPERTIES : FrozenSet[str]
         Set of known property keys that map to class attributes.
-    VELOCITY_PATTERNS : Dict[str, str]
+    VELOCITY_PATTERNS : dict[str, str]
         Mapping of velocity folder name patterns to special filename conventions.
     """
 
     HEADER_LINES: int = 3
     """Number of header lines to skip when reading GSLIB files."""
 
-    KNOWN_PROPERTIES: FrozenSet[str] = frozenset(
+    KNOWN_PROPERTIES: frozenset[str] = frozenset(
         {"vp", "vs", "rho", "facies", "full_stack"}
     )
     """Set of known property keys that map to class attributes."""
 
-    VELOCITY_PATTERNS: Dict[str, str] = {
+    VELOCITY_PATTERNS: dict[str, str] = {
         "p-wave": "Pvelocity.dat",
         "s-wave": "Svelocity.dat",
     }
@@ -71,9 +70,7 @@ class GSLibReader:
         """
         self._logger = logger_obj or logging.getLogger(__name__)
 
-    def read(
-        self, filepath: Union[str, Path], shape: Tuple[int, ...]
-    ) -> NDArray[np.float64]:
+    def read(self, filepath: str | Path, shape: tuple[int, ...]) -> NDArray[np.float64]:
         """Read a GSLIB `.dat` file and return a 3D NumPy array.
 
         The GSLIB files used here include a short header (GSLibConfig.HEADER_LINES lines)
@@ -82,9 +79,9 @@ class GSLibReader:
 
         Parameters
         ----------
-        filepath : Union[str, Path]
+        filepath : str | Path
             Path to the GSLIB .dat file.
-        shape : Tuple[int, ...]
+        shape : tuple[int, ...]
             Target shape for the reshaped array.
 
         Returns
@@ -98,6 +95,7 @@ class GSLibReader:
             If the file cannot be read.
         ValueError
             If the data cannot be reshaped to the target shape.
+
         """
         filepath = Path(filepath)
 

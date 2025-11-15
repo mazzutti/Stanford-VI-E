@@ -5,7 +5,7 @@ Uses PlotConfig and ImageRenderer for clean, modern design.
 """
 
 import logging
-from typing import Any, Optional, Tuple, cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -62,8 +62,8 @@ class OverlayPlotter(BasePlotter):
         ax: Axes,
         seismic_slice: NDArray[np.floating[Any]],
         facies_slice: NDArray[np.floating[Any]],
-        config: Optional[PlotConfig] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        config: PlotConfig | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot seismic with facies boundaries overlaid.
 
         Args:
@@ -134,9 +134,9 @@ class OverlayPlotter(BasePlotter):
         self,
         ax: Axes,
         facies_slice: NDArray[np.floating[Any]],
-        config: Optional[PlotConfig] = None,
+        config: PlotConfig | None = None,
         category_labels: dict[int, str] | None = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot facies data only with discrete colormap.
 
         Args:

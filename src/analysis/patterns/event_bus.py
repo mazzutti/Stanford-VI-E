@@ -33,7 +33,8 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any
+from collections.abc import Callable
 from types import TracebackType
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -114,7 +115,7 @@ class EventFilter:
         Args:
             **criteria: Filter criteria as kwargs
         """
-        self.criteria: Dict[str, Any] = criteria
+        self.criteria: dict[str, Any] = criteria
 
     def matches(self, event: Event) -> bool:
         """Check if event matches filter criteria.
@@ -137,7 +138,7 @@ class SubscriptionHandle:
     """Handle for managing event subscriptions."""
 
     def __init__(
-        self, bus: "EventBus", event_type: Type[Event], handler: EventHandler
+        self, bus: EventBus, event_type: type[Event], handler: EventHandler
     ) -> None:
         """Initialize subscription handle.
 
@@ -164,20 +165,20 @@ class EventBus:
 
     def __init__(self) -> None:
         """Initialize event bus."""
-        self._handlers: Dict[
-            Type[Event], List[tuple[EventHandler, Optional[EventFilter], EventPriority]]
+        self._handlers: dict[
+            type[Event], list[tuple[EventHandler, EventFilter | None, EventPriority]]
         ] = {}
         self._lock = Lock()
-        self._event_history: List[Event] = []
+        self._event_history: list[Event] = []
         self._max_history = 1000
-        self._middleware: List[Callable[[Event], bool]] = []
+        self._middleware: list[Callable[[Event], bool]] = []
         logger.info("EventBus initialized (synchronous)")
 
     def subscribe(
         self,
-        event_type: Type[Event],
+        event_type: type[Event],
         handler: EventHandler,
-        filter_fn: Optional[EventFilter] = None,
+        filter_fn: EventFilter | None = None,
         priority: EventPriority = EventPriority.NORMAL,
     ) -> SubscriptionHandle:
         """Subscribe to an event type.
@@ -206,7 +207,7 @@ class EventBus:
 
     def unsubscribe(
         self,
-        event_type: Type[Event],
+        event_type: type[Event],
         handler: EventHandler,
     ) -> bool:
         """Unsubscribe from an event type.
@@ -300,7 +301,7 @@ class EventBus:
             if len(self._event_history) > self._max_history:
                 self._event_history = self._event_history[-self._max_history :]
 
-    def get_history(self, event_type: Optional[Type[Event]] = None) -> List[Event]:
+    def get_history(self, event_type: type[Event] | None = None) -> list[Event]:
         """Get event history.
 
         Args:
@@ -341,8 +342,8 @@ class AsyncEventBus(EventBus):
             worker_threads: Number of worker threads
         """
         super().__init__()
-        self._queue: Queue[Optional[Event]] = Queue()
-        self._workers: List[Thread] = []
+        self._queue: Queue[Event | None] = Queue()
+        self._workers: list[Thread] = []
         self._running: bool = True
         self._stop_event: bool = False
 
@@ -371,7 +372,7 @@ class AsyncEventBus(EventBus):
         """Worker thread loop for processing events."""
         while self._running and not self._stop_event:
             try:
-                event: Optional[Event] = self._queue.get(timeout=0.5)
+                event: Event | None = self._queue.get(timeout=0.5)
                 if event is None:  # Sentinel value to stop
                     break
                 super().publish(event)
@@ -407,9 +408,9 @@ class AsyncEventBus(EventBus):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager."""
         self.stop()
@@ -425,13 +426,13 @@ class EventDispatcher:
             bus: Event bus instance
         """
         self.bus = bus
-        self._routes: Dict[Type[Event], Callable[[Event], None]] = {}
+        self._routes: dict[type[Event], Callable[[Event], None]] = {}
 
     def map_event(
         self,
-        event_type: Type[Event],
+        event_type: type[Event],
         handler: Callable[[Event], None],
-    ) -> "EventDispatcher":
+    ) -> EventDispatcher:
         """Map an event type to a handler function.
 
         Args:

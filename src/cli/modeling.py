@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, cast, Optional
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -130,7 +130,7 @@ def run_modeling(
     plan = plan_cache.get_plan(grid_spec, vp_for_twt, target_dt=grid_spec.dt)
 
     # Resample each property
-    props_time: dict[str, Optional[Quantity | NDArray[Any]]] = {}
+    props_time: dict[str, Quantity | NDArray[Any] | None] = {}
     for k, v in props_depth.items():
         if v is None:
             props_time[k] = None

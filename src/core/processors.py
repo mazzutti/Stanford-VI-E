@@ -27,7 +27,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING, Callable, cast
+from typing import Any, TYPE_CHECKING, cast
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     from src.analysis.processors.boundary import CubeAligner
@@ -44,7 +45,7 @@ class AutoLoggingMixin:
     Each instance gets a logger named after its module and class.
     """
 
-    _logger: Optional[logging.Logger] = None
+    _logger: logging.Logger | None = None
 
     @property
     def logger(self) -> logging.Logger:
@@ -132,11 +133,11 @@ class BaseProcessor(Processor, AutoLoggingMixin):
     def __init__(self) -> None:
         """Initialize base processor with shared dependencies."""
         # Use lazy initialization to avoid circular imports and infinite recursion
-        self._aligner_instance: "CubeAligner | None" = None
+        self._aligner_instance: CubeAligner | None = None
         self.logger.debug(f"Initialized {self.__class__.__name__}")
 
     @property
-    def _aligner(self) -> "CubeAligner":
+    def _aligner(self) -> CubeAligner:
         """Lazy-load the CubeAligner on first access.
 
         Avoids circular imports and prevents infinite recursion issues
@@ -196,7 +197,7 @@ class BaseProcessor(Processor, AutoLoggingMixin):
             f"{', '.join(self._DOMAIN_METHODS)}"
         )
 
-    def _find_domain_method(self) -> Optional[Callable[..., Any]]:
+    def _find_domain_method(self) -> Callable[..., Any] | None:
         """Find first available domain method and return it if callable."""
         for method_name in self._DOMAIN_METHODS:
             if hasattr(self, method_name):

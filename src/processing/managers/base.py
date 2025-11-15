@@ -3,7 +3,7 @@
 from abc import abstractmethod
 import logging
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Any
 
 
 from src.processing.core.abstracts import Manager
@@ -18,7 +18,7 @@ class BaseManager(Manager):
     Provides consistent initialization, logging, and error handling.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """Initialize manager.
 
         Args:
@@ -29,8 +29,8 @@ class BaseManager(Manager):
     @abstractmethod
     def clear(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear managed resources."""
@@ -40,7 +40,7 @@ class BaseManager(Manager):
     def summarize(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Print summary of managed resources."""

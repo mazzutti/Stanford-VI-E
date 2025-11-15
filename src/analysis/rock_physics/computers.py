@@ -12,7 +12,8 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -29,7 +30,7 @@ DEFAULT_AVO_ANGLES_DEG = (0, 5, 10, 15, 20, 25)
 DEFAULT_FLUID_FACTOR_K = 1.0
 
 
-class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
+class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
     """Computes AVO (Amplitude Variation with Offset) attributes.
 
     Handles computation of intercept and gradient from rock property cubes
@@ -86,13 +87,13 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
             },
         )
 
-    def compute(  # type: ignore[override]
+    def compute(
         self,
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
         angles_deg: Sequence[float] = DEFAULT_AVO_ANGLES_DEG,
-    ) -> Dict[str, FloatingArray]:
+    ) -> dict[str, FloatingArray]:
         """Compute AVO attributes (intercept, gradient) from rock property cubes.
 
         Args:
@@ -115,7 +116,7 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
         vs: FloatingArray,
         rho: FloatingArray,
         angles_deg: Sequence[float],
-    ) -> Dict[str, FloatingArray]:
+    ) -> dict[str, FloatingArray]:
         """Internal method for AVO computation with decorators applied.
 
         Handles the actual computation with logging and timing.
@@ -270,7 +271,7 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]])
             )
 
 
-class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
+class LambdaMuRhoComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
     """Computes Lamé parameters and derived rock physics attributes.
 
     Handles computation of Lambda-Rho and Mu-Rho from seismic velocities
@@ -322,12 +323,12 @@ class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
             description="Compute Lamé parameters from rock properties",
         )
 
-    def compute(  # type: ignore[override]
+    def compute(
         self,
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
-    ) -> Dict[str, FloatingArray]:
+    ) -> dict[str, FloatingArray]:
         """Compute Lambda-Rho and Mu-Rho attributes.
 
         Returns a dict with 'lambda_rho', 'mu_rho' and 'lambda_mu_ratio'.
@@ -349,7 +350,7 @@ class LambdaMuRhoComputer(Computer[tuple[Any, ...], Dict[str, FloatingArray]]):
         vp: FloatingArray,
         vs: FloatingArray,
         rho: FloatingArray,
-    ) -> Dict[str, FloatingArray]:
+    ) -> dict[str, FloatingArray]:
         """Internal method for Lambda-Mu-Rho computation with decorators applied."""
         logger.info("Computing Lambda-Mu-Rho attributes...")
 
@@ -423,7 +424,7 @@ class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
             description="Compute fluid-sensitive attribute from Lamé parameters",
         )
 
-    def compute(  # type: ignore[override]
+    def compute(
         self,
         lambda_rho: FloatingArray,
         mu_rho: FloatingArray,

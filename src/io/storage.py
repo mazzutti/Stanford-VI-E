@@ -15,7 +15,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, TypeVar, cast
 import numpy as np
 
 from src.io.backends import CacheStore
@@ -56,16 +56,17 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     def __init__(
         self,
         cache_dir: str | Path = ".cache",
-        logger_obj: Optional[logging.Logger] = None,
+        logger_obj: logging.Logger | None = None,
     ):
         """Initialize disk cache store.
 
-        Parameters
-        ----------
-        cache_dir : str | Path
-            Directory for cache files.
-        logger_obj : Optional[logging.Logger]
-            Logger instance.
+                Parameters
+                ----------
+                cache_dir : str | Path
+                    Directory for cache files.
+                logger_obj : logging.Logger | None
+                    Logger instance.
+
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -89,18 +90,19 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         h = _hash_for_obj(meta)
         return f"{prefix}_{h}"
 
-    def get_path_for_key(self, key: str) -> Optional[Path]:
+    def get_path_for_key(self, key: str) -> Path | None:
         """Find cache file path for a given key.
 
-        Parameters
-        ----------
-        key : str
-            Cache key prefix to search for.
+                Parameters
+                ----------
+                key : str
+                    Cache key prefix to search for.
 
-        Returns
-        -------
-        Optional[Path]
-            Path to cache file if found, None otherwise.
+                Returns
+                -------
+                Path | None
+                    Path to cache file if found, None otherwise.
+
         """
         if not self.cache_dir.exists():
             return None
@@ -111,18 +113,19 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
 
         return None
 
-    def get(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    def get(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve item from cache.
 
-        Parameters
-        ----------
-        key : str
-            Cache key.
+                Parameters
+                ----------
+                key : str
+                    Cache key.
 
-        Returns
-        -------
-        Optional[dict[str, str | int | float | bool] | bytes]
-            Cached value or None if not found.
+                Returns
+                -------
+                dict[str, str | int | float | bool] | bytes | None
+                    Cached value or None if not found.
+
         """
         path = self.get_path_for_key(key)
         if not path or not path.exists():
@@ -292,49 +295,52 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         Internal storage dictionary.
     """
 
-    def __init__(self, logger_obj: Optional[logging.Logger] = None):
+    def __init__(self, logger_obj: logging.Logger | None = None):
         """Initialize in-memory cache store.
 
-        Parameters
-        ----------
-        logger_obj : Optional[logging.Logger]
-            Logger instance.
+                Parameters
+                ----------
+                logger_obj : logging.Logger | None
+                    Logger instance.
+
         """
         self.logger = logger_obj or logger
         self._store: dict[str, dict[str, str | int | float | bool] | bytes] = {}
 
     def _get_impl(
         self, key: str
-    ) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    ) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve object from memory.
 
-        Parameters
-        ----------
-        key : str
-            Cache key.
+                Parameters
+                ----------
+                key : str
+                    Cache key.
 
-        Returns
-        -------
-        Optional[dict[str, str | int | float | bool] | bytes]
-            Cached value or None if not found.
+                Returns
+                -------
+                dict[str, str | int | float | bool] | bytes | None
+                    Cached value or None if not found.
+
         """
         result = self._store.get(key)
         if result is not None:
             self.logger.debug(f"Memory cache hit: {key}")
         return result
 
-    def get(self, key: str) -> Optional[dict[str, str | int | float | bool] | bytes]:
+    def get(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve item from cache.
 
-        Parameters
-        ----------
-        key : str
-            Cache key.
+                Parameters
+                ----------
+                key : str
+                    Cache key.
 
-        Returns
-        -------
-        Optional[dict[str, str | int | float | bool] | bytes]
-            Cached value or None if not found.
+                Returns
+                -------
+                dict[str, str | int | float | bool] | bytes | None
+                    Cached value or None if not found.
+
         """
         try:
             return self._get_impl(key)

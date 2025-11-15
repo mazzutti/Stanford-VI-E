@@ -1,27 +1,28 @@
-from typing import Any, Optional, Sequence, Union
+from typing import Any
+from collections.abc import Sequence
 from numpy.typing import NDArray, ArrayLike
 
 def sobel(
     input: ArrayLike,
     axis: int = ...,
-    output: Optional[NDArray[Any]] = ...,
+    output: NDArray[Any] | None = ...,
     mode: str = ...,
     cval: float = ...,
 ) -> NDArray[Any]: ...
 def gaussian_filter(
     input: ArrayLike,
-    sigma: Union[float, Sequence[float]],
+    sigma: float | Sequence[float],
     order: int = 0,
-    output: Optional[NDArray[Any]] = ...,
+    output: NDArray[Any] | None = ...,
     mode: str = ...,
     cval: float = ...,
     truncate: float = ...,
 ) -> NDArray[Any]: ...
 def binary_dilation(
     input: ArrayLike,
-    structure: Optional[ArrayLike] = ...,
+    structure: ArrayLike | None = ...,
     iterations: int = ...,
-    output: Optional[NDArray[Any]] = ...,
+    output: NDArray[Any] | None = ...,
     border_value: int | float = ...,
     origin: int = ...,
 ) -> NDArray[Any]: ...

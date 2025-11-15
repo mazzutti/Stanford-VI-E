@@ -6,7 +6,6 @@ of concerns. All specific plotter implementations inherit from this class.
 
 import logging
 from abc import ABC
-from typing import Optional
 
 
 from src.plotting.helpers.config import setup_matplotlib
@@ -25,7 +24,7 @@ class BasePlotter(ABC):
         backend: Matplotlib backend name
     """
 
-    def __init__(self, backend: Optional[str] = "Agg"):
+    def __init__(self, backend: str | None = "Agg"):
         """Initialize the plotter.
 
         Args:

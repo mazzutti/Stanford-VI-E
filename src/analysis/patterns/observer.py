@@ -29,7 +29,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Dict
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,8 +79,8 @@ class AnalysisEvent:
         event_type: str,
         source: str,
         data: Any = None,
-        timestamp: Optional[float] = None,
-        context: Optional[Dict[str, Any]] = None,
+        timestamp: float | None = None,
+        context: dict[str, Any] | None = None,
     ):
         """Initialize an analysis event.
 
@@ -170,7 +170,7 @@ class Observable:
 
     def __init__(self) -> None:
         """Initialize observable with empty observer list"""
-        self._observers: List[AnalysisObserver] = []
+        self._observers: list[AnalysisObserver] = []
 
     def attach(self, observer: AnalysisObserver) -> AnalysisObserver:
         """Attach an observer to receive notifications.

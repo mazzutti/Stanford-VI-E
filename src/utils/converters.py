@@ -5,7 +5,7 @@ different unit systems (e.g., km/s ↔ m/s, g/cc ↔ kg/m³).
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Any
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -42,7 +42,7 @@ class UnitConverter(ABC):
     @abstractmethod
     def convert_if_needed(
         self, arr: NDArray[Any], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[Any], bool]:
+    ) -> tuple[NDArray[Any], bool]:
         """Convert array to target unit if needed.
 
         Parameters
@@ -141,7 +141,7 @@ class VelocityConverter(UnitConverter):
 
     def convert_if_needed(
         self, arr: NDArray[Any], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[Any], bool]:
+    ) -> tuple[NDArray[Any], bool]:
         """Convert from km/s to m/s if needed.
 
         Parameters
@@ -218,7 +218,7 @@ class DensityConverter(UnitConverter):
 
     def convert_if_needed(
         self, arr: NDArray[Any], copy_on_convert: bool = True
-    ) -> Tuple[NDArray[Any], bool]:
+    ) -> tuple[NDArray[Any], bool]:
         """Convert from g/cc to kg/m³ if needed.
 
         Parameters

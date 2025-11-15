@@ -36,12 +36,10 @@ from typing import (
     Any,
     ClassVar,
     Generic,
-    Optional,
-    Sequence,
-    Type,
     TypeVar,
     cast,
 )
+from collections.abc import Sequence, Callable
 
 if TYPE_CHECKING:
     pass
@@ -57,6 +55,22 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 T_Config = TypeVar("T_Config")
+
+
+class classproperty:
+    """Descriptor that acts like a property on instances and a read-only
+    class-level property when accessed on the class.
+
+    The wrapped function receives the class as its single argument.
+    """
+
+    def __init__(self, func: "Callable[..., Any]") -> None:
+        self._func = func
+
+    def __get__(self, obj: object, objtype: type | None = None) -> Any:
+        if objtype is None:
+            objtype = type(obj)
+        return self._func(objtype)
 
 
 class SingletonMixin:
@@ -80,10 +94,10 @@ class SingletonMixin:
         >>> assert service1 is service2
     """
 
-    _instance: ClassVar[Optional[Any]] = None
+    _instance: ClassVar[Any | None] = None
     _lock: ClassVar[threading.RLock] = threading.RLock()
 
-    def __new__(cls: Type[T], *args: Any, **kwargs: Any) -> T:
+    def __new__(cls: type[T], *args: Any, **kwargs: Any) -> T:
         """Create or return the singleton instance in a thread-safe manner."""
         with getattr(cls, "_lock"):
             if getattr(cls, "_instance", None) is None:
@@ -101,25 +115,25 @@ class SingletonMixin:
             setattr(cls, "_instance", None)
             logger.debug(f"Reset singleton {cls.__name__}")
 
-    @classmethod
+    @property
     def is_initialized(cls) -> bool:
         """Check if singleton has been initialized.
 
-        Returns:
-            True if singleton exists, False otherwise.
+        Can be accessed on the class or an instance; returns True if the
+        singleton instance currently exists, False otherwise.
         """
         with getattr(cls, "_lock"):
             return getattr(cls, "_instance", None) is not None
 
     @classmethod
-    def get_instance(cls: Type[T]) -> Optional[T]:
+    def get_instance(cls: type[T]) -> T | None:
         """Get the singleton instance without creating it.
 
         Returns:
             The singleton instance if initialized, None otherwise.
         """
         with getattr(cls, "_lock"):
-            return cast(Optional[T], getattr(cls, "_instance", None))
+            return cast(T | None, getattr(cls, "_instance", None))
 
 
 class ValidatableMixin:
@@ -197,7 +211,7 @@ class ConfigurableMixin(Generic[T_Config]):
         ...     value: int
         ...
         >>> class MyAnalyzer(ConfigurableMixin[MyConfig]):
-        ...     _config: Optional[MyConfig] = None
+        ...     _config: MyConfig | None = None
         ...
         ...     def configure(self, config: MyConfig) -> None:
         ...         self._config = config
@@ -206,13 +220,14 @@ class ConfigurableMixin(Generic[T_Config]):
         ...         if self._config is None:
         ...             raise RuntimeError("Not configured")
         ...         return self._config
+
     """
 
-    _config: Optional[T_Config] = None
+    _config: T_Config | None = None
 
     @staticmethod
     def validate_config_type(
-        config: Any, expected_type: Type[T_Config], config_name: str = "config"
+        config: Any, expected_type: type[T_Config], config_name: str = "config"
     ) -> None:
         """Validate that config is of expected type.
 
@@ -231,7 +246,7 @@ class ConfigurableMixin(Generic[T_Config]):
             )
         logger.debug(f"Config validated: {type(config).__name__}")
 
-    def get_configuration(self) -> Optional[T_Config]:
+    def get_configuration(self) -> T_Config | None:
         """Get the current configuration.
 
         Returns:

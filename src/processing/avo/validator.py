@@ -1,7 +1,7 @@
 """AVO validation and analysis utilities."""
 
 from dataclasses import dataclass
-from typing import Optional, List, Any, cast
+from typing import Any, cast
 from numpy.typing import NDArray
 import numpy as np
 import logging
@@ -40,7 +40,7 @@ class AVOValidityReport:
     contrast_rho: float
     contrast_flag: bool
     angle_flag: bool
-    suggested_angles: Optional[List[float]] = None
+    suggested_angles: list[float] | None = None
 
     def is_valid(self, contrast_threshold: float = DEFAULT_CONTRAST_THRESHOLD) -> bool:
         """Check if linearization conditions are acceptable.
@@ -104,7 +104,7 @@ class AVOValidator(Validator):
         self,
         max_angle: float = DEFAULT_MAX_AVO_ANGLE,
         contrast_threshold: float = DEFAULT_CONTRAST_THRESHOLD,
-        logger: Optional[logging.Logger] = None,
+        logger: logging.Logger | None = None,
     ):
         """Initialize validator.
 
@@ -236,7 +236,7 @@ class AVOValidator(Validator):
         return float((amax - amin) / max(amax, 1e-12))
 
     @staticmethod
-    def _suggest_angles(contrast_flag: bool, angle_flag: bool) -> Optional[List[float]]:
+    def _suggest_angles(contrast_flag: bool, angle_flag: bool) -> list[float] | None:
         """Suggest safer angle ranges based on flags.
 
         Args:

@@ -8,7 +8,7 @@ error handling and reduced code duplication.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, cast
+from typing import cast
 from functools import total_ordering
 
 import numpy as np
@@ -122,7 +122,7 @@ class FaciesStats(FormattableModel):
         mean_val = round(self.mean, 10) if not ModelUtilities.is_nan(self.mean) else 0
         return hash(mean_val)
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Used by parent class FormattableModel for consistent __repr__/__str__.
@@ -167,7 +167,7 @@ class FaciesStats(FormattableModel):
             return np.nan
         return self.std / abs(self.mean)
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Convert statistics to dictionary for compatibility."""
         return {
             "count": self.count,
@@ -181,7 +181,7 @@ class FaciesStats(FormattableModel):
         }
 
     @classmethod
-    def from_dict(cls, stats_dict: Dict[str, float]) -> FaciesStats:
+    def from_dict(cls, stats_dict: dict[str, float]) -> FaciesStats:
         """Create FaciesStats from dictionary.
 
         Args:

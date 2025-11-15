@@ -16,16 +16,11 @@ from __future__ import annotations
 import logging
 from copy import copy as shallow_copy
 from typing import (
-    Optional,
-    Callable,
-    Type,
     TYPE_CHECKING,
-    Dict,
-    Tuple,
     cast,
-    Generator,
     Any,
 )
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 
 from src.processing.materials.velocity import VelocityModel
@@ -65,25 +60,25 @@ class AnalyzerBuilder:
     def __init__(self) -> None:
         """Initialize a new builder with no components initialized."""
         # Configuration dependencies
-        self._resampler_factory: Optional[ResamplerFactory] = None
-        self._select_cache_files: Optional[Callable[[str, str], Optional[str]]] = None
-        self._cache_loader: Optional[CacheLoaderProtocol] = None
-        self._velocity_model_class: Optional[Type[VelocityModel]] = None
-        self._plotter: Optional[PlotterProtocol] = None
-        self._config: Optional[FaciesCorrelationConfig] = None
+        self._resampler_factory: ResamplerFactory | None = None
+        self._select_cache_files: Callable[[str, str], str | None] | None = None
+        self._cache_loader: CacheLoaderProtocol | None = None
+        self._velocity_model_class: type[VelocityModel] | None = None
+        self._plotter: PlotterProtocol | None = None
+        self._config: FaciesCorrelationConfig | None = None
 
         # Processor attributes (lazy-initialized)
-        self._boundary_detector: Optional[BoundaryDetector] = None
-        self._cube_aligner: Optional[CubeAligner] = None
-        self._boundary_amp_extractor: Optional[BoundaryAmplitudeExtractor] = None
-        self._gradient_calculator: Optional[GradientCorrelationCalculator] = None
-        self._interface_analyzer: Optional[InterfaceReflectionAnalyzer] = None
-        self._facies_discriminator: Optional[FaciesDiscriminationCalculator] = None
-        self._domain_handler_factory: Optional[DomainHandlerFactory] = None
+        self._boundary_detector: BoundaryDetector | None = None
+        self._cube_aligner: CubeAligner | None = None
+        self._boundary_amp_extractor: BoundaryAmplitudeExtractor | None = None
+        self._gradient_calculator: GradientCorrelationCalculator | None = None
+        self._interface_analyzer: InterfaceReflectionAnalyzer | None = None
+        self._facies_discriminator: FaciesDiscriminationCalculator | None = None
+        self._domain_handler_factory: DomainHandlerFactory | None = None
 
         # Processors stored in type-safe registry (lazy-initialized)
-        self._processor_registry: Dict[
-            str, Tuple[Type[object], Callable[..., object], Optional[object]]
+        self._processor_registry: dict[
+            str, tuple[type[object], Callable[..., object], object | None]
         ] = {
             "boundary_detector": (BoundaryDetector, BoundaryDetector, None),
             "cube_aligner": (CubeAligner, CubeAligner, None),
@@ -216,7 +211,7 @@ class AnalyzerBuilder:
             )
         )
 
-    def _set_dependency(self, name: str, value: object) -> "AnalyzerBuilder":
+    def _set_dependency(self, name: str, value: object) -> AnalyzerBuilder:
         """Generic setter for reducing boilerplate with frozen check and type validation.
 
         Performs type validation using a centralized helper that properly handles
@@ -242,7 +237,7 @@ class AnalyzerBuilder:
             If value type doesn't match expected type.
         """
         # Type validation mapping
-        type_map = {
+        type_map: dict[str, Any] = {
             "resampler_factory": ResamplerFactory,
             "select_cache_files": Callable,
             "cache_loader": CacheLoaderProtocol,
@@ -274,7 +269,7 @@ class AnalyzerBuilder:
 
         return self
 
-    def freeze(self) -> "AnalyzerBuilder":
+    def freeze(self) -> AnalyzerBuilder:
         """Freeze builder to prevent accidental modifications.
 
         Returns
@@ -286,7 +281,7 @@ class AnalyzerBuilder:
         logger.debug("Builder frozen")
         return self
 
-    def unfreeze(self) -> "AnalyzerBuilder":
+    def unfreeze(self) -> AnalyzerBuilder:
         """Unfreeze builder to allow modifications.
 
         Returns
@@ -307,7 +302,7 @@ class AnalyzerBuilder:
         """Configure logging verbosity for builder initialization."""
         logger.setLevel(level)
 
-    def __getattr__(self, name: str) -> Callable[..., "AnalyzerBuilder"]:
+    def __getattr__(self, name: str) -> Callable[..., AnalyzerBuilder]:
         """Generate setter methods dynamically (with_xxx pattern).
 
         This reduces boilerplate by ~300 LOC from explicit setter definitions.
@@ -326,7 +321,7 @@ class AnalyzerBuilder:
             }
             attr_name = special_mappings.get(attr_name, attr_name)
 
-            def setter(value: object) -> "AnalyzerBuilder":
+            def setter(value: object) -> AnalyzerBuilder:
                 """Set a dependency dynamically."""
                 return self._set_dependency(attr_name, value)
 
@@ -336,7 +331,7 @@ class AnalyzerBuilder:
             f"'{type(self).__name__}' object has no attribute '{name}'"
         )
 
-    def with_processors(self, **processors: object) -> "AnalyzerBuilder":
+    def with_processors(self, **processors: object) -> AnalyzerBuilder:
         """Configure multiple processors at once (batch configuration).
 
         Supports flexible naming: processor names can be specified with or
@@ -391,7 +386,7 @@ class AnalyzerBuilder:
     @contextmanager
     def transient_config(
         self, **config_overrides: object
-    ) -> Generator["AnalyzerBuilder", None, None]:
+    ) -> Generator[AnalyzerBuilder]:
         """Context manager for temporary configuration overrides.
 
         Useful for testing or temporary customization without permanently
@@ -511,7 +506,7 @@ class AnalyzerBuilder:
 
         logger.debug("Builder validation passed")
 
-    def reset(self) -> "AnalyzerBuilder":
+    def reset(self) -> AnalyzerBuilder:
         """Reset builder to initial state.
 
         Clears all configured dependencies, allowing the builder to be
@@ -571,7 +566,7 @@ class AnalyzerBuilder:
         logger.debug("Builder reset to initial state")
         return self
 
-    def copy(self) -> "AnalyzerBuilder":
+    def copy(self) -> AnalyzerBuilder:
         """Create a shallow copy of the current builder state.
 
         Useful for creating variants of a configured builder without
@@ -587,7 +582,7 @@ class AnalyzerBuilder:
         return new_builder
 
     @classmethod
-    def from_existing_builder(cls, existing: "AnalyzerBuilder") -> "AnalyzerBuilder":
+    def from_existing_builder(cls, existing: AnalyzerBuilder) -> AnalyzerBuilder:
         """Create a new builder as a copy of an existing builder.
 
         Useful for cloning configuration from another builder instance.
@@ -613,7 +608,7 @@ class AnalyzerBuilder:
         return cloned
 
     @classmethod
-    def with_state_snapshot(cls, snapshot: Any) -> "AnalyzerBuilder":
+    def with_state_snapshot(cls, snapshot: Any) -> AnalyzerBuilder:
         """Create a builder from a previously saved state snapshot.
 
         Allows restoring builder configuration from a saved state.
@@ -642,37 +637,35 @@ class AnalyzerBuilder:
         # Restore configuration
         if "resampler_factory" in snapshot:
             builder._resampler_factory = cast(
-                Optional[ResamplerFactory], snapshot["resampler_factory"]
+                ResamplerFactory | None, snapshot["resampler_factory"]
             )
         if "select_cache_files" in snapshot:
             builder._select_cache_files = cast(
-                Optional[Callable[[str, str], Optional[str]]],
+                Callable[[str, str], str | None] | None,
                 snapshot["select_cache_files"],
             )
         if "cache_loader" in snapshot:
             builder._cache_loader = cast(
-                Optional[CacheLoaderProtocol], snapshot["cache_loader"]
+                CacheLoaderProtocol | None, snapshot["cache_loader"]
             )
         if "velocity_model_class" in snapshot:
             builder._velocity_model_class = cast(
-                Optional[Type[VelocityModel]], snapshot["velocity_model_class"]
+                type[VelocityModel] | None, snapshot["velocity_model_class"]
             )
         if "plotter" in snapshot:
-            builder._plotter = cast(Optional[PlotterProtocol], snapshot["plotter"])
+            builder._plotter = cast(PlotterProtocol | None, snapshot["plotter"])
         if "config" in snapshot:
-            builder._config = cast(
-                Optional[FaciesCorrelationConfig], snapshot["config"]
-            )
+            builder._config = cast(FaciesCorrelationConfig | None, snapshot["config"])
 
         logger.info("Created builder from state snapshot")
         return builder
 
-    def state_snapshot(self) -> Dict[str, object]:
+    def state_snapshot(self) -> dict[str, object]:
         """Save builder state for later restoration.
 
         Returns
         -------
-        Dict[str, object]
+        dict[str, object]
             Snapshot of current builder state.
         """
         return {
@@ -724,7 +717,7 @@ class AnalyzerBuilder:
 
         # Configuration dependencies
         lines.append("\nConfiguration Dependencies:")
-        config_deps = {
+        config_deps: dict[str, Any | None] = {
             "resampler_factory": self._resampler_factory,
             "cache_file_selector": self._select_cache_files,
             "cache_loader": self._cache_loader,
@@ -750,7 +743,7 @@ class AnalyzerBuilder:
         lines.append("\n" + "=" * 70)
         return "\n".join(lines)
 
-    def build(self) -> "FaciesCorrelationAnalyzer":
+    def build(self) -> FaciesCorrelationAnalyzer:
         """Build and return the configured analyzer.
 
         This method performs:

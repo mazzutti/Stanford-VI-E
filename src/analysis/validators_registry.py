@@ -10,7 +10,8 @@ Example:
 """
 
 from __future__ import annotations
-from typing import Callable, Sequence, ClassVar, Dict, Any
+from typing import ClassVar, Any
+from collections.abc import Callable, Sequence
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class ValidatorRegistry:
     point of extension for validation behavior.
     """
 
-    _validators: ClassVar[Dict[str, Callable[..., None]]] = {}
+    _validators: ClassVar[dict[str, Callable[..., None]]] = {}
     """Dictionary of registered validators by name"""
 
     @classmethod

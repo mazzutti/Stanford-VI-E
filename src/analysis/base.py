@@ -11,7 +11,7 @@ Design Patterns:
     - Composition: Use mixins for cross-cutting concerns (see src.analysis.mixins)
 
 Key Simplifications:
-    - Removed duplicate name property/method (use 'name' property only)
+    - Removed duplicate name property/method (use \'name\' property only)
     - Removed separate get_name() method
     - Merged lifecycle checking with is_ready()
     - Clear separation: validate_inputs() checks data, is_ready() checks component state
@@ -32,7 +32,7 @@ Example Implementation (basic analyzer):
     >>>
     >>> class MyAnalyzer(AnalyzerInterface[MyConfig, dict]):
     ...     def __init__(self):
-    ...         self._config: Optional[MyConfig] = None
+    ...         self._config: MyConfig | None = None
     ...
     ...     @property
     ...     def name(self) -> str:
@@ -75,7 +75,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 import logging
 
 __all__ = [
@@ -104,7 +104,7 @@ class AnalysisConfig(ABC):
         ...     timeout: float = 60.0
     """
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary representation.
 
         For dataclass configs, returns asdict(self).
@@ -112,7 +112,7 @@ class AnalysisConfig(ABC):
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Configuration as dictionary for serialization.
         """
         if is_dataclass(self):

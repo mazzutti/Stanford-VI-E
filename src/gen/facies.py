@@ -12,7 +12,7 @@ the last axis.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Protocol, Any, cast, TYPE_CHECKING
+from typing import Protocol, Any, cast, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 
@@ -37,7 +37,7 @@ class FaciesTopLayersExtractor:
         nk = self.cube.shape[2]
         if n_layers > nk:
             raise ValueError(
-                "n_layers cannot be larger than number of samples (nk={})".format(nk)
+                f"n_layers cannot be larger than number of samples (nk={nk})"
             )
         return self.cube[:, :, :n_layers].copy()
 
@@ -77,7 +77,7 @@ class FaciesTopLayersExtractor:
         embed_in_full_depth: bool = False,
         is_categorical: bool = False,
         title: str = "",
-    ) -> "go.Figure":
+    ) -> go.Figure:
         """Create a Plotly Figure for this cube.
 
         If `embed_in_full_depth` is True, `full_depth` must be provided and the
@@ -168,8 +168,8 @@ class FaciesTopLayersExtractor:
 
     @classmethod
     def from_npz(
-        cls, path: str, key: Optional[str] = None
-    ) -> "FaciesTopLayersExtractor":
+        cls, path: str, key: str | None = None
+    ) -> FaciesTopLayersExtractor:
         data = np.load(path, allow_pickle=True)
         if key is not None and key in data:
             arr = data[key]
@@ -186,12 +186,12 @@ class FaciesTopLayersExtractor:
     @classmethod
     def from_cache_or_generate(
         cls,
-        cache_provider: Optional["CacheProvider"] = None,
+        cache_provider: CacheProvider | None = None,
         cache_dir: str = ".cache",
         prefer_latest: bool = True,
         generate_if_missing: bool = True,
         force_generate: bool = False,
-    ) -> "FaciesTopLayersExtractor":
+    ) -> FaciesTopLayersExtractor:
         if cache_provider is None:
             cache_provider = DefaultCacheProvider(cache_dir=cache_dir)
 
@@ -208,9 +208,9 @@ class FaciesTopLayersExtractor:
 
 
 class CacheProvider(Protocol):
-    def load_latest_depth(self) -> Optional[NDArray[Any]]: ...
+    def load_latest_depth(self) -> NDArray[Any] | None: ...
 
-    def generate_depth(self, force: bool = False) -> Optional[NDArray[Any]]: ...
+    def generate_depth(self, force: bool = False) -> NDArray[Any] | None: ...
 
 
 class DefaultCacheProvider:
@@ -226,7 +226,7 @@ class DefaultCacheProvider:
         self._cache_manager = cache_manager
         self._pipeline = pipeline
 
-    def _find_latest(self) -> Optional[str]:
+    def _find_latest(self) -> str | None:
         from pathlib import Path
 
         d = Path(self.cache_dir)
@@ -240,7 +240,7 @@ class DefaultCacheProvider:
         files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
         return str(files[0]) if files else None
 
-    def load_latest_depth(self) -> Optional[NDArray[Any]]:
+    def load_latest_depth(self) -> NDArray[Any] | None:
         from pathlib import Path
         import numpy as _np
 
@@ -310,7 +310,7 @@ class DefaultCacheProvider:
         except Exception:
             return None
 
-    def generate_depth(self, force: bool = False) -> Optional[NDArray[Any]]:
+    def generate_depth(self, force: bool = False) -> NDArray[Any] | None:
         # If not forced and cache exists, return it
         if not force:
             path = self._find_latest()

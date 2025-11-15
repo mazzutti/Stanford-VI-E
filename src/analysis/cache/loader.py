@@ -25,7 +25,8 @@ Example Usage:
 """
 
 from pathlib import Path
-from typing import Any, Callable, Optional, Union, List, NamedTuple, cast
+from typing import Any, NamedTuple, cast
+from collections.abc import Callable
 from types import TracebackType
 from os import PathLike
 from numpy.typing import NDArray
@@ -61,21 +62,21 @@ class CacheConfig(NamedTuple):
     ----------
     cache_size : int
         Size of the LRU cache. 0 means caching is disabled.
-    archive_extractor : Optional[ArchiveExtractorProtocol]
+    archive_extractor : ArchiveExtractorProtocol | None
         Custom NPZ extraction strategy, or None for default.
-    selector : Optional[SelectorProtocol]
+    selector : SelectorProtocol | None
         Custom file selection strategy, or None for default.
-    cache : Optional[CacheProtocol[NDArray[np.float64]]]
+    cache : CacheProtocol[NDArray[np.float64]] | None
         External cache instance, or None to create default.
     np_load : Callable
         NumPy load function (for testing/mocking).
     """
 
     cache_size: int
-    archive_extractor: Optional[ArchiveExtractorProtocol] = None
-    selector: Optional[SelectorProtocol] = None
-    cache: Optional[CacheProtocol[NDArray[np.float64]]] = None
-    np_load: Callable[..., Union[NDArray[Any], NpzFile]] = np.load
+    archive_extractor: ArchiveExtractorProtocol | None = None
+    selector: SelectorProtocol | None = None
+    cache: CacheProtocol[NDArray[np.float64]] | None = None
+    np_load: Callable[..., NDArray[Any] | NpzFile] = np.load
 
 
 class CacheLoader:
@@ -87,13 +88,13 @@ class CacheLoader:
 
     Attributes
     ----------
-    _selector : Optional[SelectorProtocol]
+    _selector : SelectorProtocol | None
         Custom file selection callable. If None, uses default selection logic.
     _np_load : Callable
         NumPy load function (can be mocked for testing).
-    _archive_extractor : Optional[ArchiveExtractorProtocol]
+    _archive_extractor : ArchiveExtractorProtocol | None
         Custom NPZ archive extraction callable.
-    _cache : Optional[CacheProtocol]
+    _cache : CacheProtocol | None
         LRU cache instance for storing loaded arrays.
     _cache_size : int
         Maximum size of the cache.
@@ -131,7 +132,7 @@ class CacheLoader:
         return f"{_FILE_PREFIX}{domain}{extension}"
 
     @staticmethod
-    def default_selector(cache_dir: str, domain: str) -> Optional[str]:
+    def default_selector(cache_dir: str, domain: str) -> str | None:
         """Locate AVO cache file (tries .npz then .npy)."""
         if not domain:
             raise ValueError("domain must be a non-empty string")
@@ -146,13 +147,13 @@ class CacheLoader:
         return None
 
     @staticmethod
-    def _extract_array_from_npz(archive: NpzFile) -> Optional[NDArray[np.float64]]:
+    def _extract_array_from_npz(archive: NpzFile) -> NDArray[np.float64] | None:
         """Extract array from NPZ archive.
 
         Extraction strategy:
-        1. If 'full_stack' key exists, returns that array
+        1. If ``'full_stack'`` key exists, returns that array
         2. Otherwise, returns the first array in the archive
-        3. Returns None on any error and logs the exception
+        3. Returns ``None`` on any error and logs the exception
 
         This is the shared extraction logic used by both the default extractor
         and the instance method.
@@ -164,7 +165,7 @@ class CacheLoader:
 
         Returns
         -------
-        Optional[NDArray[np.float64]]
+        NDArray[np.float64] | None
             Extracted array as float64, or None if extraction failed.
 
         Raises
@@ -174,7 +175,7 @@ class CacheLoader:
 
         Notes
         -----
-        The 'full_stack' key is a convention in this project for storing
+        The ``'full_stack'`` key is a convention in this project for storing
         the main data array within NPZ files.
 
         Examples
@@ -197,18 +198,18 @@ class CacheLoader:
         return None
 
     @staticmethod
-    def default_archive_extractor(archive: NpzFile) -> Optional[NDArray[np.float64]]:
+    def default_archive_extractor(archive: NpzFile) -> NDArray[np.float64] | None:
         """Extract array from NPZ (tries 'full_stack' key, then first array)."""
         return CacheLoader._extract_array_from_npz(archive)
 
     def __init__(
         self,
-        selector: Optional[SelectorProtocol] = None,
-        np_load: Callable[..., Union[NDArray[Any], NpzFile]] = np.load,
+        selector: SelectorProtocol | None = None,
+        np_load: Callable[..., NDArray[Any] | NpzFile] = np.load,
         *,
-        cache: Optional[CacheProtocol[NDArray[np.float64]]] = None,
+        cache: CacheProtocol[NDArray[np.float64]] | None = None,
         cache_size: int = 0,
-        archive_extractor: Optional[ArchiveExtractorProtocol] = None,
+        archive_extractor: ArchiveExtractorProtocol | None = None,
     ) -> None:
         """Initialize with optional caching and custom strategies.
 
@@ -234,7 +235,7 @@ class CacheLoader:
         # If the caller injected a cache instance, use it. Otherwise, create
         # a default LRUCache only when cache_size > 0.
         if cache is not None:
-            self._cache: Optional[CacheProtocol[NDArray[np.float64]]] = cache
+            self._cache: CacheProtocol[NDArray[np.float64]] | None = cache
         else:
             self._cache = None
             if self._cache_size > 0:
@@ -258,28 +259,29 @@ class CacheLoader:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
-        """Exit context manager for CacheLoader.
+        """
+        Exit context manager for CacheLoader.
 
-        Clears the cache when exiting the context, ensuring clean resource
-        cleanup. If an exception occurred, it is not suppressed.
+                Clears the cache when exiting the context, ensuring clean resource
+                cleanup. If an exception occurred, it is not suppressed.
 
-        Parameters
-        ----------
-        exc_type : Optional[type]
-            The exception type if an exception occurred, None otherwise.
-        exc_val : Optional[Exception]
-            The exception instance if an exception occurred, None otherwise.
-        _exc_tb : Optional[TracebackType]
-            The traceback if an exception occurred, None otherwise.
+                Parameters
+                ----------
+                exc_type : type | None
+                    The exception type if an exception occurred, None otherwise.
+                exc_val : Exception | None
+                    The exception instance if an exception occurred, None otherwise.
+                _exc_tb : TracebackType | None
+                    The traceback if an exception occurred, None otherwise.
 
-        Returns
-        -------
-        None
-            Does not suppress exceptions.
+                Returns
+                -------
+                None
+                    Does not suppress exceptions.
         """
         self.cache_clear()
 
@@ -329,12 +331,12 @@ class CacheLoader:
 
     def select_cache_file(
         self,
-        cache_dir: Union[str, PathLike[str]],
+        cache_dir: str | PathLike[str],
         domain: str,
         *,
         prefer_latest: bool = True,
         allow_npy: bool = True,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Select cache file (tries custom selector, then .npz/.npy, then glob)."""
         if not domain:
             raise ValueError("domain must be a non-empty string")
@@ -357,7 +359,7 @@ class CacheLoader:
 
     def _get_selection_strategies(
         self, cache_path: Path, domain: str, prefer_latest: bool, allow_npy: bool
-    ) -> List[Callable[[], Optional[str]]]:
+    ) -> list[Callable[[], str | None]]:
         """Get ordered list of selection strategies to try."""
         strategies = [
             lambda: self._try_custom_selector(cache_path, domain),
@@ -369,7 +371,7 @@ class CacheLoader:
             )
         return strategies
 
-    def _try_custom_selector(self, cache_path: Path, domain: str) -> Optional[str]:
+    def _try_custom_selector(self, cache_path: Path, domain: str) -> str | None:
         """Try custom selector if configured."""
         if self._selector is None:
             return None
@@ -384,7 +386,7 @@ class CacheLoader:
 
     def _try_standard_files(
         self, cache_path: Path, domain: str, allow_npy: bool
-    ) -> Optional[str]:
+    ) -> str | None:
         """Try standard cache file naming conventions."""
         for ext in [_NPZ_EXTENSION] + ([_NPY_EXTENSION] if allow_npy else []):
             candidate = cache_path / self._build_cache_filename(domain, ext)
@@ -395,7 +397,7 @@ class CacheLoader:
 
     def _try_latest_match(
         self, cache_path: Path, domain: str, allow_npy: bool
-    ) -> Optional[str]:
+    ) -> str | None:
         """Find latest matching cache file by glob pattern."""
         if not cache_path.is_dir():
             return None
@@ -408,7 +410,7 @@ class CacheLoader:
 
     def _find_matching_cache_files(
         self, cache_path: Path, domain: str, allow_npy: bool = True
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Find all matching cache files for a domain via globbing.
 
         Parameters
@@ -427,20 +429,20 @@ class CacheLoader:
 
     def _glob_and_filter(
         self, cache_path: Path, domain: str, allow_npy: bool
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Glob for matching files and filter existing ones."""
         patterns = [f"{_FILE_PREFIX}*{domain}*{_NPZ_EXTENSION}"]
         if allow_npy:
             patterns.append(f"{_FILE_PREFIX}*{domain}*{_NPY_EXTENSION}")
 
-        matches: List[Path] = []
+        matches: list[Path] = []
         for pattern in patterns:
             matches.extend(p for p in cache_path.glob(pattern) if p.exists())
         return matches
 
     def _call_loader(
-        self, path: Path, *, mmap_mode: Optional[str] = None
-    ) -> Union[NDArray[Any], NpzFile]:
+        self, path: Path, *, mmap_mode: str | None = None
+    ) -> NDArray[Any] | NpzFile:
         """Load file using numpy loader with optional memory mapping."""
         mmap_str = (
             f"with mmap_mode='{mmap_mode}'" if mmap_mode else "without memory mapping"
@@ -452,26 +454,27 @@ class CacheLoader:
 
     def _extract_array_from_archive(
         self, archive: NpzFile
-    ) -> Optional[NDArray[np.float64]]:
-        """Extract array from NPZ archive.
+    ) -> NDArray[np.float64] | None:
+        """
+        Extract array from NPZ archive.
 
-        Uses the internal extraction logic: prioritizes 'full_stack' key,
-        then returns the first available array.
+                Uses the internal extraction logic: prioritizes 'full_stack' key,
+                then returns the first available array.
 
-        Parameters
-        ----------
-        archive : NpzFile
-            Loaded NPZ archive object.
+                Parameters
+                ----------
+                archive : NpzFile
+                    Loaded NPZ archive object.
 
-        Returns
-        -------
-        Optional[NDArray[np.float64]]
-            Extracted array as float64, or None on error.
+                Returns
+                -------
+                NDArray[np.float64] | None
+                    Extracted array as float64, or None on error.
 
-        Notes
-        -----
-        This method delegates to the shared extraction logic.
-        Exceptions are logged but not raised.
+                Notes
+                -----
+                This method delegates to the shared extraction logic.
+                Exceptions are logged but not raised.
         """
         return self._extract_array_from_npz(archive)
 
@@ -479,7 +482,7 @@ class CacheLoader:
         """Convert array to float64."""
         return np.asarray(arr).astype(np.float64)
 
-    def _process_loaded_data(self, loaded: Any, p: Path) -> Optional[NDArray[Any]]:
+    def _process_loaded_data(self, loaded: Any, p: Path) -> NDArray[Any] | None:
         """Process loaded data based on type (memmap, NPZ, or regular array)."""
         if isinstance(loaded, np.memmap):
             logger.debug("Loaded memory-mapped array from %s", p.name)
@@ -491,9 +494,7 @@ class CacheLoader:
         logger.debug(f"Loaded and converted array from {p.name} to float64")
         return np.asarray(loaded)
 
-    def _extract_from_npz(
-        self, npz_file: Any, p: Path
-    ) -> Optional[NDArray[np.float64]]:
+    def _extract_from_npz(self, npz_file: Any, p: Path) -> NDArray[np.float64] | None:
         """Extract array from NPZ archive using configured or default extractor."""
         with npz_file as archive:
             # Try custom extractor first
@@ -510,7 +511,7 @@ class CacheLoader:
 
     def _try_custom_extractor(
         self, extractor: ArchiveExtractorProtocol, archive: NpzFile, p: Path
-    ) -> Optional[NDArray[np.float64]]:
+    ) -> NDArray[np.float64] | None:
         """Try custom archive extractor with error handling."""
         try:
             result = extractor(archive)
@@ -529,9 +530,9 @@ class CacheLoader:
         self,
         p: Path,
         *,
-        mmap_mode: Optional[str] = None,
+        mmap_mode: str | None = None,
         raise_on_error: bool = False,
-    ) -> Optional[NDArray[Any]]:
+    ) -> NDArray[Any] | None:
         """Load a file without consulting the cache.
 
         Handles both single-array files (.npy) and multi-array archives (.npz).
@@ -542,14 +543,14 @@ class CacheLoader:
         ----------
         p : Path
             File path to load.
-        mmap_mode : Optional[str]
+        mmap_mode : str | None
             Memory mapping mode. None disables mmap.
         raise_on_error : bool, default=False
             If True, raises exceptions. If False, logs and returns None.
 
         Returns
         -------
-        Optional[NDArray]
+        NDArray | None
             Loaded array, or None on error.
 
         Raises
@@ -616,31 +617,32 @@ class CacheLoader:
         """
         return self._cache_size
 
-    def cache_info(self) -> Optional[dict[str, int | float | bool]]:
-        """Get cache statistics.
+    def cache_info(self) -> dict[str, int | float | bool] | None:
+        """
+        Get cache statistics.
 
-        Returns information about cache hits, misses, and size if available.
+                Returns information about cache hits, misses, and size if available.
 
-        Returns
-        -------
-        Optional[dict]
-            Cache statistics if cache is enabled, None otherwise.
+                Returns
+                -------
+                dict | None
+                    Cache statistics if cache is enabled, None otherwise.
 
-        See Also
-        --------
-        cache_enabled : Check if caching is active
+                See Also
+                --------
+                cache_enabled : Check if caching is active
         """
         if self._cache is None:
             return None
         return self._cache.info()
 
-    def cache_keys(self) -> List[str]:
+    def cache_keys(self) -> list[str]:
         """Get all keys currently in the cache.
 
         Returns
         -------
-        List[str]
-            List of cache keys (file paths). Empty list if cache is disabled.
+            list[str]
+                List of cache keys (file paths). Empty list if cache is disabled.
         """
         if self._cache is None:
             return []
@@ -710,53 +712,54 @@ class CacheLoader:
 
     def load_full_stack(
         self,
-        path: Optional[Union[str, PathLike[str]]],
+        path: str | PathLike[str] | None,
         *,
-        mmap_mode: Optional[str] = None,
+        mmap_mode: str | None = None,
         raise_on_error: bool = False,
-    ) -> Optional[NDArray[Any]]:
-        """Load AVO full stack array from cache file.
+    ) -> NDArray[Any] | None:
+        """
+        Load AVO full stack array from cache file.
 
-        Main entry point for loading data. Automatically handles caching:
-        - Returns cached copy if available (when mmap_mode is None)
-        - Caches non-memmap arrays as float64
-        - Preserves memmap access for large files
+                Main entry point for loading data. Automatically handles caching:
+                - Returns cached copy if available (when mmap_mode is None)
+                - Caches non-memmap arrays as float64
+                - Preserves memmap access for large files
 
-        Parameters
-        ----------
-        path : Optional[Union[str, PathLike[str]]]
-            File path to load. If None or empty, returns None.
-        mmap_mode : Optional[str]
-            Memory mapping mode. None disables mmap. Common values:
-            - 'r': read-only
-            - 'r+': read-write
-            - 'c': copy-on-write
-        raise_on_error : bool, default=False
-            If True, raises exceptions. If False, logs and returns None.
+                Parameters
+                ----------
+                path : str | PathLike[str] | None
+                    File path to load. If None or empty, returns None.
+                mmap_mode : str | None
+                    Memory mapping mode. None disables mmap. Common values:
+                    - 'r': read-only
+                    - 'r+': read-write
+                    - 'c': copy-on-write
+                raise_on_error : bool, default=False
+                    If True, raises exceptions. If False, logs and returns None.
 
-        Returns
-        -------
-        Optional[NDArray]
-            Loaded array, or None if file not found or loading failed.
+                Returns
+                -------
+                NDArray | None
+                    Loaded array, or None if file not found or loading failed.
 
-        Examples
-        --------
-        Load with caching (default):
-        >>> loader = CacheLoaderFactory.create_default(cache_size=100)
-        >>> data = loader.load_full_stack("/path/to/cache/avo_acoustic.npz")
+                Examples
+                --------
+                Load with caching (default):
+                >>> loader = CacheLoaderFactory.create_default(cache_size=100)
+                >>> data = loader.load_full_stack("/path/to/cache/avo_acoustic.npz")
 
-        Load with memory mapping (bypasses cache):
-        >>> data = loader.load_full_stack(
-        ...     "/path/to/cache/avo_acoustic.npz",
-        ...     mmap_mode="r"
-        ... )
+                Load with memory mapping (bypasses cache):
+                >>> data = loader.load_full_stack(
+                ...     "/path/to/cache/avo_acoustic.npz",
+                ...     mmap_mode="r"
+                ... )
 
-        Notes
-        -----
-        - Cache lookup only occurs when mmap_mode is None
-        - Memory-mapped arrays are never cached
-        - Only non-memmap arrays are cached as float64 copies
-        - File existence is checked before loading
+                Notes
+                -----
+                - Cache lookup only occurs when mmap_mode is None
+                - Memory-mapped arrays are never cached
+                - Only non-memmap arrays are cached as float64 copies
+                - File existence is checked before loading
         """
         if not path:
             return None
@@ -831,9 +834,9 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
         def create_custom(
             cache_size: int = 0,
             shards: int = 1,
-            cache: Optional[CacheProtocol[NDArray[np.float64]]] = None,
-            selector: Optional[SelectorProtocol] = None,
-            archive_extractor: Optional[ArchiveExtractorProtocol] = None,
+            cache: CacheProtocol[NDArray[np.float64]] | None = None,
+            selector: SelectorProtocol | None = None,
+            archive_extractor: ArchiveExtractorProtocol | None = None,
         ) -> CacheLoader:
             """Create a CacheLoader with custom configuration."""
             if cache is None and cache_size > 0:
@@ -855,7 +858,7 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
         def create_default(
             cache_size: int = 0,
             shards: int = 4,
-            selector: Optional[SelectorProtocol] = None,
+            selector: SelectorProtocol | None = None,
         ) -> CacheLoader:
             """Create a CacheLoader with sensible defaults."""
             cache = None
@@ -873,17 +876,15 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
         del create_custom, create_default
 
     # Backward compatibility static methods
-    @staticmethod
-    def create(**kwargs: Any) -> CacheLoader:  # type: ignore[override]
-        """Legacy static method for backward compatibility."""
-        factory = CacheLoaderFactory()
-        return factory._create_custom(**kwargs)
+    def create(self, name: str, **kwargs: Any) -> CacheLoader:
+        """Create instance using registered builder (instance method).
 
-    @staticmethod
-    def create_default(**kwargs: Any) -> CacheLoader:
-        """Legacy static method for backward compatibility."""
-        factory = CacheLoaderFactory()
-        return factory._create_default(**kwargs)
+        This implements the `GenericFactory.create` signature so static type
+        checkers consider this an override. Legacy class-level convenience
+        callables are attached to the class after its definition to preserve
+        the historical `CacheLoaderFactory.create(...)` usage.
+        """
+        return super().create(name, **kwargs)
 
     def _create_custom(self, **kwargs: Any) -> CacheLoader:
         """Internal method that calls the registered builder."""
@@ -892,3 +893,15 @@ class CacheLoaderFactory(GenericFactory["CacheLoader"]):
     def _create_default(self, **kwargs: Any) -> CacheLoader:
         """Internal method that calls the registered builder."""
         return super().create("default", **kwargs)
+
+    @classmethod
+    def create_custom(cls, **kwargs: Any) -> CacheLoader:
+        """Class-level convenience wrapper for creating a 'custom' loader."""
+        factory = cls()
+        return factory._create_custom(**kwargs)
+
+    @classmethod
+    def create_default(cls, **kwargs: Any) -> CacheLoader:
+        """Class-level convenience wrapper for creating a 'default' loader."""
+        factory = cls()
+        return factory._create_default(**kwargs)

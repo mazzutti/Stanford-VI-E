@@ -75,7 +75,7 @@ class Validator(ABC):
     """
 
     @abstractmethod
-    def validate(self, value: Any, name: str = "value", **kwargs: Any) -> None:
+    def validate(self, value: Any, name: str = "value") -> None:
         """Validate a value and raise ValidationError if invalid.
 
         Parameters
@@ -92,7 +92,7 @@ class Validator(ABC):
         ValidationError
             If value is invalid according to validator rules.
         """
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def _format_error_message(
@@ -126,7 +126,7 @@ class RangeValidator(Validator):
     p-values, and generic numeric ranges.
     """
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: float,
         name: str = "value",
@@ -347,7 +347,7 @@ class RangeValidator(Validator):
 class CountValidator(Validator):
     """Validates count-like values (non-negative integers)."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: int,
         name: str = "value",
@@ -438,7 +438,7 @@ class CountValidator(Validator):
 class QuantileValidator(Validator):
     """Validates quantile-related values."""
 
-    def validate(  # type: ignore[override]
+    def validate(
         self,
         value: float,
         name: str = "value",

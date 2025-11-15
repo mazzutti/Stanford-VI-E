@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar, Any, Optional, List
+from typing import TYPE_CHECKING, TypeVar, Any
 from numpy.typing import ArrayLike, NDArray
 
 # Import unified Processor from src.core
@@ -43,8 +43,8 @@ class Manager(ABC):
     @abstractmethod
     def clear(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear managed resources.
@@ -63,7 +63,7 @@ class Manager(ABC):
     def summarize(
         self,
         cache_dir: str = ".cache",
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Print summary of managed resources.

@@ -7,7 +7,7 @@ through converter classes that handle specific unit types (velocity, density, et
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Union
+from typing import Any, cast
 from numpy.typing import ArrayLike, NDArray
 
 import numpy as np
@@ -35,12 +35,15 @@ class Converter(ABC):
 
     @abstractmethod
     def convert(
-        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
-    ) -> NDArray[np.floating[Any]]:
+        self,
+        value: NDArray[np.floating[Any]] | float,
+        from_unit: str,
+        to_unit: str,
+    ) -> NDArray[np.floating[Any]] | tuple[float, bool]:
         """Convert array from one unit to another.
 
         Args:
-            array: Input numpy array
+            value: Input numpy array or scalar value
             from_unit: Source unit string
             to_unit: Target unit string
 
@@ -50,7 +53,7 @@ class Converter(ABC):
         Raises:
             ValueError: If conversion is not supported
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def can_convert(self, from_unit: str, to_unit: str) -> bool:
@@ -66,19 +69,21 @@ class VelocityConverter(Converter):
         self.conversion_factor = 1000.0
 
     def convert(
-        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+        self, value: NDArray[np.floating[Any]] | float, from_unit: str, to_unit: str
     ) -> NDArray[np.floating[Any]]:
         """Convert velocity between m/s and km/s."""
+        val = np.asarray(value)
+
         if from_unit == to_unit:
-            return array
+            return val
 
         if not self.can_convert(from_unit, to_unit):
             raise ValueError(f"Cannot convert velocity from {from_unit} to {to_unit}")
 
         if from_unit == "km/s" and to_unit == "m/s":
-            return array * self.conversion_factor
+            return val * self.conversion_factor
         elif from_unit == "m/s" and to_unit == "km/s":
-            return array / self.conversion_factor
+            return val / self.conversion_factor
 
         raise ValueError(f"Unsupported velocity conversion: {from_unit} -> {to_unit}")
 
@@ -95,19 +100,21 @@ class DensityConverter(Converter):
         self.conversion_factor = 1000.0
 
     def convert(
-        self, array: NDArray[np.floating[Any]], from_unit: str, to_unit: str
+        self, value: NDArray[np.floating[Any]] | float, from_unit: str, to_unit: str
     ) -> NDArray[np.floating[Any]]:
         """Convert density between kg/m3 and g/cc."""
+        val = np.asarray(value)
+
         if from_unit == to_unit:
-            return array
+            return val
 
         if not self.can_convert(from_unit, to_unit):
             raise ValueError(f"Cannot convert density from {from_unit} to {to_unit}")
 
         if from_unit == "g/cc" and to_unit == "kg/m3":
-            return array * self.conversion_factor
+            return val * self.conversion_factor
         elif from_unit == "kg/m3" and to_unit == "g/cc":
-            return array / self.conversion_factor
+            return val / self.conversion_factor
 
         raise ValueError(f"Unsupported density conversion: {from_unit} -> {to_unit}")
 
@@ -127,12 +134,12 @@ class TimeConverter(Converter):
         self.threshold_low = convert_threshold_low
         self.threshold_high = convert_threshold_high
 
-    def convert(  # type: ignore[override]
+    def convert(
         self,
-        value: Union["NDArray[np.floating[Any]]", float],
+        value: NDArray[np.floating[Any]] | float,
         from_unit: str = "unknown",
         to_unit: str = "s",
-    ) -> Union["NDArray[np.floating[Any]]", Tuple[float, bool]]:
+    ) -> NDArray[np.floating[Any]] | tuple[float, bool]:
         """Convert time to seconds with heuristic detection.
 
         Returns (converted_value, was_converted) for scalar or array for ndarray
@@ -161,12 +168,12 @@ class LengthConverter(Converter):
     def __init__(self, convert_threshold: float = 0.1) -> None:
         self.threshold = convert_threshold
 
-    def convert(  # type: ignore[override]
+    def convert(
         self,
-        value: Union["NDArray[np.floating[Any]]", float],
+        value: NDArray[np.floating[Any]] | float,
         from_unit: str = "unknown",
         to_unit: str = "m",
-    ) -> Union["NDArray[np.floating[Any]]", Tuple[float, bool]]:
+    ) -> NDArray[np.floating[Any]] | tuple[float, bool]:
         """Convert length to meters with heuristic detection.
 
         Returns (converted_value, was_converted) for scalar or array for ndarray
@@ -212,7 +219,10 @@ class UnitRegistry:
 
         for converter in self.converters:
             if converter.can_convert(from_unit, to_unit):
-                return converter.convert(array, from_unit, to_unit)
+                return cast(
+                    NDArray[np.floating[Any]],
+                    converter.convert(array, from_unit, to_unit),
+                )
 
         raise ValueError(f"No converter found for {from_unit} -> {to_unit}")
 
@@ -235,7 +245,7 @@ class UnitRegistry:
     @staticmethod
     def ensure_m_per_s(
         arr: ArrayLike, copy_on_convert: bool = False
-    ) -> Tuple["NDArray[np.floating[Any]]", bool]:
+    ) -> tuple[NDArray[np.floating[Any]], bool]:
         """Ensure velocity array is in m/s, converting from km/s if needed.
 
         Uses heuristic: values < 100 are likely km/s (seismic P-wave in km/s),
@@ -264,7 +274,7 @@ class UnitRegistry:
     @staticmethod
     def ensure_meters(
         arr: ArrayLike, copy_on_convert: bool = False
-    ) -> Tuple["NDArray[np.floating[Any]]", bool]:
+    ) -> tuple[NDArray[np.floating[Any]], bool]:
         """Ensure length array is in meters, converting from km if needed.
 
         Uses heuristic: values < 0.1 are likely km, values >= 0.1 are likely meters.

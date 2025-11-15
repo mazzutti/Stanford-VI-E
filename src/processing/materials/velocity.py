@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Union, Any
+from typing import Any
 from numpy.typing import NDArray
 
 
@@ -35,7 +35,7 @@ class VelocityModel:
     """
 
     # `vp` may be a raw numpy array or a `Quantity`.
-    vp: Union[Quantity, NDArray[Any]]
+    vp: Quantity | NDArray[Any]
     grid_spec: GridSpec
 
     def __post_init__(self) -> None:

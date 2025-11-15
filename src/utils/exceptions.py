@@ -6,7 +6,8 @@ and improving maintainability.
 """
 
 from __future__ import annotations
-from typing import Callable, TypeVar, Any, Optional, Type, Union, Tuple, cast, Generator
+from typing import TypeVar, Any, cast
+from collections.abc import Callable, Generator
 from functools import wraps
 from contextlib import contextmanager
 import logging
@@ -27,7 +28,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def safe_call(
     func: Callable[..., Any],
     *args: Any,
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
     default: Any = None,
     log_errors: bool = False,
     **kwargs: Any,
@@ -54,7 +55,7 @@ def safe_call(
 
 
 def ignore_errors(
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
 ) -> Callable[[F], F]:
     """Decorator to silently ignore specified exceptions.
 
@@ -89,8 +90,8 @@ def ignore_errors(
 
 
 def log_errors(
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
-    message: Optional[str] = None,
+    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    message: str | None = None,
     level: int = logging.ERROR,
 ) -> Callable[[F], F]:
     """Decorator to log exceptions without suppressing them.
@@ -129,8 +130,8 @@ def log_errors(
 
 
 def handle_errors(
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
-    handler: Optional[Callable[[BaseException], Any]] = None,
+    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    handler: Callable[[BaseException], Any] | None = None,
     default: Any = None,
     suppress: bool = False,
 ) -> Callable[[F], F]:
@@ -177,10 +178,10 @@ def handle_errors(
 
 @contextmanager
 def safe_context(
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
-    action: Optional[Callable[[BaseException], None]] = None,
+    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    action: Callable[[BaseException], None] | None = None,
     suppress: bool = False,
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     """Context manager for exception handling.
 
     Args:

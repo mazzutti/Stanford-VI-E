@@ -22,7 +22,6 @@ def test_extension_21_decorators_applied():
     # Check that decorator imports exist in resampler
     with open(
         "/Users/mazzutti/POSDOC/Experimentos/Stanford-VI-E/src/processing/resampling/_resampler.py",
-        "r",
     ) as f:
         content = f.read()
 
@@ -63,7 +62,6 @@ def test_extension_22_conversion_strategy():
     # Check resampler.py has factory import
     with open(
         "/Users/mazzutti/POSDOC/Experimentos/Stanford-VI-E/src/modeling/resampler.py",
-        "r",
     ) as f:
         content = f.read()
 

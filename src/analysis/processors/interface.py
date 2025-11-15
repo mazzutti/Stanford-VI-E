@@ -1,7 +1,7 @@
 """Interface reflection analyzer processor."""
 
 import logging
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -128,7 +128,7 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
         )
 
         interface_stats: dict[Transition, NDArray[np.float64]] = {}
-        summary: dict[Transition, Optional[FaciesStats]] = {}
+        summary: dict[Transition, FaciesStats | None] = {}
 
         for ucode, start, cnt in zip(unique_codes, idx_start, counts):
             end = start + cnt
@@ -144,7 +144,7 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
         return InterfaceReflectionResult(
             transitions_summary=summary,
             interface_stats=cast(
-                dict[Transition, Optional[NDArray[np.float64]]], interface_stats
+                dict[Transition, NDArray[np.float64] | None], interface_stats
             ),
         )
 

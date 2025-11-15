@@ -12,7 +12,7 @@ This file is intentionally small and dependency-free except for NumPy.
 
 from __future__ import annotations
 
-from typing import Optional, Protocol, Any, cast
+from typing import Protocol, Any, cast
 import numpy as np
 from numpy.typing import NDArray
 from src.utils.quantity import Quantity
@@ -42,7 +42,7 @@ class SeismogramTopLayersExtractor:
         nk = self.cube.shape[2]
         if n_layers > nk:
             raise ValueError(
-                "n_layers cannot be larger than number of samples (nk={})".format(nk)
+                f"n_layers cannot be larger than number of samples (nk={nk})"
             )
         return self.cube[:, :, :n_layers].copy()
 
@@ -100,8 +100,8 @@ class SeismogramTopLayersExtractor:
         seismogram_time: NDArray[Any],
         vp_depth: NDArray[Any],
         grid_spec: object,
-        plan: Optional[object] = None,
-    ) -> "SeismogramTopLayersExtractor":
+        plan: object | None = None,
+    ) -> SeismogramTopLayersExtractor:
         """Construct an extractor from a time-domain seismogram by converting
         it back to the depth domain using the project's resampler utilities.
 
@@ -133,12 +133,12 @@ class SeismogramTopLayersExtractor:
     @classmethod
     def from_cache_or_generate(
         cls,
-        cache_provider: Optional["CacheProvider"] = None,
+        cache_provider: CacheProvider | None = None,
         cache_dir: str = ".cache",
         prefer_latest: bool = True,
         generate_if_missing: bool = True,
         force_generate: bool = False,
-    ) -> "SeismogramTopLayersExtractor":
+    ) -> SeismogramTopLayersExtractor:
         """Load the newest depth-domain AVO cache if present, otherwise generate it.
 
         Args:
@@ -168,15 +168,15 @@ class SeismogramTopLayersExtractor:
 
     @classmethod
     def from_npz(
-        cls, path: str, key: Optional[str] = None
-    ) -> "SeismogramTopLayersExtractor":
+        cls, path: str, key: str | None = None
+    ) -> SeismogramTopLayersExtractor:
         """Load an ndarray from an NPZ file and construct an extractor.
 
         If `key` is provided, the array at that key will be used. Otherwise
         the method will pick the first ndarray value found in the archive.
         """
         data = np.load(path)
-        arr: Optional[NDArray[Any]] = None
+        arr: NDArray[Any] | None = None
         if key is not None:
             arr = data[key]
         else:
@@ -199,9 +199,9 @@ __all__ = ["SeismogramTopLayersExtractor", "CacheProvider", "DefaultCacheProvide
 class CacheProvider(Protocol):
     """Protocol describing an injectable cache provider for depth-domain AVO caches."""
 
-    def load_latest_depth(self) -> Optional[NDArray[Any]]: ...
+    def load_latest_depth(self) -> NDArray[Any] | None: ...
 
-    def generate_depth(self, force: bool = False) -> Optional[NDArray[Any]]: ...
+    def generate_depth(self, force: bool = False) -> NDArray[Any] | None: ...
 
 
 class DefaultCacheProvider:
@@ -220,7 +220,7 @@ class DefaultCacheProvider:
         self._cache_manager = cache_manager
         self._pipeline = pipeline
 
-    def _find_latest(self) -> Optional[str]:
+    def _find_latest(self) -> str | None:
         from pathlib import Path
 
         d = Path(self.cache_dir)
@@ -231,7 +231,7 @@ class DefaultCacheProvider:
         files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
         return str(files[0]) if files else None
 
-    def load_latest_depth(self) -> Optional[NDArray[Any]]:
+    def load_latest_depth(self) -> NDArray[Any] | None:
         path = self._find_latest()
         if path is None:
             return None
@@ -256,11 +256,11 @@ class DefaultCacheProvider:
 
             cm = self._cache_manager or CacheManager(cache_dir=str(p.parent))
             _, full_stack_depth = cm.load_avo_synthetics(name)
-            return cast(Optional[NDArray[Any]], full_stack_depth)
+            return cast(NDArray[Any] | None, full_stack_depth)
         except Exception:
             return None
 
-    def generate_depth(self, force: bool = False) -> Optional[NDArray[Any]]:
+    def generate_depth(self, force: bool = False) -> NDArray[Any] | None:
         # If not forced and a cache exists, return it
         if not force:
             path = self._find_latest()

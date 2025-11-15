@@ -32,7 +32,8 @@ Usage:
 
 import time
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, Any, Dict, Deque
+from typing import Any
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from threading import RLock
 from collections import deque
@@ -44,7 +45,7 @@ class RateLimitExceeded(Exception):
     """Exception raised when rate limit is exceeded."""
 
     def __init__(
-        self, message: str = "Rate limit exceeded", retry_after: Optional[float] = None
+        self, message: str = "Rate limit exceeded", retry_after: float | None = None
     ) -> None:
         """
         Initialize rate limit exceeded exception.
@@ -227,7 +228,7 @@ class SlidingWindowLimiter(RateLimiter):
         self.max_requests = max_requests
         self.window_size = window_size
         self.name = name
-        self.request_times: Deque[float] = deque()
+        self.request_times: deque[float] = deque()
         self._lock = RLock()
         self._stats = RateLimitStats()
 
@@ -398,8 +399,8 @@ class RateLimitPolicy:
         strategy: RateLimitStrategy,
         max_requests: int = 100,
         window_size: float = 60.0,
-        capacity: Optional[float] = None,
-        rate: Optional[float] = None,
+        capacity: float | None = None,
+        rate: float | None = None,
     ) -> None:
         """
         Initialize rate limit policy.
@@ -451,7 +452,7 @@ class RateLimitPool:
 
     def __init__(self) -> None:
         """Initialize rate limiter pool."""
-        self._limiters: Dict[str, RateLimiter] = {}
+        self._limiters: dict[str, RateLimiter] = {}
         self._lock = RLock()
 
     def add_limiter(self, name: str, limiter: RateLimiter) -> None:
@@ -467,7 +468,7 @@ class RateLimitPool:
                 raise ValueError(f"Limiter '{name}' already exists")
             self._limiters[name] = limiter
 
-    def get_limiter(self, name: str) -> Optional[RateLimiter]:
+    def get_limiter(self, name: str) -> RateLimiter | None:
         """
         Get limiter by name.
 
@@ -512,7 +513,7 @@ class RateLimitPool:
             raise ValueError(f"Limiter '{name}' not found")
         return limiter.allow_request(tokens)
 
-    def get_stats(self, name: str) -> Optional[RateLimitStats]:
+    def get_stats(self, name: str) -> RateLimitStats | None:
         """
         Get stats for limiter.
 
@@ -527,7 +528,7 @@ class RateLimitPool:
             return None
         return limiter.get_stats()
 
-    def get_all_stats(self) -> Dict[str, RateLimitStats]:
+    def get_all_stats(self) -> dict[str, RateLimitStats]:
         """Get stats for all limiters."""
         with self._lock:
             return {

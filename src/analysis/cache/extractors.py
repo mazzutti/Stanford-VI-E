@@ -24,7 +24,7 @@ Example Usage:
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import cast
 from os import PathLike
 
 import numpy as np
@@ -54,18 +54,19 @@ class ArrayExtractor(ABC):
     """
 
     @abstractmethod
-    def extract(self, source: object) -> Optional[NDArray[np.float64]]:
+    def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array data from source object.
 
-        Parameters
-        ----------
-        source : object
-            The source to extract from (depends on extractor type).
+                Parameters
+                ----------
+                source : object
+                    The source to extract from (depends on extractor type).
 
-        Returns
-        -------
-        Optional[NDArray[np.float64]]
-            Extracted array as float64, or None if extraction failed.
+                Returns
+                -------
+                NDArray[np.float64] | None
+                    Extracted array as float64, or None if extraction failed.
+
         """
         pass
 
@@ -95,31 +96,32 @@ class NpzExtractor(ArrayExtractor):
         """
         self.full_stack_key = full_stack_key
 
-    def extract(self, source: object) -> Optional[NDArray[np.float64]]:
+    def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array from NPZ archive using priority strategy.
 
-        Parameters
-        ----------
-        source : object
-            Open NPZ archive object.
+                Parameters
+                ----------
+                source : object
+                    Open NPZ archive object.
 
-        Returns
-        -------
-        Optional[NDArray[np.float64]]
-            Extracted array as float64, or None on error.
+                Returns
+                -------
+                NDArray[np.float64] | None
+                    Extracted array as float64, or None on error.
 
-        Raises
-        ------
-        CacheExtractionError
-            If extraction fails and raise_on_error is enabled.
+                Raises
+                ------
+                CacheExtractionError
+                    If extraction fails and raise_on_error is enabled.
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> extractor = NpzExtractor()
-        >>> # With open NPZ file:
-        >>> # archive = np.load("data.npz")
-        >>> # data = extractor.extract(archive)
+                Examples
+                --------
+                >>> import numpy as np
+                >>> extractor = NpzExtractor()
+                >>> # With open NPZ file:
+                >>> # archive = np.load("data.npz")
+                >>> # data = extractor.extract(archive)
+
         """
         try:
             # Cast to NpzFile for type checking
@@ -157,25 +159,26 @@ class NpyExtractor(ArrayExtractor):
     the data is converted to float64 format.
     """
 
-    def extract(self, source: object) -> Optional[NDArray[np.float64]]:
+    def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array from NPY file.
 
-        Parameters
-        ----------
-        source : object
-            The loaded NPY array.
+                Parameters
+                ----------
+                source : object
+                    The loaded NPY array.
 
-        Returns
-        -------
-        Optional[NDArray[np.float64]]
-            Array converted to float64, or None on error.
+                Returns
+                -------
+                NDArray[np.float64] | None
+                    Array converted to float64, or None on error.
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> extractor = NpyExtractor()
-        >>> data = np.random.randn(10, 10)
-        >>> result = extractor.extract(data)
+                Examples
+                --------
+                >>> import numpy as np
+                >>> extractor = NpyExtractor()
+                >>> data = np.random.randn(10, 10)
+                >>> result = extractor.extract(data)
+
         """
         try:
             result = np.asarray(source).astype(np.float64)
@@ -212,28 +215,29 @@ class ExtractorFactory:
     _npy_extension = ".npy"
 
     @classmethod
-    def for_path(cls, path: Union[str, PathLike[str]]) -> ArrayExtractor:
+    def for_path(cls, path: str | PathLike[str]) -> ArrayExtractor:
         """Get appropriate extractor for file path.
 
-        Parameters
-        ----------
-        path : Union[str, PathLike[str]]
-            File path to determine extractor from.
+                Parameters
+                ----------
+                path : str | PathLike[str]
+                    File path to determine extractor from.
 
-        Returns
-        -------
-        ArrayExtractor
-            NpzExtractor for .npz files, NpyExtractor for .npy files.
+                Returns
+                -------
+                ArrayExtractor
+                    NpzExtractor for .npz files, NpyExtractor for .npy files.
 
-        Raises
-        ------
-        ValueError
-            If file extension is not recognized.
+                Raises
+                ------
+                ValueError
+                    If file extension is not recognized.
 
-        Examples
-        --------
-        >>> extractor = ExtractorFactory.for_path("data.npz")
-        >>> extractor = ExtractorFactory.for_path("/path/to/data.npy")
+                Examples
+                --------
+                >>> extractor = ExtractorFactory.for_path("data.npz")
+                >>> extractor = ExtractorFactory.for_path("/path/to/data.npy")
+
         """
         p = Path(path)
         suffix = p.suffix.lower()

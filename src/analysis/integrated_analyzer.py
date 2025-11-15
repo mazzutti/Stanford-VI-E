@@ -43,7 +43,8 @@ Example:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Callable, Type, cast
+from typing import Any, cast
+from collections.abc import Callable
 from types import TracebackType
 from dataclasses import dataclass, field
 
@@ -88,9 +89,9 @@ class AnalysisContext:
 
     cache_dir: str
     domain: str
-    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    parameters: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary.
 
         Returns:
@@ -124,8 +125,8 @@ class AnalysisOperation(AnalysisCommand):
         super().__init__()
         self.analyzer = analyzer
         self.context = context
-        self.result: Optional[Any] = None
-        self.previous_results: Optional[Any] = None
+        self.result: Any | None = None
+        self.previous_results: Any | None = None
 
     def execute(self) -> Any:
         """Execute the analysis operation.
@@ -241,12 +242,12 @@ class IntegratedAnalyzer(Observable):
 
     def __init__(
         self,
-        config: Optional[FaciesAnalysisConfig] = None,
-        facies_analyzer: Optional[FaciesCorrelationAnalyzer] = None,
+        config: FaciesAnalysisConfig | None = None,
+        facies_analyzer: FaciesCorrelationAnalyzer | None = None,
         max_command_history: int = 100,
-        event_bus: Optional[EventBus] = None,
-        container: Optional[Container] = None,
-        service_provider: Optional[ServiceProvider] = None,
+        event_bus: EventBus | None = None,
+        container: Container | None = None,
+        service_provider: ServiceProvider | None = None,
     ):
         """Initialize integrated analyzer.
 
@@ -270,7 +271,7 @@ class IntegratedAnalyzer(Observable):
         self._event_bus = event_bus or EventBus()
         self._container = container
         self._service_provider = service_provider
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
         logger.info("IntegratedAnalyzer initialized with all pattern support")
 
@@ -427,8 +428,8 @@ class IntegratedAnalyzer(Observable):
     def notify_event(
         self,
         event_type: str,
-        data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any],
+        context: dict[str, Any] | None = None,
     ) -> None:
         """Notify observers of an analysis event.
 
@@ -585,9 +586,9 @@ class IntegratedAnalyzer(Observable):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager."""
         logger.debug("Exiting IntegratedAnalyzer context")

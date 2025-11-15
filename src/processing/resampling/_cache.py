@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass
 import hashlib
-from typing import Optional, Any
+from typing import Any
 from numpy.typing import NDArray
 
 
@@ -36,8 +36,8 @@ class _CacheKey:
     grid_shape: tuple[int, ...]
     dz: float
     dt: float
-    target_dt: Optional[float]
-    target_nt: Optional[int]
+    target_dt: float | None
+    target_nt: int | None
     vp_hash: str
 
 
@@ -79,8 +79,8 @@ class ResamplePlanCache:
         self,
         grid_spec: GridSpec,
         vp_arr: NDArray[Any],
-        target_dt: Optional[float],
-        target_nt: Optional[int],
+        target_dt: float | None,
+        target_nt: int | None,
     ) -> _CacheKey:
         return _CacheKey(
             grid_shape=tuple(grid_spec.shape),
@@ -95,8 +95,8 @@ class ResamplePlanCache:
         self,
         grid_spec: GridSpec,
         vp_arr: NDArray[Any],
-        target_dt: Optional[float] = None,
-        target_nt: Optional[int] = None,
+        target_dt: float | None = None,
+        target_nt: int | None = None,
         block_size: int = 65536,
     ) -> ResamplePlan:
         """Return a ResamplePlan for the given arguments, using cache when possible."""
@@ -127,7 +127,7 @@ __all__ = ["ResamplePlanCache", "get_resample_plan_cache", "set_resample_plan_ca
 
 # Module-level default cache (singleton). Consumers may override it by
 # calling `set_resample_plan_cache(...)` prior to first use.
-_default_cache: Optional[ResamplePlanCache] = None
+_default_cache: ResamplePlanCache | None = None
 
 
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:

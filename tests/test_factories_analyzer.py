@@ -15,7 +15,7 @@ Tests the AnalyzerBuilder and AnalyzerFactory classes with coverage for:
 
 
 import logging
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -184,7 +184,7 @@ class TestAnalyzerBuilder:
 
         # Invalid non-callable
         with pytest.raises(TypeError):
-            builder.with_cache_file_selector("not_callable")  # type: ignore
+            builder.with_cache_file_selector("not_callable")
 
     def test_analyzer_builder_repr(self) -> None:
         """Test AnalyzerBuilder string representation."""
@@ -309,7 +309,7 @@ class TestBuilderErrors:
     def test_state_snapshot_invalid_input(self) -> None:
         """Test state snapshot with invalid input."""
         with pytest.raises(ValueError):
-            AnalyzerBuilder.with_state_snapshot("not a dict")  # type: ignore
+            AnalyzerBuilder.with_state_snapshot("not a dict")
 
 
 class TestBuilderIntegration:
@@ -371,7 +371,7 @@ class SampleAnalyzerConfig(AnalysisConfig):
     def __init__(self, value: str = "test"):
         self.value = value
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"value": self.value}
 
 

@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, cast, Sequence, List, Optional, Tuple
+from typing import Any, cast
+from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -75,12 +76,12 @@ class PropertyPlotter(ABC):
         pass
 
     @abstractmethod
-    def get_properties(self) -> Dict[str, Dict[str, Any]]:
+    def get_properties(self) -> dict[str, dict[str, Any]]:
         """Get property metadata dictionary.
 
         Returns
         -------
-        Dict[str, Dict[str, Any]]
+        dict[str, dict[str, Any]]
             Dictionary mapping property keys to metadata dicts with:
             - name: str - Display name
             - units: str - Physical units
@@ -193,7 +194,7 @@ class PropertyPlotter(ABC):
 
         return output_path
 
-    def generate_all_plots(self, file_prefix: str = "property") -> List[str]:
+    def generate_all_plots(self, file_prefix: str = "property") -> list[str]:
         """Generate plots for all properties (template method).
 
         This method implements the common workflow:
@@ -209,7 +210,7 @@ class PropertyPlotter(ABC):
 
         Returns
         -------
-        List[str]
+        list[str]
             List of generated file paths
         """
         # Step 1: Load data
@@ -217,11 +218,11 @@ class PropertyPlotter(ABC):
         self.load_data()
 
         # Step 2: Get properties
-        properties: Dict[str, Dict[str, Any]] = self.get_properties()
+        properties: dict[str, dict[str, Any]] = self.get_properties()
         logger.info(f"Found {len(properties)} properties to plot")
 
         # Step 3: Generate plots
-        generated_files: List[str] = []
+        generated_files: list[str] = []
         logger.info("Generating individual property plots...")
 
         for prop_key, prop_info in properties.items():
@@ -332,12 +333,12 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
 
         logger.info(f"Available attributes: {keys}")
 
-    def get_properties(self) -> Dict[str, Dict[str, Any]]:
+    def get_properties(self) -> dict[str, dict[str, Any]]:
         """Get rock physics attributes metadata.
 
         Returns
         -------
-        Dict[str, Dict[str, Any]]
+        dict[str, dict[str, Any]]
             Dictionary of rock physics attributes with metadata
         """
         if self.data is None:
@@ -352,7 +353,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         }
 
         # Add data arrays and colormap to metadata
-        properties: Dict[str, Dict[str, Any]] = {}
+        properties: dict[str, dict[str, Any]] = {}
         for key, metadata in attributes.items():
             if key in self.data:
                 properties[key] = {
@@ -363,13 +364,14 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
 
         return properties
 
-    def generate_comparison_plot(self) -> Optional[str]:
+    def generate_comparison_plot(self) -> str | None:
         """Generate multi-attribute comparison plot.
 
         Returns
         -------
-        Optional[str]
+        str | None
             Path to generated comparison plot, or None if failed
+
         """
         if self.data is None:
             raise RuntimeError("Data not loaded. Call load_data() first.")
@@ -421,12 +423,12 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             logger.error(f"Failed to generate comparison plot: {e}")
             return None
 
-    def generate_3d_plotly_visualizations(self) -> List[str]:
+    def generate_3d_plotly_visualizations(self) -> list[str]:
         """Generate 3D interactive Plotly visualizations for rock physics attributes.
 
         Returns
         -------
-        List[str]
+        list[str]
             List of generated HTML file paths
         """
         if self.data is None:
@@ -445,7 +447,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         )
 
         properties = self.get_properties()
-        generated_files: List[str] = []
+        generated_files: list[str] = []
 
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
@@ -461,7 +463,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
 
             # Create figure with 3D orthogonal slices
-            fig: "go.Figure" = go.Figure()
+            fig: go.Figure = go.Figure()
 
             # Create coordinate arrays for the grid (cast to NDArray[Any])
             i_coords = cast(NDArray[Any], np.arange(ni))
@@ -471,10 +473,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )  # Reverse to make depth increase downward
 
             # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(j_coords, k_coords, indexing="ij"),
-            )
+            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(
@@ -494,10 +493,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )
 
             # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(i_coords, k_coords, indexing="ij"),
-            )
+            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(
@@ -512,10 +508,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             )
 
             # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(i_coords, j_coords, indexing="ij"),
-            )
+            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(
@@ -607,7 +600,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
         self.data_dir = data_dir
         # DatasetManager is imported lazily inside `load_data`; annotate
         # as Optional by forward reference so mypy understands assignments.
-        self.manager: Optional["DatasetManager"] = None
+        self.manager: DatasetManager | None = None
 
     def load_data(self) -> None:
         """Load original properties from GSLIB files."""
@@ -633,12 +626,12 @@ class OriginalPropertyPlotter(PropertyPlotter):
             grid_spec=grid_spec,
         )
 
-    def get_properties(self) -> Dict[str, Dict[str, Any]]:
+    def get_properties(self) -> dict[str, dict[str, Any]]:
         """Get original properties metadata.
 
         Returns
         -------
-        Dict[str, Dict[str, Any]]
+        dict[str, dict[str, Any]]
             Dictionary of original properties with metadata
         """
         if self.manager is None:
@@ -665,12 +658,12 @@ class OriginalPropertyPlotter(PropertyPlotter):
             },
         }
 
-    def generate_3d_plotly_visualizations(self) -> List[str]:
+    def generate_3d_plotly_visualizations(self) -> list[str]:
         """Generate 3D interactive Plotly visualizations.
 
         Returns
         -------
-        List[str]
+        list[str]
             List of generated HTML file paths
         """
         if self.manager is None:
@@ -687,7 +680,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
         logger.info("Generating 3D interactive Plotly visualizations...")
 
         properties = self.get_properties()
-        generated_files: List[str] = []
+        generated_files: list[str] = []
 
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
@@ -703,7 +696,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
             mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
 
             # Create figure with 3D orthogonal slices
-            fig: "go.Figure" = go.Figure()
+            fig: go.Figure = go.Figure()
 
             # Create coordinate arrays for the grid (cast to NDArray[Any])
             i_coords = cast(NDArray[Any], np.arange(ni))
@@ -713,10 +706,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )  # Reverse to make depth increase downward
 
             # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(j_coords, k_coords, indexing="ij"),
-            )
+            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(
@@ -736,10 +726,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )
 
             # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(i_coords, k_coords, indexing="ij"),
-            )
+            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(
@@ -754,10 +741,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
             )
 
             # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = cast(
-                Tuple[NDArray[Any], NDArray[Any]],
-                np.meshgrid(i_coords, j_coords, indexing="ij"),
-            )
+            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
 
             fig.add_trace(
                 go.Surface(

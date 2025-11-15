@@ -4,7 +4,7 @@ Provides a clean OOP interface for applying wavelets to seismic reflectivity
 data to produce synthetic seismograms.
 """
 
-from typing import Any, TYPE_CHECKING, Optional, Union
+from typing import Any, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 import logging
@@ -26,7 +26,7 @@ class SeismicSignalProcessor:
     synthetic seismograms using FFT-based convolution.
     """
 
-    def __init__(self, progress_every: Optional[int] = None):
+    def __init__(self, progress_every: int | None = None):
         """Initialize the signal processor.
 
         Args:
@@ -48,7 +48,7 @@ class SeismicSignalProcessor:
     def apply_wavelet(
         self,
         reflectivity: NDArray[np.floating[Any]],
-        wavelet: Union[NDArray[np.floating[Any]], "Wavelet"],
+        wavelet: NDArray[np.floating[Any]] | "Wavelet",
         mode: str = "same",
         prefix: str = "",
     ) -> NDArray[np.floating[Any]]:

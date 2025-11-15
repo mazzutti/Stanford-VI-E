@@ -35,15 +35,11 @@ from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Type,
     TypeVar,
     cast,
 )
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     from src.analysis.models.config import FaciesCorrelationConfig
@@ -110,12 +106,12 @@ class FluentBuilder(Generic[T]):
     """
 
     name: str = "component"
-    _components: Dict[str, Any] = field(
-        default_factory=lambda: cast(Dict[str, Any], {})
+    _components: dict[str, Any] = field(
+        default_factory=lambda: cast(dict[str, Any], {})
     )
-    _config: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    _validators: List[Callable[[Dict[str, Any]], bool]] = field(
-        default_factory=lambda: cast(List[Callable[[Dict[str, Any]], bool]], [])
+    _config: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
+    _validators: list[Callable[[dict[str, Any]], bool]] = field(
+        default_factory=lambda: cast(list[Callable[[dict[str, Any]], bool]], [])
     )
 
     def with_config(self, config: Any) -> FluentBuilder[T]:
@@ -161,7 +157,7 @@ class FluentBuilder(Generic[T]):
         return self
 
     def with_validator(
-        self, validator: Callable[[Dict[str, Any]], bool]
+        self, validator: Callable[[dict[str, Any]], bool]
     ) -> FluentBuilder[T]:
         """Add configuration validator.
 
@@ -218,13 +214,13 @@ class BuildableFactory(ABC, Generic[T]):
 
     def __init__(self) -> None:
         """Initialize factory."""
-        self._builders: Dict[str, Type[FluentBuilder[Any]]] = {}
-        self._creators: Dict[str, Callable[..., T]] = {}
+        self._builders: dict[str, type[FluentBuilder[Any]]] = {}
+        self._creators: dict[str, Callable[..., T]] = {}
 
     def register_builder(
         self,
         name: str,
-        builder_class: Type[FluentBuilder[Any]],
+        builder_class: type[FluentBuilder[Any]],
     ) -> None:
         """Register a builder class.
 
@@ -304,8 +300,8 @@ class ServiceFactory:
 
     def __init__(self) -> None:
         """Initialize service factory."""
-        self._services: Dict[str, Callable[..., Any]] = {}
-        self._instances: Dict[str, Any] = {}  # For singletons
+        self._services: dict[str, Callable[..., Any]] = {}
+        self._instances: dict[str, Any] = {}  # For singletons
         self._singletons: set[str] = set()  # Track which services are singletons
 
     def register(
@@ -364,7 +360,7 @@ class AnalyzerFactory(BuildableFactory[Any]):
 
     def create_facies_analyzer(
         self,
-        config: Optional[FaciesCorrelationConfig] = None,
+        config: FaciesCorrelationConfig | None = None,
         **kwargs: Any,
     ) -> Any:
         """Create facies correlation analyzer.
@@ -388,7 +384,7 @@ class AnalyzerFactory(BuildableFactory[Any]):
 
     def create_rock_physics_analyzer(
         self,
-        config: Optional[Any] = None,
+        config: Any | None = None,
         **kwargs: Any,
     ) -> Any:
         """Create rock physics analyzer.
@@ -412,7 +408,7 @@ class AnalyzerFactory(BuildableFactory[Any]):
 
 def create_analyzer(
     analyzer_type: str = "facies",
-    config: Optional[Any] = None,
+    config: Any | None = None,
     **kwargs: Any,
 ) -> Any:
     """Convenience function to create analyzer with minimal setup.
@@ -456,8 +452,8 @@ class ComponentBuilder(Buildable[T], ABC):
             name: Component name for logging
         """
         self.name = name
-        self._config: Dict[str, Any] = {}
-        self._dependencies: Dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
+        self._dependencies: dict[str, Any] = {}
 
     @abstractmethod
     def _validate_config(self) -> None:

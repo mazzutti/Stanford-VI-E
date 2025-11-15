@@ -8,15 +8,16 @@ other modules that delegate to the process manager.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+from collections.abc import Callable
 from pathlib import Path
 
 from src.utils.constants import CACHE_DIR_DEFAULT
 
 # Aliases for the ProcessManager helper signatures
-ClearCacheType = Callable[[Optional[List[str]], Optional[Path], str], int]
-OpenFileType = Callable[[str, Optional[str], str], bool]
-SummarizeType = Callable[[str, Optional[List[str]], str], None]
+ClearCacheType = Callable[[list[str] | None, Path | None, str], int]
+OpenFileType = Callable[[str, str | None, str], bool]
+SummarizeType = Callable[[str, list[str] | None, str], None]
 
 
 @runtime_checkable
@@ -30,19 +31,19 @@ class ProcessManagerProtocol(Protocol):
 
     def clear_cache(
         self,
-        patterns: Optional[List[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int: ...
 
     def open_file(
-        self, filepath: str, description: Optional[str] = None, prefix: str = ""
+        self, filepath: str, description: str | None = None, prefix: str = ""
     ) -> bool: ...
 
     def summarize_cache_files(
         self,
         cache_dir: str = CACHE_DIR_DEFAULT,
-        keys: Optional[List[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None: ...
 

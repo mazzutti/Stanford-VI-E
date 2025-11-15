@@ -2,8 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Optional, Protocol, TypeVar, TYPE_CHECKING
-import numpy as np
+from typing import Any, Protocol, TypeVar, TYPE_CHECKING
 from numpy.typing import NDArray
 
 from .exceptions import ValidationError
@@ -53,9 +52,9 @@ class ValidationHelpers:
     def validate_or_return(
         condition: bool,
         error_msg: str,
-        default_value: Optional[T] = None,
+        default_value: T | None = None,
         log_level: str = "warning",
-    ) -> Optional[T]:
+    ) -> T | None:
         """Validate condition or return default with logging.
 
         Parameters
@@ -169,13 +168,6 @@ class ArrayValidator:
         >>> import numpy as np
         >>> ArrayValidator.validate_3d_array(np.zeros((10, 10, 20)), "seismic_cube")
         """
-
-        # Ensure input is a NumPy array for consistent behavior
-        if not isinstance(arr, np.ndarray):  # type: ignore[reportUnnecessaryIsInstance]
-            raise TypeError(
-                f"Array '{name}' must be a numpy array, got {type(arr).__name__}"
-            )
-
         if arr.ndim != 3:
             raise ValueError(
                 _ValidationErrors.invalid_dimensions(name, arr.ndim, arr.shape)
@@ -250,7 +242,7 @@ class DomainValidator:
 
     @staticmethod
     def validate_domain(
-        domain: "Domain", valid_domains: Optional[set["Domain"]] = None
+        domain: "Domain", valid_domains: set["Domain"] | None = None
     ) -> "Domain":
         """Validate and return a Domain enum value.
 
@@ -290,14 +282,6 @@ class DomainValidator:
 
         if valid_domains is None:
             valid_domains = {Domain.DEPTH, Domain.TIME}
-
-        # Type check first: tests expect a TypeError for non-enum inputs
-        if not isinstance(domain, Domain):  # type: ignore[reportUnnecessaryIsInstance]
-            # Include an example enum in the message for clarity and to
-            # satisfy tests that look for 'Domain.DEPTH'.
-            raise TypeError(
-                f"Expected Domain enum, got {type(domain).__name__}. Example: Domain.DEPTH"
-            )
 
         if domain not in valid_domains:
             domain_names = ", ".join(d.value for d in valid_domains)
@@ -345,11 +329,6 @@ class PathValidator:
         >>> PathValidator.validate_cache_dir("")  # Raises ValueError
         ValueError: cache_dir must be a non-empty string...
         """
-        # Ensure cache_dir is a string
-        if not isinstance(cache_dir, str):  # type: ignore[reportUnnecessaryIsInstance]
-            raise ValueError(
-                f"cache_dir must be a non-empty string, got: {repr(cache_dir)}"
-            )
 
         if not cache_dir.strip():
             raise ValueError(

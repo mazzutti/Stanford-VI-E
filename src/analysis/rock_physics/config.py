@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Mapping, Sequence, Tuple
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from src.analysis.base import AnalysisConfig
 from src.analysis.config_mixins import ValidatableConfigMixin
@@ -48,13 +49,13 @@ class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
 
     cache_dir: str = ".cache"
     data_path: str = RockPhysicsConstants.DEFAULT_DATA_PATH
-    file_map: Dict[str, str] = field(
+    file_map: dict[str, str] = field(
         default_factory=lambda: RockPhysicsConstants.DEFAULT_FILE_MAP.copy()
     )
-    grid_shape: Tuple[int, int, int] = RockPhysicsConstants.DEFAULT_GRID_SHAPE
+    grid_shape: tuple[int, int, int] = RockPhysicsConstants.DEFAULT_GRID_SHAPE
     dz: float = RockPhysicsConstants.DEFAULT_DZ
     dt: float = RockPhysicsConstants.DEFAULT_DT
-    angles_deg: Tuple[float, ...] = DEFAULT_AVO_ANGLES_DEG
+    angles_deg: tuple[float, ...] = DEFAULT_AVO_ANGLES_DEG
     fluid_factor_k: float = DEFAULT_FLUID_FACTOR_K
     generate_plots: bool = True
     save_npz_only: bool = False
@@ -87,13 +88,13 @@ class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
             raise ValueError(f"Data path does not exist: {self.data_path}")
         return True
 
-    def with_updates(self, **overrides: Any) -> "RockPhysicsAnalysisConfig":
+    def with_updates(self, **overrides: Any) -> RockPhysicsAnalysisConfig:
         """Return a copy of the configuration with overrides applied."""
         data = self.to_dict()
         data.update(overrides)
         return self.from_dict(data)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize configuration to a dictionary."""
         return {
             "cache_dir": self.cache_dir,
@@ -110,7 +111,7 @@ class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Mapping[str, Any]) -> "RockPhysicsAnalysisConfig":
+    def from_dict(cls, config_dict: Mapping[str, Any]) -> RockPhysicsAnalysisConfig:
         """Create configuration from dictionary input."""
         return cls(
             cache_dir=str(config_dict.get("cache_dir", ".cache")),
@@ -143,6 +144,6 @@ class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         """Return incidence angles as a sequence of floats."""
         return tuple(self.angles_deg)
 
-    def file_mapping(self) -> Dict[str, str]:
+    def file_mapping(self) -> dict[str, str]:
         """Return a mutable copy of the file mapping."""
         return dict(self.file_map)

@@ -5,7 +5,8 @@ Uses PlotConfig for configuration and ImageRenderer for rendering.
 """
 
 import logging
-from typing import Any, Optional, Tuple, Union, cast, Sequence
+from typing import Any, cast
+from collections.abc import Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -162,9 +163,9 @@ class SlicePlotter(BasePlotter):
         self,
         ax: Axes,
         cube: NDArray[np.floating[Any]],
-        slice_indices: Tuple[int, int, int],
-        config: Optional[PlotConfig] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        slice_indices: tuple[int, int, int],
+        config: PlotConfig | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot a single 2D slice of a 3D cube.
 
         Args:
@@ -202,9 +203,9 @@ class SlicePlotter(BasePlotter):
         self,
         ax: Axes,
         cube: NDArray[np.floating[Any]],
-        slice_indices: Tuple[int, int, int],
-        config: Optional[PlotConfig] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        slice_indices: tuple[int, int, int],
+        config: PlotConfig | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot a crossline slice.
 
         Args:
@@ -241,9 +242,9 @@ class SlicePlotter(BasePlotter):
         self,
         ax: Axes,
         cube: NDArray[np.floating[Any]],
-        slice_indices: Tuple[int, int, int],
-        config: Optional[PlotConfig] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        slice_indices: tuple[int, int, int],
+        config: PlotConfig | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot a depth/time slice.
 
         Args:
@@ -276,11 +277,11 @@ class SlicePlotter(BasePlotter):
 
     def plot_3d_slices(
         self,
-        ax: Union[Axes, "Axes3D"],
+        ax: Axes | Axes3D,
         cube: NDArray[np.floating[Any]],
-        slice_indices: Tuple[int, int, int],
-        config: Optional[PlotConfig] = None,
-    ) -> Union[Axes, "Axes3D"]:
+        slice_indices: tuple[int, int, int],
+        config: PlotConfig | None = None,
+    ) -> Axes | Axes3D:
         """Plot three orthogonal slices as 3D surfaces.
 
         Args:

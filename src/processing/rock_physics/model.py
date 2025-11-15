@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Any
 from numpy.typing import NDArray
 
 
@@ -39,12 +39,12 @@ class RockPhysicsModel:
         disk_cache: Optional shared disk cache
     """
 
-    vp: Optional[Quantity | NDArray[Any]]
-    vs: Optional[Quantity | NDArray[Any]]
-    rho: Optional[Quantity | NDArray[Any]]
-    facies: Optional[NDArray[Any]]
+    vp: Quantity | NDArray[Any] | None
+    vs: Quantity | NDArray[Any] | None
+    rho: Quantity | NDArray[Any] | None
+    facies: NDArray[Any] | None
     grid_spec: GridSpec
-    disk_cache: Optional[DiskCache] = field(default=None, init=True, repr=False)
+    disk_cache: DiskCache | None = field(default=None, init=True, repr=False)
     _cache: ModelCache = field(default_factory=ModelCache, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -57,7 +57,7 @@ class RockPhysicsModel:
     @classmethod
     def from_props(
         cls, props: dict[str, Any], grid_spec: GridSpec
-    ) -> "RockPhysicsModel":
+    ) -> RockPhysicsModel:
         """Create model from properties dictionary.
 
         Wraps numeric arrays in Quantity with conservative unit guesses.

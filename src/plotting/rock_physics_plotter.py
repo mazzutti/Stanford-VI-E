@@ -5,7 +5,7 @@ Uses PlotConfig and ImageRenderer for clean visualization.
 """
 
 import logging
-from typing import Any, Literal, Optional, Dict, Tuple
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -34,8 +34,8 @@ class RockPhysicsPlotter(BasePlotter):
         data: NDArray[np.floating[Any]],
         idx: int,
         slice_type: Literal["inline", "crossline", "depthslice"] = "inline",
-        config: Optional[PlotConfig] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        config: PlotConfig | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Plot a rock physics attribute slice.
 
         Args:
@@ -84,7 +84,7 @@ class RockPhysicsPlotter(BasePlotter):
     def plot_multiple_attributes(
         self,
         fig: Figure,
-        attributes: Dict[str, NDArray[np.floating[Any]]],
+        attributes: dict[str, NDArray[np.floating[Any]]],
         idx: int = 0,
         slice_type: Literal["inline", "crossline", "depthslice"] = "inline",
         cmap: str = "viridis",

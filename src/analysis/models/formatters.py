@@ -9,7 +9,7 @@ for flexible, reusable formatting behavior.
 """
 
 from __future__ import annotations
-from typing import Dict, ClassVar, List
+from typing import ClassVar
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -50,7 +50,7 @@ class StatisticsFormatter:
             return f"{name}=nan"
         return f"{name}={value:.{self.precision}f}"
 
-    def format_stats_dict(self, stats_dict: Dict[str, float]) -> str:
+    def format_stats_dict(self, stats_dict: dict[str, float]) -> str:
         """Format all statistics as comma-separated string.
 
         Args:
@@ -62,7 +62,7 @@ class StatisticsFormatter:
         parts = [self.format_stat(k, v) for k, v in stats_dict.items()]
         return ", ".join(parts)
 
-    def format_table(self, stats_dict: Dict[str, float]) -> str:
+    def format_table(self, stats_dict: dict[str, float]) -> str:
         """Format statistics as table-like string for multi-line output.
 
         Args:
@@ -71,7 +71,7 @@ class StatisticsFormatter:
         Returns:
             Multi-line formatted string with right-aligned names
         """
-        lines: List[str] = []
+        lines: list[str] = []
         max_key_len = max(len(k) for k in stats_dict.keys()) if stats_dict else 0
 
         for k, v in stats_dict.items():
@@ -98,7 +98,7 @@ class FormattableModel(ABC):
         ...     count: int
         ...     mean: float
         ...
-        ...     def get_stats_dict(self) -> Dict[str, float]:
+        ...     def get_stats_dict(self) -> dict[str, float]:
         ...         return {"count": float(self.count), "mean": self.mean}
         >>> stats = MyStats(count=10, mean=3.14)
         >>> print(stats)
@@ -112,7 +112,7 @@ class FormattableModel(ABC):
     """Precision for __str__ (moderate precision for display)"""
 
     @abstractmethod
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics as dictionary for formatting.
 
         Must be implemented by subclasses to provide the statistics

@@ -9,7 +9,6 @@ Design:
 
 import logging
 from pathlib import Path
-from typing import Optional
 from src.io.gslib_reader import GSLibConfig
 
 __all__ = ["FileLocator"]
@@ -99,26 +98,27 @@ class FileLocator:
 
     def _search_files_by_pattern(
         self, dat_files: list[str], key: str, folder_name: str, dir_path: Path
-    ) -> Optional[str]:
+    ) -> str | None:
         """Search for a data file using multiple pattern matching strategies.
 
-        Tries to match by key name first, then by normalized folder name.
+                Tries to match by key name first, then by normalized folder name.
 
-        Parameters
-        ----------
-        dat_files : list[str]
-            List of available .dat file names.
-        key : str
-            The property key to match (e.g., "vp", "vs").
-        folder_name : str
-            The folder name to use for normalization matching.
-        dir_path : Path
-            Path to the directory containing files.
+                Parameters
+                ----------
+                dat_files : list[str]
+                    List of available .dat file names.
+                key : str
+                    The property key to match (e.g., "vp", "vs").
+                folder_name : str
+                    The folder name to use for normalization matching.
+                dir_path : Path
+                    Path to the directory containing files.
 
-        Returns
-        -------
-        Optional[str]
-            Full path to matched file, or None if no match found.
+                Returns
+                -------
+                str | None
+                    Full path to matched file, or None if no match found.
+
         """
         # Search by key name match
         for f in dat_files:

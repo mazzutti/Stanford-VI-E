@@ -6,7 +6,7 @@ like transitions between facies.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
 
 from src.analysis.config_mixins import ValidatableConfigMixin
 from src.analysis.validators_registry import ValidatorRegistry
@@ -54,7 +54,7 @@ class Transition:
         """Return the reverse transition."""
         return Transition(self.to_facies, self.from_facies)
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         """Convert transition to dictionary representation.
 
         Args:
@@ -68,7 +68,7 @@ class Transition:
         return {"from_facies": self.from_facies, "to_facies": self.to_facies}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, int]) -> Transition:
+    def from_dict(cls, data: dict[str, int]) -> Transition:
         """Create transition from dictionary representation.
 
         Args:
@@ -145,7 +145,7 @@ class FaciesCorrelationConfig(ValidatableConfigMixin):
         """
         return super().is_valid()
 
-    def to_dict(self) -> Dict[str, int | float]:
+    def to_dict(self) -> dict[str, int | float]:
         """Convert configuration to dictionary."""
         return {
             "facies_count": self.facies_count,
@@ -154,7 +154,7 @@ class FaciesCorrelationConfig(ValidatableConfigMixin):
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> FaciesCorrelationConfig:
+    def from_dict(cls, config_dict: dict[str, Any]) -> FaciesCorrelationConfig:
         """Create configuration from dictionary.
 
         Args:

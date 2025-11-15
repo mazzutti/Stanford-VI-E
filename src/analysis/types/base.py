@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 
 __all__ = [
@@ -46,13 +46,13 @@ class ComputationResult(Generic[T_Out]):
     is_valid: bool
     """Whether computation succeeded."""
 
-    data: Optional[T_Out] = None
+    data: T_Out | None = None
     """Computed data (None if invalid)."""
 
     error_message: str = ""
     """Error message if computation failed."""
 
-    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     """Additional metadata about computation (performance, validation details, etc)."""
 
 
@@ -64,17 +64,17 @@ class AnalysisSchema:
     expects and what it produces.
     """
 
-    input_fields: Dict[str, Type[Any]]
+    input_fields: dict[str, type[Any]]
     """Required input field names and their types."""
 
-    output_fields: Dict[str, Type[Any]]
+    output_fields: dict[str, type[Any]]
     """Output field names and their types."""
 
     description: str = ""
     """Human-readable description of the analysis."""
 
-    constraints: Dict[str, str] = field(
-        default_factory=lambda: cast(Dict[str, str], {})
+    constraints: dict[str, str] = field(
+        default_factory=lambda: cast(dict[str, str], {})
     )
     """Any constraints on the analysis (e.g., 'vp >= 1000 m/s')."""
 
@@ -102,8 +102,8 @@ class Computer(ABC, Generic[T_In, T_Out]):
     --------
     A concrete computer implementation:
 
-    >>> class MyComputer(Computer[np.ndarray, Dict[str, np.ndarray]]):
-    ...     def compute(self, data: NDArray[np.floating[Any]]) -> Dict[str, np.ndarray]:
+    >>> class MyComputer(Computer[np.ndarray, dict[str, np.ndarray]]):
+    ...     def compute(self, data: NDArray[np.floating[Any]]) -> dict[str, np.ndarray]:
     ...         # Do computation
     ...         return {"result": computed_array}
     ...
@@ -133,13 +133,22 @@ class Computer(ABC, Generic[T_In, T_Out]):
         pass
 
     @abstractmethod
-    def compute(self, inputs: T_In) -> T_Out:
+    def compute(self, *inputs: Any, **kwargs: Any) -> T_Out:
         """Execute the computational task.
+
+        Concrete implementations may accept multiple positional arguments
+        (e.g., `vp, vs, rho`) or a single structured input object. The
+        base signature uses variadic arguments so subclasses can define
+        explicit parameter lists without conflicting with the abstract
+        method's signature.
 
         Parameters
         ----------
-        inputs
-            Validated input data.
+        *inputs
+            Positional input arguments for the computation.
+
+        **kwargs
+            Optional keyword arguments.
 
         Returns
         -------

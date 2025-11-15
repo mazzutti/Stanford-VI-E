@@ -21,7 +21,8 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Callable, cast
+from typing import Any, cast
+from collections.abc import Callable
 from abc import ABC, abstractmethod
 import logging
 
@@ -48,9 +49,9 @@ class AnalysisBuilderBase(ABC):
 
     def __init__(self) -> None:
         """Initialize the builder"""
-        self._components: Dict[str, Any] = {}
-        self._config: Dict[str, Any] = {}
-        self._validators: List[Callable[[Dict[str, Any]], bool]] = []
+        self._components: dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
+        self._validators: list[Callable[[dict[str, Any]], bool]] = []
 
     @abstractmethod
     def build(self) -> Any:
@@ -103,7 +104,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
         self._config["validators"] = {}
         self._config["use_logger"] = False
 
-    def with_transitions(self, transitions: List[Transition]) -> FaciesAnalyzerBuilder:
+    def with_transitions(self, transitions: list[Transition]) -> FaciesAnalyzerBuilder:
         """Set transitions for correlation analysis.
 
         Args:
@@ -294,12 +295,12 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
     def __init__(self) -> None:
         """Initialize processor chain builder"""
         super().__init__()
-        self._config["processors"] = cast(List[tuple[str, Any]], [])
+        self._config["processors"] = cast(list[tuple[str, Any]], [])
 
     def add_processor(
         self,
         processor: Any,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> ProcessorChainBuilder:
         """Add a processor to the chain.
 
@@ -321,7 +322,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
     def add_validator(
         self,
         validator: Any,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> ProcessorChainBuilder:
         """Add a validator to the chain.
 
@@ -337,7 +338,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
 
         val_name = name or validator.__class__.__name__
         if "validators" not in self._config:
-            self._config["validators"] = cast(List[tuple[str, Any]], [])
+            self._config["validators"] = cast(list[tuple[str, Any]], [])
 
         self._config["validators"].append((val_name, validator))
         logger.debug(f"Added validator to chain: {val_name}")
@@ -356,7 +357,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
         logger.debug(f"Error handling enabled: {enabled}")
         return self
 
-    def build(self) -> List[tuple[str, Any]]:
+    def build(self) -> list[tuple[str, Any]]:
         """Build and return processor chain.
 
         Returns:
@@ -371,4 +372,4 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
             f"error_handling={self._config.get('error_handling', False)}"
         )
 
-        return cast(List[tuple[str, Any]], self._config["processors"])
+        return cast(list[tuple[str, Any]], self._config["processors"])

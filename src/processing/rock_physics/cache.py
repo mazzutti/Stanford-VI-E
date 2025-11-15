@@ -1,6 +1,6 @@
 """Cache for rock physics model derived attributes."""
 
-from typing import Optional, Any
+from typing import Any
 from numpy.typing import NDArray
 
 
@@ -17,22 +17,22 @@ class ModelCache:
     separation of concerns and easier testing.
     """
 
-    def __init__(self, disk_cache: Optional[DiskCache] = None):
+    def __init__(self, disk_cache: DiskCache | None = None):
         """Initialize cache manager.
 
         Args:
             disk_cache: Optional shared disk cache for expensive results
         """
         self.disk_cache = disk_cache
-        self._derived_cache: Optional[NDArray[Any]] = None
-        self._refl_cache: Optional[NDArray[Any]] = None
+        self._derived_cache: NDArray[Any] | None = None
+        self._refl_cache: NDArray[Any] | None = None
 
     def invalidate(self) -> None:
         """Invalidate all internal caches."""
         self._derived_cache = None
         self._refl_cache = None
 
-    def get_derived(self) -> Optional[NDArray[Any]]:
+    def get_derived(self) -> NDArray[Any] | None:
         """Get cached derived attributes."""
         return self._derived_cache
 
@@ -40,7 +40,7 @@ class ModelCache:
         """Cache derived attributes."""
         self._derived_cache = data
 
-    def get_reflectivity(self) -> Optional[NDArray[Any]]:
+    def get_reflectivity(self) -> NDArray[Any] | None:
         """Get cached reflectivity."""
         return self._refl_cache
 

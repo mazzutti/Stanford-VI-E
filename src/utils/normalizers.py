@@ -4,8 +4,6 @@ Provides centralized unit alias handling and normalization for velocity,
 density, and other physical quantities.
 """
 
-from typing import Dict
-
 
 class UnitNormalizer:
     """Normalizes unit strings to canonical forms.
@@ -25,14 +23,14 @@ class UnitNormalizer:
     """
 
     # Mapping from aliases to canonical unit names
-    VELOCITY_ALIASES: Dict[str, str] = {
+    VELOCITY_ALIASES: dict[str, str] = {
         "m/s": "m/s",
         "m_per_s": "m/s",
         "km/s": "km/s",
         "km_per_s": "km/s",
     }
 
-    DENSITY_ALIASES: Dict[str, str] = {
+    DENSITY_ALIASES: dict[str, str] = {
         "g/cc": "g/cc",
         "g/cm3": "g/cc",
         "g/cm^3": "g/cc",
@@ -41,7 +39,7 @@ class UnitNormalizer:
         "kg/m³": "kg/m3",
     }
 
-    ALL_ALIASES: Dict[str, str] = {**VELOCITY_ALIASES, **DENSITY_ALIASES}
+    ALL_ALIASES: dict[str, str] = {**VELOCITY_ALIASES, **DENSITY_ALIASES}
 
     @classmethod
     def normalize(cls, unit: str) -> str:

@@ -17,7 +17,8 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional, Callable, Any, List
+from typing import Any
+from collections.abc import Callable
 from types import TracebackType
 
 from src.analysis.patterns.event_bus import Event, EventHandler
@@ -55,7 +56,7 @@ class EventSubscriber:
             event_bus: EventBus instance
         """
         self.event_bus = event_bus
-        self._subscriptions: List[Any] = []
+        self._subscriptions: list[Any] = []
 
     def _wrap_handler(self, fn: Callable[[Any], None]) -> EventHandler:
         """Wrap a simple callable into an EventHandler instance."""
@@ -230,7 +231,7 @@ class AnalysisSystem:
         >>> result = analyzer.run_with_command(cache_dir=".cache", domain="depth")
     """
 
-    def __init__(self, configuration: Optional[SystemConfiguration] = None) -> None:
+    def __init__(self, configuration: SystemConfiguration | None = None) -> None:
         """Initialize analysis system.
 
         Args:
@@ -264,13 +265,13 @@ class AnalysisSystem:
 
     def configure(
         self,
-        max_retries: Optional[int] = None,
-        retry_delay: Optional[float] = None,
-        circuit_breaker_threshold: Optional[int] = None,
-        circuit_breaker_timeout: Optional[int] = None,
-        enable_event_bus: Optional[bool] = None,
-        enable_circuit_breaker: Optional[bool] = None,
-        enable_retry: Optional[bool] = None,
+        max_retries: int | None = None,
+        retry_delay: float | None = None,
+        circuit_breaker_threshold: int | None = None,
+        circuit_breaker_timeout: int | None = None,
+        enable_event_bus: bool | None = None,
+        enable_circuit_breaker: bool | None = None,
+        enable_retry: bool | None = None,
     ) -> AnalysisSystem:
         """Configure system settings.
 
@@ -377,9 +378,9 @@ class AnalysisSystem:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager."""
         logger.debug("Exiting AnalysisSystem context")

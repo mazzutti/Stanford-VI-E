@@ -3,7 +3,8 @@
 Eliminates boilerplate in stage creation and provides consistent configuration.
 """
 
-from typing import Callable, Any, Optional, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 from abc import abstractmethod
 import logging
 
@@ -25,7 +26,7 @@ class StageBuilder(PipelineStage[Any, Any]):
 
     def __init__(self, name: str):
         self._name = name
-        self._precondition: Optional[Callable[[Any], bool]] = None
+        self._precondition: Callable[[Any], bool] | None = None
 
     @property
     def name(self) -> str:
@@ -59,7 +60,7 @@ class StageFactory:
     def create_simple(
         name: str,
         execute_fn: Callable[[Any], Any],
-        can_execute_fn: Optional[Callable[[Any], bool]] = None,
+        can_execute_fn: Callable[[Any], bool] | None = None,
     ) -> "PipelineStage[Any, Any]":
         """Create a simple stage from functions.
 

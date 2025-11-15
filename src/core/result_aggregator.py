@@ -3,7 +3,8 @@
 Replaces complex dictionary manipulation with clean, chainable methods.
 """
 
-from typing import Any, Dict, Optional, List, Callable, cast
+from typing import Any, cast
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 __all__ = ["ResultAggregator", "ResultSummary"]
@@ -13,12 +14,12 @@ __all__ = ["ResultAggregator", "ResultSummary"]
 class ResultSummary:
     """Simple result summary container."""
 
-    attributes: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    metrics: Dict[str, float] = field(
-        default_factory=lambda: cast(Dict[str, float], {})
+    attributes: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
+    metrics: dict[str, float] = field(
+        default_factory=lambda: cast(dict[str, float], {})
     )
-    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    errors: List[str] = field(default_factory=lambda: cast(List[str], []))
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
+    errors: list[str] = field(default_factory=lambda: cast(list[str], []))
 
     def has_errors(self) -> bool:
         """Check if any errors occurred."""
@@ -28,7 +29,7 @@ class ResultSummary:
         """Add an error message."""
         self.errors.append(error)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "attributes": self.attributes,
@@ -46,7 +47,7 @@ class ResultAggregator:
 
     def __init__(self) -> None:
         """Initialize aggregator."""
-        self._results: Dict[str, Any] = {}
+        self._results: dict[str, Any] = {}
 
     def add_attribute(self, name: str, value: Any) -> "ResultAggregator":
         """Add a computed attribute."""
@@ -59,27 +60,27 @@ class ResultAggregator:
         return self
 
     def add_from_dict(
-        self, data: Dict[str, Any], prefix: Optional[str] = None
+        self, data: dict[str, Any], prefix: str | None = None
     ) -> "ResultAggregator":
         """Add attributes from dictionary, optionally with prefix."""
-        items: Dict[str, Any] = (
+        items: dict[str, Any] = (
             {f"{prefix}_{k}": v for k, v in data.items()} if prefix else data
         )
         self._results.update(items)
         return self
 
-    def merge_results(self, *result_dicts: Dict[str, Any]) -> "ResultAggregator":
+    def merge_results(self, *result_dicts: dict[str, Any]) -> "ResultAggregator":
         """Merge multiple result dictionaries."""
         for result_dict in result_dicts:
             self._results.update(result_dict)
         return self
 
-    def filter_keys(self, keys: List[str]) -> "ResultAggregator":
+    def filter_keys(self, keys: list[str]) -> "ResultAggregator":
         """Keep only specified keys."""
         self._results = {k: v for k, v in self._results.items() if k in keys}
         return self
 
-    def exclude_keys(self, keys: List[str]) -> "ResultAggregator":
+    def exclude_keys(self, keys: list[str]) -> "ResultAggregator":
         """Remove specified keys."""
         self._results = {k: v for k, v in self._results.items() if k not in keys}
         return self
@@ -94,11 +95,11 @@ class ResultAggregator:
         """Get a specific result."""
         return self._results.get(key, default)
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all result keys."""
         return list(self._results.keys())
 
-    def build(self) -> Dict[str, Any]:
+    def build(self) -> dict[str, Any]:
         """Build final results dictionary."""
         return self._results.copy()
 
@@ -137,7 +138,7 @@ class ChainableDict(dict[str, Any]):
         self.pop(key, None)
         return self
 
-    def merge(self, other: Dict[str, Any]) -> "ChainableDict":
+    def merge(self, other: dict[str, Any]) -> "ChainableDict":
         """Merge another dict and return self."""
         self.update(other)
         return self

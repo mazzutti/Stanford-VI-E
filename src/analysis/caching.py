@@ -36,7 +36,8 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Callable, TypeVar, cast
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 from dataclasses import dataclass
 from collections import OrderedDict
 from threading import Lock, RLock
@@ -100,7 +101,7 @@ class CacheStrategy(ABC):
     """Abstract base class for cache implementations."""
 
     @abstractmethod
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value from cache.
 
         Args:
@@ -177,7 +178,7 @@ class LRUCache(CacheStrategy):
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value and mark as recently used.
 
         Args:
@@ -279,14 +280,14 @@ class LFUCache(CacheStrategy):
             max_size: Maximum number of items to cache
         """
         self.max_size = max_size
-        self._cache: Dict[str, Any] = {}
-        self._frequency: Dict[str, int] = {}
+        self._cache: dict[str, Any] = {}
+        self._frequency: dict[str, int] = {}
         self._lock = RLock()
         self._hits = 0
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value and increment frequency.
 
         Args:
@@ -389,14 +390,14 @@ class TTLCache(CacheStrategy):
         """
         self.ttl_seconds = ttl_seconds
         self.max_size = max_size
-        self._cache: Dict[str, Any] = {}
-        self._expiry: Dict[str, float] = {}
+        self._cache: dict[str, Any] = {}
+        self._expiry: dict[str, float] = {}
         self._lock = RLock()
         self._hits = 0
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value if not expired.
 
         Args:
@@ -420,7 +421,7 @@ class TTLCache(CacheStrategy):
             self._misses += 1
             return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value with TTL.
 
         Args:
@@ -516,7 +517,7 @@ class FIFOCache(CacheStrategy):
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value.
 
         Args:
@@ -609,7 +610,7 @@ class CacheManager:
 
     def __init__(self) -> None:
         """Initialize cache manager."""
-        self._caches: Dict[str, CacheStrategy] = {}
+        self._caches: dict[str, CacheStrategy] = {}
         self._lock = Lock()
 
     def register(self, name: str, cache: CacheStrategy) -> None:
@@ -623,7 +624,7 @@ class CacheManager:
             self._caches[name] = cache
             logger.debug(f"Registered cache: {name}")
 
-    def get(self, name: str) -> Optional[CacheStrategy]:
+    def get(self, name: str) -> CacheStrategy | None:
         """Get a named cache.
 
         Args:
@@ -658,7 +659,7 @@ class CacheManager:
                 cache.clear()
             logger.debug("Cleared all caches")
 
-    def stats_all(self) -> Dict[str, CacheStats]:
+    def stats_all(self) -> dict[str, CacheStats]:
         """Get statistics for all caches.
 
         Returns:
@@ -675,7 +676,7 @@ class CacheManager:
 
 def cache_result(
     max_size: int = 1000,
-    ttl: Optional[int] = None,
+    ttl: int | None = None,
     strategy: str = "lru",
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to cache function results.
@@ -724,11 +725,11 @@ def cache_result(
             cache.set(cache_key, result)
             return result
 
-        # Attach cache for direct access (use cast to appease mypy)
-        wrapper_cast = cast(Callable[..., Any], wrapper)
-        wrapper_cast.cache = cache  # type: ignore[attr-defined]
-        wrapper_cast.stats = cache.stats  # type: ignore[attr-defined]
+        # Cast to Any for attribute assignment, then return as Callable
+        wrapper_cast = cast(Any, wrapper)
+        wrapper_cast.cache = cache
+        wrapper_cast.stats = cache.stats
 
-        return wrapper_cast
+        return cast(Callable[..., Any], wrapper)
 
     return decorator

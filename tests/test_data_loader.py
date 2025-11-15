@@ -12,7 +12,7 @@ import pytest
 import tempfile
 import logging
 from pathlib import Path
-from typing import Tuple
+from typing import Any
 
 import numpy as np
 
@@ -44,13 +44,13 @@ def grid_spec() -> GridSpec:
 
 
 @pytest.fixture
-def grid_shape(grid_spec: GridSpec) -> Tuple[int, int, int]:
+def grid_shape(grid_spec: GridSpec) -> tuple[int, int, int]:
     """Get grid shape from spec."""
     return tuple(grid_spec.shape)
 
 
 @pytest.fixture
-def sample_data_array(grid_shape: Tuple[int, int, int]) -> np.ndarray:
+def sample_data_array(grid_shape: tuple[int, int, int]) -> np.ndarray:
     """Create sample data array matching grid shape."""
     return np.arange(np.prod(grid_shape), dtype=np.float64).reshape(
         grid_shape, order="F"

@@ -30,10 +30,7 @@ from dataclasses import dataclass, field
 from typing import (
     Generic,
     TypeVar,
-    Optional,
-    Dict,
     Any,
-    Type,
     TYPE_CHECKING,
     cast,
 )
@@ -112,9 +109,11 @@ class AnalysisBuilder:
     """
 
     domain: str
-    dependencies: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    config: Optional[Any] = None
-    _metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    dependencies: dict[str, Any] = field(
+        default_factory=lambda: cast(dict[str, Any], {})
+    )
+    config: Any | None = None
+    _metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
     def with_dependency(self, name: str, dependency: Any) -> AnalysisBuilder:
         """Register a dependency for the analyzer.
@@ -225,7 +224,7 @@ class AnalysisBuilder:
         self._metadata[key] = value
         return self
 
-    def build(self, analyzer_class: Type[Any]) -> Any:
+    def build(self, analyzer_class: type[Any]) -> Any:
         """Build analyzer with registered dependencies and config.
 
         Instantiates the analyzer class with all configured dependencies

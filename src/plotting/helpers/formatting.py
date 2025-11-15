@@ -4,7 +4,8 @@ Provides concise logging and header helpers for plotting and analysis
 commands.
 """
 
-from typing import Any, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 from pathlib import Path
 import logging
 import numpy as np
@@ -48,7 +49,7 @@ class FormattingHelper:
         """Print selected angles and weights."""
         return print_selected_angles(selected_angles, weights)
 
-    def print_cache_info(self, cache_file: Optional[str]) -> None:
+    def print_cache_info(self, cache_file: str | None) -> None:
         """Print cache file information."""
         return print_cache_info(cache_file)
 
@@ -116,7 +117,7 @@ def print_selected_angles(
     logger.info("  Weights: %s", weights)
 
 
-def print_cache_info(cache_file: Optional[str]) -> None:
+def print_cache_info(cache_file: str | None) -> None:
     if not cache_file:
         return
     logger.info("\n✓ Saved multi-angle results to: %s", cache_file)

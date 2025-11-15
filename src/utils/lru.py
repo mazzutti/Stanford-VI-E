@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Generic, TypeVar
+from typing import Generic, TypeVar
 import threading
 
 
@@ -18,7 +18,7 @@ class LRUCache(Generic[T]):
         # re-entrant lock to allow thread-safe get/set/clear operations
         self._lock = threading.RLock()
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         with self._lock:
             v = self._data.get(key)
             if v is not None:
@@ -38,7 +38,7 @@ class LRUCache(Generic[T]):
             except Exception:
                 pass
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         with self._lock:
             return list(self._data.keys())
 
@@ -65,22 +65,22 @@ class ShardedLRUCache(Generic[T]):
         # If maxsize > 0 but per_shard == 0, give each shard at least 1
         if maxsize > 0 and per_shard == 0:
             per_shard = 1
-        self._shards: List[LRUCache[T]] = [
+        self._shards: list[LRUCache[T]] = [
             LRUCache[T](per_shard) for _ in range(self.shards)
         ]
 
     def _pick(self, key: str) -> LRUCache[T]:
         return self._shards[hash(key) % self.shards]
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         return self._pick(key).get(key)
 
     def set(self, key: str, value: T) -> None:
         self._pick(key).set(key, value)
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         # aggregate keys from all shards; order is shard-local LRU order
-        ks: List[str] = []
+        ks: list[str] = []
         for s in self._shards:
             ks.extend(s.keys())
         return ks

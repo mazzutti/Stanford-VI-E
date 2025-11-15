@@ -20,7 +20,7 @@ Pattern: Operations/Utilities Pattern
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Tuple, Any, cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -52,7 +52,7 @@ class AlignmentOps:
         aligner: Any,
         seismic_cube: NDArray[Any],
         facies_cube: NDArray[Any],
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
         """Align seismic and facies cubes to common shape.
 
         Parameters
@@ -72,7 +72,7 @@ class AlignmentOps:
         # aligner.align is dynamically-typed; cast to the declared return
         # type so static checkers don't treat this as `Any`.
         return cast(
-            Tuple[NDArray[Any], NDArray[Any]], aligner.align(seismic_cube, facies_cube)
+            tuple[NDArray[Any], NDArray[Any]], aligner.align(seismic_cube, facies_cube)
         )
 
 
@@ -83,7 +83,7 @@ class ReshapeOps:
     def reshape_to_traces(
         seismic_aligned: NDArray[Any],
         facies_aligned: NDArray[Any],
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
         """Reshape 3D cubes to 2D trace-sample format (n_traces, nk).
 
         Consolidates the repeated (ni, nj, nk) → (ni*nj, nk) reshape
@@ -125,7 +125,7 @@ class ReshapeOps:
 
         logger.debug(f"Reshaped cubes from (ni={ni}, nj={nj}, nk={nk}) to traces")
         # Ensure the return type matches the annotation (NDArray[Any])
-        return cast(Tuple[NDArray[Any], NDArray[Any]], (seismic_2d, facies_2d))
+        return cast(tuple[NDArray[Any], NDArray[Any]], (seismic_2d, facies_2d))
 
 
 class ExtractionOps:
@@ -162,7 +162,7 @@ class ExtractionOps:
     def extract_by_labels(
         seismic_flat: NDArray[Any],
         labels_flat: NDArray[Any],
-    ) -> Tuple[Dict[int, NDArray[Any]], List[int]]:
+    ) -> tuple[dict[int, NDArray[Any]], list[int]]:
         """Group flattened seismic data by facies labels.
 
         Creates a dictionary mapping each observed label to its amplitudes,
@@ -181,7 +181,7 @@ class ExtractionOps:
             (label_amplitudes_dict, label_order) where label_order is sorted
             unique labels for consistent matrix construction.
         """
-        label_amplitudes: Dict[int, List[float]] = {}
+        label_amplitudes: dict[int, list[float]] = {}
 
         for label in np.unique(labels_flat):
             mask = labels_flat == label
@@ -205,7 +205,7 @@ class ExtractionOps:
     def extract_at_transitions(
         seismic_2d: NDArray[Any],
         facies_2d: NDArray[Any],
-    ) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Extract amplitudes and transition information at facies boundaries.
 
         Finds vertical transitions (where facies changes between adjacent samples)
@@ -256,8 +256,8 @@ class StatsOps:
 
     @staticmethod
     def aggregate_stats(
-        label_amplitudes: Dict[int, NDArray[np.float64]],
-    ) -> Dict[int, FaciesStats]:
+        label_amplitudes: dict[int, NDArray[np.float64]],
+    ) -> dict[int, FaciesStats]:
         """Compute statistics for each facies group.
 
         Consolidates the repeated pattern of computing statistics per facies
@@ -273,7 +273,7 @@ class StatsOps:
         dict
             Dictionary mapping facies labels to FaciesStats objects.
         """
-        facies_stats: Dict[int, FaciesStats] = {}
+        facies_stats: dict[int, FaciesStats] = {}
 
         for label, amplitudes in label_amplitudes.items():
             stats = compute_amplitude_stats(amplitudes)
@@ -287,8 +287,8 @@ class StatsOps:
 
     @staticmethod
     def compute_separation_matrix(
-        facies_stats: Dict[int, FaciesStats],
-        label_order: List[int],
+        facies_stats: dict[int, FaciesStats],
+        label_order: list[int],
         epsilon: float = 1e-10,
     ) -> NDArray[np.float64]:
         """Compute pairwise separation matrix between facies.

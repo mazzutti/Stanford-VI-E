@@ -11,7 +11,6 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 import hashlib
 
 
@@ -46,7 +45,7 @@ class PlanFingerprint:
     vp_hash: str
 
     @classmethod
-    def from_plan(cls, plan: ResamplePlan) -> "PlanFingerprint":
+    def from_plan(cls, plan: ResamplePlan) -> PlanFingerprint:
         """Create a fingerprint from a ResamplePlan.
 
         Parameters
@@ -100,8 +99,8 @@ class BackendMetrics:
     """
 
     def __init__(self) -> None:
-        self.selection_counts: Dict[str, int] = {}
-        self.runtimes: Dict[Tuple[str, str], float] = {}
+        self.selection_counts: dict[str, int] = {}
+        self.runtimes: dict[tuple[str, str], float] = {}
 
     def record_selection(self, backend_name: str) -> None:
         """Record that a backend was selected.

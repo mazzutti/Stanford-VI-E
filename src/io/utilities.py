@@ -1,6 +1,6 @@
 """Utility functions for data loading and property management."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 from numpy.typing import NDArray
 
 from src.io.loader import DatasetManager
@@ -9,7 +9,7 @@ from src.utils.quantity import Quantity
 
 def load_depth_properties(
     dm: DatasetManager,
-) -> Dict[str, Optional[NDArray[Any] | Quantity]]:
+) -> dict[str, NDArray[Any] | Quantity | None]:
     """Load depth-domain properties from a DatasetManager.
 
     Extracts the standard set of properties (vp, vs, rho, facies, full_stack)

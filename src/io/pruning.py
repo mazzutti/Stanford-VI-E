@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 import logging
 from pathlib import Path
-from typing import Callable, Optional, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 __all__ = [
@@ -30,24 +30,25 @@ logger = logging.getLogger(__name__)
 
 def should_expire_by_ttl(
     file_path: Path,
-    ttl_seconds: Optional[int],
-    now: Optional[float] = None,
+    ttl_seconds: int | None,
+    now: float | None = None,
 ) -> bool:
     """Check if a file should be considered expired by TTL.
 
-    Parameters
-    ----------
-    file_path : Path
-        Path to the file to check.
-    ttl_seconds : Optional[int]
-        TTL in seconds, or None to disable TTL checking.
-    now : Optional[float]
-        Current time (seconds since epoch). If None, uses time.time().
+        Parameters
+        ----------
+        file_path : Path
+            Path to the file to check.
+        ttl_seconds : int | None
+            TTL in seconds, or None to disable TTL checking.
+        now : float | None
+            Current time (seconds since epoch). If None, uses time.time().
 
-    Returns
-    -------
-    bool
-        True if the file has exceeded TTL, False otherwise.
+        Returns
+        -------
+        bool
+            True if the file has exceeded TTL, False otherwise.
+
     """
     if ttl_seconds is None:
         return False
@@ -66,23 +67,24 @@ def should_expire_by_ttl(
 def should_expire_by_size(
     files: Sequence[Path],
     max_cache_bytes: int,
-    get_size: Optional[Callable[[Path], int]] = None,
+    get_size: Callable[[Path], int] | None = None,
 ) -> bool:
     """Check if total cache size exceeds limit.
 
-    Parameters
-    ----------
-    files : Sequence[Path]
-        Collection of file paths to check.
-    max_cache_bytes : int
-        Maximum allowed total size in bytes.
-    get_size : Optional[Callable]
-        Function to get file size. Defaults to Path.stat().st_size.
+        Parameters
+        ----------
+        files : Sequence[Path]
+            Collection of file paths to check.
+        max_cache_bytes : int
+            Maximum allowed total size in bytes.
+        get_size : Callable | None
+            Function to get file size. Defaults to Path.stat().st_size.
 
-    Returns
-    -------
-    bool
-        True if total size exceeds max_cache_bytes.
+        Returns
+        -------
+        bool
+            True if total size exceeds max_cache_bytes.
+
     """
     if get_size is None:
 
@@ -105,19 +107,20 @@ def should_expire_by_size(
 class PruneStrategy:
     """Strategy for selecting files to remove during cache pruning.
 
-    Defines how files are selected for removal based on TTL and size constraints.
+        Defines how files are selected for removal based on TTL and size constraints.
 
-    Attributes
-    ----------
-    ttl_seconds : Optional[int]
-        TTL in seconds for cache entries.
-    max_cache_bytes : int
-        Maximum total cache size.
-    glob_pattern : str
-        Glob pattern for finding cache files.
+        Attributes
+        ----------
+        ttl_seconds : int | None
+            TTL in seconds for cache entries.
+        max_cache_bytes : int
+            Maximum total cache size.
+        glob_pattern : str
+            Glob pattern for finding cache files.
+
     """
 
-    ttl_seconds: Optional[int]
+    ttl_seconds: int | None
     max_cache_bytes: int
     glob_pattern: str = "*.npz"
 
@@ -135,7 +138,7 @@ class PruneStrategy:
     def by_size_then_ttl(
         cls,
         max_cache_bytes: int,
-        ttl_seconds: Optional[int] = None,
+        ttl_seconds: int | None = None,
     ) -> PruneStrategy:
         """Create strategy with combined size and TTL constraints."""
         return cls(ttl_seconds=ttl_seconds, max_cache_bytes=max_cache_bytes)
@@ -143,28 +146,29 @@ class PruneStrategy:
     def select_for_removal(
         self,
         cache_dir: Path,
-        now: Optional[float] = None,
-        get_size: Optional[Callable[[Path], int]] = None,
+        now: float | None = None,
+        get_size: Callable[[Path], int] | None = None,
     ) -> list[Path]:
         """Select files to remove to satisfy constraints.
 
-        Selection logic:
-        1. Remove files that have exceeded TTL (if enabled)
-        2. If size > max_cache_bytes, remove oldest files (by mtime)
+                Selection logic:
+                1. Remove files that have exceeded TTL (if enabled)
+                2. If size > max_cache_bytes, remove oldest files (by mtime)
 
-        Parameters
-        ----------
-        cache_dir : Path
-            Directory containing cache files.
-        now : Optional[float]
-            Current time for TTL checking.
-        get_size : Optional[Callable]
-            Function to get file size.
+                Parameters
+                ----------
+                cache_dir : Path
+                    Directory containing cache files.
+                now : float | None
+                    Current time for TTL checking.
+                get_size : Callable | None
+                    Function to get file size.
 
-        Returns
-        -------
-        list[Path]
-            List of file paths to remove.
+                Returns
+                -------
+                list[Path]
+                    List of file paths to remove.
+
         """
         if now is None:
             now = time.time()
@@ -274,16 +278,17 @@ class Pruner:
     def __init__(
         self,
         strategy: PruneStrategy,
-        logger_obj: Optional[logging.Logger] = None,
+        logger_obj: logging.Logger | None = None,
     ):
         """Initialize the pruner.
 
-        Parameters
-        ----------
-        strategy : PruneStrategy
-            Pruning strategy to use.
-        logger_obj : Optional[logging.Logger]
-            Logger instance.
+                Parameters
+                ----------
+                strategy : PruneStrategy
+                    Pruning strategy to use.
+                logger_obj : logging.Logger | None
+                    Logger instance.
+
         """
         self.strategy = strategy
         self.logger_obj = logger_obj or logger

@@ -13,7 +13,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 from unittest.mock import MagicMock
-from typing import Tuple
+from typing import Any
 
 from src.utils.quantity import Quantity
 from src.utils.types import ProcessManagerProtocol
@@ -617,7 +617,7 @@ class TestTimeConverterEdgeCases:
 
         converter = TimeConverter()
         with pytest.raises(ValueError, match="Value must be numeric"):
-            converter.convert("not_a_number")  # type: ignore[arg-type]
+            converter.convert("not_a_number")
 
     def test_time_converter_can_convert(self) -> None:
         """Test TimeConverter can_convert method."""
@@ -665,7 +665,7 @@ class TestLengthConverterEdgeCases:
 
         converter = LengthConverter()
         with pytest.raises(ValueError, match="Value must be numeric"):
-            converter.convert("not_a_number")  # type: ignore[arg-type]
+            converter.convert("not_a_number")
 
     def test_length_converter_can_convert(self) -> None:
         """Test LengthConverter can_convert method."""
@@ -683,7 +683,7 @@ class TestUnitRegistryIsLikelyInUnit:
     def test_is_likely_in_unit_none_array(self) -> None:
         """Test is_likely_in_unit with None returns False."""
         registry = UnitRegistry()
-        assert registry.is_likely_in_unit(None, "km/s") is False  # type: ignore[arg-type]
+        assert registry.is_likely_in_unit(None, "km/s") is False
 
     def test_is_likely_in_unit_km_s_high_values(self) -> None:
         """Test is_likely_in_unit for km/s with high values (not likely)."""
@@ -753,7 +753,7 @@ class TestUnitRegistryIsLikelyInUnit:
         from src.utils.units import _nanmax_abs
 
         # Pass invalid data that will cause exception
-        result = _nanmax_abs(None)  # type: ignore
+        result = _nanmax_abs(None)
         assert np.isinf(result)
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
@@ -15,7 +14,7 @@ class ValidationResult:
     """
 
     is_valid: bool
-    arr1: Optional[NDArray[np.float64]] = None
-    arr2: Optional[NDArray[np.float64]] = None
+    arr1: NDArray[np.float64] | None = None
+    arr2: NDArray[np.float64] | None = None
     n_removed: int = 0
     error_message: str = ""

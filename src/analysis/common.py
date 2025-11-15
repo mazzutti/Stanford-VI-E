@@ -44,7 +44,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast, Any, ClassVar, Sequence
+from typing import TYPE_CHECKING, cast, Any, ClassVar
+from collections.abc import Sequence
 
 
 from src.utils.types import ProcessManagerProtocol
@@ -209,7 +210,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         return f"<AnalysisCommon singleton proc_manager={manager_name}>"
 
     @property
-    def is_initialized(self) -> bool:  # type: ignore[override]
+    def is_initialized(self) -> bool:
         """Instance-level convenience property for initialization state.
 
         Many tests and callers expect `instance.is_initialized` to be a
@@ -284,8 +285,8 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
 
     def clear_cache(
         self,
-        patterns: Optional[list[str]] = None,
-        cache_dir: Optional[Path] = None,
+        patterns: list[str] | None = None,
+        cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
         """Clear process caches via the configured process manager.
@@ -303,7 +304,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         )
 
     def open_file(
-        self, filepath: str, description: Optional[str] = None, prefix: str = ""
+        self, filepath: str, description: str | None = None, prefix: str = ""
     ) -> bool:
         """Open a file using the configured process manager helper.
 
@@ -322,7 +323,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
     def summarize_cache_files(
         self,
         cache_dir: str = CACHE_DIR_DEFAULT,
-        keys: Optional[list[str]] = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Return a summary of cache files using the process manager.

@@ -28,7 +28,8 @@ from __future__ import annotations
 import functools
 import logging
 import time
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def log_execution(func: F) -> F:
             logger_inst.error(f"Failed {func_name}: {e}", exc_info=True)
             raise
 
-    return wrapper  # type: ignore
+    return cast(F, wrapper)
 
 
 def time_operation(
@@ -132,7 +133,7 @@ def time_operation(
                 else:
                     logger_inst.debug(f"{op_label} completed in {elapsed_ms:.1f}ms")
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator
 
@@ -182,7 +183,7 @@ def validate_input(
                 raise ValueError(error_msg)
             return func(self, *args, **kwargs)
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator
 
@@ -215,7 +216,7 @@ def memoize(func: F) -> F:
     >>> result1 = obj.expensive_calculation(5)  # Computed
     >>> result2 = obj.expensive_calculation(5)  # From cache
     """
-    cache: Dict[int, Any] = {}
+    cache: dict[int, Any] = {}
 
     @functools.wraps(func)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
@@ -235,18 +236,19 @@ def memoize(func: F) -> F:
         logger.debug(f"Cache miss for {func.__qualname__}, storing result")
         return result
 
-    # Add cache management methods
-    wrapper.cache_clear = cache.clear  # type: ignore
-    wrapper.cache_info = lambda: f"Cache size: {len(cache)}"  # type: ignore
+    # Add cache management methods (cast to Any to allow attribute assignment)
+    wrapper_any = cast(Any, wrapper)
+    wrapper_any.cache_clear = cache.clear
+    wrapper_any.cache_info = lambda: f"Cache size: {len(cache)}"
 
-    return wrapper  # type: ignore
+    return cast(F, wrapper)
 
 
 def retry(
     max_attempts: int = 3,
     delay_sec: float = 1.0,
     backoff_factor: float = 1.0,
-    retryable_exceptions: Optional[tuple[type[Exception], ...]] = None,
+    retryable_exceptions: tuple[type[Exception], ...] | None = None,
 ) -> Callable[[F], F]:
     """Decorator for automatic retry on failure.
 
@@ -290,7 +292,7 @@ def retry(
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             logger_inst = logging.getLogger(self.__class__.__module__)
             current_delay = delay_sec
-            last_exception: Optional[Exception] = None
+            last_exception: Exception | None = None
 
             for attempt in range(1, max_attempts + 1):
                 try:
@@ -319,6 +321,6 @@ def retry(
                 raise last_exception
             raise RuntimeError(f"{func.__qualname__} failed unexpectedly")
 
-        return wrapper  # type: ignore
+        return cast(F, wrapper)
 
     return decorator

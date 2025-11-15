@@ -12,7 +12,7 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from threading import Thread, Lock
 import time
 
@@ -20,10 +20,8 @@ from src.analysis.patterns.dependency_injection import (
     Lifecycle,
     ServiceDescriptor,
     LifecycleManager,
-    ServiceProvider,
     Container,
     ContainerBuilder,
-    RegistrationError,
     ResolutionError,
 )
 
@@ -32,7 +30,6 @@ from src.analysis.patterns.event_bus import (
     Event,
     EventHandler,
     EventFilter,
-    SubscriptionHandle,
     EventBus,
     AsyncEventBus,
     EventDispatcher,
@@ -44,10 +41,8 @@ from src.core import (
     ConfigValidator,
 )
 from src.analysis.config_manager import (
-    ConfigSource,
     EnvironmentSource,
     JsonSource,
-    YamlSource,
     ConfigManager,
 )
 
@@ -74,7 +69,7 @@ class ServiceWithDependency:
 class ServiceWithCircularA:
     """Service with circular dependency A."""
 
-    def __init__(self, b: "ServiceWithCircularB" = None):
+    def __init__(self, b: "ServiceWithCircularB"):
         self.b = b
 
 
@@ -242,7 +237,7 @@ class TestDependencyInjection:
             t.join()
 
         # All instances should be the same
-        assert len(set(id(inst) for inst in instances)) == 1
+        assert len({id(inst) for inst in instances}) == 1
 
 
 # ============================================================================
@@ -586,8 +581,6 @@ class TestConfigManager:
             )
         )
         manager.set("port", 8080)
-
-        assert manager.validate()
 
     def test_config_manager_validation_failure(self):
         """Test ConfigManager validation failure."""

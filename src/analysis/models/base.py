@@ -7,16 +7,12 @@ base class for statistical results.
 
 from __future__ import annotations
 from typing import (
-    Dict,
-    Optional,
-    List,
     ClassVar,
     Any,
-    Callable,
-    Union,
     TYPE_CHECKING,
     cast,
 )
+from collections.abc import Callable
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -74,7 +70,7 @@ class ModelUtilities:
     # ========================================================================
 
     @staticmethod
-    def is_nan(value: Optional[float]) -> bool:
+    def is_nan(value: float | None) -> bool:
         """Check if a float value is NaN.
 
         Args:
@@ -89,7 +85,7 @@ class ModelUtilities:
 
     @staticmethod
     def safe_float(
-        value: Union[str, int, float, None], default: float = np.nan
+        value: str | int | float | None, default: float = np.nan
     ) -> float:
         """Safely convert a value to float with NaN as default.
 
@@ -128,7 +124,7 @@ class ModelUtilities:
         return isinstance(other, FaciesStats)
 
     @staticmethod
-    def get_absolute_correlation(value: Optional[float]) -> float:
+    def get_absolute_correlation(value: float | None) -> float:
         """Safely get absolute value of correlation, returning -1.0 if None.
 
         Helper for comparing correlation magnitudes when either may be None.
@@ -181,7 +177,7 @@ class ModelUtilities:
 
     @staticmethod
     def validate_in_range(
-        value: Optional[float],
+        value: float | None,
         range_min: float,
         range_max: float,
         name: str,
@@ -210,7 +206,7 @@ class ModelUtilities:
 
     @staticmethod
     def validate_optional_numeric_fields(
-        fields: Dict[str, Optional[float]],
+        fields: dict[str, float | None],
         range_min: float,
         range_max: float,
     ) -> None:
@@ -238,8 +234,8 @@ class ModelUtilities:
 
     @staticmethod
     def validate_matching_keys(
-        dict1: Dict[Any, Any],
-        dict2: Dict[Any, Any],
+        dict1: dict[Any, Any],
+        dict2: dict[Any, Any],
         dict1_name: str = "dict1",
         dict2_name: str = "dict2",
     ) -> None:
@@ -264,7 +260,7 @@ class ModelUtilities:
         if keys1 != keys2:
             missing_in_dict2 = keys1 - keys2
             missing_in_dict1 = keys2 - keys1
-            error_parts: List[str] = []
+            error_parts: list[str] = []
             if missing_in_dict2:
                 error_parts.append(
                     f"keys in {dict1_name} but not {dict2_name}: {len(missing_in_dict2)}"
@@ -280,9 +276,9 @@ class ModelUtilities:
 
     @staticmethod
     def validate_numeric_pair(
-        val1: Optional[float],
-        val2: Optional[float],
-        name: Optional[str] = None,
+        val1: float | None,
+        val2: float | None,
+        name: str | None = None,
     ) -> bool:
         """Validate that both values in a numeric pair are not NaN.
 
@@ -305,10 +301,10 @@ class ModelUtilities:
 
     @staticmethod
     def safe_get_dict(
-        data: Dict[str, Any],
+        data: dict[str, Any],
         key: str,
-        default_factory: Optional[Callable[[], Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        default_factory: Callable[[], dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Safely extract and return a dictionary from another dict, with default.
 
         Consolidates the pattern of `.get("key", {})` used in multiple from_dict()
@@ -324,14 +320,14 @@ class ModelUtilities:
         """
         if default_factory is None:
             # use a typed empty dict factory to avoid partially unknown dict types
-            def _default_factory() -> Dict[str, Any]:
+            def _default_factory() -> dict[str, Any]:
                 return {}
 
             default_factory = _default_factory
 
         value = data.get(key, default_factory())
         return (
-            cast(Dict[str, Any], value)
+            cast(dict[str, Any], value)
             if isinstance(value, dict)
             else default_factory()
         )
@@ -341,7 +337,7 @@ class ModelUtilities:
     # ========================================================================
 
     @staticmethod
-    def compute_array_stats(arr: NDArray[np.float64]) -> Dict[str, float]:
+    def compute_array_stats(arr: NDArray[np.float64]) -> dict[str, float]:
         """Compute standard statistical measures for a numeric array.
 
         Consolidates the pattern of computing min, max, mean, std across
@@ -362,8 +358,8 @@ class ModelUtilities:
 
     @staticmethod
     def build_available_results(
-        conditions: Dict[str, bool],
-    ) -> List[str]:
+        conditions: dict[str, bool],
+    ) -> list[str]:
         """Build list of available result names from condition checks.
 
         Consolidates the pattern of checking multiple conditions and appending
@@ -379,8 +375,8 @@ class ModelUtilities:
 
     @staticmethod
     def reconstruct_transition_stats_map(
-        data: Dict[str, Any], key: str
-    ) -> Dict["Transition", Optional["FaciesStats"]]:
+        data: dict[str, Any], key: str
+    ) -> dict[Transition, FaciesStats | None]:
         """Reconstruct a transition-keyed statistics map from dictionary data.
 
         Helper method to consolidate duplicate logic in from_dict() methods that
@@ -396,7 +392,7 @@ class ModelUtilities:
         from .config import Transition
         from .facies import FaciesStats
 
-        result: Dict["Transition", Optional["FaciesStats"]] = {}
+        result: dict[Transition, FaciesStats | None] = {}
         for transition_data, stats_dict in ModelUtilities.safe_get_dict(
             data, key
         ).items():
@@ -408,8 +404,8 @@ class ModelUtilities:
 
     @staticmethod
     def reconstruct_transition_array_map(
-        data: Dict[str, Any], key: str
-    ) -> Dict["Transition", Optional[NDArray[np.float64]]]:
+        data: dict[str, Any], key: str
+    ) -> dict[Transition, NDArray[np.float64] | None]:
         """Reconstruct a transition-keyed amplitude array map from dictionary data.
 
         Helper method to consolidate duplicate logic in from_dict() methods that
@@ -424,7 +420,7 @@ class ModelUtilities:
         """
         from .config import Transition
 
-        result: Dict["Transition", Optional[NDArray[np.float64]]] = {}
+        result: dict[Transition, NDArray[np.float64] | None] = {}
         for transition_data, amps in ModelUtilities.safe_get_dict(data, key).items():
             transition = Transition.from_string_key(transition_data)
             result[transition] = np.array(amps) if amps else None
@@ -447,7 +443,7 @@ class StatisticalResult(ABC):
         """Return a human-readable summary of the result."""
         pass
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Subclasses should override for custom serialization.

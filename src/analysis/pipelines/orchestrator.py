@@ -19,14 +19,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
     Any,
-    Callable,
-    Dict,
     Generic,
-    List,
-    Optional,
     TypeVar,
     cast,
 )
+from collections.abc import Callable
 import logging
 from datetime import datetime
 
@@ -54,22 +51,23 @@ class StageResult(Generic[T_Out]):
         Name of the stage that produced this result.
     success : bool
         Whether stage execution succeeded.
-    output : Optional[T_Out]
+    output : T_Out | None
         Stage output (None if failed).
-    error : Optional[Exception]
+    error : Exception | None
         Exception if execution failed.
     duration_ms : float
         How long stage took to execute (milliseconds).
-    metadata : Dict[str, Any]
+    metadata : dict[str, Any]
         Additional stage metadata (items processed, memory used, etc).
+
     """
 
     stage_name: str
     success: bool
-    output: Optional[T_Out] = None
-    error: Optional[Exception] = None
+    output: T_Out | None = None
+    error: Exception | None = None
     duration_ms: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
     def __str__(self) -> str:
         """Return human-readable representation.
@@ -225,10 +223,10 @@ class Pipeline(Generic[T_In, T_Out]):
             Name of this pipeline (for logging).
         """
         self.name = name
-        self._stages: List["PipelineStage[Any, Any]"] = []
-        self._results: Dict[str, "StageResult[Any]"] = {}
+        self._stages: list[PipelineStage[Any, Any]] = []
+        self._results: dict[str, StageResult[Any]] = {}
 
-    def add_stage(self, stage: "PipelineStage[Any, Any]") -> "Pipeline[Any, Any]":
+    def add_stage(self, stage: PipelineStage[Any, Any]) -> Pipeline[Any, Any]:
         """Add a stage to the pipeline (fluent API).
 
         Parameters
@@ -326,7 +324,7 @@ class Pipeline(Generic[T_In, T_Out]):
         logger.info(f"Pipeline '{self.name}' completed successfully")
         return cast(T_Out, current)
 
-    def get_stage_result(self, stage_name: str) -> Optional["StageResult[Any]"]:
+    def get_stage_result(self, stage_name: str) -> StageResult[Any] | None:
         """Get result from a specific stage.
 
         Parameters
@@ -336,22 +334,23 @@ class Pipeline(Generic[T_In, T_Out]):
 
         Returns
         -------
-        Optional[StageResult]
+        StageResult | None
             Result if stage was executed, None otherwise.
+
         """
         return self._results.get(stage_name)
 
-    def get_all_results(self) -> Dict[str, "StageResult[Any]"]:
+    def get_all_results(self) -> dict[str, StageResult[Any]]:
         """Get results from all executed stages.
 
         Returns
         -------
-        Dict[str, StageResult]
+        dict[str, StageResult]
             Mapping of stage names to their results.
         """
         return dict(self._results)
 
-    def get_stage_output(self, stage_name: str) -> Optional[Any]:
+    def get_stage_output(self, stage_name: str) -> Any | None:
         """Get output data from a specific stage.
 
         Parameters
@@ -361,8 +360,9 @@ class Pipeline(Generic[T_In, T_Out]):
 
         Returns
         -------
-        Optional[Any]
+        Any | None
             Stage output if stage succeeded, None otherwise.
+
         """
         result = self._results.get(stage_name)
         return result.output if result and result.success else None
@@ -428,7 +428,7 @@ class ConditionalStage(PipelineStage[T_In, T_Out]):
         self,
         inner_stage: PipelineStage[T_In, T_Out],
         condition: Callable[[T_In], bool],
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Initialize conditional stage.
 
@@ -507,9 +507,9 @@ class ParallelPipeline:
             Name of this parallel pipeline.
         """
         self.name = name
-        self._pipelines: List["Pipeline[Any, Any]"] = []
+        self._pipelines: list[Pipeline[Any, Any]] = []
 
-    def add_pipeline(self, pipeline: "Pipeline[Any, Any]") -> "ParallelPipeline":
+    def add_pipeline(self, pipeline: Pipeline[Any, Any]) -> ParallelPipeline:
         """Add a pipeline to execute in parallel.
 
         Parameters
@@ -525,7 +525,7 @@ class ParallelPipeline:
         self._pipelines.append(pipeline)
         return self
 
-    def execute(self, input_data: Any) -> Dict[str, Any]:
+    def execute(self, input_data: Any) -> dict[str, Any]:
         """Execute all pipelines in parallel.
 
         Parameters
@@ -535,10 +535,10 @@ class ParallelPipeline:
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Mapping of pipeline names to results.
         """
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
         for pipeline in self._pipelines:
             results[pipeline.name] = pipeline.execute(input_data)
         return results

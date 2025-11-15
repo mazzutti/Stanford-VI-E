@@ -25,7 +25,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Dict
+from typing import Any
 import logging
 from datetime import datetime
 
@@ -115,7 +115,7 @@ class RunAnalysisCommand(AnalysisCommand):
     undo and redo the operation.
     """
 
-    def __init__(self, analyzer: Any, data: Dict[str, Any]) -> None:
+    def __init__(self, analyzer: Any, data: dict[str, Any]) -> None:
         """Initialize run analysis command.
 
         Args:
@@ -125,8 +125,8 @@ class RunAnalysisCommand(AnalysisCommand):
         super().__init__()
         self.analyzer = analyzer
         self.data = data
-        self.result: Optional[Any] = None
-        self.previous_cache: Optional[dict[str, Any]] = None
+        self.result: Any | None = None
+        self.previous_cache: dict[str, Any] | None = None
 
     def execute(self) -> Any:
         """Execute the analysis.
@@ -205,7 +205,7 @@ class MacroCommand(AnalysisCommand):
     """
 
     def __init__(
-        self, name: str, commands: Optional[List[AnalysisCommand]] = None
+        self, name: str, commands: list[AnalysisCommand] | None = None
     ) -> None:
         """Initialize macro command.
 
@@ -305,7 +305,7 @@ class CommandQueue:
         Args:
             max_history: Maximum number of commands to keep in history
         """
-        self.history: List[AnalysisCommand] = []
+        self.history: list[AnalysisCommand] = []
         self.current_index: int = -1
         self.max_history = max_history
 
@@ -412,7 +412,7 @@ class CommandQueue:
         return self.current_index < len(self.history) - 1
 
     @property
-    def current_command(self) -> Optional[AnalysisCommand]:
+    def current_command(self) -> AnalysisCommand | None:
         """Get the current command"""
         if 0 <= self.current_index < len(self.history):
             return self.history[self.current_index]

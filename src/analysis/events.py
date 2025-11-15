@@ -15,7 +15,7 @@ Event Categories:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, List, cast
+from typing import Any, cast
 from enum import Enum
 from datetime import datetime
 
@@ -92,7 +92,7 @@ class AnalysisStartedEvent(Event):
     analysis_type: str = ""
     domain: str = ""
     cache_dir: str = ""
-    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    parameters: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
     def __post_init__(self) -> None:
@@ -125,7 +125,7 @@ class AnalysisFailedEvent(Event):
     domain: str = ""
     error: str = ""
     error_type: str = ""
-    traceback: Optional[str] = None
+    traceback: str | None = None
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
     def __post_init__(self) -> None:
@@ -166,7 +166,7 @@ class CacheMissEvent(Event):
 class CacheInvalidatedEvent(Event):
     """Event fired when cache is invalidated."""
 
-    keys: List[str] = field(default_factory=lambda: cast(List[str], []))
+    keys: list[str] = field(default_factory=lambda: cast(list[str], []))
     cache_type: str = ""
     reason: str = ""
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
@@ -183,7 +183,7 @@ class ProcessorExecutionStartedEvent(Event):
 
     processor_name: str = ""
     processor_type: str = ""
-    parameters: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    parameters: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
     def __post_init__(self) -> None:
@@ -229,9 +229,9 @@ class ConfigurationChangedEvent(Event):
     """Event fired when configuration changes."""
 
     config_name: str = ""
-    changed_keys: List[str] = field(default_factory=lambda: cast(List[str], []))
-    old_values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    new_values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    changed_keys: list[str] = field(default_factory=lambda: cast(list[str], []))
+    old_values: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
+    new_values: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
     def __post_init__(self) -> None:
@@ -248,7 +248,7 @@ class ErrorOccurredEvent(Event):
     error_type: str = ""
     source: str = ""
     is_critical: bool = False
-    context: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    context: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
 
     def __post_init__(self) -> None:

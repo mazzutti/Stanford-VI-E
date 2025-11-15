@@ -20,11 +20,11 @@ try:
     from src.analysis.facies.pipeline import AnalysisPipeline
     from src.analysis.models import AvoResults
 except Exception:  # pragma: no cover - allow test discovery to proceed
-    PlotConfig = None  # type: ignore
-    GridSpec = None  # type: ignore
-    FaciesCorrelationAnalyzer = None  # type: ignore
-    AnalysisPipeline = None  # type: ignore
-    AvoResults = None  # type: ignore
+    PlotConfig = None
+    GridSpec = None
+    FaciesCorrelationAnalyzer = None
+    AnalysisPipeline = None
+    AvoResults = None
 
 
 def _patch_plotconfig_default() -> None:
@@ -35,7 +35,7 @@ def _patch_plotconfig_default() -> None:
 
     original_default = PlotConfig.default
 
-    def default_with_grid(cls: type[PlotConfig]) -> PlotConfig:  # type: ignore[misc]
+    def default_with_grid(cls: type[PlotConfig]) -> PlotConfig:
         cfg = original_default()
         # Provide minimal attributes expected by AnalysisPipeline and tests
         if not hasattr(cfg, "grid_spec"):
@@ -48,10 +48,10 @@ def _patch_plotconfig_default() -> None:
 
     # Replace classmethod safely
     try:
-        PlotConfig.default = classmethod(default_with_grid)  # type: ignore[attr-defined]
+        PlotConfig.default = classmethod(default_with_grid)
     except Exception:
         # Fallback: assign function (older Python binding)
-        PlotConfig.default = default_with_grid  # type: ignore[assignment]
+        PlotConfig.default = default_with_grid
 
 
 def _patch_analyzer_methods() -> None:

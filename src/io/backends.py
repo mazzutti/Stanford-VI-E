@@ -10,7 +10,7 @@ Key abstractions:
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Protocol, TypeVar, Generic
+from typing import Protocol, TypeVar, Generic
 
 T = TypeVar("T")  # Generic type for cached values
 
@@ -73,45 +73,47 @@ class FileSystemOps(Protocol):
 class CacheStore(ABC, Generic[T]):
     """Abstract base class for cache storage implementations.
 
-    Defines the common interface that all cache backends (in-memory,
-    disk-backed, etc.) must implement for get/set/delete operations.
+        Defines the common interface that all cache backends (in-memory,
+        disk-backed, etc.) must implement for get/set/delete operations.
 
-    This is a Protocol-like interface for all cache implementations.
-    Subclasses should implement the get/set/has/delete/clear contract.
+        This is a Protocol-like interface for all cache implementations.
+        Subclasses should implement the get/set/has/delete/clear contract.
 
-    Type Parameters
-    ---------------
-    T
-        Type of objects stored in the cache (typically dict[str, Any] for
-        serialized data or bytes for binary content).
+        Type Parameters
+        ---------------
+        T
+            Type of objects stored in the cache (typically dict[str, Any] for
+            serialized data or bytes for binary content).
 
-    Methods
-    -------
-    get(key: str) -> Optional[T]
-        Retrieve item from cache.
-    set(key: str, value: T) -> None
-        Store item in cache.
-    has(key: str) -> bool
-        Check if key exists in cache.
-    delete(key: str) -> bool
-        Delete cache entry.
-    clear() -> None
-        Clear all cache entries.
+        Methods
+        -------
+        get(key: str) -> T | None
+            Retrieve item from cache.
+        set(key: str, value: T) -> None
+            Store item in cache.
+        has(key: str) -> bool
+            Check if key exists in cache.
+        delete(key: str) -> bool
+            Delete cache entry.
+        clear() -> None
+            Clear all cache entries.
+
     """
 
     @abstractmethod
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """Retrieve item from cache.
 
-        Parameters
-        ----------
-        key : str
-            Cache key or prefix.
+                Parameters
+                ----------
+                key : str
+                    Cache key or prefix.
 
-        Returns
-        -------
-        Optional[T]
-            Cached value or None if not found or expired.
+                Returns
+                -------
+                T | None
+                    Cached value or None if not found or expired.
+
         """
         pass
 

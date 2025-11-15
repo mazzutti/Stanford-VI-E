@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from typing import Optional, Any
+from typing import Any
 
 
 from numpy.typing import NDArray
@@ -22,7 +22,7 @@ from src.processing.resampling.backends._manager import BackendManager
 try:
     from src.processing.interpolator import BatchedInterpolator as _BatchedInterpolator
 
-    BatchedInterpolator_runtime: Optional[type] = _BatchedInterpolator
+    BatchedInterpolator_runtime: type | None = _BatchedInterpolator
 except Exception:  # pragma: no cover - optional import
     BatchedInterpolator_runtime = None
 

@@ -35,15 +35,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import (
     TypeVar,
-    Optional,
-    List,
-    Union,
     Protocol,
     Generic,
-    Callable,
     Any,
     cast,
 )
+from collections.abc import Callable
 from enum import Enum
 import logging
 
@@ -81,7 +78,7 @@ class Validator(Protocol[T_contra]):
     Any callable that takes a value and returns validation errors or empty list.
     """
 
-    def __call__(self, value: T_contra) -> List[str]:
+    def __call__(self, value: T_contra) -> list[str]:
         """Validate a value.
 
         Parameters
@@ -132,8 +129,8 @@ class ValidatorChain(Generic[T]):
     """
 
     name: str
-    validators: List[Validator[T]] = field(
-        default_factory=lambda: cast(List[Validator[T]], [])
+    validators: list[Validator[T]] = field(
+        default_factory=lambda: cast(list[Validator[T]], [])
     )
     stop_on_first_error: bool = False
 
@@ -170,7 +167,7 @@ class ValidatorChain(Generic[T]):
             self.validators.append(validator)
         return self
 
-    def validate(self, value: T) -> List[str]:
+    def validate(self, value: T) -> list[str]:
         """Validate a value through all validators.
 
         Parameters
@@ -183,10 +180,10 @@ class ValidatorChain(Generic[T]):
         list[str]
             List of error messages (empty if all pass)
         """
-        errors: List[str] = []
+        errors: list[str] = []
         for validator in self.validators:
             try:
-                validator_errors: List[str] = validator(value)
+                validator_errors: list[str] = validator(value)
                 errors.extend(validator_errors)
                 if self.stop_on_first_error and errors:
                     break
@@ -285,8 +282,8 @@ class ValidatorComposite(Generic[T]):
     """
 
     name: str
-    chains: List[ValidatorChain[T]] = field(
-        default_factory=lambda: cast(List[ValidatorChain[T]], [])
+    chains: list[ValidatorChain[T]] = field(
+        default_factory=lambda: cast(list[ValidatorChain[T]], [])
     )
 
     def add_chain(self, chain: ValidatorChain[T]) -> ValidatorComposite[T]:
@@ -305,7 +302,7 @@ class ValidatorComposite(Generic[T]):
         self.chains.append(chain)
         return self
 
-    def validate(self, value: T) -> List[str]:
+    def validate(self, value: T) -> list[str]:
         """Validate using OR logic (any chain can pass).
 
         Parameters
@@ -321,7 +318,7 @@ class ValidatorComposite(Generic[T]):
         if not self.chains:
             return []
 
-        all_errors: List[str] = []
+        all_errors: list[str] = []
         for chain in self.chains:
             errors = chain.validate(value)
             if not errors:
@@ -338,7 +335,7 @@ class ValidatorComposite(Generic[T]):
 # Built-in validators (composable)
 
 
-def not_none(message: str = "is required") -> Callable[[Any], List[str]]:
+def not_none(message: str = "is required") -> Callable[[Any], list[str]]:
     """Validator that checks if value is not None.
 
     Parameters
@@ -352,14 +349,14 @@ def not_none(message: str = "is required") -> Callable[[Any], List[str]]:
         Validator function
     """
 
-    def _not_none(value: Any) -> List[str]:
+    def _not_none(value: Any) -> list[str]:
         return [] if value is not None else [message]
 
     _not_none.__name__ = "not_none"
     return _not_none
 
 
-def positive(message: str = "must be positive") -> Callable[[Any], List[str]]:
+def positive(message: str = "must be positive") -> Callable[[Any], list[str]]:
     """Validator that checks if value is positive.
 
     Parameters
@@ -373,14 +370,14 @@ def positive(message: str = "must be positive") -> Callable[[Any], List[str]]:
         Validator function
     """
 
-    def _positive(value: Union[int, float]) -> List[str]:
+    def _positive(value: int | float) -> list[str]:
         return [] if value > 0 else [message]
 
     _positive.__name__ = "positive"
     return _positive
 
 
-def negative(message: str = "must be negative") -> Callable[[Any], List[str]]:
+def negative(message: str = "must be negative") -> Callable[[Any], list[str]]:
     """Validator that checks if value is negative.
 
     Parameters
@@ -394,7 +391,7 @@ def negative(message: str = "must be negative") -> Callable[[Any], List[str]]:
         Validator function
     """
 
-    def _negative(value: Union[int, float]) -> List[str]:
+    def _negative(value: int | float) -> list[str]:
         return [] if value < 0 else [message]
 
     _negative.__name__ = "negative"
@@ -402,10 +399,10 @@ def negative(message: str = "must be negative") -> Callable[[Any], List[str]]:
 
 
 def in_range(
-    min_val: Union[int, float],
-    max_val: Union[int, float],
-    message: Optional[str] = None,
-) -> Callable[[Any], List[str]]:
+    min_val: int | float,
+    max_val: int | float,
+    message: str | None = None,
+) -> Callable[[Any], list[str]]:
     """Validator that checks if value is in range.
 
     Parameters
@@ -425,7 +422,7 @@ def in_range(
     if message is None:
         message = f"must be between {min_val} and {max_val}"
 
-    def _in_range(value: Union[int, float]) -> List[str]:
+    def _in_range(value: int | float) -> list[str]:
         return [] if min_val <= value <= max_val else [message]
 
     _in_range.__name__ = f"in_range({min_val}, {max_val})"
@@ -435,8 +432,8 @@ def in_range(
 def length_between(
     min_len: int,
     max_len: int,
-    message: Optional[str] = None,
-) -> Callable[[Any], List[str]]:
+    message: str | None = None,
+) -> Callable[[Any], list[str]]:
     """Validator that checks if value length is in range.
 
     Parameters
@@ -456,7 +453,7 @@ def length_between(
     if message is None:
         message = f"length must be between {min_len} and {max_len}"
 
-    def _length_between(value: Any) -> List[str]:
+    def _length_between(value: Any) -> list[str]:
         try:
             return [] if min_len <= len(value) <= max_len else [message]
         except TypeError:
@@ -467,8 +464,8 @@ def length_between(
 
 
 def matches_type(
-    expected_type: type, message: Optional[str] = None
-) -> Callable[[Any], List[str]]:
+    expected_type: type, message: str | None = None
+) -> Callable[[Any], list[str]]:
     """Validator that checks if value is of expected type.
 
     Parameters
@@ -486,14 +483,14 @@ def matches_type(
     if message is None:
         message = f"must be of type {expected_type.__name__}"
 
-    def _matches_type(value: Any) -> List[str]:
+    def _matches_type(value: Any) -> list[str]:
         return [] if isinstance(value, expected_type) else [message]
 
     _matches_type.__name__ = f"matches_type({expected_type.__name__})"
     return _matches_type
 
 
-def is_callable(message: str = "must be callable") -> Callable[[Any], List[str]]:
+def is_callable(message: str = "must be callable") -> Callable[[Any], list[str]]:
     """Validator that checks if value is callable.
 
     Parameters
@@ -507,7 +504,7 @@ def is_callable(message: str = "must be callable") -> Callable[[Any], List[str]]
         Validator function
     """
 
-    def _is_callable(value: Any) -> List[str]:
+    def _is_callable(value: Any) -> list[str]:
         return [] if callable(value) else [message]
 
     _is_callable.__name__ = "is_callable"

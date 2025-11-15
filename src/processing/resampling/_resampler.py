@@ -9,7 +9,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Tuple, Optional, Any, cast
+from typing import Any, cast
 from numpy.typing import NDArray
 
 
@@ -159,10 +159,10 @@ class DepthTimeResampler:
         self,
         data_depth: NDArray[Any] | Quantity,
         vp_depth: NDArray[Any] | Quantity,
-        target_dt: Optional[float] = None,
-        target_nt: Optional[int] = None,
-        plan: Optional["ResamplePlan"] = None,
-    ) -> Tuple[NDArray[Any] | Quantity, float]:
+        target_dt: float | None = None,
+        target_nt: int | None = None,
+        plan: ResamplePlan | None = None,
+    ) -> tuple[NDArray[Any] | Quantity, float]:
         """Resample depth-sampled `data_depth` into a regularly sampled time cube.
 
         Args:
@@ -415,7 +415,7 @@ class DepthTimeResampler:
         self,
         seismogram_time: NDArray[Any] | Quantity,
         vp_depth: NDArray[Any] | Quantity,
-        plan: Optional["ResamplePlan"] = None,
+        plan: ResamplePlan | None = None,
     ) -> NDArray[Any] | Quantity:
         """Convert a time-sampled seismogram to depth-sampled cube using vp_depth.
 
@@ -524,7 +524,7 @@ class DepthTimeResampler:
 
     def compute_twt_for_trace(
         self, vp_trace: NDArray[Any] | Quantity
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
         """Return TWT (padded) and depth axis (padded) for a single trace.
 
         Returns twt_trace (with a leading 0) and a depth trace (also padded)
@@ -550,7 +550,7 @@ class DepthTimeResampler:
         src_time_axis: NDArray[Any],
         target_time_axis: NDArray[Any],
         kind: str = "linear",
-        progress_every: Optional[int] = 30,
+        progress_every: int | None = 30,
         prefix: str = "",
     ) -> NDArray[Any]:
         """Resample a time-sampled cube from src_time_axis to target_time_axis.
@@ -582,9 +582,9 @@ class DepthTimeResampler:
         twt_irregular: NDArray[Any],
         time_axis: NDArray[Any],
         is_categorical: bool = False,
-        progress_every: Optional[int] = 30,
+        progress_every: int | None = 30,
         prefix: str = "",
-        plan: Optional["ResamplePlan"] = None,
+        plan: ResamplePlan | None = None,
     ) -> NDArray[Any]:
         """Convert a depth-sampled property cube to regular time using an
         irregular TWT cube (twt_irregular).

@@ -1,7 +1,6 @@
 """Facies discrimination calculator processor."""
 
 import logging
-from typing import Dict, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -87,7 +86,7 @@ class FaciesDiscriminationCalculator(BaseProcessor):
     def _extract_facies_amplitudes(
         seismic_aligned: NDArray[np.float64],
         facies_aligned: NDArray[np.int64],
-    ) -> tuple[Dict[int, NDArray[np.float64]], List[int]]:
+    ) -> tuple[dict[int, NDArray[np.float64]], list[int]]:
         """Extract amplitudes grouped by facies label.
 
         Delegates to consolidated extraction operation for cleaner,
@@ -112,8 +111,8 @@ class FaciesDiscriminationCalculator(BaseProcessor):
 
     @staticmethod
     def _calculate_facies_stats(
-        facies_amplitudes: Dict[int, NDArray[np.float64]],
-    ) -> Dict[int, FaciesStats]:
+        facies_amplitudes: dict[int, NDArray[np.float64]],
+    ) -> dict[int, FaciesStats]:
         """Calculate statistics for each facies.
 
         Delegates to consolidated statistics operation for cleaner,
@@ -133,8 +132,8 @@ class FaciesDiscriminationCalculator(BaseProcessor):
 
     @staticmethod
     def _calculate_separation_matrix(
-        facies_stats: Dict[int, FaciesStats],
-        label_order: List[int],
+        facies_stats: dict[int, FaciesStats],
+        label_order: list[int],
     ) -> NDArray[np.float64]:
         """Calculate pairwise facies separation matrix.
 

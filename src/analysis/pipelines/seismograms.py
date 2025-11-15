@@ -16,7 +16,8 @@ import time
 import logging
 import subprocess
 from subprocess import CompletedProcess
-from typing import Optional, Generator, Any
+from typing import Any
+from collections.abc import Generator
 from contextlib import contextmanager
 
 
@@ -40,7 +41,7 @@ class SeismogramAnalyzer:
     BYTES_PER_MB = 1024 * 1024
     INDENT_PREFIX = "  "
 
-    def __init__(self, analysis: Optional[AnalysisCommon] = None) -> None:
+    def __init__(self, analysis: AnalysisCommon | None = None) -> None:
         """Initialize the SeismogramAnalyzer with an AnalysisCommon instance.
 
         Args:
@@ -53,7 +54,7 @@ class SeismogramAnalyzer:
     @contextmanager
     def _timed_operation(
         self, description: str, prefix: str = ""
-    ) -> Generator[None, None, None]:
+    ) -> Generator[None]:
         """Context manager for timing and logging operations.
 
         Logs operation start and completion time. Guarantees timing is logged
@@ -77,7 +78,7 @@ class SeismogramAnalyzer:
 
     def run_command(
         self, cmd: Any, description: str = "", prefix: str = ""
-    ) -> Optional[CompletedProcess[bytes]]:
+    ) -> CompletedProcess[bytes] | None:
         """Run a shell command with timing and error reporting.
 
         Args:
@@ -111,7 +112,7 @@ class SeismogramAnalyzer:
             return None
 
     def clear_cache(
-        self, patterns: Optional[list[str]] = None, prefix: str = ""
+        self, patterns: list[str] | None = None, prefix: str = ""
     ) -> int:
         """Clear cache files matching specified patterns.
 

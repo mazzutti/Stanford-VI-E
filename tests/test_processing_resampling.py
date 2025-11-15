@@ -141,7 +141,7 @@ class TestResamplerService:
     def test_service_requires_grid_spec(self):
         """Test service requires grid_spec parameter."""
         with pytest.raises(TypeError):
-            ResamplerService()  # type: ignore
+            ResamplerService()
 
     def test_service_with_grid_spec(self):
         """Test service creation with grid spec."""

@@ -31,7 +31,8 @@ Usage:
 import time
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, List, Type, cast
+from typing import Any, cast
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
 from enum import Enum
@@ -206,9 +207,9 @@ class RetryStats:
     successful_attempts: int = 0
     failed_attempts: int = 0
     total_delay: float = 0.0
-    last_exception: Optional[Exception] = None
-    exceptions_encountered: List[str] = field(
-        default_factory=lambda: cast(List[str], [])
+    last_exception: Exception | None = None
+    exceptions_encountered: list[str] = field(
+        default_factory=lambda: cast(list[str], [])
     )
 
     @property
@@ -245,12 +246,12 @@ class RetryPolicy:
         self,
         max_attempts: int = 3,
         initial_delay: float = 1.0,
-        strategy: Optional[RetryStrategy] = None,
+        strategy: RetryStrategy | None = None,
         jitter: bool = True,
         jitter_factor: float = 0.1,
-        timeout: Optional[float] = None,
-        retryable_exceptions: Optional[List[Type[Exception]]] = None,
-        name: Optional[str] = None,
+        timeout: float | None = None,
+        retryable_exceptions: list[type[Exception]] | None = None,
+        name: str | None = None,
     ) -> None:
         """
         Initialize retry policy.
@@ -275,7 +276,7 @@ class RetryPolicy:
         self.name = name or "RetryPolicy"
 
         self._stats = RetryStats()
-        self._start_time: Optional[float] = None
+        self._start_time: float | None = None
 
     def _apply_jitter(self, delay: float) -> float:
         """Apply random jitter to delay."""
@@ -432,10 +433,10 @@ def timeout(seconds: float) -> Callable[[Callable[..., Any]], Callable[..., Any]
 def retry(
     max_attempts: int = 3,
     initial_delay: float = 1.0,
-    strategy: Optional[RetryStrategy] = None,
+    strategy: RetryStrategy | None = None,
     jitter: bool = True,
-    timeout: Optional[float] = None,
-    retryable_exceptions: Optional[List[Type[Exception]]] = None,
+    timeout: float | None = None,
+    retryable_exceptions: list[type[Exception]] | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for automatic retry logic.
@@ -471,9 +472,6 @@ def retry(
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             return policy.execute(func, *args, **kwargs)
-
-        # Attach policy for testing/inspection
-        wrapper._retry_policy = policy  # type: ignore
 
         return wrapper
 

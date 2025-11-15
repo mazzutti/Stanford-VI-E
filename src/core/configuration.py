@@ -28,15 +28,10 @@ from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Type,
     TypeVar,
-    Union,
     cast,
 )
+from collections.abc import Callable
 import logging
 
 logger = logging.getLogger(__name__)
@@ -104,7 +99,7 @@ class ConfigRule:
         Whether value is required (not None)
     expected_type : Type, optional
         Expected type of value
-    validators : List[Callable], optional
+    validators : list[Callable], optional
         Custom validation functions
     description : str
         Description of rule
@@ -112,13 +107,13 @@ class ConfigRule:
 
     key: str
     required: bool = False
-    expected_type: Optional[Type[Any]] = None
-    validators: List[Validator] = field(
-        default_factory=lambda: cast(List[Validator], [])
+    expected_type: type[Any] | None = None
+    validators: list[Validator] = field(
+        default_factory=lambda: cast(list[Validator], [])
     )
     description: str = ""
 
-    def validate(self, value: Any) -> tuple[bool, Optional[str]]:
+    def validate(self, value: Any) -> tuple[bool, str | None]:
         """Validate a configuration value.
 
         Parameters
@@ -128,8 +123,9 @@ class ConfigRule:
 
         Returns
         -------
-        tuple[bool, Optional[str]]
+        tuple[bool, str | None]
             (is_valid, error_message)
+
         """
         if value is None:
             if self.required:
@@ -157,13 +153,13 @@ class ConfigValidator:
 
     Attributes
     ----------
-    rules : Dict[str, ConfigRule]
+    rules : dict[str, ConfigRule]
         Mapping of config keys to validation rules
     """
 
     def __init__(self) -> None:
         """Initialize validator."""
-        self.rules: Dict[str, ConfigRule] = {}
+        self.rules: dict[str, ConfigRule] = {}
 
     def add_rule(self, rule: ConfigRule) -> ConfigValidator:
         """Add validation rule.
@@ -181,12 +177,12 @@ class ConfigValidator:
         self.rules[rule.key] = rule
         return self
 
-    def add_rules(self, rules: List[ConfigRule]) -> ConfigValidator:
+    def add_rules(self, rules: list[ConfigRule]) -> ConfigValidator:
         """Add multiple validation rules.
 
         Parameters
         ----------
-        rules : List[ConfigRule]
+        rules : list[ConfigRule]
             Rules to add
 
         Returns
@@ -198,27 +194,27 @@ class ConfigValidator:
             self.add_rule(rule)
         return self
 
-    def validate(self, config: Dict[str, Any]) -> tuple[bool, List[str]]:
+    def validate(self, config: dict[str, Any]) -> tuple[bool, list[str]]:
         """Validate configuration.
 
         Parameters
         ----------
-        config : Dict[str, Any]
+        config : dict[str, Any]
             Configuration to validate
 
         Returns
         -------
-        tuple[bool, List[str]]
+        tuple[bool, list[str]]
             (is_valid, list_of_errors)
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         for key, rule in self.rules.items():
             value = config.get(key)
             is_valid, error = rule.validate(value)
 
             if not is_valid:
-                # error is Optional[str] from ConfigRule.validate, but when
+                # error is str | None from ConfigRule.validate, but when
                 # is_valid is False we expect a string message. Cast to str
                 # to satisfy static analysis.
                 errors.append(cast(str, error))
@@ -239,12 +235,12 @@ class ConfigSource(ABC):
     """
 
     @abstractmethod
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration.
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Loaded configuration dictionary
         """
         pass
@@ -263,36 +259,38 @@ class ConfigSourceRegistry:
     """
 
     @staticmethod
-    def create_json_source(path: Union[str, Path]) -> ConfigSource:
+    def create_json_source(path: str | Path) -> ConfigSource:
         """Create JSON configuration source.
 
         Parameters
         ----------
-        path : Union[str, Path]
+        path : str | Path
             Path to JSON file
 
         Returns
         -------
         ConfigSource
             JSON source instance
+
         """
         from src.analysis.config_manager import JsonSource
 
         return cast(ConfigSource, JsonSource(path))
 
     @staticmethod
-    def create_yaml_source(path: Union[str, Path]) -> ConfigSource:
+    def create_yaml_source(path: str | Path) -> ConfigSource:
         """Create YAML configuration source.
 
         Parameters
         ----------
-        path : Union[str, Path]
+        path : str | Path
             Path to YAML file
 
         Returns
         -------
         ConfigSource
             YAML source instance
+
         """
         from src.analysis.config_manager import YamlSource
 
@@ -332,11 +330,11 @@ class BaseConfig(ABC):
 
     Attributes
     ----------
-    _config : Dict[str, Any]
+    _config : dict[str, Any]
         Main configuration dictionary
-    _defaults : Dict[str, Any]
+    _defaults : dict[str, Any]
         Default configuration values
-    _overrides : Dict[str, Any]
+    _overrides : dict[str, Any]
         Runtime override values
     _validator : ConfigValidator
         Validation rule manager
@@ -346,9 +344,9 @@ class BaseConfig(ABC):
 
     def __init__(self) -> None:
         """Initialize configuration."""
-        self._config: Dict[str, Any] = {}
-        self._defaults: Dict[str, Any] = {}
-        self._overrides: Dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
+        self._defaults: dict[str, Any] = {}
+        self._overrides: dict[str, Any] = {}
         self._validator = ConfigValidator()
         self._profile = ConfigProfile.DEVELOPMENT
         logger.debug(f"Initialized {self.__class__.__name__}")
@@ -468,12 +466,12 @@ class BaseConfig(ABC):
         self._validator.add_rule(rule)
         return self
 
-    def add_rules(self, rules: List[ConfigRule]) -> BaseConfig:
+    def add_rules(self, rules: list[ConfigRule]) -> BaseConfig:
         """Add multiple validation rules.
 
         Parameters
         ----------
-        rules : List[ConfigRule]
+        rules : list[ConfigRule]
             Rules to add
 
         Returns
@@ -484,12 +482,12 @@ class BaseConfig(ABC):
         self._validator.add_rules(rules)
         return self
 
-    def validate(self) -> tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         """Validate configuration.
 
         Returns
         -------
-        tuple[bool, List[str]]
+        tuple[bool, list[str]]
             (is_valid, list_of_errors)
         """
         return self._validator.validate(self._config)
@@ -505,18 +503,19 @@ class BaseConfig(ABC):
         is_valid, _ = self.validate()
         return is_valid
 
-    def load_profile(self, profile: Union[str, ConfigProfile]) -> BaseConfig:
+    def load_profile(self, profile: str | ConfigProfile) -> BaseConfig:
         """Set configuration profile.
 
         Parameters
         ----------
-        profile : Union[str, ConfigProfile]
+        profile : str | ConfigProfile
             Profile name or enum value
 
         Returns
         -------
         BaseConfig
             Self for chaining
+
         """
         if isinstance(profile, str):
             profile = ConfigProfile.from_string(profile)
@@ -535,34 +534,34 @@ class BaseConfig(ABC):
         """
         return self._profile
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """Get entire configuration.
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Configuration dictionary (copy)
         """
         return self._config.copy()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary.
 
         Returns
         -------
-        Dict[str, Any]
+        dict[str, Any]
             Configuration dictionary
         """
         return self._config.copy()
 
-    def _merge_config(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
+    def _merge_config(self, target: dict[str, Any], source: dict[str, Any]) -> None:
         """Recursively merge source configuration into target.
 
         Parameters
         ----------
-        target : Dict[str, Any]
+        target : dict[str, Any]
             Target configuration
-        source : Dict[str, Any]
+        source : dict[str, Any]
             Source configuration to merge
         """
         for key, value in source.items():
@@ -571,11 +570,11 @@ class BaseConfig(ABC):
                 and key in target
                 and isinstance(target[key], dict)
             ):
-                # Cast both sides to Dict[str, Any] so the type checker knows
+                # Cast both sides to dict[str, Any] so the type checker knows
                 # we are passing the correct types to the recursive call.
                 self._merge_config(
-                    cast(Dict[str, Any], target[key]),
-                    cast(Dict[str, Any], value),
+                    cast(dict[str, Any], target[key]),
+                    cast(dict[str, Any], value),
                 )
             else:
                 target[key] = value

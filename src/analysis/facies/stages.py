@@ -13,7 +13,7 @@ Stages handle:
 """
 
 import logging
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from src.analysis.pipelines.orchestrator import PipelineStage
 from src.analysis.domain.enum import Domain
@@ -49,7 +49,7 @@ class ValidateInputsStage(PipelineStage[Any, Any]):
             return False
         return all(key in input_data for key in ["analyzer", "cache_dir", "domain"])
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Validate inputs and prepare analysis context.
 
         Parameters
@@ -95,7 +95,7 @@ class LoadAnalysisDataStage(PipelineStage[Any, Any]):
         """Check if stage can execute."""
         return isinstance(input_data, dict) and "analyzer" in input_data
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Load analysis data.
 
         In the current implementation, data loading is handled by
@@ -132,14 +132,14 @@ class DomainTransformationStage(PipelineStage[Any, Any]):
         if not isinstance(input_data, dict):
             return False
         # Cast to a specific dict type to help the type checker
-        data = cast(Dict[str, Any], input_data)
+        data = cast(dict[str, Any], input_data)
         return (
             "analyzer" in data
             and "domain" in data
             and bool(data.get("data_loaded", False))
         )
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Perform domain transformation if needed.
 
         Parameters
@@ -180,10 +180,10 @@ class BoundaryDetectionStage(PipelineStage[Any, Any]):
         """Check if stage can execute."""
         if not isinstance(input_data, dict):
             return False
-        data = cast(Dict[str, Any], input_data)
+        data = cast(dict[str, Any], input_data)
         return "analyzer" in data and bool(data.get("domain_transformed", False))
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Detect facies boundaries.
 
         Parameters
@@ -222,10 +222,10 @@ class AvoAnalysisStage(PipelineStage[Any, Any]):
         """Check if stage can execute."""
         if not isinstance(input_data, dict):
             return False
-        data = cast(Dict[str, Any], input_data)
+        data = cast(dict[str, Any], input_data)
         return "analyzer" in data and bool(data.get("boundaries_detected", False))
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Perform AVO analysis.
 
         This stage orchestrates multiple sub-analyses:
@@ -268,10 +268,10 @@ class ResultsAggregationStage(PipelineStage[Any, Any]):
         """Check if stage can execute."""
         if not isinstance(input_data, dict):
             return False
-        data = cast(Dict[str, Any], input_data)
+        data = cast(dict[str, Any], input_data)
         return "analyzer" in data and bool(data.get("analysis_complete", False))
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Aggregate results.
 
         Parameters
@@ -304,10 +304,10 @@ class PlottingStage(PipelineStage[Any, Any]):
         """Check if stage can execute."""
         if not isinstance(input_data, dict):
             return False
-        data = cast(Dict[str, Any], input_data)
+        data = cast(dict[str, Any], input_data)
         return "analyzer" in data and bool(data.get("results_aggregated", False))
 
-    def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Generate plots.
 
         Parameters

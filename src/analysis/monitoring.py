@@ -33,7 +33,8 @@ import json
 import time
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Callable, Type, Literal, cast
+from typing import Any, Literal, cast
+from collections.abc import Callable
 from types import TracebackType
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -72,8 +73,8 @@ class LogEvent:
     level: str
     message: str
     service: str
-    context: Dict[str, Any] = field(default_factory=lambda: {})
-    exception: Optional[str] = None
+    context: dict[str, Any] = field(default_factory=lambda: {})
+    exception: str | None = None
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -91,7 +92,7 @@ class MetricValue:
     type: MetricType
     value: float
     timestamp: float
-    tags: Dict[str, str] = field(default_factory=lambda: cast(Dict[str, str], {}))
+    tags: dict[str, str] = field(default_factory=lambda: cast(dict[str, str], {}))
 
     def __str__(self) -> str:
         tags_str = ", ".join(f"{k}={v}" for k, v in self.tags.items())
@@ -106,18 +107,18 @@ class PerformanceMetrics:
 
     name: str
     start_time: float
-    end_time: Optional[float] = None
-    duration: Optional[float] = None
+    end_time: float | None = None
+    duration: float | None = None
     success: bool = False
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
     @property
     def is_complete(self) -> bool:
         """Check if operation has completed."""
         return self.end_time is not None
 
-    def complete(self, success: bool = True, error: Optional[str] = None) -> None:
+    def complete(self, success: bool = True, error: str | None = None) -> None:
         """Mark operation as complete."""
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
@@ -153,13 +154,13 @@ class StructuredLogger:
         self.log_level = log_level
         self.include_context = include_context
         self._lock = RLock()
-        self._context_stack: List[Dict[str, Any]] = []
+        self._context_stack: list[dict[str, Any]] = []
 
-    def _get_current_context(self) -> Dict[str, Any]:
+    def _get_current_context(self) -> dict[str, Any]:
         """Get merged context from stack."""
-        merged: Dict[str, Any] = {}
+        merged: dict[str, Any] = {}
         for ctx in self._context_stack:
-            # ctx is a Dict[str, Any], annotating merged makes update type-safe
+            # ctx is a dict[str, Any], annotating merged makes update type-safe
             merged.update(ctx)
         return merged
 
@@ -167,7 +168,7 @@ class StructuredLogger:
         self,
         level: LogLevel,
         message: str,
-        exception: Optional[Exception] = None,
+        exception: Exception | None = None,
         **kwargs: Any,
     ) -> LogEvent:
         """Internal logging method."""
@@ -199,13 +200,13 @@ class StructuredLogger:
         return self._log(LogLevel.WARNING, message, **kwargs)
 
     def error(
-        self, message: str, exception: Optional[Exception] = None, **kwargs: Any
+        self, message: str, exception: Exception | None = None, **kwargs: Any
     ) -> LogEvent:
         """Log error message."""
         return self._log(LogLevel.ERROR, message, exception, **kwargs)
 
     def critical(
-        self, message: str, exception: Optional[Exception] = None, **kwargs: Any
+        self, message: str, exception: Exception | None = None, **kwargs: Any
     ) -> LogEvent:
         """Log critical message."""
         return self._log(LogLevel.CRITICAL, message, exception, **kwargs)
@@ -227,9 +228,9 @@ class StructuredLogger:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Context manager exit."""
         pass
@@ -248,14 +249,14 @@ class MetricsCollector:
             name: Name of the metrics collector
         """
         self.name = name
-        self._metrics: Dict[str, List[MetricValue]] = {}
+        self._metrics: dict[str, list[MetricValue]] = {}
         self._lock = RLock()
 
     def record_counter(
         self,
         metric_name: str,
         value: float = 1.0,
-        tags: Optional[Dict[str, str]] = None,
+        tags: dict[str, str] | None = None,
     ) -> None:
         """
         Record a counter metric (monotonically increasing).
@@ -278,7 +279,7 @@ class MetricsCollector:
             self._metrics[metric_name].append(metric)
 
     def record_gauge(
-        self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
+        self, metric_name: str, value: float, tags: dict[str, str] | None = None
     ) -> None:
         """
         Record a gauge metric (point-in-time value).
@@ -301,7 +302,7 @@ class MetricsCollector:
             self._metrics[metric_name].append(metric)
 
     def record_histogram(
-        self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
+        self, metric_name: str, value: float, tags: dict[str, str] | None = None
     ) -> None:
         """
         Record a histogram metric (distribution of values).
@@ -324,7 +325,7 @@ class MetricsCollector:
             self._metrics[metric_name].append(metric)
 
     def record_timer(
-        self, metric_name: str, duration: float, tags: Optional[Dict[str, str]] = None
+        self, metric_name: str, duration: float, tags: dict[str, str] | None = None
     ) -> None:
         """
         Record a timer metric (duration in seconds).
@@ -346,16 +347,16 @@ class MetricsCollector:
                 self._metrics[metric_name] = []
             self._metrics[metric_name].append(metric)
 
-    def get_metric(self, name: str) -> Optional[MetricValue]:
+    def get_metric(self, name: str) -> MetricValue | None:
         """Get the latest value of a metric."""
         with self._lock:
             values = self._metrics.get(name, [])
             return values[-1] if values else None
 
-    def get_metrics_summary(self) -> Dict[str, Dict[str, Any]]:
+    def get_metrics_summary(self) -> dict[str, dict[str, Any]]:
         """Get summary of all metrics."""
         with self._lock:
-            summary: Dict[str, Dict[str, Any]] = {}
+            summary: dict[str, dict[str, Any]] = {}
             for name, values in self._metrics.items():
                 if not values:
                     continue
@@ -390,7 +391,7 @@ class PerformanceMonitor:
     Context manager for monitoring performance of operations.
     """
 
-    def __init__(self, name: str, logger: Optional[StructuredLogger] = None) -> None:
+    def __init__(self, name: str, logger: StructuredLogger | None = None) -> None:
         """
         Initialize performance monitor.
 
@@ -410,9 +411,9 @@ class PerformanceMonitor:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> Literal[False]:
         """Exit context - operation completed."""
         success = exc_type is None
@@ -497,7 +498,7 @@ class HealthCheckRegistry:
 
     def __init__(self) -> None:
         """Initialize health check registry."""
-        self._checks: Dict[str, HealthCheck] = {}
+        self._checks: dict[str, HealthCheck] = {}
         self._lock = RLock()
 
     def register(self, check: HealthCheck) -> None:
@@ -521,7 +522,7 @@ class HealthCheckRegistry:
             if name in self._checks:
                 del self._checks[name]
 
-    def check_all(self) -> Dict[str, bool]:
+    def check_all(self) -> dict[str, bool]:
         """
         Run all health checks.
 
@@ -529,7 +530,7 @@ class HealthCheckRegistry:
             Dict mapping check names to health status
         """
         with self._lock:
-            results: Dict[str, bool] = {}
+            results: dict[str, bool] = {}
             for name, check in self._checks.items():
                 results[name] = check.check()
             return results
@@ -545,8 +546,8 @@ class HealthCheckRegistry:
 
 
 def monitor(
-    logger: Optional[StructuredLogger] = None,
-    metrics: Optional[MetricsCollector] = None,
+    logger: StructuredLogger | None = None,
+    metrics: MetricsCollector | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for monitoring function execution.

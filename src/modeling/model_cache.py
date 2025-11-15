@@ -11,7 +11,8 @@ import os
 import hashlib
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, Callable, cast
+from typing import Any, cast
+from collections.abc import Callable
 import logging
 
 from src.modeling.modeling import SynthesisConfig, unwrap_quantity

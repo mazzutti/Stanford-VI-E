@@ -9,7 +9,7 @@ error handling and reduced code duplication.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, cast
+from typing import Any, cast
 from functools import cached_property
 
 import numpy as np
@@ -22,8 +22,8 @@ from .formatters import FormattableModel
 from ..validators import RangeValidator, ValidationError
 
 # Type aliases for common patterns
-TransitionStatsMap = Dict[Transition, Optional[FaciesStats]]
-TransitionArrayMap = Dict[Transition, Optional[NDArray[np.float64]]]
+TransitionStatsMap = dict[Transition, FaciesStats | None]
+TransitionArrayMap = dict[Transition, NDArray[np.float64] | None]
 
 __all__ = [
     "GradientCorrelationResult",
@@ -92,7 +92,7 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
         """Return the number of identified boundaries."""
         return int(np.sum(self.boundaries))
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Provides statistics for consistent __repr__/__str__ formatting
@@ -110,7 +110,7 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
             "spearman_corr": self.spearman_correlation,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Args:
@@ -158,7 +158,7 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> GradientCorrelationResult:
+    def from_dict(cls, data: dict[str, Any]) -> GradientCorrelationResult:
         """Create result from dictionary representation.
 
         Args:
@@ -234,7 +234,7 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
         return float(np.mean(self.at_boundaries) - np.mean(self.away_from_boundaries))
 
     @cached_property
-    def statistics(self) -> Dict[str, float]:
+    def statistics(self) -> dict[str, float]:
         """Return cached statistical comparison between boundary and non-boundary amplitudes."""
         return {
             "at_boundaries_mean": float(np.mean(self.at_boundaries)),
@@ -244,7 +244,7 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
             "difference": self.amplitude_difference,
         }
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Provides statistics for consistent __repr__/__str__ formatting
@@ -255,7 +255,7 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
         """
         return self.statistics
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Args:
@@ -294,7 +294,7 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> BoundaryAmpsResult:
+    def from_dict(cls, data: dict[str, Any]) -> BoundaryAmpsResult:
         """Create result from dictionary representation.
 
         Args:
@@ -335,13 +335,13 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
     Inherits FormattableModel for consistent __repr__/__str__ formatting.
     """
 
-    facies_stats: Dict[int, FaciesStats]
+    facies_stats: dict[int, FaciesStats]
     separation_matrix: NDArray[np.float64]
-    facies_amplitudes: Dict[int, NDArray[np.float64]] = field(
-        default_factory=lambda: cast(Dict[int, NDArray[np.float64]], {})
+    facies_amplitudes: dict[int, NDArray[np.float64]] = field(
+        default_factory=lambda: cast(dict[int, NDArray[np.float64]], {})
     )
     # Order of facies labels that index rows/columns of `separation_matrix`.
-    label_order: List[int] = field(default_factory=lambda: cast(List[int], []))
+    label_order: list[int] = field(default_factory=lambda: cast(list[int], []))
 
     def __post_init__(self) -> None:
         """Validate consistency of facies data.
@@ -406,7 +406,7 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
         separation = float(self.separation_matrix[max_idx])
         return facies_a, facies_b, separation
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Provides statistics for consistent __repr__/__str__ formatting
@@ -424,7 +424,7 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
             "mean_separation": self.mean_separation,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Args:
@@ -474,7 +474,7 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> FaciesDiscriminationResult:
+    def from_dict(cls, data: dict[str, Any]) -> FaciesDiscriminationResult:
         """Create result from dictionary representation.
 
         Args:
@@ -562,7 +562,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
         return len(self.transitions_summary)
 
     @cached_property
-    def valid_transitions(self) -> List[Transition]:
+    def valid_transitions(self) -> list[Transition]:
         """Get cached list of valid transitions with data."""
         return [
             transition
@@ -572,7 +572,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
 
     def get_amplitudes_for_transition(
         self, transition: Transition
-    ) -> Optional[NDArray[np.float64]]:
+    ) -> NDArray[np.float64] | None:
         """Retrieve raw amplitudes for a specific transition."""
         return self.interface_stats.get(transition)
 
@@ -588,7 +588,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
         stats = self.transitions_summary.get(transition)
         return stats is not None and stats.count > 0
 
-    def get_transitions_with_minimum_count(self, min_count: int) -> List[Transition]:
+    def get_transitions_with_minimum_count(self, min_count: int) -> list[Transition]:
         """Get all transitions with at least the specified sample count.
 
         Args:
@@ -603,7 +603,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
             if stats is not None and stats.count >= min_count
         ]
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Provides statistics for consistent __repr__/__str__ formatting
@@ -617,7 +617,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
             "valid_transitions": float(len(self.valid_transitions)),
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Args:
@@ -653,7 +653,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> InterfaceReflectionResult:
+    def from_dict(cls, data: dict[str, Any]) -> InterfaceReflectionResult:
         """Create result from dictionary representation.
 
         Args:
@@ -723,7 +723,7 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
         return len(self.interface_summary) > 0
 
     @property
-    def all_valid_components(self) -> List[str]:
+    def all_valid_components(self) -> list[str]:
         """Return list of valid analysis components.
 
         Identifies which analysis techniques produced valid results from the
@@ -756,7 +756,7 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
         valid_count = len(self.all_valid_components)
         return (valid_count / 4) * 100
 
-    def get_stats_dict(self) -> Dict[str, float]:
+    def get_stats_dict(self) -> dict[str, float]:
         """Return statistics dictionary for FormattableModel formatting.
 
         Provides statistics for consistent __repr__/__str__ formatting
@@ -770,7 +770,7 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
             "coverage_pct": self.analysis_coverage,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
 
         Args:
@@ -818,7 +818,7 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AvoAnalysisResult:
+    def from_dict(cls, data: dict[str, Any]) -> AvoAnalysisResult:
         """Create result from dictionary representation.
 
         Args:

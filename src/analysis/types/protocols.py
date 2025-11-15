@@ -7,11 +7,6 @@ maintaining static type safety through Python's Protocol system.
 
 from typing import (
     Protocol,
-    Optional,
-    Dict,
-    Tuple,
-    List,
-    Union,
     Any,
     TypeVar,
     Generic,
@@ -117,7 +112,7 @@ class TimeResampler(Protocol):
 
     def resample_to_time(
         self, arr: NDArray[np.int64], is_categorical: bool, target_dt: float
-    ) -> Tuple[NDArray[np.int64], float]:
+    ) -> tuple[NDArray[np.int64], float]:
         """Resample array to target time interval.
 
         Args:
@@ -145,8 +140,8 @@ class CacheLoaderProtocol(Protocol):
     """
 
     def select_cache_file(
-        self, cache_dir: Union[str, PathLike[str]], domain: str
-    ) -> Optional[str]:
+        self, cache_dir: str | PathLike[str], domain: str
+    ) -> str | None:
         """Select a cache file from the cache directory.
 
         Args:
@@ -159,8 +154,8 @@ class CacheLoaderProtocol(Protocol):
         ...
 
     def load_full_stack(
-        self, filename: Union[str, PathLike[str]]
-    ) -> Optional[NDArray[np.float64]]:
+        self, filename: str | PathLike[str]
+    ) -> NDArray[np.float64] | None:
         """Load a full stack array from a cache file.
 
         Args:
@@ -182,7 +177,7 @@ class CacheProtocol(Protocol, Generic[T]):
     that provides the required methods, without inheritance requirements.
     """
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """Retrieve a value from cache.
 
         Args:
@@ -202,7 +197,7 @@ class CacheProtocol(Protocol, Generic[T]):
         """
         ...
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all keys currently in cache.
 
         Returns:
@@ -214,7 +209,7 @@ class CacheProtocol(Protocol, Generic[T]):
         """Clear all entries from cache."""
         ...
 
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> dict[str, Any]:
         """Get cache metadata and statistics.
 
         Returns:
@@ -236,7 +231,7 @@ class SelectorProtocol(Protocol):
     and cache directory, implementing custom selection logic.
     """
 
-    def __call__(self, cache_dir: str, domain: str) -> Optional[str]:
+    def __call__(self, cache_dir: str, domain: str) -> str | None:
         """Select a cache file for the given domain.
 
         Args:
@@ -256,7 +251,7 @@ class ArchiveExtractorProtocol(Protocol):
     enabling flexible archive handling with type-safe return values.
     """
 
-    def __call__(self, archive: NpzFile) -> Optional[NDArray[np.float64]]:
+    def __call__(self, archive: NpzFile) -> NDArray[np.float64] | None:
         """Extract data from an NPZ archive.
 
         Args:
@@ -276,7 +271,7 @@ class DatasetManagerFactory(Protocol):
     """
 
     def create(
-        self, data_path: str, file_map: Dict[str, str], grid_spec: GridSpec
+        self, data_path: str, file_map: dict[str, str], grid_spec: GridSpec
     ) -> DatasetManager:
         """Create a DatasetManager with the given configuration.
 

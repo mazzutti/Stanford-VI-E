@@ -5,7 +5,7 @@ Inherits from BasePlotter for consistency and shared utilities.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, List, Dict, Tuple
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -90,7 +90,7 @@ class FaciesPlotter(BasePlotter):
         self._log_debug("create_summary_plots: plotting interface strengths")
         # 2. Reflection strength at different interface types (AVO)
         ax2: Axes = fig.add_subplot(2, 3, 2)
-        rows: List[Tuple[Tuple[int, int], str, Dict[str, Any]]] = []
+        rows: list[tuple[tuple[int, int], str, dict[str, Any]]] = []
         for key, stats in (
             getattr(avo_results, "interface_stats_summary", {}) or {}
         ).items():
@@ -107,9 +107,9 @@ class FaciesPlotter(BasePlotter):
 
         # sort rows for stable display
         rows.sort(key=lambda r: r[0])
-        interface_types: List[str] = [r[1] for r in rows]
-        avo_means: List[float] = [r[2].get("mean", 0.0) for r in rows]
-        avo_stds: List[float] = [r[2].get("std", 0.0) for r in rows]
+        interface_types: list[str] = [r[1] for r in rows]
+        avo_means: list[float] = [r[2].get("mean", 0.0) for r in rows]
+        avo_stds: list[float] = [r[2].get("std", 0.0) for r in rows]
 
         # Convert to NumPy arrays for ArrayLike parameters (bar, yerr)
         avo_means_arr = np.asarray(avo_means)
@@ -135,8 +135,8 @@ class FaciesPlotter(BasePlotter):
         self._log_debug("create_summary_plots: plotting facies discrimination")
         # 3. Facies discrimination - amplitude by facies type (AVO)
         ax3: Axes = fig.add_subplot(2, 3, 3)
-        facies_labels: List[str] = []
-        avo_facies_data: List[NDArray[Any]] = []
+        facies_labels: list[str] = []
+        avo_facies_data: list[NDArray[Any]] = []
         for facies_val in range(4):
             facies_data = (getattr(avo_results, "facies_amplitudes", {}) or {}).get(
                 facies_val

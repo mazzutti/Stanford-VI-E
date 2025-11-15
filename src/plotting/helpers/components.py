@@ -8,7 +8,7 @@ Provides focused, single-responsibility classes for common plotting tasks:
 """
 
 import logging
-from typing import Any, Tuple, Optional, cast, List
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -31,7 +31,7 @@ class SliceExtractor:
     with proper axis labeling.
     """
 
-    def __init__(self, shape: Tuple[int, int, int]):
+    def __init__(self, shape: tuple[int, int, int]):
         """Initialize with 3D data shape.
 
         Args:
@@ -41,7 +41,7 @@ class SliceExtractor:
 
     def extract_inline(
         self, cube: NDArray[np.floating[Any]], idx: int
-    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
+    ) -> tuple[NDArray[np.floating[Any]], str, str]:
         """Extract inline slice at inline index idx.
 
         Args:
@@ -58,7 +58,7 @@ class SliceExtractor:
 
     def extract_crossline(
         self, cube: NDArray[np.floating[Any]], idx: int
-    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
+    ) -> tuple[NDArray[np.floating[Any]], str, str]:
         """Extract crossline slice at crossline index idx.
 
         Args:
@@ -75,7 +75,7 @@ class SliceExtractor:
 
     def extract_depthslice(
         self, cube: NDArray[np.floating[Any]], idx: int
-    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
+    ) -> tuple[NDArray[np.floating[Any]], str, str]:
         """Extract depth/time slice at index idx.
 
         Args:
@@ -92,7 +92,7 @@ class SliceExtractor:
 
     def extract_by_orientation(
         self, cube: NDArray[np.floating[Any]], idx: int, orientation: str
-    ) -> Tuple[NDArray[np.floating[Any]], str, str]:
+    ) -> tuple[NDArray[np.floating[Any]], str, str]:
         """Extract slice based on orientation string.
 
         Args:
@@ -124,7 +124,7 @@ class DataNormalizer:
         data: NDArray[np.floating[Any]],
         is_categorical: bool = False,
         percentile: float = 99.5,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Compute vmin/vmax for data visualization.
 
         Args:
@@ -227,10 +227,10 @@ class ImageRenderer:
         ax: Axes,
         data: NDArray[np.floating[Any]],
         config: PlotConfig,
-        vmin: Optional[float] = None,
-        vmax: Optional[float] = None,
-        extent: Optional[Tuple[float, float, float, float]] = None,
-    ) -> Tuple[AxesImage, Colorbar | None]:
+        vmin: float | None = None,
+        vmax: float | None = None,
+        extent: tuple[float, float, float, float] | None = None,
+    ) -> tuple[AxesImage, Colorbar | None]:
         """Render 2D data as image with colorbar.
 
         Args:
@@ -341,7 +341,7 @@ class ImageRenderer:
                 labels_map = {int(k): f"Facies {int(k)}" for k in categories}
 
             # Build legend patches using colors from ListedColormap
-            patches: List[Any] = []
+            patches: list[Any] = []
             for cat in sorted(labels_map.keys()):
                 # Access colors defensively; mypy can't infer attribute presence
                 if hasattr(cmap, "colors"):

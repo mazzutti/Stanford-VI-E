@@ -34,13 +34,11 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from typing import (
     Generic,
     TypeVar,
-    Type,
-    Dict,
     Any,
-    Callable,
     Protocol,
     cast,
 )
+from collections.abc import Callable
 import logging
 
 from src.core import ConfigValidator, ConfigRule
@@ -113,9 +111,9 @@ class ConfigBuilder(Generic[T]):
         >>> config = builder.set("dilation_window", 5).build()  # Valid
     """
 
-    config_class: Type[T]
-    values: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
-    defaults: Dict[str, Any] = field(default_factory=lambda: cast(Dict[str, Any], {}))
+    config_class: type[T]
+    values: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
+    defaults: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     _validator: ConfigValidator = field(default_factory=ConfigValidator)
 
     def set(self, key: str, value: Any) -> ConfigBuilder[T]:
@@ -232,8 +230,8 @@ class ConfigBuilder(Generic[T]):
         return self
 
     def add_validators(
-        self, validators: Dict[str, Callable[[Any], bool]]
-    ) -> "ConfigBuilder[T]":
+        self, validators: dict[str, Callable[[Any], bool]]
+    ) -> ConfigBuilder[T]:
         """Add multiple validation functions.
 
         Parameters
@@ -334,7 +332,7 @@ class ConfigBuilder(Generic[T]):
             new_builder._validator.add_rule(rule)
         return new_builder
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Get current configuration as dictionary.
 
         Returns
@@ -364,7 +362,7 @@ class ConfigBuilder(Generic[T]):
 # Convenience factory functions
 
 
-def build_config(config_class: Type[T], **kwargs: Any) -> T:
+def build_config(config_class: type[T], **kwargs: Any) -> T:
     """Quick factory to build a configuration.
 
     Parameters
@@ -390,7 +388,7 @@ def build_config(config_class: Type[T], **kwargs: Any) -> T:
 
 
 def config_with_defaults(
-    config_class: Type[T], defaults: Dict[str, Any], **kwargs: Any
+    config_class: type[T], defaults: dict[str, Any], **kwargs: Any
 ) -> T:
     """Build configuration with defaults.
 

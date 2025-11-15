@@ -142,12 +142,12 @@ class TestRunCommand:
     def test_run_command_none_raises_error(self, analyzer):
         """Test None command raises ValueError."""
         with pytest.raises(ValueError):
-            analyzer.run_command(None)  # type: ignore
+            analyzer.run_command(None)
 
     def test_run_command_non_string_raises_error(self, analyzer):
         """Test non-string command raises ValueError."""
         with pytest.raises(ValueError):
-            analyzer.run_command(123)  # type: ignore
+            analyzer.run_command(123)
 
     def test_run_command_with_description(self, analyzer, caplog):
         """Test run_command with description logs it."""
@@ -365,7 +365,7 @@ class TestMain:
     def test_main_invalid_cache_dir_type(self, analyzer):
         """Test main rejects non-string cache_dir."""
         with pytest.raises(ValueError):
-            analyzer.run(cache_dir=None)  # type: ignore
+            analyzer.run(cache_dir=None)
 
     @patch("src.analysis.pipelines.seismograms.SeismogramAnalyzer.clear_cache")
     @patch("src.modeling.api.run_full_modeling")

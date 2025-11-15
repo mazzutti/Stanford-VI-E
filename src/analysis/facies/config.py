@@ -7,7 +7,7 @@ serialization.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from src.analysis.base import AnalysisConfig
 from src.analysis.config_mixins import ValidatableConfigMixin
@@ -130,7 +130,7 @@ class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         """
         return super().is_valid()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary.
 
         Implements AnalysisConfig abstract method for serialization.
@@ -149,7 +149,7 @@ class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "FaciesAnalysisConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "FaciesAnalysisConfig":
         """Create configuration from dictionary.
 
         Provides factory method for deserialization from dict representation.

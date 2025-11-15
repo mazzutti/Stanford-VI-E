@@ -16,7 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 import plotly.graph_objects as go
 
-from typing import Any, List, Tuple, cast
+from typing import Any, cast
 
 from src.plotting.helpers.base import BasePlotter
 
@@ -42,16 +42,16 @@ class PlotlyPlotter(BasePlotter):
     def create_3d_volume(
         self,
         cube: NDArray[np.floating[Any]],
-        slice_indices: Tuple[int, int, int],
+        slice_indices: tuple[int, int, int],
         k_scale: float = 1.0,
-        colorscale: str | List[List[float | str]] = "RdBu",
+        colorscale: str | list[list[float | str]] = "RdBu",
         is_categorical: bool = False,
         show_colorbar: bool = True,
         title: str | None = None,
         k_label: str | None = None,
         k_unit: str | None = None,
         **kwargs: Any,
-    ) -> List[go.Surface]:
+    ) -> list[go.Surface]:
         """Create three orthogonal Plotly Surface traces for a 3D `cube`.
 
         Returns a list: [inline_trace, crossline_trace, depth_trace].
@@ -72,7 +72,7 @@ class PlotlyPlotter(BasePlotter):
         if not (0 <= depth_idx < nk):
             raise ValueError(f"depth_idx {depth_idx} out of range [0, {nk})")
 
-        colorscale_to_use: str | List[List[float | str]]
+        colorscale_to_use: str | list[list[float | str]]
         if is_categorical:
             colorscale_to_use = [
                 [0.0, "rgb(31,119,180)"],
@@ -92,7 +92,7 @@ class PlotlyPlotter(BasePlotter):
 
                     def mpl_to_plotly(
                         name: str, samples: int = 256
-                    ) -> List[List[float | str]]:
+                    ) -> list[list[float | str]]:
                         # Use the new colormap API when available but keep this
                         # code pyright-friendly by treating the registry as Any.
                         registry = cast(Any, getattr(mpl, "colormaps", None))
@@ -131,7 +131,7 @@ class PlotlyPlotter(BasePlotter):
             cmax = float(vmax) if vmax != 0.0 else 1.0
             cmin = -cmax
 
-        traces: List["go.Surface"] = []
+        traces: list[go.Surface] = []
 
         # coordinate arrays; cast to Any at NumPy callsites to avoid stub noise
         i_range = cast(Any, np.arange(ni))
@@ -207,9 +207,9 @@ class PlotlyPlotter(BasePlotter):
 
         return traces
 
-    def create_figure(self, traces: List["go.Surface"], title: str = "") -> "go.Figure":
+    def create_figure(self, traces: list[go.Surface], title: str = "") -> go.Figure:
         """Build a Plotly Figure from traces and apply sane layout defaults."""
-        fig: "go.Figure" = go.Figure(data=traces)
+        fig: go.Figure = go.Figure(data=traces)
         # Cast to Any for update_layout to avoid partial-member stub noise
         cast(Any, fig).update_layout(
             title=dict(text=title, x=0.5, xanchor="center"),
@@ -258,7 +258,7 @@ class PlotlyPlotter(BasePlotter):
         The function is defensive: it removes previously injected blocks and
         writes back only if the HTML contains a <body> tag.
         """
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             html = f.read()
 
         start_marker = "<!-- BEGIN_PLOTLY_3D_INJECTION -->"

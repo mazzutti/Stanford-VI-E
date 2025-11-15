@@ -7,15 +7,11 @@ ResamplerFactory, etc. by providing a reusable base class.
 from typing import (
     TypeVar,
     Generic,
-    Dict,
-    Callable,
-    Type,
     Any,
-    Optional,
     overload,
-    Union,
     cast,
 )
+from collections.abc import Callable
 
 __all__ = ["GenericFactory"]
 
@@ -43,15 +39,15 @@ class GenericFactory(Generic[T]):
 
     def __init__(self) -> None:
         """Initialize factory with empty registries."""
-        self._builders: Dict[str, Callable[..., T]] = {}
-        self._configs: Dict[str, Dict[str, Any]] = {}
+        self._builders: dict[str, Callable[..., T]] = {}
+        self._configs: dict[str, dict[str, Any]] = {}
 
     @overload
     def register(
         self,
         name: str,
         builder: None = ...,
-        default_config: Optional[Dict[str, Any]] = None,
+        default_config: dict[str, Any] | None = None,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:  # pragma: no cover - overload
         ...
 
@@ -60,16 +56,16 @@ class GenericFactory(Generic[T]):
         self,
         name: str,
         builder: Callable[..., T],
-        default_config: Optional[Dict[str, Any]] = None,
+        default_config: dict[str, Any] | None = None,
     ) -> Callable[..., T]:  # pragma: no cover - overload
         ...
 
     def register(
         self,
         name: str,
-        builder: Optional[Callable[..., T]] = None,
-        default_config: Optional[Dict[str, Any]] = None,
-    ) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
+        builder: Callable[..., T] | None = None,
+        default_config: dict[str, Any] | None = None,
+    ) -> Callable[[Callable[..., T]], Callable[..., T]] | Callable[..., T]:
         """Register a builder with optional default config.
 
         Can be used as a decorator or called directly.
@@ -98,7 +94,7 @@ class GenericFactory(Generic[T]):
             return decorator(builder)
         return decorator
 
-    def register_class(self, name: str, cls: Type[T], **default_kwargs: Any) -> None:
+    def register_class(self, name: str, cls: type[T], **default_kwargs: Any) -> None:
         """Register a class with default initialization args.
 
         Args:

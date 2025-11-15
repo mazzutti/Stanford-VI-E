@@ -776,15 +776,12 @@ def regenerate_rock_physics() -> bool:
     bool
         True if successful
     """
-    try:
-        from src.analysis import regenerate_common as regen  # type: ignore
-    except Exception:
-        from src.analysis.common import AnalysisCommon
 
-        regen = AnalysisCommon.instance()
-
+    from src.analysis.common import AnalysisCommon
     from src.analysis.io import HeaderPrinter
     from src.analysis.rock_physics import RockPhysicsAnalyzer
+
+    regen = AnalysisCommon.instance()
 
     long_desc = (
         "This pipeline clears caches, computes rock physics attributes and "

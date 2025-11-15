@@ -9,12 +9,8 @@ dependency injection when needed.
 from __future__ import annotations
 
 
-from typing import Dict, List, Optional
-
-
 from src.processing.resampling.backends._base import ResamplerBackend
 from src.processing.resampling._plan import ResamplePlan
-from typing import Tuple
 
 
 class BackendManager:
@@ -25,7 +21,7 @@ class BackendManager:
     """
 
     def __init__(self) -> None:
-        self._registry: Dict[str, ResamplerBackend] = {}
+        self._registry: dict[str, ResamplerBackend] = {}
         self._verbose = False
 
     def register(self, name: str, backend: ResamplerBackend) -> None:
@@ -33,28 +29,29 @@ class BackendManager:
             raise KeyError(f"backend '{name}' already registered")
         self._registry[name] = backend
 
-    def list_backends(self) -> List[str]:
+    def list_backends(self) -> list[str]:
         return list(self._registry.keys())
 
-    def get(self, name: str) -> Optional[ResamplerBackend]:
+    def get(self, name: str) -> ResamplerBackend | None:
         return self._registry.get(name)
 
-    def get_best(self, plan: ResamplePlan) -> Optional[ResamplerBackend]:
+    def get_best(self, plan: ResamplePlan) -> ResamplerBackend | None:
         """Select the best backend for the given plan.
 
-        Returns the first backend that supports the plan, in registration order.
+                Returns the first backend that supports the plan, in registration order.
 
-        Parameters
-        ----------
-        plan : ResamplePlan
-            The resampling plan to find a backend for.
+                Parameters
+                ----------
+                plan : ResamplePlan
+                    The resampling plan to find a backend for.
 
-        Returns
-        -------
-        Optional[ResamplerBackend]
-            The best available backend, or None if no backend supports the plan.
+                Returns
+                -------
+                ResamplerBackend | None
+                    The best available backend, or None if no backend supports the plan.
+
         """
-        candidates: list[Tuple[str, ResamplerBackend]] = []
+        candidates: list[tuple[str, ResamplerBackend]] = []
         for name, backend in self._registry.items():
             try:
                 if backend.supports(plan):

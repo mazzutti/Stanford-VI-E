@@ -4,7 +4,7 @@ Provides clean, maintainable context preparation instead of long
 conditional chains.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from dataclasses import dataclass
 import logging
 
@@ -17,7 +17,7 @@ __all__ = ["ContextBuilder", "GridContext"]
 class GridContext:
     """Simplified grid configuration."""
 
-    shape: Tuple[int, ...]
+    shape: tuple[int, ...]
     dz: float
     dt: float
 
@@ -51,7 +51,7 @@ class ContextBuilder:
             config: Configuration object
         """
         self.config = config
-        self.context: Dict[str, Any] = {}
+        self.context: dict[str, Any] = {}
 
     def with_defaults(self) -> "ContextBuilder":
         """Set default values from config."""
@@ -67,7 +67,7 @@ class ContextBuilder:
         )
         return self
 
-    def with_grid(self, grid_spec: Optional[Any] = None) -> "ContextBuilder":
+    def with_grid(self, grid_spec: Any | None = None) -> "ContextBuilder":
         """Set grid configuration."""
         if grid_spec:
             grid_ctx = GridContext.from_spec(grid_spec)
@@ -91,12 +91,12 @@ class ContextBuilder:
         self.context["mode"] = mode
         return self
 
-    def merge(self, updates: Dict[str, Any]) -> "ContextBuilder":
+    def merge(self, updates: dict[str, Any]) -> "ContextBuilder":
         """Merge additional context values."""
         self.context.update(updates)
         return self
 
-    def build(self) -> Dict[str, Any]:
+    def build(self) -> dict[str, Any]:
         """Build final context dictionary."""
         return self.context.copy()
 
@@ -105,7 +105,7 @@ class ContextValidator:
     """Validate context contains required fields."""
 
     @staticmethod
-    def require_rock_properties(context: Dict[str, Any]) -> None:
+    def require_rock_properties(context: dict[str, Any]) -> None:
         """Ensure rock properties are present."""
         required = ["vp", "vs", "rho"]
         missing = [k for k in required if context.get(k) is None]
@@ -114,14 +114,14 @@ class ContextValidator:
             raise ValueError(f"Missing required rock properties: {', '.join(missing)}")
 
     @staticmethod
-    def require_avo_params(context: Dict[str, Any]) -> None:
+    def require_avo_params(context: dict[str, Any]) -> None:
         """Ensure AVO parameters are present."""
         angles = context.get("angles_deg", ())
         if not angles:
             raise ValueError("angles_deg must contain at least one angle")
 
     @staticmethod
-    def require_field(context: Dict[str, Any], field: str) -> None:
+    def require_field(context: dict[str, Any], field: str) -> None:
         """Ensure specific field is present."""
         if field not in context:
             raise ValueError(f"Required field missing: {field}")

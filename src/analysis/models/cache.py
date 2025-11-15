@@ -5,7 +5,7 @@ This module contains models for cached data and display cube results.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Any, cast
+from typing import Any, cast
 from functools import cached_property
 
 import numpy as np
@@ -48,7 +48,7 @@ class CacheLoadResult:
         """Return the data type of the AVO array."""
         return self.avo.dtype
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation."""
         return {
             "filename": self.filename,
@@ -58,7 +58,7 @@ class CacheLoadResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> CacheLoadResult:
+    def from_dict(cls, data: dict[str, Any]) -> CacheLoadResult:
         """Create result from dictionary representation.
 
         Note:
@@ -126,7 +126,7 @@ class DisplayCubesResult:
         return float(np.std(self.avo_display))
 
     @cached_property
-    def avo_stats(self) -> Dict[str, float]:
+    def avo_stats(self) -> dict[str, float]:
         """Return cached statistical summary of AVO data using helper function."""
         return ModelUtilities.compute_array_stats(self.avo_display)
 
@@ -140,7 +140,7 @@ class DisplayCubesResult:
         """Return the number of unique facies types."""
         return len(self.facies_types)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation."""
         return {
             "shape": self.shape,
@@ -151,7 +151,7 @@ class DisplayCubesResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> DisplayCubesResult:
+    def from_dict(cls, data: dict[str, Any]) -> DisplayCubesResult:
         """Create result from dictionary representation.
 
         Note:

@@ -42,7 +42,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from types import TracebackType
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 from src.core import ValidationError
 
@@ -113,8 +113,8 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        config: Optional[ConfigT] = None,
+        name: str | None = None,
+        config: ConfigT | None = None,
     ):
         """Initialize analyzer.
 
@@ -130,12 +130,12 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         self._state = AnalyzerState.CREATED
         self._initialized = False
         self._metrics = AnalysisMetrics()
-        self._error: Optional[Exception] = None
+        self._error: Exception | None = None
 
         logger.debug(f"{self.name}: Created")
 
     @property
-    def config(self) -> Optional[ConfigT]:
+    def config(self) -> ConfigT | None:
         """Return the analyzer configuration (may be None)."""
         return self._config
 
@@ -288,9 +288,9 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        _exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         """Exit context manager."""
         if exc_type is not None:
@@ -417,7 +417,7 @@ class CompositeMixin:
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize composite."""
         super().__init__(*args, **kwargs)
-        self._sub_analyzers: Dict[str, Any] = {}
+        self._sub_analyzers: dict[str, Any] = {}
 
     def add_sub_analyzer(self, name: str, analyzer: Any) -> None:
         """Register sub-analyzer."""
@@ -437,7 +437,7 @@ class CacheMixin:
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize cache mixin."""
         super().__init__(*args, **kwargs)
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._cache_enabled = True
 
     def cache_result(self, key: str, value: Any) -> None:
@@ -446,7 +446,7 @@ class CacheMixin:
             self._cache[key] = value
             logger.debug(f"{self.name}: Cached '{key}'")
 
-    def get_cached(self, key: str) -> Optional[Any]:
+    def get_cached(self, key: str) -> Any | None:
         """Get cached result."""
         return self._cache.get(key) if self._cache_enabled else None
 
@@ -487,14 +487,14 @@ class MetricsMixin:
     def __init__(self, *args: Any, **kwargs: Any):
         """Initialize metrics mixin."""
         super().__init__(*args, **kwargs)
-        self._metrics_history: list[Dict[str, Any]] = []
+        self._metrics_history: list[dict[str, Any]] = []
 
     def record_metric(self, name: str, value: Any) -> None:
         """Record a metric value."""
         self._metrics_history.append({"name": name, "value": value})
         logger.debug(f"{self.name}: Recorded metric '{name}={value}'")
 
-    def get_metrics(self) -> list[Dict[str, Any]]:
+    def get_metrics(self) -> list[dict[str, Any]]:
         """Get all recorded metrics."""
         return self._metrics_history.copy()
 

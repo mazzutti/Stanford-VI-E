@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any
 from matplotlib.colors import Colormap
 
 # Minimal, permissive stubs for commonly used pyplot functions referenced
@@ -11,7 +11,7 @@ Axes = Any
 AxesImage = Any
 Colorbar = Any
 
-rcParams: Dict[str, Any]
+rcParams: dict[str, Any]
 
 def get_cmap(name: str | None = ..., lut: int | None = ...) -> Colormap: ...
 def colorbar(mappable: Any, *args: Any, **kwargs: Any) -> Any: ...
@@ -20,7 +20,7 @@ def subplots(
     ncols: int = 1,
     *args: Any,
     **kwargs: Any,
-) -> Tuple[Figure, Any]: ...
+) -> tuple[Figure, Any]: ...
 def imshow(*args: Any, **kwargs: Any) -> Any: ...
 def figure(*args: Any, **kwargs: Any) -> Any: ...
 def savefig(fname: Any, *args: Any, **kwargs: Any) -> None: ...

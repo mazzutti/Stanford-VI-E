@@ -2,7 +2,8 @@
 
 import logging
 from functools import wraps
-from typing import Any, Callable, Dict, Tuple, TypeVar, cast
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 from numpy.typing import NDArray
 
 import numpy as np
@@ -152,7 +153,7 @@ class ProcessorDecorators:
         return decorator
 
     @staticmethod
-    def cache_on_attributes(attributes: Tuple[str, ...]) -> Callable[..., Any]:
+    def cache_on_attributes(attributes: tuple[str, ...]) -> Callable[..., Any]:
         """Decorator to cache processor results based on specified attributes.
 
         Caches method results using attribute values as cache keys, improving
@@ -176,7 +177,7 @@ class ProcessorDecorators:
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-            cache: Dict[tuple[Any, ...], Any] = {}
+            cache: dict[tuple[Any, ...], Any] = {}
 
             @wraps(func)
             def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:

@@ -20,7 +20,7 @@ Test organization:
 import pytest
 import threading
 from pathlib import Path
-from typing import Any, Generator, List
+from typing import Any, Generator
 from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
 
@@ -47,12 +47,12 @@ class DummyProcessManager(ProcessManager):
 
     def __init__(self) -> None:
         """Initialize the mock manager with empty call log."""
-        self.call_log: List[tuple[Any, ...]] = []
+        self.call_log: list[tuple[Any, ...]] = []
         self._closed: bool = False
 
     def clear_cache(
         self,
-        patterns: List[str] | None = None,
+        patterns: list[str] | None = None,
         cache_dir: Path | None = None,
         prefix: str = "",
     ) -> int:
@@ -70,7 +70,7 @@ class DummyProcessManager(ProcessManager):
     def summarize_cache_files(
         self,
         cache_dir: str | None = None,
-        keys: List[str] | None = None,
+        keys: list[str] | None = None,
         prefix: str = "",
     ) -> None:
         """Mock summarize_cache_files method."""
@@ -183,7 +183,7 @@ def test_initialize_via_configure(dummy_manager: DummyProcessManager) -> None:
 def test_configure_with_none_raises_error(initialized_instance: AnalysisCommon) -> None:
     """Test that configure(None) raises TypeError."""
     with pytest.raises(TypeError, match="proc_manager"):
-        initialized_instance.configure(None)  # type: ignore[arg-type]
+        initialized_instance.configure(None)
 
 
 def test_configure_with_invalid_object_raises_error(
@@ -191,7 +191,7 @@ def test_configure_with_invalid_object_raises_error(
 ) -> None:
     """Test that configure() validates the manager object."""
     with pytest.raises(TypeError):
-        initialized_instance.configure({"not": "a manager"})  # type: ignore[arg-type]
+        initialized_instance.configure({"not": "a manager"})
 
 
 def test_is_initialized_property(initialized_instance: AnalysisCommon) -> None:
@@ -510,7 +510,7 @@ def test_validation_rejects_none() -> None:
     """Test that configure(None) raises TypeError."""
     instance = AnalysisCommon.instance(DummyProcessManager())
     with pytest.raises(TypeError):
-        instance.configure(None)  # type: ignore[arg-type]
+        instance.configure(None)
 
 
 def test_validation_accepts_duck_typed_manager() -> None:
@@ -743,7 +743,6 @@ class TestAnalysisCommonIntegration:
         from src.analysis.base import AnalyzerInterface, AnalysisConfig
         from src.analysis.processors.management import ProcessorRegistry
         from src.analysis.pipelines.orchestrator import Pipeline, PipelineStage
-        from typing import Dict
 
         class SampleConfig(AnalysisConfig):
             """Sample configuration."""
@@ -751,7 +750,7 @@ class TestAnalysisCommonIntegration:
             def __init__(self, value: str = "test"):
                 self.value = value
 
-            def to_dict(self) -> Dict[str, Any]:
+            def to_dict(self) -> dict[str, Any]:
                 return {"value": self.value}
 
         class SampleAnalyzer(AnalyzerInterface):
@@ -839,10 +838,9 @@ class TestAnalysisCommonIntegration:
         """Test polymorphic usage across components."""
         from src.analysis.base import AnalyzerInterface, AnalysisConfig
         from src.analysis.processors.management import ProcessorRegistry
-        from typing import Dict
 
         class BaseConfig(AnalysisConfig):
-            def to_dict(self) -> Dict[str, Any]:
+            def to_dict(self) -> dict[str, Any]:
                 return {}
 
         class Config1(BaseConfig):

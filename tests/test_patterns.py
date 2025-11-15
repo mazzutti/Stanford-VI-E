@@ -10,7 +10,7 @@ Tests cover:
 import unittest
 from unittest.mock import Mock, MagicMock, patch
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any
 
 # Observer Pattern Tests
 from src.analysis.patterns.observer import (

@@ -1,7 +1,12 @@
-from typing import Any, Tuple
+from typing import Any, NamedTuple
 
 # Conservative stubs for scipy.stats used in repo
 
-def pearsonr(a: Any, b: Any) -> Tuple[float, float]: ...
+__all__ = ["PearsonRResult", "pearsonr", "spearmanr"]
 
-def spearmanr(a: Any, b: Any) -> Tuple[float, float]: ...
+class PearsonRResult(NamedTuple):
+    statistic: float
+    pvalue: float
+
+def pearsonr(a: Any, b: Any) -> PearsonRResult: ...
+def spearmanr(a: Any, b: Any) -> tuple[float, float]: ...

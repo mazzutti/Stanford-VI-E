@@ -7,7 +7,7 @@ available conversion strategies through a single factory interface.
 from __future__ import annotations
 
 import logging
-from typing import Literal, cast, Optional
+from typing import Literal, cast
 
 from src.analysis.strategies import (
     AmplitudeConversionStrategy,
@@ -29,7 +29,7 @@ class ConversionStrategyFactory:
     unnecessary object recreation.
     """
 
-    _instance: Optional["ConversionStrategyFactory"] = None
+    _instance: ConversionStrategyFactory | None = None
     _strategies: dict[str, ConversionStrategy] = {}
     _initialized: bool = False
 
