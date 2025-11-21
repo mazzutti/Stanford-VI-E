@@ -4,15 +4,29 @@ Provides a clean OOP interface for applying wavelets to seismic reflectivity
 data to produce synthetic seismograms.
 """
 
-from typing import Any, TYPE_CHECKING
+from __future__ import annotations
+
+import importlib.util
+import logging
+from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
-import logging
+from scipy.signal import fftconvolve as _fftconvolve
 
 if TYPE_CHECKING:
     from src.signal.wavelets import Wavelet
 
 logger = logging.getLogger(__name__)
+
+# The Wavelet type and some wavelet helpers may be imported at call-time to
+# avoid a hard dependency on an optional Wavelet implementation. Prefer
+# per-import suppression at the import site instead of a module-level disable.
+
+# Wavelet imports are optional and intentionally deferred to runtime to
+# avoid a hard dependency. Suppress import-order warnings at module level
+# with a brief justification so pylint focuses on actionable issues.
+
 
 __all__ = [
     "SeismicSignalProcessor",
@@ -39,8 +53,6 @@ class SeismicSignalProcessor:
     def _check_scipy() -> bool:
         """Check if scipy is available."""
         try:
-            import importlib.util
-
             return importlib.util.find_spec("scipy.signal") is not None
         except (ImportError, ModuleNotFoundError, ValueError):
             return False
@@ -77,8 +89,10 @@ class SeismicSignalProcessor:
                 "Install with: pip install scipy"
             )
 
-        # Extract samples from Wavelet object if needed
-        from src.signal.wavelets import Wavelet
+        # Extract samples from Wavelet object if needed. Import lazily.
+        from src.signal.wavelets import (
+            Wavelet,
+        )
 
         wavelet_arr = wavelet.samples if isinstance(wavelet, Wavelet) else wavelet
         wavelet_arr = np.asarray(wavelet_arr, dtype=np.float64)
@@ -89,8 +103,7 @@ class SeismicSignalProcessor:
         if wavelet_arr.ndim != 1:
             raise ValueError(f"wavelet must be 1D, got shape {wavelet_arr.shape}")
 
-        # Import here to allow graceful failure if scipy unavailable
-        from scipy.signal import fftconvolve
+        # Use the module-level scipy FFT convolution helper
 
         ni, nj, _ = reflectivity.shape
         seismogram = np.zeros_like(reflectivity, dtype=np.float64)
@@ -102,6 +115,8 @@ class SeismicSignalProcessor:
                 logger.debug("%sProgress: %d/%d (%d%%)", prefix, i, ni, pct)
             for j in range(nj):
                 trace = reflectivity[i, j, :]
-                seismogram[i, j, :] = fftconvolve(trace, wavelet_arr, mode=mode)
+                seismogram[i, j, :] = _fftconvolve(
+                    trace, wavelet_arr, mode=cast(Any, mode)
+                )
 
         return seismogram

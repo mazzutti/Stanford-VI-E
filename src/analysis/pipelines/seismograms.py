@@ -9,17 +9,16 @@ the `main()` method, which orchestrates the full pipeline through
 
 from __future__ import annotations
 
-from src.analysis.common import AnalysisCommon
-from pathlib import Path
-import time
-
 import logging
 import subprocess
-from subprocess import CompletedProcess
-from typing import Any
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
+from subprocess import CompletedProcess
+from typing import Any
 
+from src.analysis.common import AnalysisCommon
 
 __all__ = [
     "SeismogramAnalyzer",
@@ -52,9 +51,7 @@ class SeismogramAnalyzer:
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @contextmanager
-    def _timed_operation(
-        self, description: str, prefix: str = ""
-    ) -> Generator[None]:
+    def _timed_operation(self, description: str, prefix: str = "") -> Generator[None]:
         """Context manager for timing and logging operations.
 
         Logs operation start and completion time. Guarantees timing is logged
@@ -107,13 +104,13 @@ class SeismogramAnalyzer:
                 "%s✗ Command failed with exit code %d: %s", prefix, e.returncode, e
             )
             return None
-        except Exception as e:
-            self._logger.error("%s✗ Error running command: %s", prefix, e)
+        except Exception as exc:
+            # Best-effort command runner: catch unexpected errors, log, and
+            # return None so callers can decide how to proceed.
+            self._logger.error("%s✗ Error running command: %s", prefix, exc)
             return None
 
-    def clear_cache(
-        self, patterns: list[str] | None = None, prefix: str = ""
-    ) -> int:
+    def clear_cache(self, patterns: list[str] | None = None, prefix: str = "") -> int:
         """Clear cache files matching specified patterns.
 
         Args:
@@ -158,7 +155,7 @@ class SeismogramAnalyzer:
             )
             return False
 
-    def open_file(self, filepath: str, description: str, prefix: str = "") -> bool:
+    def open_file(self, filepath: str, prefix: str = "") -> bool:
         """Open a file using the analysis helper.
 
         Adds a short delay after opening to ensure file is fully ready.
@@ -171,7 +168,7 @@ class SeismogramAnalyzer:
         Returns:
             True if file was opened successfully, False otherwise.
         """
-        ok = self._analysis.open_file(filepath, description=description, prefix=prefix)
+        ok = self._analysis.open_file(filepath, prefix=prefix)
         if ok:
             try:
                 time.sleep(self.FILE_READY_DELAY_SECONDS)
@@ -204,7 +201,10 @@ class SeismogramAnalyzer:
             ValueError: If cache_dir is invalid.
             RuntimeError: If the seismic modeling process fails.
         """
-        if not cache_dir or type(cache_dir) is not str:
+        # Ensure a non-empty cache directory was provided. The type is
+        # annotated as `str`, so only check for emptiness here to satisfy
+        # static analyzers that consider `isinstance(..., str)` unnecessary.
+        if not cache_dir:
             raise ValueError("cache_dir must be a non-empty string")
 
         if verbose:
@@ -223,7 +223,9 @@ class SeismogramAnalyzer:
             with self._timed_operation(
                 "Running full modeling", prefix=self.INDENT_PREFIX
             ):
-                from src.modeling.api import run_full_modeling
+                from src.modeling.api import (
+                    run_full_modeling,
+                )
 
                 run_full_modeling(
                     cache_dir=cache_dir,
@@ -236,6 +238,9 @@ class SeismogramAnalyzer:
         except ImportError as e:
             self._logger.error("Failed to import modeling API: %s", e)
             raise RuntimeError(f"Failed to import modeling API: {e}") from e
-        except Exception as e:
-            self._logger.error("Seismic modeling failed: %s", e)
-            raise RuntimeError(f"Seismic modeling failed (in-process): {e}") from e
+        except Exception as exc:
+            # Wrap any unexpected exception from the modeling pipeline so
+            # callers receive a consistent RuntimeError while preserving
+            # the original exception context via `from`.
+            self._logger.error("Seismic modeling failed: %s", exc)
+            raise RuntimeError(f"Seismic modeling failed (in-process): {exc}") from exc

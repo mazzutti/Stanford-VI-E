@@ -1,13 +1,11 @@
 """Process management utilities with simplified API."""
 
-from pathlib import Path
 import logging
-
+from pathlib import Path
 
 from src.processing.managers.base import BaseManager
 from src.processing.managers.cache import CacheManager
 from src.processing.managers.file import FileManager
-
 
 __all__ = ["ProcessManager", "ManagerHub"]
 
@@ -58,9 +56,7 @@ class ProcessManager(BaseManager):
         """
         return self.cache.clear(patterns=patterns, cache_dir=cache_dir, prefix=prefix)
 
-    def open_file(
-        self, filepath: str, description: str | None = None, prefix: str = ""
-    ) -> bool:
+    def open_file(self, filepath: str, prefix: str = "") -> bool:
         """Open a file using the FileManager.
 
         Args:
@@ -71,9 +67,7 @@ class ProcessManager(BaseManager):
         Returns:
             True if file opened successfully
         """
-        return self.files.open(
-            filepath=filepath, description=description, prefix=prefix
-        )
+        return self.files.open(filepath=filepath, prefix=prefix)
 
     def summarize(
         self,

@@ -1,11 +1,10 @@
 """Cache for rock physics model derived attributes."""
 
 from typing import Any
+
 from numpy.typing import NDArray
 
-
 from src.io.disk_cache import DiskCache
-
 
 __all__ = ["ModelCache"]
 

@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
-
+import logging
 from dataclasses import dataclass
 from typing import Any
-from numpy.typing import NDArray
-
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.ndimage import gaussian_filter
-
 
 from src.io.grid import GridSpec
 from src.utils.quantity import Quantity
 
-
 __all__ = ["VelocityModel"]
-
-
-import logging
-
 
 logger = logging.getLogger(__name__)
 

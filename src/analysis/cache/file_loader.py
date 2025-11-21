@@ -4,13 +4,14 @@ This module provides a cleaner, more maintainable approach to loading
 cache files by extracting file loading logic into dedicated classes.
 """
 
+import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Callable
-from numpy.typing import NDArray
-from numpy.lib.npyio import NpzFile
+
 import numpy as np
-import logging
+from numpy.lib.npyio import NpzFile
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +21,13 @@ __all__ = ["FileLoader", "NPZExtractor"]
 class NPZExtractor:
     """Extract arrays from NPZ archives with a simple, clear interface."""
 
+    # This extractor is intentionally small and serves as a thin strategy
+    # object. It exposes a single public API for extraction.
+
     DEFAULT_KEY = "full_stack"
 
     @classmethod
-    def extract(
-        cls, archive: NpzFile, key: str | None = None
-    ) -> NDArray[Any] | None:
+    def extract(cls, archive: NpzFile, key: str | None = None) -> NDArray[Any] | None:
         """Extract array from NPZ archive.
 
         Args:
@@ -47,13 +49,19 @@ class NPZExtractor:
                 return np.asarray(archive[files[0]])
 
         except Exception as e:
-            logger.error(f"Failed to extract from NPZ: {e}")
+            # Extraction errors (corrupt archive, unexpected contents) should
+            # not raise—log and return None so callers can handle fallback.
+            logger.error("Failed to extract from NPZ: %s", e)
 
         return None
 
 
 class FileLoader:
     """Simplified file loading with clean separation of concerns."""
+
+    # This loader intentionally exposes a small public API (single main
+    # `load` method). Silence the 'too-few-public-methods' warning for
+    # this compact strategy/helper class.
 
     def __init__(
         self,
@@ -104,12 +112,12 @@ class FileLoader:
             return np.asarray(loaded)
 
         except Exception as e:
-            logger.error(f"Error loading {path}: {e}")
+            # Catch any runtime error during file loading and return None so
+            # callers can attempt fallback strategies.
+            logger.error("Error loading %s: %s", path, e)
             return None
 
-    def _load_file(
-        self, path: Path, mmap_mode: str | None
-    ) -> NDArray[Any] | NpzFile:
+    def _load_file(self, path: Path, mmap_mode: str | None) -> NDArray[Any] | NpzFile:
         """Load file using NumPy."""
         kwargs: dict[str, Any] = {"allow_pickle": False}
         if mmap_mode:

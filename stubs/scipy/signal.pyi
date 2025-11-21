@@ -1,4 +1,5 @@
 from typing import Any
+
 from numpy.typing import NDArray
 
 # Conservative stub for commonly used signal functions

@@ -21,17 +21,13 @@ Test Organization:
 import os
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
 from numpy.lib.npyio import NpzFile
 
-from src.analysis.cache import (
-    CacheLoader,
-    CacheLoaderFactory,
-    CacheConfig,
-)
+from src.analysis.cache import CacheConfig, CacheLoader, CacheLoaderFactory
 
 # Public test constants
 FILE_PREFIX = "avo_"
@@ -371,7 +367,8 @@ class TestDefaultArchiveExtractor:
     def test_extractor_handles_exception(self) -> None:
         """Test extractor handles extraction errors gracefully."""
         mock_npz = MagicMock(spec=NpzFile)
-        mock_npz.__contains__.side_effect = Exception("Archive error")
+        # Raise a specific exception type that the extractor handles
+        mock_npz.__contains__.side_effect = KeyError("Archive error")
 
         result = CacheLoader.default_archive_extractor(mock_npz)
         assert result is None

@@ -11,11 +11,12 @@ Design:
 
 from __future__ import annotations
 
-import time
 import logging
-from pathlib import Path
+import sys
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 __all__ = [
     "should_expire_by_ttl",
@@ -27,6 +28,9 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+# Small pruning helpers and strategy classes intentionally expose a
+# compact public surface; silence too-few-public-methods for clarity.
+
 
 def should_expire_by_ttl(
     file_path: Path,
@@ -35,19 +39,19 @@ def should_expire_by_ttl(
 ) -> bool:
     """Check if a file should be considered expired by TTL.
 
-        Parameters
-        ----------
-        file_path : Path
-            Path to the file to check.
-        ttl_seconds : int | None
-            TTL in seconds, or None to disable TTL checking.
-        now : float | None
-            Current time (seconds since epoch). If None, uses time.time().
+    Parameters
+    ----------
+    file_path : Path
+        Path to the file to check.
+    ttl_seconds : int | None
+        TTL in seconds, or None to disable TTL checking.
+    now : float | None
+        Current time (seconds since epoch). If None, uses time.time().
 
-        Returns
-        -------
-        bool
-            True if the file has exceeded TTL, False otherwise.
+    Returns
+    -------
+    bool
+        True if the file has exceeded TTL, False otherwise.
 
     """
     if ttl_seconds is None:
@@ -71,19 +75,19 @@ def should_expire_by_size(
 ) -> bool:
     """Check if total cache size exceeds limit.
 
-        Parameters
-        ----------
-        files : Sequence[Path]
-            Collection of file paths to check.
-        max_cache_bytes : int
-            Maximum allowed total size in bytes.
-        get_size : Callable | None
-            Function to get file size. Defaults to Path.stat().st_size.
+    Parameters
+    ----------
+    files : Sequence[Path]
+        Collection of file paths to check.
+    max_cache_bytes : int
+        Maximum allowed total size in bytes.
+    get_size : Callable | None
+        Function to get file size. Defaults to Path.stat().st_size.
 
-        Returns
-        -------
-        bool
-            True if total size exceeds max_cache_bytes.
+    Returns
+    -------
+    bool
+        True if total size exceeds max_cache_bytes.
 
     """
     if get_size is None:
@@ -107,16 +111,16 @@ def should_expire_by_size(
 class PruneStrategy:
     """Strategy for selecting files to remove during cache pruning.
 
-        Defines how files are selected for removal based on TTL and size constraints.
+    Defines how files are selected for removal based on TTL and size constraints.
 
-        Attributes
-        ----------
-        ttl_seconds : int | None
-            TTL in seconds for cache entries.
-        max_cache_bytes : int
-            Maximum total cache size.
-        glob_pattern : str
-            Glob pattern for finding cache files.
+    Attributes
+    ----------
+    ttl_seconds : int | None
+        TTL in seconds for cache entries.
+    max_cache_bytes : int
+        Maximum total cache size.
+    glob_pattern : str
+        Glob pattern for finding cache files.
 
     """
 
@@ -151,23 +155,23 @@ class PruneStrategy:
     ) -> list[Path]:
         """Select files to remove to satisfy constraints.
 
-                Selection logic:
-                1. Remove files that have exceeded TTL (if enabled)
-                2. If size > max_cache_bytes, remove oldest files (by mtime)
+        Selection logic:
+        1. Remove files that have exceeded TTL (if enabled)
+        2. If size > max_cache_bytes, remove oldest files (by mtime)
 
-                Parameters
-                ----------
-                cache_dir : Path
-                    Directory containing cache files.
-                now : float | None
-                    Current time for TTL checking.
-                get_size : Callable | None
-                    Function to get file size.
+        Parameters
+        ----------
+        cache_dir : Path
+            Directory containing cache files.
+        now : float | None
+            Current time for TTL checking.
+        get_size : Callable | None
+            Function to get file size.
 
-                Returns
-                -------
-                list[Path]
-                    List of file paths to remove.
+        Returns
+        -------
+        list[Path]
+            List of file paths to remove.
 
         """
         if now is None:
@@ -214,7 +218,7 @@ class PruneStrategy:
                     total_size -= size
 
         except (OSError, ValueError) as e:
-            logger.debug(f"Error during cache pruning analysis: {e}")
+            logger.debug("Error during cache pruning analysis: %s", e)
 
         return to_remove
 
@@ -224,8 +228,6 @@ class PruneStrategy:
         try:
             return path.stat().st_mtime
         except (OSError, ValueError):
-            import sys
-
             return sys.maxsize
 
 
@@ -282,12 +284,12 @@ class Pruner:
     ):
         """Initialize the pruner.
 
-                Parameters
-                ----------
-                strategy : PruneStrategy
-                    Pruning strategy to use.
-                logger_obj : logging.Logger | None
-                    Logger instance.
+        Parameters
+        ----------
+        strategy : PruneStrategy
+            Pruning strategy to use.
+        logger_obj : logging.Logger | None
+            Logger instance.
 
         """
         self.strategy = strategy
@@ -319,12 +321,12 @@ class Pruner:
                     path.unlink()
                     result.count += 1
                     result.bytes_freed += size
-                    self.logger_obj.debug(f"Pruned cache file: {path.name}")
+                    self.logger_obj.debug("Pruned cache file: %s", path.name)
                 except (OSError, ValueError) as e:
                     result.errors += 1
-                    self.logger_obj.debug(f"Failed to prune {path.name}: {e}")
+                    self.logger_obj.debug("Failed to prune %s: %s", path.name, e)
         except (OSError, ValueError) as e:
-            self.logger_obj.debug(f"Error during cache pruning: {e}")
+            self.logger_obj.debug("Error during cache pruning: %s", e)
             result.errors = 1
 
         return result

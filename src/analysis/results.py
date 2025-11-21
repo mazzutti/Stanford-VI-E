@@ -2,7 +2,8 @@
 
 This module provides a type-safe, generic result container that eliminates
 the need for specialized result types (GradientCorrelationResult,
-BoundaryAmpsResult, etc.), reducing boilerplate while maintaining type safety.
+BoundaryAmpsResult, etc.), reducing boilerplate while maintaining type
+safety.
 
 Design Pattern:
     - Generic Result[T]: Type-safe container for any analysis result
@@ -35,22 +36,18 @@ Example:
 # NOTE: We will aim to remove these file-level suppressions after
 # adding more precise overloads for `Result.get` and `Result.combine`.
 # The overload implementations below help Pyright infer mapping types.
-# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownMemberType=false
+# pyright: reportUnknownArgumentType=false
+
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import (
-    Generic,
-    TypeVar,
-    Any,
-    Protocol,
-    cast,
-    overload,
-)
-from collections.abc import Callable, Mapping
-from datetime import datetime
 import logging
+from collections.abc import Callable, Mapping
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from typing import Any, Generic, Protocol, TypeVar, cast, overload
 
 __all__ = [
     "Result",
@@ -59,6 +56,9 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+# NOTE: This module contains a compact generic `Result` container used
+# widely across analyzers. Keep the implementation simple and focused.
 
 T = TypeVar("T")  # Generic data type for result content
 T_co = TypeVar("T_co", covariant=True)  # Covariant for inheritance
@@ -74,7 +74,7 @@ class ResultData(Protocol[T_co]):
 
     def __repr__(self) -> str:
         """Return string representation."""
-        ...
+        raise NotImplementedError()
 
 
 @dataclass(frozen=True)
@@ -186,7 +186,7 @@ class Result(Generic[T]):
             self.data, (dict, list, str, int, float, tuple)
         ) and not hasattr(self.data, "__dataclass_fields__"):
             logger.debug(
-                f"Result contains non-standard data type: {type(self.data).__name__}"
+                "Result contains non-standard data type: %s", type(self.data).__name__
             )
 
     @property
@@ -269,8 +269,10 @@ class Result(Generic[T]):
                 metadata=self.metadata,
                 tags=self.tags.copy(),
             )
-        except Exception as e:
-            logger.warning(f"Transform failed: {e}")
+        except Exception as exc:
+            # Transform functions are user-provided; catch broad exceptions
+            # to log and re-raise so callers can handle or propagate them.
+            logger.warning("Transform failed: %s", exc)
             raise
 
     def combine(self, other: Result[T]) -> Result[Any]:
@@ -446,6 +448,12 @@ class MappingResult(Result[dict[str, V]], Generic[V]):
         return data_dict.get(key, default)
 
     def combine_mapping(self, other: MappingResult[V]) -> MappingResult[V]:
+        """Combine two MappingResult instances into a single MappingResult.
+
+        The returned MappingResult merges the underlying dict payloads and
+        combines metadata and tags. On key collisions, `other` wins.
+        """
+
         combined_metadata = ResultMetadata(
             name=f"{self.metadata.name}+{other.metadata.name}",
             execution_time_ms=self.metadata.execution_time_ms

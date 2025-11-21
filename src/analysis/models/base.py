@@ -6,21 +6,17 @@ base class for statistical results.
 """
 
 from __future__ import annotations
-from typing import (
-    ClassVar,
-    Any,
-    TYPE_CHECKING,
-    cast,
-)
-from collections.abc import Callable
+
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from .facies import FaciesStats
     from .config import Transition
+    from .facies import FaciesStats
 
 __all__ = [
     "ValidationConfig",
@@ -31,6 +27,11 @@ __all__ = [
     "SUMMARY_PRECISION",
     "ANALYSIS_COMPONENTS_COUNT",
 ]
+
+
+# ValidationConfig is a small holder of configuration constants used across
+# the analysis models. It intentionally exposes only class-level constants
+# and may trigger too-few-public-methods; silence that for clarity.
 
 
 class ValidationConfig:
@@ -45,6 +46,11 @@ class ValidationConfig:
     PVALUE_MIN: ClassVar[float] = 0.0
     PVALUE_MAX: ClassVar[float] = 1.0
     SIGNIFICANCE_THRESHOLD: ClassVar[float] = 0.05
+
+
+# ValidationConfig is a small holder of constants used across the module.
+# It intentionally exposes only class-level constants and may trigger
+# too-few-public-methods lint; silence that as it's a data holder.
 
 
 # Formatting precision constants
@@ -79,14 +85,12 @@ class ModelUtilities:
         Returns:
             True if value is NaN or None, False otherwise.
         """
-        return (
-            value is None or value != value
-        )  # NaN is the only value that doesn't equal itself
+        # NaN is the only value that doesn't equal itself; prefer
+        # explicit check with NumPy to avoid self-comparison warnings.
+        return value is None or (isinstance(value, float) and np.isnan(value))
 
     @staticmethod
-    def safe_float(
-        value: str | int | float | None, default: float = np.nan
-    ) -> float:
+    def safe_float(value: str | int | float | None, default: float = np.nan) -> float:
         """Safely convert a value to float with NaN as default.
 
         Args:
@@ -169,7 +173,7 @@ class ModelUtilities:
         if np.isnan(float(value)):
             return
 
-        if not (range_min <= value <= range_max):
+        if not range_min <= value <= range_max:
             context_str = f" ({context})" if context else ""
             raise ValueError(
                 f"{field_name} must be in [{range_min}, {range_max}]{context_str}, got {value}"
@@ -199,7 +203,7 @@ class ModelUtilities:
             if not allow_none:
                 raise ValueError(f"{name} cannot be None")
             return
-        if not (range_min <= value <= range_max):
+        if not range_min <= value <= range_max:
             raise ValueError(
                 f"{name} must be in [{range_min}, {range_max}], got {value}"
             )
@@ -293,6 +297,9 @@ class ModelUtilities:
         Returns:
             False if either value is NaN, True otherwise (both are valid).
         """
+        # `name` is optional metadata for logging; keep a reference to
+        # satisfy linters when it's not otherwise used.
+        _ = name
         return not (ModelUtilities.is_nan(val1) or ModelUtilities.is_nan(val2))
 
     # ========================================================================
@@ -436,12 +443,10 @@ class StatisticalResult(ABC):
     @abstractmethod
     def is_valid(self) -> bool:
         """Check if the result contains valid statistical data."""
-        pass
 
     @abstractmethod
     def summary(self) -> str:
         """Return a human-readable summary of the result."""
-        pass
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.

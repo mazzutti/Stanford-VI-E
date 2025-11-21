@@ -4,6 +4,7 @@
 
 
 import logging
+
 import pytest
 
 from src.analysis.io import HeaderPrinter, printer

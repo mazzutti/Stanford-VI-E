@@ -4,8 +4,9 @@ Tests the block-wise interpolation logic for both uniform and irregular
 two-way travel times.
 """
 
-import pytest
 import numpy as np
+import pytest
+
 from src.processing.interpolator import BatchedInterpolator
 
 

@@ -24,24 +24,12 @@ from unittest import mock
 import numpy as np
 import pytest
 
-from src.analysis.facies import (
-    FaciesCorrelationAnalyzer,
-    FaciesCorrelationConfig,
-    Domain,
-)
-from src.analysis.models import (
-    AvoStats,
-    TechniqueComparison,
-    AvoResults,
-    AvoAnalysisResult,
-    BoundaryAmpsResult,
-)
-from src.analysis.processors.validators import (
-    DomainValidator,
-    ArrayValidator,
-    PathValidator,
-)
-
+from src.analysis.facies import (Domain, FaciesCorrelationAnalyzer,
+                                 FaciesCorrelationConfig)
+from src.analysis.models import (AvoAnalysisResult, AvoResults, AvoStats,
+                                 BoundaryAmpsResult, TechniqueComparison)
+from src.analysis.processors.validators import (ArrayValidator,
+                                                DomainValidator, PathValidator)
 
 # ============================================================================
 # HELPER FUNCTIONS

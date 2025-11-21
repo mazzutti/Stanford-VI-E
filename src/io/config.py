@@ -4,32 +4,32 @@ This module centralizes all configuration used by cache and data loading
 utilities, reducing parameter passing and improving maintainability.
 """
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-import logging
 
 
 @dataclass
 class CachePolicy:
     """Unified configuration for cache storage and pruning.
 
-        Combines CacheConfig and PruneConfig into a single, cohesive configuration
-        object that eliminates duplication and reduces parameter passing.
+    Combines CacheConfig and PruneConfig into a single, cohesive configuration
+    object that eliminates duplication and reduces parameter passing.
 
-        Attributes
-        ----------
-        cache_dir : Path
-            Directory to store cache files.
-        max_cache_bytes : int
-            Maximum total cache size in bytes before pruning.
-        ttl_seconds : int | None
-            Time-to-live for cache entries in seconds. None means no TTL.
-        glob_pattern : str
-            Glob pattern for finding cache files (default: "*.npz").
-        enable_background_pruning : bool
-            Enable periodic background pruning.
-        prune_interval_seconds : int
-            Interval between background pruning operations (seconds).
+    Attributes
+    ----------
+    cache_dir : Path
+        Directory to store cache files.
+    max_cache_bytes : int
+        Maximum total cache size in bytes before pruning.
+    ttl_seconds : int | None
+        Time-to-live for cache entries in seconds. None means no TTL.
+    glob_pattern : str
+        Glob pattern for finding cache files (default: "*.npz").
+    enable_background_pruning : bool
+        Enable periodic background pruning.
+    prune_interval_seconds : int
+        Interval between background pruning operations (seconds).
 
     """
 
@@ -51,9 +51,7 @@ class CachePolicy:
         return cls(cache_dir=Path(), max_cache_bytes=0)
 
     @classmethod
-    def with_ttl(
-        cls, ttl_seconds: int, cache_dir: Path | None = None
-    ) -> "CachePolicy":
+    def with_ttl(cls, ttl_seconds: int, cache_dir: Path | None = None) -> "CachePolicy":
         """Create policy with TTL expiration."""
         return cls(
             cache_dir=cache_dir or Path(".cache"),

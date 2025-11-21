@@ -44,7 +44,7 @@ from enum import Enum
 from types import TracebackType
 from typing import Any, Generic, TypeVar, cast
 
-from src.core import ValidationError
+from src.core.validation import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         self._metrics = AnalysisMetrics()
         self._error: Exception | None = None
 
-        logger.debug(f"{self.name}: Created")
+        logger.debug("%s: Created", self.name)
 
     @property
     def config(self) -> ConfigT | None:
@@ -170,7 +170,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         """
         self._state = AnalyzerState.FAILED
         self._error = error
-        logger.error(f"{self.name}: {context}: {error}")
+        logger.error("%s: %s: %s", self.name, context, error)
 
     def initialize(self) -> None:
         """Initialize analyzer (validate config, setup dependencies).
@@ -183,21 +183,21 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
             If configuration is invalid
         """
         if self._initialized:
-            logger.debug(f"{self.name}: Already initialized")
+            logger.debug("%s: Already initialized", self.name)
             return
 
         try:
-            logger.debug(f"{self.name}: Validating configuration")
+            logger.debug("%s: Validating configuration", self.name)
             self._validate_config()
 
-            logger.debug(f"{self.name}: Setting up dependencies")
+            logger.debug("%s: Setting up dependencies", self.name)
             self._setup()
 
             self._initialized = True
             self._state = AnalyzerState.INITIALIZED
-            logger.debug(f"{self.name}: Initialized successfully")
+            logger.debug("%s: Initialized successfully", self.name)
 
-        except Exception as e:
+        except (ValidationError, RuntimeError, ValueError, OSError) as e:
             self._mark_error(e, "Initialization failed")
             raise
 
@@ -214,7 +214,6 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
 
     def _setup(self) -> None:
         """Setup analyzer dependencies. Override for custom setup."""
-        pass
 
     def execute(self, data: Any) -> ResultT:
         """Execute analysis with automatic lifecycle management.
@@ -249,15 +248,14 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         # Execute analysis
         try:
             self._state = AnalyzerState.RUNNING
-            logger.debug(f"{self.name}: Starting analysis")
+            logger.debug("%s: Starting analysis", self.name)
 
             result = self.analyze(data)
 
             self._state = AnalyzerState.COMPLETED
-            logger.debug(f"{self.name}: Analysis completed successfully")
+            logger.debug("%s: Analysis completed successfully", self.name)
             return result
-
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, OSError) as e:
             self._mark_error(e, "Analysis failed")
             raise
 
@@ -275,7 +273,6 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         ResultT
             Analysis result
         """
-        pass
 
     # ====================================================================
     # Context Manager Support
@@ -283,7 +280,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
 
     def __enter__(self) -> BaseAnalyzer[ConfigT, ResultT]:
         """Enter context manager."""
-        logger.debug(f"{self.name}: Entering context")
+        logger.debug("%s: Entering context", self.name)
         return self
 
     def __exit__(
@@ -295,7 +292,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         """Exit context manager."""
         if exc_type is not None:
             logger.error(
-                f"{self.name}: Context exited with exception: {exc_type.__name__}"
+                "%s: Context exited with exception: %s", self.name, exc_type.__name__
             )
         self.dispose()
 
@@ -306,7 +303,7 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
     def dispose(self) -> None:
         """Clean up resources. Override for cleanup logic."""
         self._state = AnalyzerState.DISPOSED
-        logger.debug(f"{self.name}: Disposed")
+        logger.debug("%s: Disposed", self.name)
 
     # ====================================================================
     # String Representations
@@ -346,21 +343,21 @@ class AnalyzerLifecycle(BaseAnalyzer[ConfigT, ResultT]):
             result = super().execute(data)
             self.on_after_analyze(data, result)
             return result
-        except Exception as e:
-            self.on_analysis_failed(data, e)
+        except Exception as exc:
+            # Framework-level lifecycle wrapper: ensure hook is invoked for
+            # any unexpected error from the underlying analysis and preserve
+            # original exception context when re-raising.
+            self.on_analysis_failed(data, exc)
             raise
 
     def on_before_analyze(self, data: Any) -> None:
         """Called before analysis. Override for custom pre-processing."""
-        pass
 
     def on_after_analyze(self, data: Any, result: ResultT) -> None:
         """Called after successful analysis. Override for cleanup."""
-        pass
 
     def on_analysis_failed(self, data: Any, error: Exception) -> None:
         """Called when analysis fails. Override for error handling."""
-        pass
 
 
 class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
@@ -399,7 +396,7 @@ class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
         """Execute all pipeline stages in order."""
         result = data
         for stage_name, stage_func in self._pipeline:
-            logger.debug(f"{self.name}: Executing stage '{stage_name}'")
+            logger.debug("%s: Executing stage '%s'", self.name, stage_name)
             result = stage_func(result)
         return cast(ResultT, result)
 
@@ -422,7 +419,7 @@ class CompositeMixin:
     def add_sub_analyzer(self, name: str, analyzer: Any) -> None:
         """Register sub-analyzer."""
         self._sub_analyzers[name] = analyzer
-        logger.debug(f"{self.name}: Added sub-analyzer '{name}'")
+        logger.debug("%s: Added sub-analyzer '%s'", self.name, name)
 
     def get_sub_analyzer(self, name: str) -> Any:
         """Get sub-analyzer by name."""
@@ -444,7 +441,7 @@ class CacheMixin:
         """Cache a result."""
         if self._cache_enabled:
             self._cache[key] = value
-            logger.debug(f"{self.name}: Cached '{key}'")
+            logger.debug("%s: Cached '%s'", self.name, key)
 
     def get_cached(self, key: str) -> Any | None:
         """Get cached result."""
@@ -453,7 +450,7 @@ class CacheMixin:
     def clear_cache(self) -> None:
         """Clear all cached results."""
         self._cache.clear()
-        logger.debug(f"{self.name}: Cache cleared")
+        logger.debug("%s: Cache cleared", self.name)
 
 
 class ValidationMixin:
@@ -474,7 +471,7 @@ class ValidationMixin:
         """Validate data using all validators."""
         for validator in self._validators:
             if not validator(data):
-                logger.warning(f"{self.name}: Validation failed for {validator}")
+                logger.warning("%s: Validation failed for %s", self.name, validator)
                 return False
         return True
 
@@ -492,7 +489,7 @@ class MetricsMixin:
     def record_metric(self, name: str, value: Any) -> None:
         """Record a metric value."""
         self._metrics_history.append({"name": name, "value": value})
-        logger.debug(f"{self.name}: Recorded metric '{name}={value}'")
+        logger.debug("%s: Recorded metric '%s=%s'", self.name, name, value)
 
     def get_metrics(self) -> list[dict[str, Any]]:
         """Get all recorded metrics."""

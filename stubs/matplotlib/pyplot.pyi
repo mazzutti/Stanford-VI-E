@@ -1,5 +1,6 @@
-from typing import Any
-from matplotlib.colors import Colormap
+from typing import Any, Callable
+
+from .colors import Colormap
 
 # Minimal, permissive stubs for commonly used pyplot functions referenced
 # in the codebase. Keep most return types as `Any` to avoid cross-module
@@ -30,11 +31,15 @@ def tight_layout(*args: Any, **kwargs: Any) -> None: ...
 def suptitle(*args: Any, **kwargs: Any) -> Any: ...
 
 # Lightweight module-like object used by some code patterns `import matplotlib.pyplot as plt`
+class _CM:
+    def get_cmap(self, name: str | None = ..., lut: int | None = ...) -> Colormap: ...
+
 class _Plt:
     figure: Any
-    get_cmap: Any
+    get_cmap: Callable[[str | None, int | None], Colormap]
     tight_layout: Any
     close: Any
+    cm: _CM
 
 plt: _Plt
 

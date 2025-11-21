@@ -6,13 +6,14 @@ Uses ModelingPipeline for orchestration.
 
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any
-import logging
 
-from src.modeling.pipeline import ModelingPipeline
 from src.modeling.config import ModelingConfig, ModelingDefaults
+from src.modeling.pipeline import ModelingPipeline
 
 __all__ = ["run_full_modeling"]
 
@@ -28,6 +29,9 @@ def run_full_modeling(
 ) -> dict[
     str, bool | list[NDArray[np.floating[Any]]] | None | NDArray[np.floating[Any]]
 ]:
+    # NOTE: `skip_cleanup` and `verbose` are accepted for API compatibility
+    # with CLI and higher-level callers; they may be used in future.
+
     """Run the full modeling pipeline from depth to time domain.
 
     Orchestrates: data loading, depth-to-time resampling, and AVO synthesis.

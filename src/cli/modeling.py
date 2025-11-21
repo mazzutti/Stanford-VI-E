@@ -13,13 +13,18 @@ from typing import Any, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from src.io.grid import GridSpec
 from src.io.loader import DatasetManager
 from src.io.utilities import load_depth_properties
-from src.io.grid import GridSpec
 from src.utils.quantity import Quantity
 from src.utils.units import UnitRegistry
 
 logger = logging.getLogger(__name__)
+
+# This module intentionally imports some heavy processing modules at call-time
+# to avoid import-time side-effects and circular imports; disable pylint's
+# import-outside-toplevel for clarity while preserving lazy imports.
+
 
 __all__ = ["load_data", "run_modeling", "save_results"]
 
@@ -32,8 +37,8 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
     tuple
         (props_depth, DATA_PATH, FILE_MAP, grid_spec)
     """
-    DATA_PATH = "."
-    FILE_MAP = {
+    data_path = "."
+    file_map = {
         "vp": "P-wave Velocity",
         "vs": "S-wave Velocity",
         "rho": "Density",
@@ -46,7 +51,7 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
     logger.info("%s", "=" * 70)
     t0 = time.time()
 
-    dm = DatasetManager.from_stanfordsix(DATA_PATH, FILE_MAP, grid_spec)
+    dm = DatasetManager.from_stanfordsix(data_path, file_map, grid_spec)
     props_depth = load_depth_properties(dm)
     t1 = time.time()
     logger.info("✓ Loaded data in %.2fs", (t1 - t0))
@@ -59,20 +64,20 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
             vm = VelocityModel(vp=props_depth["vp"], grid_spec=grid_spec)
             converted = vm.ensure_m_per_s()
             props_depth["vp"] = vm.vp.array if isinstance(vm.vp, Quantity) else vm.vp
-        except Exception:
+        except (RuntimeError, ValueError, TypeError, OSError):
             try:
                 out, converted = UnitRegistry.ensure_m_per_s(
                     props_depth["vp"], copy_on_convert=True
                 )
                 if converted:
                     props_depth["vp"] = out
-            except Exception:
+            except (ValueError, TypeError, OSError):
                 pass
 
     # Convert vs and rho
     if props_depth["vs"] is not None and props_depth["rho"] is not None:
         try:
-            from src.processing.materials import VsModel, DensityModel
+            from src.processing.materials import DensityModel, VsModel
 
             vsm = VsModel(props_depth["vs"])
             vsm.ensure_m_per_s()
@@ -81,17 +86,20 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
             drm = DensityModel(props_depth["rho"])
             drm.ensure_kg_per_m3()
             props_depth["rho"] = cast(NDArray[np.floating[Any]], drm.rho)
-        except Exception:
+        except (RuntimeError, ValueError, TypeError, OSError):
             try:
                 out, converted = UnitRegistry.ensure_m_per_s(
                     props_depth["vs"], copy_on_convert=True
                 )
                 if converted:
                     props_depth["vs"] = out
-            except Exception:
+            except (ValueError, TypeError, OSError):
                 pass
 
-    return props_depth, DATA_PATH, FILE_MAP, grid_spec
+    return props_depth, data_path, file_map, grid_spec
+
+
+# `args` accepted for CLI compatibility; suppress unused-argument.
 
 
 def run_modeling(
@@ -115,10 +123,18 @@ def run_modeling(
     dict
         Dictionary with modeling results
     """
+    # This orchestration routine intentionally uses many local temporaries
+    # for clarity and stepwise processing; silence the linter for this
+    # function at the start of the body.
+
     _t0 = time.time()
 
-    from src.processing.resampling._resampler import resampler_factory
-    from src.processing.resampling._cache import get_resample_plan_cache
+    from src.processing.resampling._cache import (
+        get_resample_plan_cache,
+    )
+    from src.processing.resampling._resampler import (
+        resampler_factory,
+    )
 
     resampler = resampler_factory.get_resampler(grid_spec)
     _vp_ref = props_depth["vp"]

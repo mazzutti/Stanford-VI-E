@@ -17,16 +17,16 @@ Test organization:
 # mypy: ignore-errors
 
 
-import pytest
 import threading
-from pathlib import Path
-from typing import Any, Generator
-from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Dict, Generator, List
+from unittest.mock import patch
+
+import pytest
 
 from src.analysis.common import AnalysisCommon
 from src.processing.managers import ProcessManager
-
 
 # Test constants
 TEST_PATTERNS = ["*.pkl", "*.npy", "*.cache"]
@@ -60,11 +60,9 @@ class DummyProcessManager(ProcessManager):
         self.call_log.append(("clear_cache", patterns, cache_dir, prefix))
         return 5
 
-    def open_file(
-        self, filepath: str, description: str | None = None, prefix: str = ""
-    ) -> bool:
+    def open_file(self, filepath: str, prefix: str = "") -> bool:
         """Mock open_file method."""
-        self.call_log.append(("open_file", filepath, description, prefix))
+        self.call_log.append(("open_file", filepath, prefix))
         return True
 
     def summarize_cache_files(
@@ -330,6 +328,7 @@ def test_delegated_methods(
 ) -> None:
     """Test that delegated methods return correct values using parametrize."""
     instance = AnalysisCommon.instance(dummy_manager)
+    result: Any = None
 
     if method_name == "clear_cache":
         result = instance.clear_cache()
@@ -495,7 +494,7 @@ def test_clear_cache_with_patterns() -> None:
 def test_open_file_with_description() -> None:
     manager = DummyProcessManager()
     instance = AnalysisCommon.instance(manager)
-    result = instance.open_file("/path/file.txt", description="test file")
+    result = instance.open_file("/path/file.txt")
     assert result is True
 
 
@@ -740,9 +739,9 @@ class TestAnalysisCommonIntegration:
 
     def test_analyzer_with_registry_and_pipeline(self):
         """Test using analyzer with registry and pipeline."""
-        from src.analysis.base import AnalyzerInterface, AnalysisConfig
-        from src.analysis.processors.management import ProcessorRegistry
+        from src.analysis.base import AnalysisConfig, AnalyzerInterface
         from src.analysis.pipelines.orchestrator import Pipeline, PipelineStage
+        from src.analysis.processors.management import ProcessorRegistry
 
         class SampleConfig(AnalysisConfig):
             """Sample configuration."""
@@ -836,7 +835,7 @@ class TestAnalysisCommonIntegration:
 
     def test_polymorphic_usage_patterns(self):
         """Test polymorphic usage across components."""
-        from src.analysis.base import AnalyzerInterface, AnalysisConfig
+        from src.analysis.base import AnalysisConfig, AnalyzerInterface
         from src.analysis.processors.management import ProcessorRegistry
 
         class BaseConfig(AnalysisConfig):

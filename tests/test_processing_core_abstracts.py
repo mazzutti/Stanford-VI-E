@@ -3,18 +3,14 @@
 Tests for abstract base classes that define contracts for processing components.
 """
 
-import pytest
-import numpy as np
 from abc import ABC
 from typing import Any
 
-from src.processing.core.abstracts import (
-    Processor,
-    Manager,
-    Resampler,
-    MaterialProperty,
-    Validator,
-)
+import numpy as np
+import pytest
+
+from src.processing.core.abstracts import (Manager, MaterialProperty,
+                                           Processor, Resampler, Validator)
 
 
 class TestProcessorAbstract:

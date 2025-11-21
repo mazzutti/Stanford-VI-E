@@ -3,9 +3,9 @@
 Replaces complex dictionary manipulation with clean, chainable methods.
 """
 
-from typing import Any, cast
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 __all__ = ["ResultAggregator", "ResultSummary"]
 
@@ -23,7 +23,7 @@ class ResultSummary:
 
     def has_errors(self) -> bool:
         """Check if any errors occurred."""
-        return len(self.errors) > 0
+        return bool(self.errors)
 
     def add_error(self, error: str) -> None:
         """Add an error message."""

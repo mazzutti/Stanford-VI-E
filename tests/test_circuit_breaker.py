@@ -12,19 +12,19 @@ Tests cover:
 - Statistics tracking
 """
 
-import pytest
 import time
 from threading import Thread
+
+import pytest
 from freezegun import freeze_time
-from src.analysis.patterns.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerState,
-    CircuitBreakerOpen,
-    CircuitBreakerPool,
-    circuit_breaker,
-    get_circuit_breaker,
-    reset_all_circuit_breakers,
-)
+
+from src.analysis.patterns.circuit_breaker import (CircuitBreaker,
+                                                   CircuitBreakerOpen,
+                                                   CircuitBreakerPool,
+                                                   CircuitBreakerState,
+                                                   circuit_breaker,
+                                                   get_circuit_breaker,
+                                                   reset_all_circuit_breakers)
 
 
 @pytest.mark.slow

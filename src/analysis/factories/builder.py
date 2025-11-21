@@ -14,33 +14,29 @@ Features:
 from __future__ import annotations
 
 import logging
-from copy import copy as shallow_copy
-from typing import (
-    TYPE_CHECKING,
-    cast,
-    Any,
-)
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from copy import copy as shallow_copy
+from typing import TYPE_CHECKING, Any, cast
 
-from src.processing.materials.velocity import VelocityModel
-from src.analysis.types.protocols import (
-    ResamplerFactory,
-    CacheLoaderProtocol,
-    PlotterProtocol,
-)
+from src.analysis.domain import DomainHandlerFactory
+from src.analysis.exceptions import BuilderFrozenError, BuilderValidationError
+from src.analysis.factories.validators import TypeValidator
 from src.analysis.models import FaciesCorrelationConfig
 from src.analysis.processors import (
+    BoundaryAmplitudeExtractor,
     BoundaryDetector,
     CubeAligner,
-    BoundaryAmplitudeExtractor,
+    FaciesDiscriminationCalculator,
     GradientCorrelationCalculator,
     InterfaceReflectionAnalyzer,
-    FaciesDiscriminationCalculator,
 )
-from src.analysis.domain import DomainHandlerFactory
-from src.analysis.factories.validators import TypeValidator
-from src.analysis.exceptions import BuilderValidationError, BuilderFrozenError
+from src.analysis.types.protocols import (
+    CacheLoaderProtocol,
+    PlotterProtocol,
+    ResamplerFactory,
+)
+from src.processing.materials.velocity import VelocityModel
 
 if TYPE_CHECKING:
     from src.analysis.facies import FaciesCorrelationAnalyzer
@@ -50,6 +46,11 @@ logger = logging.getLogger(__name__)
 
 class AnalyzerBuilder:
     """Builder for FaciesCorrelationAnalyzer with fluent configuration."""
+
+    # The builder holds many lazily-initialized component references and
+    # configuration slots to support flexible dependency injection. These
+    # stored attributes are intentional; silence instance-attribute noise
+    # for this helper object.
 
     def _create_boundary_amp_extractor(
         self, config: FaciesCorrelationConfig
@@ -265,7 +266,7 @@ class AnalyzerBuilder:
         if old_value != value:
             old_type = type(old_value).__name__ if old_value else "None"
             new_type = type(value).__name__ if value else "None"
-            logger.debug(f"Updated {name}: {old_type} -> {new_type}")
+            logger.debug("Updated %s: %s -> %s", name, old_type, new_type)
 
         return self
 
@@ -379,7 +380,7 @@ class AnalyzerBuilder:
                 )
 
             self._set_dependency(normalized_name, instance)
-            logger.debug(f"Batch-configured {normalized_name}")
+            logger.debug("Batch-configured %s", normalized_name)
 
         return self
 
@@ -417,7 +418,7 @@ class AnalyzerBuilder:
                 key = key[5:]
             self._set_dependency(key, value)
 
-        logger.debug(f"Applied transient config: {list(config_overrides.keys())}")
+        logger.debug("Applied transient config: %s", list(config_overrides.keys()))
 
         try:
             yield self
@@ -461,7 +462,7 @@ class AnalyzerBuilder:
                 # Use factory function for lazy initialization
                 new_instance = factory_func()
                 setattr(self, f"_{processor_name}", new_instance)
-                logger.debug(f"Lazy-initialized {proc_type.__name__}")
+                logger.debug("Lazy-initialized %s", proc_type.__name__)
 
     def _validate(self) -> None:
         """Validate builder state before building with detailed error reporting.
@@ -502,7 +503,7 @@ class AnalyzerBuilder:
 
         # Log warnings
         for warning in warnings:
-            logger.warning(f"Builder validation warning: {warning}")
+            logger.warning("Builder validation warning: %s", warning)
 
         logger.debug("Builder validation passed")
 
@@ -774,8 +775,12 @@ class AnalyzerBuilder:
         if was_frozen:
             self.freeze()
 
-        # Import here to avoid circular dependency issues
+        # Import here to avoid circular dependency issues. Use an explicit
+        # pylint disable/enable pair to localize the import-only suppression.
+
         from src.analysis.facies import FaciesCorrelationAnalyzer
+
+        # pylint: enable=import-outside-toplevel
 
         analyzer = FaciesCorrelationAnalyzer(
             resampler_factory=self._resampler_factory,
@@ -794,5 +799,5 @@ class AnalyzerBuilder:
             domain_handler_factory=self._domain_handler_factory,
         )
 
-        logger.info(f"Built FaciesCorrelationAnalyzer: {repr(self)}")
+        logger.info("Built FaciesCorrelationAnalyzer: %s", repr(self))
         return analyzer

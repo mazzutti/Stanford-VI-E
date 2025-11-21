@@ -9,11 +9,15 @@ Design:
 
 import logging
 from pathlib import Path
+
 from src.io.gslib_reader import GSLibConfig
 
 __all__ = ["FileLocator"]
 
 logger = logging.getLogger(__name__)
+
+# FileLocator is a small utility class with a compact public surface; silence
+# too-few-public-methods to reduce stylistic noise for this helper.
 
 
 class FileLocator:
@@ -93,7 +97,7 @@ class FileLocator:
             The fallback file path being used.
         """
         self._logger.warning(
-            f"Expected one of {candidates} not found. Using data file: {full_path}"
+            "Expected one of %s not found. Using data file: %s", candidates, full_path
         )
 
     def _search_files_by_pattern(
@@ -101,23 +105,23 @@ class FileLocator:
     ) -> str | None:
         """Search for a data file using multiple pattern matching strategies.
 
-                Tries to match by key name first, then by normalized folder name.
+        Tries to match by key name first, then by normalized folder name.
 
-                Parameters
-                ----------
-                dat_files : list[str]
-                    List of available .dat file names.
-                key : str
-                    The property key to match (e.g., "vp", "vs").
-                folder_name : str
-                    The folder name to use for normalization matching.
-                dir_path : Path
-                    Path to the directory containing files.
+        Parameters
+        ----------
+        dat_files : list[str]
+            List of available .dat file names.
+        key : str
+            The property key to match (e.g., "vp", "vs").
+        folder_name : str
+            The folder name to use for normalization matching.
+        dir_path : Path
+            Path to the directory containing files.
 
-                Returns
-                -------
-                str | None
-                    Full path to matched file, or None if no match found.
+        Returns
+        -------
+        str | None
+            Full path to matched file, or None if no match found.
 
         """
         # Search by key name match
@@ -197,7 +201,10 @@ class FileLocator:
         full_path = str(dir_path / dat_files[0])
         self._log_file_fallback(candidates, full_path)
         self._logger.warning(
-            f"For key '{key}': searched for candidates {candidates}, found files {dat_files}, "
-            f"using {dat_files[0]}"
+            "For key '%s': searched for candidates %s, found files %s, using %s",
+            key,
+            candidates,
+            dat_files,
+            dat_files[0],
         )
         return full_path

@@ -30,13 +30,13 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, TypeVar
-from collections.abc import Callable
-from functools import partial
-from enum import Enum
 import logging
+from collections.abc import Callable
 from datetime import datetime
+from enum import Enum
+from functools import partial
 from threading import Lock
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +65,9 @@ class Lifecycle(Enum):
 class RegistrationError(Exception):
     """Raised when service registration fails."""
 
-    pass
-
 
 class ResolutionError(Exception):
     """Raised when service resolution fails."""
-
-    pass
 
 
 class ServiceDescriptor:
@@ -184,7 +180,7 @@ class LifecycleManager:
         """
         with self._lock:
             self._scopes.pop(scope_id, None)
-        logger.debug(f"Scope {scope_id!r} cleared")
+        logger.debug("Scope %r cleared", scope_id)
 
 
 class ServiceProvider:
@@ -255,7 +251,7 @@ class ServiceProvider:
                 scope_id,
             )
 
-            logger.debug(f"Resolved service: {service_name!r}")
+            logger.debug("Resolved service: %r", service_name)
             return instance
 
         finally:
@@ -329,7 +325,7 @@ class Container:
             dependencies=dependencies,
         )
         self._descriptors[name] = descriptor
-        logger.debug(f"Registered singleton: {name!r}")
+        logger.debug("Registered singleton: %r", name)
         return self
 
     def register_transient(
@@ -359,7 +355,7 @@ class Container:
             dependencies=dependencies,
         )
         self._descriptors[name] = descriptor
-        logger.debug(f"Registered transient: {name!r}")
+        logger.debug("Registered transient: %r", name)
         return self
 
     def register_scoped(
@@ -389,7 +385,7 @@ class Container:
             dependencies=dependencies,
         )
         self._descriptors[name] = descriptor
-        logger.debug(f"Registered scoped: {name!r}")
+        logger.debug("Registered scoped: %r", name)
         return self
 
     def resolve(self, service_name: str, scope_id: str | None = None) -> Any:

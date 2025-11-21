@@ -4,23 +4,22 @@ Tests backend implementations, backend manager, caching, and service layer.
 Focuses on testable components without unit registry issues.
 """
 
-import pytest
-import numpy as np
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from unittest.mock import MagicMock, patch
-from src.processing.resampling.backends._base import BackendError, BackendResult
+
+import numpy as np
+import pytest
+
+from src.io.grid import GridSpec
+from src.processing.resampling._cache import (ResamplePlanCache,
+                                              get_resample_plan_cache,
+                                              set_resample_plan_cache)
+from src.processing.resampling.backends._base import (BackendError,
+                                                      BackendResult)
 from src.processing.resampling.backends._implementations import (
-    VectorizedBackend,
-    BatchedInterpolatorBackend,
-    _register_default_backends,
-)
+    BatchedInterpolatorBackend, VectorizedBackend, _register_default_backends)
 from src.processing.resampling.backends._manager import BackendManager
 from src.processing.resampling.service import ResamplerService
-from src.processing.resampling._cache import (
-    ResamplePlanCache,
-    get_resample_plan_cache,
-    set_resample_plan_cache,
-)
-from src.io.grid import GridSpec
 
 
 class TestBackendVerboseLogging:
@@ -28,30 +27,24 @@ class TestBackendVerboseLogging:
 
     def test_set_backend_verbose_true(self):
         """Test enabling verbose logging."""
-        from src.processing.resampling._resampler import (
-            set_backend_verbose,
-            is_backend_verbose,
-        )
+        from src.processing.resampling._resampler import (is_backend_verbose,
+                                                          set_backend_verbose)
 
         set_backend_verbose(True)
         assert is_backend_verbose() is True
 
     def test_set_backend_verbose_false(self):
         """Test disabling verbose logging."""
-        from src.processing.resampling._resampler import (
-            set_backend_verbose,
-            is_backend_verbose,
-        )
+        from src.processing.resampling._resampler import (is_backend_verbose,
+                                                          set_backend_verbose)
 
         set_backend_verbose(False)
         assert is_backend_verbose() is False
 
     def test_set_backend_verbose_toggles(self):
         """Test toggling verbose logging multiple times."""
-        from src.processing.resampling._resampler import (
-            set_backend_verbose,
-            is_backend_verbose,
-        )
+        from src.processing.resampling._resampler import (is_backend_verbose,
+                                                          set_backend_verbose)
 
         for _ in range(3):
             set_backend_verbose(True)
@@ -141,7 +134,10 @@ class TestResamplerService:
     def test_service_requires_grid_spec(self):
         """Test service requires grid_spec parameter."""
         with pytest.raises(TypeError):
-            ResamplerService()
+            # This call intentionally omits the required `grid_spec` to assert
+            # that the service raises a TypeError. Disable pylint E1120
+            # (no value for required argument) for this test case.
+            ResamplerService()  # pylint: disable=E1120
 
     def test_service_with_grid_spec(self):
         """Test service creation with grid spec."""

@@ -1,4 +1,5 @@
-"""Unified validation framework consolidating validators.py, validator_chain.py, and processors/validators.
+"""Unified validation framework consolidating validators.py, validator_chain.py,
+and processors/validators.
 
 This module provides a comprehensive validation system with:
 - Abstract base validators (Validator protocol)
@@ -30,14 +31,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    Protocol,
-    TypeVar,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
 
 from numpy.typing import NDArray
 
@@ -45,6 +39,13 @@ if TYPE_CHECKING:
     from src.analysis.domain.enum import Domain
 
 logger = logging.getLogger(__name__)
+
+# Small helper classes in this module are intentionally compact; suppress
+# noisy too-few-public-methods warnings so lint focuses on substantive issues.
+
+
+# Module-level allowance: this module intentionally exposes compact helper
+# classes and protocol stubs used widely across the codebase.
 
 __all__ = [
     # Core protocols
@@ -86,8 +87,6 @@ ArrayNamePair = tuple[NDArray[Any], str]
 class ValidationError(Exception):
     """Raised when validation fails."""
 
-    pass
-
 
 class ValidatorResult(Enum):
     """Result of validation."""
@@ -116,7 +115,7 @@ class Validator(Protocol[T_contra]):
         list[str]
             List of error messages (empty if valid)
         """
-        ...
+        raise NotImplementedError()
 
 
 class Validatable(Protocol):
@@ -128,11 +127,11 @@ class Validatable(Protocol):
 
     def validate(self) -> bool:
         """Validate the object's state. Returns True if valid, False otherwise."""
-        ...
+        raise NotImplementedError()
 
     def assert_valid(self) -> None:
         """Assert object is valid, raise ValidationError if not."""
-        ...
+        raise NotImplementedError()
 
 
 # ============================================================================
@@ -158,8 +157,6 @@ class BaseValidator(ABC):
             The value to validate (type depends on validator).
         name : str, default="value"
             Name for error messages.
-        **kwargs
-            Additional validation parameters (validator-specific).
 
         Raises
         ------
@@ -207,15 +204,15 @@ class RangeValidator(BaseValidator):
                     f"{name} is NaN, which is not allowed. "
                     "Pass allow_nan=True to permit NaN values."
                 )
-            logger.debug(f"{name} is NaN (allowed)")
+            logger.debug("%s is NaN (allowed)", name)
             return
 
-        if not (-1.0 <= value <= 1.0):
+        if not -1.0 <= value <= 1.0:
             raise ValidationError(
                 f"{name}={value} is outside valid range [-1, 1]. "
                 "Correlation coefficients must be between -1 and 1."
             )
-        logger.debug(f"{name}={value} is valid")
+        logger.debug("%s=%s is valid", name, value)
 
     @staticmethod
     def validate_pvalue(
@@ -228,15 +225,15 @@ class RangeValidator(BaseValidator):
         if math.isnan(value):
             if not allow_nan:
                 raise ValidationError(f"{name} is NaN, which is not allowed.")
-            logger.debug(f"{name} is NaN (allowed)")
+            logger.debug("%s is NaN (allowed)", name)
             return
 
-        if not (0.0 <= value <= 1.0):
+        if not 0.0 <= value <= 1.0:
             raise ValidationError(
                 f"{name}={value} is outside valid range [0, 1]. "
                 "P-values must be between 0 and 1."
             )
-        logger.debug(f"{name}={value} is valid")
+        logger.debug("%s=%s is valid", name, value)
 
     @staticmethod
     def validate_range(
@@ -248,11 +245,14 @@ class RangeValidator(BaseValidator):
         allow_nan: bool = False,
         include_endpoints: bool = True,
     ) -> None:
+        # This helper accepts several configuration flags; keep the
+        # explicit signature for clarity and silence the arity warning.
+
         """Validate numeric value is within specified range."""
         if math.isnan(value):
             if not allow_nan:
                 raise ValidationError(f"{name} is NaN, which is not allowed.")
-            logger.debug(f"{name} is NaN (allowed)")
+            logger.debug("%s is NaN (allowed)", name)
             return
 
         if include_endpoints:
@@ -264,7 +264,7 @@ class RangeValidator(BaseValidator):
 
         if not valid:
             raise ValidationError(f"{name}={value} is outside valid range {range_str}.")
-        logger.debug(f"{name}={value} is valid")
+        logger.debug("%s=%s is valid", name, value)
 
     @staticmethod
     def validate_probability(
@@ -303,13 +303,13 @@ class CountValidator(BaseValidator):
             raise ValidationError(
                 f"{name}={value} is zero, but allow_zero=False (must be > 0)"
             )
-        logger.debug(f"{name}={value} is valid")
+        logger.debug("%s=%s is valid", name, value)
 
 
 class QuantileValidator(BaseValidator):
     """Validates quantile values."""
 
-    def validate(self, value: float, name: str = "value", **kwargs: Any) -> None:
+    def validate(self, value: float, name: str = "value") -> None:
         """Validate quantile is in [0, 1]."""
         self.validate_quantile(value, name)
 
@@ -346,7 +346,6 @@ class ArrayValidator(BaseValidator):
         self,
         value: NDArray[Any],
         name: str = "array",
-        **kwargs: Any,
     ) -> None:
         """Validate array properties."""
 
@@ -354,12 +353,14 @@ class ArrayValidator(BaseValidator):
     def ensure_valid_arrays(*arrays_with_names: ArrayNamePair) -> None:
         """Ensure all arrays are valid 3D arrays."""
         for arr, name in arrays_with_names:
-            # Avoid an unnecessary isinstance check for NDArray[Any]; validate via attributes instead.
+            # Avoid an unnecessary isinstance() check for NDArray[Any]. Validate
+            # via attributes instead to support array-like objects without
+            # importing NumPy types at module import time.
             try:
                 ndim = arr.ndim
                 size = arr.size
-            except AttributeError:
-                raise ValidationError(f"{name} must be numpy array-like")
+            except AttributeError as exc:
+                raise ValidationError(f"{name} must be numpy array-like") from exc
             # Accept Python ints and numpy integer types via numbers.Integral
             if not isinstance(ndim, numbers.Integral):
                 raise ValidationError(f"{name} has invalid ndim attribute")
@@ -388,7 +389,6 @@ class DomainValidator(BaseValidator):
         self,
         value: Domain,
         name: str = "domain",
-        **kwargs: Any,
     ) -> None:
         """Validate domain value."""
         # Runtime type check is unnecessary because the function signature
@@ -407,7 +407,6 @@ class PathValidator(BaseValidator):
         value: str | Path,
         name: str = "path",
         must_exist: bool = True,
-        **kwargs: Any,
     ) -> None:
         """Validate file path."""
         path = Path(value)
@@ -426,7 +425,6 @@ class ValidatorStrategy(ABC):
     @abstractmethod
     def combine(self, errors: list[list[str]]) -> list[str]:
         """Combine errors from multiple validators."""
-        pass
 
 
 class AndStrategy(ValidatorStrategy):

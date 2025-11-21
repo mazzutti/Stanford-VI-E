@@ -2,12 +2,13 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import MagicMock, Mock, call, patch
+
 import pytest
 
-from src.processing.managers.processor import ProcessManager, ManagerHub
 from src.processing.managers.cache import CacheManager
 from src.processing.managers.file import FileManager
+from src.processing.managers.processor import ManagerHub, ProcessManager
 
 
 # Concrete FileManager implementation for testing (FileManager is abstract)
@@ -158,9 +159,7 @@ class TestProcessManagerOpenFile:
 
         result = pm.open_file("test.txt")
 
-        mock_file.open.assert_called_once_with(
-            filepath="test.txt", description=None, prefix=""
-        )
+        mock_file.open.assert_called_once_with(filepath="test.txt", prefix="")
         assert result is True
 
     def test_open_file_with_description(self):
@@ -169,11 +168,9 @@ class TestProcessManagerOpenFile:
         mock_file.open.return_value = True
         pm = ProcessManager(file_manager=mock_file)
 
-        result = pm.open_file("test.txt", description="Test file")
+        result = pm.open_file("test.txt")
 
-        mock_file.open.assert_called_once_with(
-            filepath="test.txt", description="Test file", prefix=""
-        )
+        mock_file.open.assert_called_once_with(filepath="test.txt", prefix="")
         assert result is True
 
     def test_open_file_with_prefix(self):
@@ -184,9 +181,7 @@ class TestProcessManagerOpenFile:
 
         result = pm.open_file("test.txt", prefix="[INFO]")
 
-        mock_file.open.assert_called_once_with(
-            filepath="test.txt", description=None, prefix="[INFO]"
-        )
+        mock_file.open.assert_called_once_with(filepath="test.txt", prefix="[INFO]")
         assert result is False
 
     def test_open_file_with_all_args(self):
@@ -195,11 +190,9 @@ class TestProcessManagerOpenFile:
         mock_file.open.return_value = True
         pm = ProcessManager(file_manager=mock_file)
 
-        result = pm.open_file("test.txt", description="Test", prefix="[DEBUG]")
+        result = pm.open_file("test.txt", prefix="[DEBUG]")
 
-        mock_file.open.assert_called_once_with(
-            filepath="test.txt", description="Test", prefix="[DEBUG]"
-        )
+        mock_file.open.assert_called_once_with(filepath="test.txt", prefix="[DEBUG]")
         assert result is True
 
 

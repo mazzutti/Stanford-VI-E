@@ -35,16 +35,16 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, cast
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
-from collections import OrderedDict
+from enum import Enum
+from functools import wraps
 from threading import Lock, RLock
 from time import time
-from functools import wraps
-import logging
-from enum import Enum
+from typing import Any, TypeVar, cast
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,9 @@ __all__ = [
 ]
 
 T = TypeVar("T")
+
+# Caching utilities intentionally include multiple implementations and
+# ergonomics for tests; keep the module comprehensive and clear.
 
 
 class CacheInvalidationEvent(Enum):
@@ -110,7 +113,6 @@ class CacheStrategy(ABC):
         Returns:
             Cached value or None if not found
         """
-        pass
 
     @abstractmethod
     def set(self, key: str, value: Any) -> None:
@@ -120,7 +122,6 @@ class CacheStrategy(ABC):
             key: Cache key
             value: Value to cache
         """
-        pass
 
     @abstractmethod
     def delete(self, key: str) -> bool:
@@ -132,12 +133,10 @@ class CacheStrategy(ABC):
         Returns:
             True if deleted, False if not found
         """
-        pass
 
     @abstractmethod
     def clear(self) -> None:
         """Clear all values from cache."""
-        pass
 
     @abstractmethod
     def size(self) -> int:
@@ -146,7 +145,6 @@ class CacheStrategy(ABC):
         Returns:
             Number of items in cache
         """
-        pass
 
     @abstractmethod
     def stats(self) -> CacheStats:
@@ -155,7 +153,6 @@ class CacheStrategy(ABC):
         Returns:
             CacheStats with hit/miss info
         """
-        pass
 
 
 class LRUCache(CacheStrategy):
@@ -217,7 +214,7 @@ class LRUCache(CacheStrategy):
                 while len(self._cache) > self.max_size:
                     removed_key, _ = self._cache.popitem(last=False)
                     self._evictions += 1
-                    logger.debug(f"LRU evicted: {removed_key}")
+                    logger.debug("LRU evicted: %s", removed_key)
 
     def delete(self, key: str) -> bool:
         """Delete value from cache.
@@ -323,7 +320,7 @@ class LFUCache(CacheStrategy):
                 del self._cache[min_key]
                 del self._frequency[min_key]
                 self._evictions += 1
-                logger.debug(f"LFU evicted: {min_key}")
+                logger.debug("LFU evicted: %s", min_key)
 
     def delete(self, key: str) -> bool:
         """Delete value from cache.
@@ -380,6 +377,10 @@ class TTLCache(CacheStrategy):
 
     Automatically expires items based on TTL. Lazy expiration on access.
     """
+
+    # The TTLCache stores several internal counters and maps used for
+    # bookkeeping across concurrent operations. These attributes are
+    # intentional for cache semantics; silence instance-attribute noise.
 
     def __init__(self, ttl_seconds: int = 3600, max_size: int = 1000):
         """Initialize TTL cache.
@@ -441,7 +442,7 @@ class TTLCache(CacheStrategy):
                 del self._cache[min_key]
                 del self._expiry[min_key]
                 self._evictions += 1
-                logger.debug(f"TTL evicted: {min_key}")
+                logger.debug("TTL evicted: %s", min_key)
 
     def delete(self, key: str) -> bool:
         """Delete value from cache.
@@ -549,7 +550,7 @@ class FIFOCache(CacheStrategy):
                 while len(self._cache) > self.max_size:
                     removed_key, _ = self._cache.popitem(last=False)
                     self._evictions += 1
-                    logger.debug(f"FIFO evicted: {removed_key}")
+                    logger.debug("FIFO evicted: %s", removed_key)
             else:
                 self._cache[key] = value
 
@@ -622,7 +623,7 @@ class CacheManager:
         """
         with self._lock:
             self._caches[name] = cache
-            logger.debug(f"Registered cache: {name}")
+            logger.debug("Registered cache: %s", name)
 
     def get(self, name: str) -> CacheStrategy | None:
         """Get a named cache.
@@ -648,7 +649,7 @@ class CacheManager:
         with self._lock:
             if name in self._caches:
                 del self._caches[name]
-                logger.debug(f"Unregistered cache: {name}")
+                logger.debug("Unregistered cache: %s", name)
                 return True
             return False
 
@@ -716,11 +717,11 @@ def cache_result(
             # Try to get from cache
             cached_value = cache.get(cache_key)
             if cached_value is not None:
-                logger.debug(f"Cache hit: {func.__name__}")
+                logger.debug("Cache hit: %s", func.__name__)
                 return cached_value
 
             # Compute and cache result
-            logger.debug(f"Cache miss: {func.__name__}")
+            logger.debug("Cache miss: %s", func.__name__)
             result = func(*args, **kwargs)
             cache.set(cache_key, result)
             return result

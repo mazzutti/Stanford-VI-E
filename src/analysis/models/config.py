@@ -5,6 +5,7 @@ like transitions between facies.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -111,10 +112,10 @@ class Transition:
         try:
             from_facies = int(parts[0])
             to_facies = int(parts[1])
-        except ValueError as e:
+        except ValueError as exc:
             raise ValueError(
-                f"Invalid facies indices in transition string {key!r}: {e}"
-            )
+                f"Invalid facies indices in transition string {key!r}: {exc}"
+            ) from exc
         return cls(from_facies=from_facies, to_facies=to_facies)
 
 
@@ -137,13 +138,6 @@ class FaciesCorrelationConfig(ValidatableConfigMixin):
             self.boundary_threshold, 0.0, 1.0, "boundary_threshold"
         )
         ValidatorRegistry.validate_positive(self.dilation_window, "dilation_window")
-
-    def is_valid(self) -> bool:
-        """Check if configuration is valid.
-
-        Note: Inherited from ValidatableConfigMixin
-        """
-        return super().is_valid()
 
     def to_dict(self) -> dict[str, int | float]:
         """Convert configuration to dictionary."""

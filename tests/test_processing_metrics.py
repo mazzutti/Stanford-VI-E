@@ -5,10 +5,13 @@ resampling performance and plan identification.
 """
 
 import hashlib
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock
-from src.processing.metrics import PlanFingerprint, BackendMetrics
+
+from src.processing.metrics import BackendMetrics, PlanFingerprint
 
 
 class TestPlanFingerprintCreation:

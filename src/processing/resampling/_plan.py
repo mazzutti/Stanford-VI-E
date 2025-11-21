@@ -9,29 +9,35 @@ duplication across callers.
 
 from __future__ import annotations
 
-
+import logging
 from dataclasses import dataclass
 from typing import Any
-from numpy.typing import NDArray
-
-
-# Alias for clarity
-
 
 import numpy as np
-import logging
-
+from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
-from src.utils.units import UnitRegistry
 from src.utils.quantity import Quantity
+from src.utils.units import UnitRegistry
 
-
+# Alias for clarity
 IndexTuple = tuple[int, int, int]
+
+# ResamplePlan intentionally stores several computed arrays and helper
+# fields as attributes for efficient reuse. These attributes increase
+# the dataclass attribute count but are correct for the data model.
 
 
 @dataclass
 class ResamplePlan:
+    """Plan describing time axes, TWT arrays and blocking for resampling.
+
+    This dataclass precomputes time axes, two-way travel times (TWT), and
+    provides helpers to produce padded arrays used by the resampler. Keeping
+    these computations centralized avoids duplication and keeps resampling
+    callers simple.
+    """
+
     grid_spec: GridSpec
     vp_arr: NDArray[Any]
     dt: float
@@ -58,6 +64,9 @@ class ResamplePlan:
         vp_depth may be a Quantity or ndarray with shape (ni, nj, nz).
         Returns a ResamplePlan with computed time axis and twt arrays.
         """
+        # This construction method computes several temporaries for plan
+        # generation; keep the linter quiet about the local variable count.
+
         # Unwrap quantity (Quantity -> ndarray)
         if isinstance(vp_depth, Quantity):
             vp_val = vp_depth.array
@@ -109,10 +118,12 @@ class ResamplePlan:
 
     @property
     def time_axis(self) -> NDArray[Any]:
+        """Return the regularly sampled time axis for this plan."""
         return np.arange(self.nt) * self.dt
 
     @property
     def ntr(self) -> int:
+        """Return number of traces (ni * nj) for this plan."""
         return self.ni * self.nj
 
     def twt_padded(self) -> NDArray[Any]:
@@ -142,6 +153,11 @@ class ResamplePlan:
         return result
 
     def blocks(self) -> list[tuple[int, int]]:
+        """Return list of (start, end) index pairs for block iteration.
+
+        The blocks partition the flattened trace axis into chunks of size
+        `self.block_size` for batched processing.
+        """
         ntr = self.ntr
         b = self.block_size
         return [(start, min(start + b, ntr)) for start in range(0, ntr, b)]
@@ -152,3 +168,7 @@ __all__ = ["ResamplePlan"]
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+# ResamplePlan contains compact helpers for preparing padded arrays and
+# block iteration. The methods are intentionally simple and directly
+# mirror the mathematical operations used by resamplers.

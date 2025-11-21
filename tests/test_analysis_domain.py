@@ -19,18 +19,13 @@ Tests cover:
 import logging
 from unittest.mock import Mock, patch
 
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
-from src.analysis.domain import (
-    DisplayCubes,
-    DepthDomainHandler,
-    TimeDomainHandler,
-    DomainHandlerRegistry,
-    DomainHandlerFactory,
-    HandlerStatistics,
-)
+from src.analysis.domain import (DepthDomainHandler, DisplayCubes,
+                                 DomainHandlerFactory, DomainHandlerRegistry,
+                                 HandlerStatistics, TimeDomainHandler)
 from src.analysis.domain.enum import Domain
 
 

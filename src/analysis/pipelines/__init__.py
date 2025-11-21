@@ -13,16 +13,14 @@ Example:
     >>> results = analyzer.run(...)
 """
 
-from .seismograms import (
-    SeismogramAnalyzer,
-)
 from .orchestrator import (
+    ConditionalStage,
+    ParallelPipeline,
     Pipeline,
     PipelineStage,
     StageResult,
-    ConditionalStage,
-    ParallelPipeline,
 )
+from .seismograms import SeismogramAnalyzer
 
 __all__ = [
     "SeismogramAnalyzer",

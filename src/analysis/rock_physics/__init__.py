@@ -23,18 +23,16 @@ Example:
 """
 
 from src.analysis.rock_physics.analyzer import RockPhysicsAnalyzer
-from src.analysis.rock_physics.constants import RockPhysicsConstants
-from src.analysis.rock_physics.config import RockPhysicsAnalysisConfig
 from src.analysis.rock_physics.computers import (
-    AVOAttributesComputer,
-    LambdaMuRhoComputer,
-    FluidFactorComputer,
     DEFAULT_AVO_ANGLES_DEG,
     DEFAULT_FLUID_FACTOR_K,
+    AVOAttributesComputer,
+    FluidFactorComputer,
+    LambdaMuRhoComputer,
 )
-from src.analysis.rock_physics.discrimination import (
-    AttributeDiscriminationAnalyzer,
-)
+from src.analysis.rock_physics.config import RockPhysicsAnalysisConfig
+from src.analysis.rock_physics.constants import RockPhysicsConstants
+from src.analysis.rock_physics.discrimination import AttributeDiscriminationAnalyzer
 
 __all__ = [
     "RockPhysicsAnalyzer",

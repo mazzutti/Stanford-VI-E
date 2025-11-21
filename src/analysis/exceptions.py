@@ -18,9 +18,9 @@ Usage:
     >>> try:
     ...     loader.load_full_stack(path)
     ... except CacheLoadingError as e:
-    ...     logger.error(f"Failed to load cache: {e}")
+    ...     logger.error("Failed to load cache: %s", e)
     ... except CacheSelectionError as e:
-    ...     logger.warning(f"Cache file not found: {e}")
+    ...     logger.warning("Cache file not found: %s", e)
 """
 
 
@@ -32,13 +32,9 @@ class AnalysisException(Exception):
     except clause.
     """
 
-    pass
-
 
 class CacheError(AnalysisException):
     """Base class for cache-related errors."""
-
-    pass
 
 
 class CacheLoadingError(CacheError):
@@ -53,8 +49,6 @@ class CacheLoadingError(CacheError):
         - NumPy cannot parse the file
     """
 
-    pass
-
 
 class CacheSelectionError(CacheError):
     """Raised when no suitable cache file can be found.
@@ -67,8 +61,6 @@ class CacheSelectionError(CacheError):
         - Cache directory doesn't exist
         - Search strategy found no matches
     """
-
-    pass
 
 
 class CacheExtractionError(CacheError):
@@ -83,8 +75,6 @@ class CacheExtractionError(CacheError):
         - Archive structure is unexpected
     """
 
-    pass
-
 
 class ValidationError(AnalysisException):
     """Raised when data validation fails.
@@ -97,8 +87,6 @@ class ValidationError(AnalysisException):
         - P-value < 0 or > 1
         - Array shape mismatch
     """
-
-    pass
 
 
 class DomainError(AnalysisException):
@@ -113,8 +101,6 @@ class DomainError(AnalysisException):
         - Domain conversion failed
     """
 
-    pass
-
 
 class ProcessingError(AnalysisException):
     """Raised when data processing fails.
@@ -128,8 +114,6 @@ class ProcessingError(AnalysisException):
         - Gradient analysis failed
     """
 
-    pass
-
 
 class ConfigurationError(AnalysisException):
     """Raised for configuration-related errors.
@@ -142,8 +126,6 @@ class ConfigurationError(AnalysisException):
         - Invalid sharding configuration
         - Missing required processor
     """
-
-    pass
 
 
 class BuilderValidationError(ValueError):
@@ -183,8 +165,6 @@ class BuilderFrozenError(RuntimeError):
         - Setting config after freeze()
     """
 
-    pass
-
 
 class ComputationError(AnalysisException):
     """Raised when computational operations fail.
@@ -199,31 +179,21 @@ class ComputationError(AnalysisException):
         - Interpolation produced invalid values
     """
 
-    pass
-
 
 class AlignmentError(ComputationError):
     """Raised when cube alignment fails."""
-
-    pass
 
 
 class DetectionError(ComputationError):
     """Raised when boundary detection fails."""
 
-    pass
-
 
 class ExtractionError(ComputationError):
     """Raised when amplitude extraction fails."""
 
-    pass
-
 
 class InterpolationError(ComputationError):
     """Raised when interpolation fails."""
-
-    pass
 
 
 class StateError(AnalysisException):
@@ -237,8 +207,6 @@ class StateError(AnalysisException):
         - Invalid state transition
         - Required setup not completed
     """
-
-    pass
 
 
 class ExceptionContextBuilder:

@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Any
-from numpy.typing import NDArray
 
+from numpy.typing import NDArray
 
 __all__ = ["MaterialModel"]
 
@@ -18,12 +18,10 @@ class MaterialModel(ABC):
     @abstractmethod
     def get_data(self) -> NDArray[Any]:
         """Return the underlying data array."""
-        pass
 
     @abstractmethod
     def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying data array."""
-        pass
 
     @abstractmethod
     def ensure_units(self) -> bool:
@@ -32,7 +30,6 @@ class MaterialModel(ABC):
         Returns:
             True if conversion occurred, False otherwise
         """
-        pass
 
     @abstractmethod
     def validate(self) -> None:
@@ -41,4 +38,3 @@ class MaterialModel(ABC):
         Raises:
             ValueError: If validation fails
         """
-        pass

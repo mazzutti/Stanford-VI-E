@@ -1,6 +1,5 @@
 """Core constants used across the processing module."""
 
-
 # Resampling
 DEFAULT_MAX_CACHE_BYTES = 10 * 1024**3  # 10 GB default cache limit
 DEFAULT_DT_MILLISECONDS = 4.0  # Default time sampling in ms

@@ -6,8 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.analysis.models import FaciesDiscriminationResult, FaciesStats
-
-from src.core import BaseProcessor
+from src.core.processors import BaseProcessor
 
 from .decorators import ProcessorDecorators
 from .operations import AlignmentOps, ExtractionOps, StatsOps
@@ -19,10 +18,6 @@ __all__ = ["FaciesDiscriminationCalculator"]
 
 class FaciesDiscriminationCalculator(BaseProcessor):
     """Calculates facies discrimination capability using amplitude statistics."""
-
-    def __init__(self) -> None:
-        """Initialize the calculator."""
-        super().__init__()
 
     def __repr__(self) -> str:
         """Return string representation of FaciesDiscriminationCalculator instance.

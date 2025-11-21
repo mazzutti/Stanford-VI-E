@@ -121,13 +121,11 @@ def test_extension_23_formattable_model():
         print("✓ FormattableModel is available")
 
         # Check that statistical result classes use it
-        from src.analysis.models.statistics import (
-            GradientCorrelationResult,
-            BoundaryAmpsResult,
-            FaciesDiscriminationResult,
-            InterfaceReflectionResult,
-            AvoAnalysisResult,
-        )
+        from src.analysis.models.statistics import (AvoAnalysisResult,
+                                                    BoundaryAmpsResult,
+                                                    FaciesDiscriminationResult,
+                                                    GradientCorrelationResult,
+                                                    InterfaceReflectionResult)
 
         result_classes = [
             ("GradientCorrelationResult", GradientCorrelationResult),

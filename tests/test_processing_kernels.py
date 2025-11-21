@@ -4,15 +4,13 @@ Tests the depth-to-time and time-to-depth resampling kernels including
 nearest-neighbor and linear interpolation modes.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from src.processing.resampling._kernels import (
-    resample_depth_to_time_nearest,
-    resample_depth_to_time_linear,
-    resample_depth_to_time_from_irregular_nearest,
     resample_depth_to_time_from_irregular_linear,
-)
+    resample_depth_to_time_from_irregular_nearest,
+    resample_depth_to_time_linear, resample_depth_to_time_nearest)
 
 
 class TestResampleDepthToTimeNearest:

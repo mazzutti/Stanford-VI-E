@@ -28,15 +28,15 @@ Usage:
         pass
 """
 
-import time
+import logging
 import random
+import time
 from abc import ABC, abstractmethod
-from typing import Any, cast
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import wraps
 from enum import Enum
-import logging
+from functools import wraps
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,6 @@ class RetryStrategy(ABC):
         Returns:
             Delay in seconds before next attempt
         """
-        pass
 
     @abstractmethod
     def __str__(self) -> str:
@@ -325,12 +324,14 @@ class RetryPolicy:
             try:
                 self._stats.total_attempts += 1
 
-                logger.debug(f"{self.name}: Attempt {attempt + 1}/{self.max_attempts}")
+                logger.debug(
+                    "%s: Attempt %d/%d", self.name, attempt + 1, self.max_attempts
+                )
 
                 result = func(*args, **kwargs)
                 self._stats.successful_attempts += 1
 
-                logger.debug(f"{self.name}: Success on attempt {attempt + 1}")
+                logger.debug("%s: Success on attempt %d", self.name, attempt + 1)
 
                 return result
 
@@ -342,18 +343,18 @@ class RetryPolicy:
 
                 if not self._is_retryable(e):
                     logger.error(
-                        f"{self.name}: Non-retryable exception: {type(e).__name__}"
+                        "%s: Non-retryable exception: %s", self.name, type(e).__name__
                     )
                     raise
 
                 if attempt == self.max_attempts - 1:
                     logger.error(
-                        f"{self.name}: Max retries exceeded. Last error: {str(e)}"
+                        "%s: Max retries exceeded. Last error: %s", self.name, str(e)
                     )
                     raise
 
                 if self._is_timeout():
-                    logger.error(f"{self.name}: Timeout exceeded during retries")
+                    logger.error("%s: Timeout exceeded during retries", self.name)
                     raise
 
                 # Calculate delay for next retry
@@ -362,8 +363,11 @@ class RetryPolicy:
                 self._stats.total_delay += delay
 
                 logger.warning(
-                    f"{self.name}: Attempt {attempt + 1} failed ({type(e).__name__}). "
-                    f"Retrying in {delay:.2f}s..."
+                    "%s: Attempt %d failed (%s). Retrying in %.2fs...",
+                    self.name,
+                    attempt + 1,
+                    type(e).__name__,
+                    delay,
                 )
 
                 time.sleep(delay)
@@ -390,8 +394,6 @@ class RetryPolicy:
 
 class TimeoutError(Exception):
     """Raised when operation exceeds timeout."""
-
-    pass
 
 
 def timeout(seconds: float) -> Callable[[Callable[..., Any]], Callable[..., Any]]:

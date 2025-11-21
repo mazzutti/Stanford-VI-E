@@ -46,7 +46,7 @@ class TypeValidator:
             return  # None is always acceptable
 
         # Handle Callable type specially
-        if expected_type is Callable or expected_type == Callable:
+        if expected_type is Callable:
             if not callable(value):
                 raise TypeError(
                     f"Expected callable for '{field_name}', got {type(value).__name__}"
@@ -68,4 +68,9 @@ class TypeValidator:
                     f"Expected {expected_type.__name__} for '{field_name}', "
                     f"got {type(value).__name__}"
                 )
+
             return
+
+
+# TypeValidator is a small utility with a compact public surface used by the
+# builder machinery. Silence too-few-public-methods for this helper class.

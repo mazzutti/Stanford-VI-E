@@ -21,15 +21,12 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, cast
-from collections.abc import Callable
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import Any, cast
 
-from src.analysis.models.config import (
-    FaciesCorrelationConfig,
-    Transition,
-)
+from src.analysis.models.config import FaciesCorrelationConfig, Transition
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +57,6 @@ class AnalysisBuilderBase(ABC):
         Returns:
             The configured component instance
         """
-        pass
 
     def validate(self) -> bool:
         """Run all validators on current configuration.
@@ -84,7 +80,7 @@ class AnalysisBuilderBase(ABC):
         """
         self._components.clear()
         self._config.clear()
-        logger.debug(f"Reset {self.__class__.__name__}")
+        logger.debug("Reset %s", self.__class__.__name__)
         return self
 
 
@@ -117,7 +113,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             raise ValueError("At least one transition required")
 
         self._config["transitions"] = transitions
-        logger.debug(f"Added {len(transitions)} transitions")
+        logger.debug("Added %d transitions", len(transitions))
         return self
 
     def with_boundary_detection(
@@ -145,8 +141,9 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             "use_gradient": use_gradient,
         }
         logger.debug(
-            f"Configured boundary detection: "
-            f"min_change={min_change}, window_size={window_size}"
+            "Configured boundary detection: min_change=%s, window_size=%s",
+            min_change,
+            window_size,
         )
         return self
 
@@ -168,7 +165,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             raise ValueError(f"Processor '{name}' cannot be None")
 
         self._config["processors"][name] = processor
-        logger.debug(f"Added processor: {name}")
+        logger.debug("Added processor: %s", name)
         return self
 
     def with_validator(
@@ -189,7 +186,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             raise ValueError(f"Validator '{name}' cannot be None")
 
         self._config["validators"][name] = validator
-        logger.debug(f"Added validator: {name}")
+        logger.debug("Added validator: %s", name)
         return self
 
     def with_logger(self, enabled: bool = True) -> FaciesAnalyzerBuilder:
@@ -202,7 +199,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             Self for chaining
         """
         self._config["use_logger"] = enabled
-        logger.debug(f"Logging enabled: {enabled}")
+        logger.debug("Logging enabled: %s", enabled)
         return self
 
     def with_cache(self, enabled: bool = True) -> FaciesAnalyzerBuilder:
@@ -215,7 +212,7 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
             Self for chaining
         """
         self._config["use_cache"] = enabled
-        logger.debug(f"Caching enabled: {enabled}")
+        logger.debug("Caching enabled: %s", enabled)
         return self
 
     def with_config_object(
@@ -276,10 +273,10 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
                 cast(Any, analyzer).validators[name] = validator
 
         logger.info(
-            f"Built FaciesCorrelationAnalyzer with "
-            f"{len(self._config['transitions'])} transitions, "
-            f"{len(self._config['processors'])} processors, "
-            f"{len(self._config['validators'])} validators"
+            "Built FaciesCorrelationAnalyzer with %d transitions, %d processors, %d validators",
+            len(self._config["transitions"]),
+            len(self._config["processors"]),
+            len(self._config["validators"]),
         )
 
         return analyzer
@@ -316,7 +313,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
 
         proc_name = name or processor.__class__.__name__
         self._config["processors"].append((proc_name, processor))
-        logger.debug(f"Added processor to chain: {proc_name}")
+        logger.debug("Added processor to chain: %s", proc_name)
         return self
 
     def add_validator(
@@ -341,7 +338,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
             self._config["validators"] = cast(list[tuple[str, Any]], [])
 
         self._config["validators"].append((val_name, validator))
-        logger.debug(f"Added validator to chain: {val_name}")
+        logger.debug("Added validator to chain: %s", val_name)
         return self
 
     def with_error_handling(self, enabled: bool = True) -> ProcessorChainBuilder:
@@ -354,7 +351,7 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
             Self for chaining
         """
         self._config["error_handling"] = enabled
-        logger.debug(f"Error handling enabled: {enabled}")
+        logger.debug("Error handling enabled: %s", enabled)
         return self
 
     def build(self) -> list[tuple[str, Any]]:
@@ -367,9 +364,9 @@ class ProcessorChainBuilder(AnalysisBuilderBase):
             raise ValueError("Chain must have at least one processor")
 
         logger.info(
-            f"Built processor chain with "
-            f"{len(self._config['processors'])} processors, "
-            f"error_handling={self._config.get('error_handling', False)}"
+            "Built processor chain with %d processors, error_handling=%s",
+            len(self._config["processors"]),
+            self._config.get("error_handling", False),
         )
 
         return cast(list[tuple[str, Any]], self._config["processors"])

@@ -1,8 +1,9 @@
 # mypy: ignore-errors
 import threading
+
 import numpy as np
 
-from src.analysis.cache import CacheLoaderFactory, CacheLoader
+from src.analysis.cache import CacheLoader, CacheLoaderFactory
 from src.utils.lru import ShardedLRUCache
 
 

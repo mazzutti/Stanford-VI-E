@@ -8,47 +8,35 @@ Consolidates all processor unit tests from 10 separate files.
 
 import logging
 import time
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 from scipy.stats import pearsonr, spearmanr
 
-from src.analysis.models import (
-    BoundaryAmpsResult,
-    FaciesDiscriminationResult,
-    FaciesStats,
-    GradientCorrelationResult,
-    InterfaceReflectionResult,
-    Transition,
-)
+from src.analysis.models import (BoundaryAmpsResult,
+                                 FaciesDiscriminationResult, FaciesStats,
+                                 GradientCorrelationResult,
+                                 InterfaceReflectionResult, Transition)
 from src.analysis.processors.amplitude import BoundaryAmplitudeExtractor
-from src.core import BaseProcessor, Processor
-from src.analysis.processors.management import (
-    BoundaryComputationConfig,
-    ProcessorConfig,
-)
 from src.analysis.processors.boundary import NeighborDirection
 from src.analysis.processors.decorators import ProcessorDecorators
-from src.analysis.processors.discrimination import FaciesDiscriminationCalculator
-from src.analysis.processors.exceptions import (
-    CorrelationError,
-    ProcessorError,
-    ReshapeError,
-    ValidationError,
-)
+from src.analysis.processors.discrimination import \
+    FaciesDiscriminationCalculator
+from src.analysis.processors.exceptions import (CorrelationError,
+                                                ProcessorError, ReshapeError,
+                                                ValidationError)
 from src.analysis.processors.gradient import GradientCorrelationCalculator
 from src.analysis.processors.interface import InterfaceReflectionAnalyzer
-from src.analysis.processors.management import (
-    ProcessorRegistry,
-    compute_amplitude_stats,
-    reshape_3d_to_2d,
-)
-from src.analysis.processors.validators import (
-    ArrayValidator,
-    ValidationHelpers,
-)
-
+from src.analysis.processors.management import (BoundaryComputationConfig,
+                                                ProcessorConfig,
+                                                ProcessorRegistry,
+                                                compute_amplitude_stats,
+                                                reshape_3d_to_2d)
+from src.analysis.processors.validators import (ArrayValidator,
+                                                ValidationHelpers)
+from src.core import BaseProcessor, Processor
 
 # Tests from test_processors_amplitude
 # ============================================================================

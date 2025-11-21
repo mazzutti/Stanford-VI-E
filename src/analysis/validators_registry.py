@@ -10,9 +10,10 @@ Example:
 """
 
 from __future__ import annotations
-from typing import ClassVar, Any
-from collections.abc import Callable, Sequence
+
 import logging
+from collections.abc import Callable, Sequence
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class ValidatorRegistry:
     _validators: ClassVar[dict[str, Callable[..., None]]] = {}
     """Dictionary of registered validators by name"""
 
+    # Register common validators centrally; small registry class by design.
+
     @classmethod
     def register(cls, name: str, validator: Callable[..., None]) -> None:
         """Register a named validator.
@@ -39,7 +42,7 @@ class ValidatorRegistry:
             validator: Callable that validates and raises ValueError if invalid
         """
         cls._validators[name] = validator
-        logger.debug(f"Registered validator: {name}")
+        logger.debug("Registered validator: %s", name)
 
     @classmethod
     def get(cls, name: str) -> Callable[..., None]:
@@ -68,10 +71,10 @@ class ValidatorRegistry:
         Raises:
             ValueError: If angles is empty or contains values outside [0, 90]
         """
-        if angles is None or len(angles) == 0:
+        if not angles:
             raise ValueError("angles must not be empty")
 
-        invalid = [a for a in angles if not (0 <= a <= 90)]
+        invalid = [a for a in angles if not 0 <= a <= 90]
         if invalid:
             raise ValueError(f"All angles must be in [0, 90] degrees, got: {invalid}")
 
@@ -86,7 +89,7 @@ class ValidatorRegistry:
         Raises:
             ValueError: If probability is not in [0, 1]
         """
-        if not (0 <= prob <= 1):
+        if not 0 <= prob <= 1:
             raise ValueError(f"{name} must be in [0, 1], got {prob}")
 
     @classmethod
@@ -132,7 +135,7 @@ class ValidatorRegistry:
         Raises:
             ValueError: If value not in range
         """
-        if not (min_val <= value <= max_val):
+        if not min_val <= value <= max_val:
             raise ValueError(f"{name} must be in [{min_val}, {max_val}], got {value}")
 
     @classmethod
@@ -150,7 +153,7 @@ class ValidatorRegistry:
         Raises:
             ValueError: If value not in exclusive range
         """
-        if not (min_val < value < max_val):
+        if not min_val < value < max_val:
             raise ValueError(f"{name} must be in ({min_val}, {max_val}), got {value}")
 
     @classmethod
@@ -199,7 +202,7 @@ class ValidatorRegistry:
         Raises:
             ValueError: If sequence length not in range
         """
-        if not (min_len <= len(seq) <= max_len):
+        if not min_len <= len(seq) <= max_len:
             raise ValueError(
                 f"{name} length must be in [{min_len}, {max_len}], " f"got {len(seq)}"
             )

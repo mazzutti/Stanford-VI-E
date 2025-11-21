@@ -5,56 +5,40 @@ messages and enable targeted exception handling in client code.
 """
 
 
-class IOError(Exception):
+class IOBaseError(Exception):
     """Base exception for all I/O-related errors in the src.io module."""
 
-    pass
 
-
-class CacheError(IOError):
+class CacheError(IOBaseError):
     """Base exception for cache-related errors."""
-
-    pass
 
 
 class CacheValidationError(CacheError):
     """Raised when cache data fails validation or integrity checks."""
 
-    pass
-
 
 class CachePruneError(CacheError):
     """Raised when cache pruning operations fail."""
 
-    pass
 
-
-class DataLoaderError(IOError):
+class DataLoaderError(IOBaseError):
     """Base exception for data loading errors."""
-
-    pass
 
 
 class GSLibError(DataLoaderError):
     """Raised when GSLIB file reading fails."""
 
-    pass
 
-
-class GridError(IOError):
+class GridError(IOBaseError):
     """Raised when grid specification is invalid."""
-
-    pass
 
 
 class FileLocatorError(DataLoaderError):
     """Raised when required data files cannot be located."""
 
-    pass
-
 
 __all__ = [
-    "IOError",
+    "IOBaseError",
     "CacheError",
     "CacheValidationError",
     "CachePruneError",

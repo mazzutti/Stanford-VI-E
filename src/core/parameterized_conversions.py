@@ -6,8 +6,8 @@ multiple similar strategy classes with a single parameterized implementation.
 
 from __future__ import annotations
 
-from typing import Any, cast
 from collections.abc import Callable
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,6 +15,14 @@ from numpy.typing import NDArray
 from src.utils.quantity import Quantity
 
 __all__ = ["ParameterizedConversionStrategy", "ConversionRegistry"]
+
+# Small module-level helpers may intentionally be compact; suppress
+# noisy too-few-public-methods warnings for this parameterized strategy
+# which serves as a thin framework.
+
+
+# Provide a small, explicit allowance for compact helper objects to keep
+# lint focused on substantive issues in larger modules.
 
 
 class ParameterizedConversionStrategy:

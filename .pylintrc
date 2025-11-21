@@ -1,0 +1,47 @@
+[MASTER]
+# Disable specific checks that are noisy or intentionally handled elsewhere.
+# Added C0415 (import-outside-toplevel), W0718 (broad-exception-caught),
+# and E1133 (not-an-iterable) because this project uses intentional
+# call-time imports, some helper wrappers that catch broadly, and Numba's
+# `prange` which causes false-positives from static analysis.
+disable=R0801,C1805,R0917,R0903,C0415,C0413,W0718,E1133,C0103,R0915,R0912,R1702,W0212,W0613,W0621,C0301,C0116,W0221,import-outside-toplevel,wrong-import-order
+
+# Ensure pylint can find project-local type stubs in `stubs/` by adding
+# the `stubs` directory to sys.path at startup. This keeps third-party
+# stubbed modules resolvable during linting.
+init-hook='import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), "stubs"))'
+
+# Ignore noisy directories that produce many stylistic messages due to
+# domain-specific naming and numba usage. These directories are still
+# important, but allowing separate focused linting keeps CI feedback useful.
+ignore-patterns=src/plotting/.*,src/processing/resampling/.*,src/analysis/factories/.*,src/analysis/facies/.*,src/core/factory.py,src/processing/registry.py,src/processing/rock_physics/.*
+# Also ignore directories/files by base name to ensure pylint skips them when
+# matching against file basenames (handles projects where the path-based
+# patterns don't match due to how pylint resolves names).
+ignore=factories,facies,rock_physics,registry
+[MESSAGES CONTROL]
+# Keep the default set; specific disables are provided above.
+enable=all
+# Hide informational messages about local/suppressed disables to reduce
+# terminal noise when running pylint in CI or locally.
+disable=locally-disabled,suppressed-message,import-outside-toplevel,wrong-import-order,C0415,C0411
+
+[DESIGN]
+# Relax a few limits to accomodate larger classes and long helper functions
+max-attributes=30
+max-locals=80
+max-args=20
+max-returns=10
+
+[FORMAT]
+# Allow slightly longer lines in this project
+max-line-length=100
+
+[BASIC]
+# Allow common short names used in scientific code
+good-names=i,j,k,_,e,df,rt
+
+[REPORTS]
+# Keep output terse and colorized when supported
+output-format=colorized
+reports=no

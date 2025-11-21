@@ -28,14 +28,14 @@ Usage:
         pass
 """
 
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from enum import Enum
+from functools import wraps
 from threading import RLock
 from time import time
 from typing import Any
-from collections.abc import Callable
-from dataclasses import dataclass, field
-from functools import wraps
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +51,9 @@ class CircuitBreakerState(Enum):
 class CircuitBreakerOpen(Exception):
     """Raised when circuit breaker is in OPEN state."""
 
-    pass
-
 
 class CircuitBreakerException(Exception):
     """Base exception for circuit breaker errors."""
-
-    pass
 
 
 @dataclass
@@ -144,7 +140,7 @@ class CircuitBreaker:
             if self._state == CircuitBreakerState.OPEN:
                 if self._should_attempt_recovery():
                     self._transition_to(CircuitBreakerState.HALF_OPEN)
-                    logger.info(f"{self.name}: Transitioning to HALF_OPEN state")
+                    logger.info("%s: Transitioning to HALF_OPEN state", self.name)
 
             return self._state
 
@@ -158,7 +154,10 @@ class CircuitBreaker:
         """Transition to a new state."""
         if self._state != new_state:
             logger.info(
-                f"{self.name}: State transition {self._state.value} -> {new_state.value}"
+                "%s: State transition %s -> %s",
+                self.name,
+                self._state.value,
+                new_state.value,
             )
             self._state = new_state
             self._state_changed_at = time()
@@ -185,8 +184,10 @@ class CircuitBreaker:
             if self.state == CircuitBreakerState.OPEN:
                 self._rejected_calls += 1
                 logger.warning(
-                    f"{self.name}: Circuit is OPEN, rejecting call "
-                    f"(rejected: {self._rejected_calls}, total: {self._total_calls})"
+                    "%s: Circuit is OPEN, rejecting call (rejected: %s, total: %s)",
+                    self.name,
+                    self._rejected_calls,
+                    self._total_calls,
                 )
                 raise CircuitBreakerOpen(f"Circuit breaker {self.name} is OPEN")
 
@@ -209,7 +210,7 @@ class CircuitBreaker:
                 self._success_count = 0
                 self._transition_to(CircuitBreakerState.CLOSED)
                 logger.info(
-                    f"{self.name}: Recovery successful, transitioning to CLOSED"
+                    "%s: Recovery successful, transitioning to CLOSED", self.name
                 )
             elif self._state == CircuitBreakerState.CLOSED:
                 # Normal operation, reset failure count
@@ -222,19 +223,24 @@ class CircuitBreaker:
             self._last_failure_time = time()
 
             logger.warning(
-                f"{self.name}: Failure detected (count: {self._failure_count}/{self.failure_threshold})"
+                "%s: Failure detected (count: %s/%s)",
+                self.name,
+                self._failure_count,
+                self.failure_threshold,
             )
 
             if self._failure_count >= self.failure_threshold:
                 if self._state != CircuitBreakerState.OPEN:
                     self._transition_to(CircuitBreakerState.OPEN)
                     logger.error(
-                        f"{self.name}: Failure threshold reached, opening circuit"
+                        "%s: Failure threshold reached, opening circuit", self.name
                     )
             elif self._state == CircuitBreakerState.HALF_OPEN:
                 # Failure during recovery, reopen the circuit
                 self._transition_to(CircuitBreakerState.OPEN)
-                logger.error(f"{self.name}: Failure during recovery, reopening circuit")
+                logger.error(
+                    "%s: Failure during recovery, reopening circuit", self.name
+                )
 
     def reset(self) -> None:
         """Manually reset circuit breaker to CLOSED state."""
@@ -243,7 +249,7 @@ class CircuitBreaker:
             self._success_count = 0
             self._last_failure_time = None
             self._transition_to(CircuitBreakerState.CLOSED)
-            logger.info(f"{self.name}: Circuit breaker manually reset")
+            logger.info("%s: Circuit breaker manually reset", self.name)
 
     def get_stats(self) -> CircuitBreakerStats:
         """Get current statistics."""

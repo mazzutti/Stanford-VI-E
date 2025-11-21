@@ -22,16 +22,15 @@ Example Usage:
     >>> data = extractor.extract_data(archive_or_array)
 """
 
+import logging
 from abc import ABC, abstractmethod
+from os import PathLike
 from pathlib import Path
 from typing import cast
-from os import PathLike
 
 import numpy as np
-from numpy.typing import NDArray
 from numpy.lib.npyio import NpzFile
-
-import logging
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -57,18 +56,17 @@ class ArrayExtractor(ABC):
     def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array data from source object.
 
-                Parameters
-                ----------
-                source : object
-                    The source to extract from (depends on extractor type).
+        Parameters
+        ----------
+        source : object
+            The source to extract from (depends on extractor type).
 
-                Returns
-                -------
-                NDArray[np.float64] | None
-                    Extracted array as float64, or None if extraction failed.
+        Returns
+        -------
+        NDArray[np.float64] | None
+            Extracted array as float64, or None if extraction failed.
 
         """
-        pass
 
 
 class NpzExtractor(ArrayExtractor):
@@ -99,28 +97,28 @@ class NpzExtractor(ArrayExtractor):
     def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array from NPZ archive using priority strategy.
 
-                Parameters
-                ----------
-                source : object
-                    Open NPZ archive object.
+        Parameters
+        ----------
+        source : object
+            Open NPZ archive object.
 
-                Returns
-                -------
-                NDArray[np.float64] | None
-                    Extracted array as float64, or None on error.
+        Returns
+        -------
+        NDArray[np.float64] | None
+            Extracted array as float64, or None on error.
 
-                Raises
-                ------
-                CacheExtractionError
-                    If extraction fails and raise_on_error is enabled.
+        Raises
+        ------
+        CacheExtractionError
+            If extraction fails and raise_on_error is enabled.
 
-                Examples
-                --------
-                >>> import numpy as np
-                >>> extractor = NpzExtractor()
-                >>> # With open NPZ file:
-                >>> # archive = np.load("data.npz")
-                >>> # data = extractor.extract(archive)
+        Examples
+        --------
+        >>> import numpy as np
+        >>> extractor = NpzExtractor()
+        >>> # With open NPZ file:
+        >>> # archive = np.load("data.npz")
+        >>> # data = extractor.extract(archive)
 
         """
         try:
@@ -130,7 +128,7 @@ class NpzExtractor(ArrayExtractor):
             # Priority 1: Look for full_stack key
             if self.full_stack_key in archive:
                 result = np.asarray(archive[self.full_stack_key])
-                logger.debug(f"Extracted array using key '{self.full_stack_key}'")
+                logger.debug("Extracted array using key '%s'", self.full_stack_key)
                 return result
 
             # Priority 2: Use first available array
@@ -138,16 +136,27 @@ class NpzExtractor(ArrayExtractor):
             if files:
                 first_key = files[0]
                 result = np.asarray(archive[first_key])
-                logger.debug(f"Extracted array using first key '{first_key}'")
+                logger.debug("Extracted array using first key '%s'", first_key)
                 return result
 
             # No arrays found
             logger.warning("NPZ archive appears to be empty")
             return None
 
-        except Exception as e:
+        except (
+            OSError,
+            ValueError,
+            TypeError,
+            KeyError,
+            IndexError,
+            MemoryError,
+        ) as exc:
+            # NPZ extraction can fail for corrupt archives, unexpected contents,
+            # or type/shape problems. Catch the expected error classes, log the
+            # original exception for diagnostics, and return None so callers can
+            # handle the missing data gracefully.
             logger.exception(
-                f"Failed to extract from NPZ archive: {type(e).__name__}: {e}"
+                "Failed to extract from NPZ archive: %s: %s", type(exc).__name__, exc
             )
             return None
 
@@ -162,33 +171,36 @@ class NpyExtractor(ArrayExtractor):
     def extract(self, source: object) -> NDArray[np.float64] | None:
         """Extract array from NPY file.
 
-                Parameters
-                ----------
-                source : object
-                    The loaded NPY array.
+        Parameters
+        ----------
+        source : object
+            The loaded NPY array.
 
-                Returns
-                -------
-                NDArray[np.float64] | None
-                    Array converted to float64, or None on error.
+        Returns
+        -------
+        NDArray[np.float64] | None
+            Array converted to float64, or None on error.
 
-                Examples
-                --------
-                >>> import numpy as np
-                >>> extractor = NpyExtractor()
-                >>> data = np.random.randn(10, 10)
-                >>> result = extractor.extract(data)
+        Examples
+        --------
+        >>> import numpy as np
+        >>> extractor = NpyExtractor()
+        >>> data = np.random.randn(10, 10)
+        >>> result = extractor.extract(data)
 
         """
         try:
             result = np.asarray(source).astype(np.float64)
             logger.debug(
-                f"Extracted NPY array, shape={result.shape}, dtype={result.dtype}"
+                "Extracted NPY array, shape=%s, dtype=%s", result.shape, result.dtype
             )
             return result
-        except Exception as e:
+        except (TypeError, ValueError, MemoryError, OSError) as exc:
+            # NPY conversion may raise type/shape related errors or memory
+            # allocation failures. Catch expected exceptions, log them, and
+            # return None so callers can fall back or report missing data.
             logger.exception(
-                f"Failed to extract from NPY array: {type(e).__name__}: {e}"
+                "Failed to extract from NPY array: %s: %s", type(exc).__name__, exc
             )
             return None
 
@@ -218,41 +230,40 @@ class ExtractorFactory:
     def for_path(cls, path: str | PathLike[str]) -> ArrayExtractor:
         """Get appropriate extractor for file path.
 
-                Parameters
-                ----------
-                path : str | PathLike[str]
-                    File path to determine extractor from.
+        Parameters
+        ----------
+        path : str | PathLike[str]
+            File path to determine extractor from.
 
-                Returns
-                -------
-                ArrayExtractor
-                    NpzExtractor for .npz files, NpyExtractor for .npy files.
+        Returns
+        -------
+        ArrayExtractor
+            NpzExtractor for .npz files, NpyExtractor for .npy files.
 
-                Raises
-                ------
-                ValueError
-                    If file extension is not recognized.
+        Raises
+        ------
+        ValueError
+            If file extension is not recognized.
 
-                Examples
-                --------
-                >>> extractor = ExtractorFactory.for_path("data.npz")
-                >>> extractor = ExtractorFactory.for_path("/path/to/data.npy")
+        Examples
+        --------
+        >>> extractor = ExtractorFactory.for_path("data.npz")
+        >>> extractor = ExtractorFactory.for_path("/path/to/data.npy")
 
         """
         p = Path(path)
         suffix = p.suffix.lower()
 
         if suffix == cls._npz_extension:
-            logger.debug(f"Selected NpzExtractor for {p.name}")
+            logger.debug("Selected NpzExtractor for %s", p.name)
             return cls.npz()
-        elif suffix == cls._npy_extension:
-            logger.debug(f"Selected NpyExtractor for {p.name}")
+        if suffix == cls._npy_extension:
+            logger.debug("Selected NpyExtractor for %s", p.name)
             return cls.npy()
-        else:
-            raise ValueError(
-                f"Unsupported file extension '{suffix}' for {p.name}. "
-                f"Expected {cls._npz_extension} or {cls._npy_extension}"
-            )
+        raise ValueError(
+            f"Unsupported file extension '{suffix}' for {p.name}. "
+            f"Expected {cls._npz_extension} or {cls._npy_extension}"
+        )
 
     @staticmethod
     def npz() -> NpzExtractor:

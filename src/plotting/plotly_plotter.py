@@ -11,19 +11,26 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-
-import numpy as np
-from numpy.typing import NDArray
-import plotly.graph_objects as go
-
 from typing import Any, cast
 
+import numpy as np
+import plotly.graph_objects as go
+from numpy.typing import NDArray
+
 from src.plotting.helpers.base import BasePlotter
+from src.plotting.helpers.colors import compute_plotly_colorscale_and_bounds
+from src.plotting.helpers.configs import TraceConfig
+from src.plotting.helpers.traces import make_plotly_surface_traces_from_config
 
 logger = logging.getLogger(__name__)
 
 # Resource directory (optional files may be missing)
 _RESOURCES_DIR = Path(__file__).parent / "resources"
+
+# Many plotting helpers use short names and occasionally accept many
+# small parameters for caller convenience. Silence a small set of
+# convention/refactor messages that are noise for UI glue code.
+
 
 # Interaction constants (only defaults used by injected JS)
 _WHEEL_ZOOM_SENSITIVITY = 2.5
@@ -50,13 +57,54 @@ class PlotlyPlotter(BasePlotter):
         title: str | None = None,
         k_label: str | None = None,
         k_unit: str | None = None,
-        **kwargs: Any,
+        # intentionally do not accept arbitrary kwargs — unused by implementation
     ) -> list[go.Surface]:
         """Create three orthogonal Plotly Surface traces for a 3D `cube`.
 
         Returns a list: [inline_trace, crossline_trace, depth_trace].
         """
         arr = np.asarray(cube)
+        # Mark intentionally-unused public params to satisfy linters
+        # (callers may still pass them; we don't use them here).
+        del title, k_label
+
+        dims = self._validate_cube_and_indices(arr, slice_indices)
+
+        colors = compute_plotly_colorscale_and_bounds(
+            arr, (dims[3], dims[4], dims[5]), colorscale, is_categorical
+        )
+
+        traces = self._create_traces(
+            arr,
+            *dims,
+            k_scale,
+            colors[0],
+            colors[1],
+            colors[2],
+            show_colorbar,
+            k_unit,
+        )
+
+        # Use logger directly with lazy interpolation to avoid building
+        # large f-strings for diagnostic messages.
+        logger.info(
+            "created 3d volume traces: indices=(%d, %d, %d), cmin=%s, cmax=%s",
+            dims[3],
+            dims[4],
+            dims[5],
+            colors[1],
+            colors[2],
+        )
+
+        return traces
+
+    def _validate_cube_and_indices(
+        self, arr: NDArray[np.floating[Any]], slice_indices: tuple[int, int, int]
+    ) -> tuple[int, int, int, int, int, int]:
+        """Validate the cube shape and slice indices and return dimensions.
+
+        Returns (ni, nj, nk, inline_idx, crossline_idx, depth_idx).
+        """
         if arr.size == 0:
             raise ValueError("cube cannot be empty")
         if arr.ndim != 3:
@@ -65,165 +113,93 @@ class PlotlyPlotter(BasePlotter):
         ni, nj, nk = arr.shape
         inline_idx, crossline_idx, depth_idx = slice_indices
 
-        if not (0 <= inline_idx < ni):
+        if not 0 <= inline_idx < ni:
             raise ValueError(f"inline_idx {inline_idx} out of range [0, {ni})")
-        if not (0 <= crossline_idx < nj):
+        if not 0 <= crossline_idx < nj:
             raise ValueError(f"crossline_idx {crossline_idx} out of range [0, {nj})")
-        if not (0 <= depth_idx < nk):
+        if not 0 <= depth_idx < nk:
             raise ValueError(f"depth_idx {depth_idx} out of range [0, {nk})")
 
-        colorscale_to_use: str | list[list[float | str]]
-        if is_categorical:
-            colorscale_to_use = [
-                [0.0, "rgb(31,119,180)"],
-                [0.33, "rgb(255,127,14)"],
-                [0.67, "rgb(44,160,44)"],
-                [1.0, "rgb(214,39,40)"],
-            ]
-            cmin, cmax = 0.0, 3.0
-        else:
-            colorscale_to_use = colorscale
-            # Allow passing a matplotlib cmap name — try to convert, but fall
-            # back to the provided string on any error.
-            if isinstance(colorscale, str):
-                try:
-                    import matplotlib as mpl
-                    import matplotlib.colors as mcolors
+        return ni, nj, nk, inline_idx, crossline_idx, depth_idx
 
-                    def mpl_to_plotly(
-                        name: str, samples: int = 256
-                    ) -> list[list[float | str]]:
-                        # Use the new colormap API when available but keep this
-                        # code pyright-friendly by treating the registry as Any.
-                        registry = cast(Any, getattr(mpl, "colormaps", None))
-                        if registry is not None:
-                            try:
-                                cmap = registry.get_cmap(name)
-                            except Exception:
-                                try:
-                                    cmap = registry[name]
-                                except Exception:
-                                    # If the registry doesn't contain the colormap,
-                                    # raise to fall back to the supplied colorscale
-                                    # string in the outer scope.
-                                    raise
-                        else:
-                            # New API not available; raise so outer code falls
-                            # back to using the provided colorscale string.
-                            raise
-                        scalars = np.linspace(0.0, 1.0, samples)
-                        colors = [mcolors.to_hex(cmap(s)) for s in scalars]
-                        step = 1.0 / (len(colors) - 1)
-                        return [[i * step, colors[i]] for i in range(len(colors))]
-
-                    colorscale_to_use = mpl_to_plotly(colorscale)
-                except Exception:
-                    colorscale_to_use = colorscale
-
-            # robust percentile-based scaling
-            slice_inline = arr[inline_idx, :, :]
-            slice_crossline = arr[:, crossline_idx, :]
-            slice_depth = arr[:, :, depth_idx]
-            p_inline = float(np.percentile(np.abs(slice_inline), 99.5))
-            p_crossline = float(np.percentile(np.abs(slice_crossline), 99.5))
-            p_depth = float(np.percentile(np.abs(slice_depth), 99.5))
-            vmax = float(max(p_inline, p_crossline, p_depth))
-            cmax = float(vmax) if vmax != 0.0 else 1.0
-            cmin = -cmax
-
-        traces: list[go.Surface] = []
-
-        # coordinate arrays; cast to Any at NumPy callsites to avoid stub noise
-        i_range = cast(Any, np.arange(ni))
-        j_range = cast(Any, np.arange(nj))
-        k_range = cast(Any, np.arange(nk) * k_scale)
-
-        # Inline (I-K plane) — X: I, Y: constant J, Z: K
-        I_inline, K_inline = np.meshgrid(i_range, k_range)
-        J_inline = cast(Any, np.full_like(I_inline, float(crossline_idx), dtype=float))
-        inline_data = arr[:, crossline_idx, :].T
-        traces.append(
-            go.Surface(
-                x=cast(Any, I_inline),
-                y=J_inline,
-                z=cast(Any, K_inline),
-                surfacecolor=cast(Any, inline_data),
-                colorscale=cast(Any, colorscale_to_use),
-                cmin=cmin,
-                cmax=cmax,
-                showscale=False,
-                name=f"Inline {inline_idx}",
-            )
+    def _compute_colorscale_and_bounds(
+        self,
+        arr: NDArray[np.floating[Any]],
+        inline_idx: int,
+        crossline_idx: int,
+        depth_idx: int,
+        colorscale: str | list[list[float | str]],
+        is_categorical: bool,
+    ) -> tuple[str | list[list[float | str]], float, float]:
+        """Compute the Plotly colorscale object and the cmin/cmax bounds."""
+        # This logic is now provided by the shared helper
+        # `src.plotting.helpers.colors.compute_plotly_colorscale_and_bounds`.
+        # Keep this private method name to avoid breaking callers that may expect it,
+        # but delegate to the shared helper for maintainability.
+        return compute_plotly_colorscale_and_bounds(
+            arr, (inline_idx, crossline_idx, depth_idx), colorscale, is_categorical
         )
 
-        # Crossline (J-K plane) — X: constant I, Y: J, Z: K
-        J_cross, K_cross = np.meshgrid(j_range, k_range)
-        I_cross = cast(Any, np.full_like(J_cross, float(inline_idx), dtype=float))
-        cross_data = arr[inline_idx, :, :].T
-        traces.append(
-            go.Surface(
-                x=I_cross,
-                y=cast(Any, J_cross),
-                z=cast(Any, K_cross),
-                surfacecolor=cast(Any, cross_data),
-                colorscale=cast(Any, colorscale_to_use),
-                cmin=cmin,
-                cmax=cmax,
-                showscale=False,
-                name=f"Crossline {crossline_idx}",
-            )
+    def _create_traces(
+        self,
+        arr: NDArray[np.floating[Any]],
+        ni: int,
+        nj: int,
+        nk: int,
+        inline_idx: int,
+        crossline_idx: int,
+        depth_idx: int,
+        k_scale: float,
+        colorscale_to_use: str | list[list[float | str]],
+        cmin: float,
+        cmax: float,
+        show_colorbar: bool,
+        k_unit: str | None,
+    ) -> list[go.Surface]:
+        """Build the three Plotly Surface traces for the requested slices."""
+        # Delegate trace construction to shared helper
+        # Build a small config object to reduce the number of arguments
+        # passed around and improve readability.
+        cfg = TraceConfig(
+            k_scale=k_scale,
+            colorscale_to_use=colorscale_to_use,
+            cmin=cmin,
+            cmax=cmax,
+            show_colorbar=show_colorbar,
+            k_unit=k_unit,
+            colorbar_len=_COLORBAR_DEFAULT_LEN,
         )
 
-        # Depth (I-J plane) — X: I, Y: J, Z: constant K
-        I_z, J_z = np.meshgrid(i_range, j_range)
-        K_z = cast(Any, np.full_like(I_z, float(depth_idx) * k_scale, dtype=float))
-        z_data = arr[:, :, depth_idx].T
-        traces.append(
-            go.Surface(
-                x=cast(Any, I_z),
-                y=cast(Any, J_z),
-                z=K_z,
-                surfacecolor=cast(Any, z_data),
-                colorscale=cast(Any, colorscale_to_use),
-                cmin=cmin,
-                cmax=cmax,
-                showscale=show_colorbar,
-                name="Depth slice",
-                colorbar=(
-                    dict(
-                        title=(f"Value ({k_unit})" if k_unit else "Value"),
-                        thickness=20,
-                        len=_COLORBAR_DEFAULT_LEN,
-                    )
-                    if show_colorbar
-                    else None
-                ),
-            )
-        )
+        # These dimensional arguments are provided for callers convenience
+        # but are not directly used by the trace factory helper. Mark them
+        # as intentionally unused to satisfy linters.
+        del ni, nj, nk
 
-        self._log_info(
-            f"created 3d volume traces: indices=({inline_idx}, {crossline_idx}, {depth_idx}), cmin={cmin}, cmax={cmax}"
+        return make_plotly_surface_traces_from_config(
+            arr, inline_idx, crossline_idx, depth_idx, cfg
         )
-
-        return traces
 
     def create_figure(self, traces: list[go.Surface], title: str = "") -> go.Figure:
         """Build a Plotly Figure from traces and apply sane layout defaults."""
         fig: go.Figure = go.Figure(data=traces)
         # Cast to Any for update_layout to avoid partial-member stub noise
         cast(Any, fig).update_layout(
-            title=dict(text=title, x=0.5, xanchor="center"),
-            scene=dict(
-                xaxis=dict(
-                    title=dict(text="Inline (i)"), autorange="reversed", showgrid=True
-                ),
-                yaxis=dict(title=dict(text="Crossline (j)"), showgrid=True),
-                zaxis=dict(
-                    title=dict(text="Depth (k)"), autorange="reversed", showgrid=True
-                ),
-                aspectmode="data",
-                camera=dict(eye=dict(x=1.5, y=1.5, z=1.3)),
-            ),
+            title={"text": title, "x": 0.5, "xanchor": "center"},
+            scene={
+                "xaxis": {
+                    "title": {"text": "Inline (i)"},
+                    "autorange": "reversed",
+                    "showgrid": True,
+                },
+                "yaxis": {"title": {"text": "Crossline (j)"}, "showgrid": True},
+                "zaxis": {
+                    "title": {"text": "Depth (k)"},
+                    "autorange": "reversed",
+                    "showgrid": True,
+                },
+                "aspectmode": "data",
+                "camera": {"eye": {"x": 1.5, "y": 1.5, "z": 1.3}},
+            },
             autosize=True,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
@@ -231,10 +207,21 @@ class PlotlyPlotter(BasePlotter):
         return fig
 
     def show_figure(self, fig: go.Figure) -> None:
+        """Display the interactive Plotly figure in a GUI/Notebook.
+
+        This wraps `fig.show()` and logs the display action.
+        """
         cast(Any, fig).show()
         self._log_info("displayed interactive figure")
 
     def save_figure(self, fig: go.Figure, filepath: str) -> None:
+        """Save the Plotly figure as an HTML file and inject interaction JS.
+
+        Writes the figure to `filepath` using Plotly's `write_html`, then
+        attempts to inject optional 3D interaction scripts from the package
+        resources. Failures to inject are non-fatal and logged.
+        """
+
         cast(Any, fig).write_html(
             filepath,
             config={
@@ -247,7 +234,7 @@ class PlotlyPlotter(BasePlotter):
         # Try to inject the optional 3D interaction script; failure is non-fatal
         try:
             self.inject_3d_interaction_script(filepath)
-        except Exception:
+        except OSError:
             logger.debug("inject_3d_interaction_script failed (non-fatal)")
         self._log_info(f"saved interactive figure to {filepath}")
 

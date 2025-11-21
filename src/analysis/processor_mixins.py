@@ -29,11 +29,11 @@ Example Usage:
 
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, TypeVar, cast
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any, TypeVar, cast
 
 logger = logging.getLogger(__name__)
 
@@ -150,23 +150,23 @@ class LoggingMixin:
 
     def log_debug(self, message: str) -> None:
         """Log a debug-level message."""
-        logger.debug(f"[{self.__class__.__name__}] {message}")
+        logger.debug("[%s] %s", self.__class__.__name__, message)
 
     def log_info(self, message: str) -> None:
         """Log an info-level message."""
-        logger.info(f"[{self.__class__.__name__}] {message}")
+        logger.info("[%s] %s", self.__class__.__name__, message)
 
     def log_warning(self, message: str) -> None:
         """Log a warning-level message."""
-        logger.warning(f"[{self.__class__.__name__}] {message}")
+        logger.warning("[%s] %s", self.__class__.__name__, message)
 
     def log_error(self, message: str) -> None:
         """Log an error-level message."""
-        logger.error(f"[{self.__class__.__name__}] {message}")
+        logger.error("[%s] %s", self.__class__.__name__, message)
 
     def log_critical(self, message: str) -> None:
         """Log a critical-level message."""
-        logger.critical(f"[{self.__class__.__name__}] {message}")
+        logger.critical("[%s] %s", self.__class__.__name__, message)
 
 
 class CachingMixin:
@@ -466,7 +466,7 @@ class ErrorHandlingMixin:
     ...         self.register_error_handler(ValueError, self._handle_value_error)
     ...
     ...     def _handle_value_error(self, error: ValueError) -> Any:
-    ...         logger.warning(f"Value error: {error}")
+    ...         logger.warning("Value error: %s", error)
     ...         return None  # or recovery value
     """
 
@@ -551,11 +551,14 @@ class ErrorHandlingMixin:
         for attempt in range(self._max_retries):
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, OSError) as e:
                 last_error = e
                 if attempt < self._max_retries - 1:
                     logger.warning(
-                        f"Retry attempt {attempt + 1}/{self._max_retries}: {e}"
+                        "Retry attempt %s/%s: %s",
+                        attempt + 1,
+                        self._max_retries,
+                        e,
                     )
 
         if last_error is not None:
@@ -724,7 +727,7 @@ class ProcessorMixinManager:
         if isinstance(self.processor, mixin_class):
             self._enabled_mixins[mixin_name] = True
         else:
-            logger.warning(f"Processor does not have {mixin_name}")
+            logger.warning("Processor does not have %s", mixin_name)
 
     def disable_mixin(self, mixin_class: type) -> None:
         """Disable a mixin on the processor.

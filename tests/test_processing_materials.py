@@ -6,10 +6,11 @@ validation, and signal processing operations.
 
 import numpy as np
 import pytest
+
 from src.io.grid import GridSpec
-from src.utils.quantity import Quantity
+from src.processing.materials.properties import DensityModel, VsModel
 from src.processing.materials.velocity import VelocityModel
-from src.processing.materials.properties import VsModel, DensityModel
+from src.utils.quantity import Quantity
 
 
 class TestVelocityModelInit:

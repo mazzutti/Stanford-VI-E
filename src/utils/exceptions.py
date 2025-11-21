@@ -6,11 +6,12 @@ and improving maintainability.
 """
 
 from __future__ import annotations
-from typing import TypeVar, Any, cast
-from collections.abc import Callable, Generator
-from functools import wraps
-from contextlib import contextmanager
+
 import logging
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from functools import wraps
+from typing import Any, TypeVar, cast
 
 __all__ = [
     "safe_call",
@@ -28,9 +29,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 def safe_call(
     func: Callable[..., Any],
     *args: Any,
-    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
     default: Any = None,
-    log_errors: bool = False,
+    log_exceptions: bool = False,
     **kwargs: Any,
 ) -> Any:
     """Safely call a function, returning default on exception.
@@ -48,14 +49,20 @@ def safe_call(
     """
     try:
         return func(*args, **kwargs)
-    except exceptions as e:
-        if log_errors:
-            logger.error(f"Error calling {func.__name__}: {e}", exc_info=True)
+    except Exception as exc:
+        # These helpers intentionally start from catching broad exceptions
+        # and then filter by `exc_types` at runtime. Narrowing here would
+        # make the helpers less flexible for callers that provide custom
+        # exception tuples.
+        if not isinstance(exc, exc_types):
+            raise
+        if log_exceptions:
+            logger.error("Error calling %s: %s", func.__name__, exc, exc_info=True)
         return default
 
 
 def ignore_errors(
-    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
 ) -> Callable[[F], F]:
     """Decorator to silently ignore specified exceptions.
 
@@ -70,18 +77,19 @@ def ignore_errors(
         def risky_operation():
             ...
     """
-    if isinstance(exceptions, type):
-        exceptions = (exceptions,)
+    if isinstance(exc_types, type):
+        exc_types = (exc_types,)
     else:
-        exceptions = tuple(exceptions)
+        exc_types = tuple(exc_types)
 
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except exceptions:
-                pass
+            except Exception as exc:
+                if not isinstance(exc, exc_types):
+                    raise
             return None
 
         return cast(F, wrapper)
@@ -90,7 +98,7 @@ def ignore_errors(
 
 
 def log_errors(
-    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
     message: str | None = None,
     level: int = logging.ERROR,
 ) -> Callable[[F], F]:
@@ -109,19 +117,21 @@ def log_errors(
         def validate_data(data):
             ...
     """
-    if isinstance(exceptions, type):
-        exceptions = (exceptions,)
+    if isinstance(exc_types, type):
+        exc_types = (exc_types,)
     else:
-        exceptions = tuple(exceptions)
+        exc_types = tuple(exc_types)
 
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except exceptions:
-                log_msg = message or f"Error in {func.__name__}"
-                logger.log(level, log_msg, exc_info=True)
+            except Exception as exc:
+                if not isinstance(exc, exc_types):
+                    raise
+                log_msg = message or "Error in %s"
+                logger.log(level, log_msg, func.__name__, exc_info=True)
                 raise
 
         return cast(F, wrapper)
@@ -130,7 +140,7 @@ def log_errors(
 
 
 def handle_errors(
-    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
     handler: Callable[[BaseException], Any] | None = None,
     default: Any = None,
     suppress: bool = False,
@@ -148,25 +158,27 @@ def handle_errors(
 
     Example:
         def on_error(e):
-            logger.warning(f"Handled: {e}")
+            logger.warning("Handled: %s", e)
 
         @handle_errors(ValueError, handler=on_error, suppress=True)
         def risky_operation():
             ...
     """
-    if isinstance(exceptions, type):
-        exceptions = (exceptions,)
+    if isinstance(exc_types, type):
+        exc_types = (exc_types,)
     else:
-        exceptions = tuple(exceptions)
+        exc_types = tuple(exc_types)
 
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except exceptions as e:
+            except Exception as exc:
+                if not isinstance(exc, exc_types):
+                    raise
                 if handler:
-                    handler(e)
+                    handler(exc)
                 if suppress:
                     return default
                 raise
@@ -178,7 +190,7 @@ def handle_errors(
 
 @contextmanager
 def safe_context(
-    exceptions: type[BaseException] | tuple[type[BaseException], ...] = Exception,
+    exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
     action: Callable[[BaseException], None] | None = None,
     suppress: bool = False,
 ) -> Generator[None]:
@@ -196,15 +208,17 @@ def safe_context(
         with safe_context(ValueError, suppress=True):
             risky_operation()
     """
-    if isinstance(exceptions, type):
-        exceptions = (exceptions,)
+    if isinstance(exc_types, type):
+        exc_types = (exc_types,)
     else:
-        exceptions = tuple(exceptions)
+        exc_types = tuple(exc_types)
 
     try:
         yield
-    except exceptions as e:
+    except Exception as exc:
+        if not isinstance(exc, exc_types):
+            raise
         if action:
-            action(e)
+            action(exc)
         if not suppress:
             raise

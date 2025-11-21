@@ -9,16 +9,14 @@ Tests cover:
 - Error handling and edge cases
 """
 
-import pytest
-import numpy as np
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-from src.analysis.cache.extractors import (
-    ArrayExtractor,
-    NpzExtractor,
-    NpyExtractor,
-)
+import numpy as np
+import pytest
+
+from src.analysis.cache.extractors import (ArrayExtractor, NpyExtractor,
+                                           NpzExtractor)
 
 
 @pytest.fixture

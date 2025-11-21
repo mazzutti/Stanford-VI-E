@@ -15,29 +15,19 @@ Test organization:
 # mypy: ignore-errors
 
 
-import pytest
-import numpy as np
 import json
 
-from src.analysis.models import (
-    ValidationConfig,
-    ModelUtilities,
-    StatisticalResult,
-    FaciesStats,
-    Transition,
-    GradientCorrelationResult,
-    BoundaryAmpsResult,
-    FaciesDiscriminationResult,
-    InterfaceReflectionResult,
-    AvoAnalysisResult,
-    CacheLoadResult,
-    DisplayCubesResult,
-    AvoStats,
-    TechniqueComparison,
-    FaciesCorrelationConfig,
-    AvoResults,
-)
+import numpy as np
+import pytest
 
+from src.analysis.models import (AvoAnalysisResult, AvoResults, AvoStats,
+                                 BoundaryAmpsResult, CacheLoadResult,
+                                 DisplayCubesResult, FaciesCorrelationConfig,
+                                 FaciesDiscriminationResult, FaciesStats,
+                                 GradientCorrelationResult,
+                                 InterfaceReflectionResult, ModelUtilities,
+                                 StatisticalResult, TechniqueComparison,
+                                 Transition, ValidationConfig)
 
 # ============================================================================
 # Fixtures

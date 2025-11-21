@@ -6,12 +6,15 @@ This makes configurations easier to understand, test, and extend.
 Also provides matplotlib initialization utilities.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, cast
+import dataclasses
 import logging
+from dataclasses import dataclass, field
+from types import ModuleType
+from typing import Any, cast
+
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from types import ModuleType
 
 
 @dataclass
@@ -50,6 +53,10 @@ class PlotConfig:
     # Colorbar
     colorbar_label: str = "Value"
     percentile: float = 99.5
+    # Optional explicit display limits and extent for imshow
+    vmin: float | None = None
+    vmax: float | None = None
+    extent: tuple[float, float, float, float] | None = None
 
     # Additional kwargs for matplotlib
     # Use Any for extra kwargs to avoid partially-unknown dict typing from callers
@@ -98,8 +105,6 @@ class PlotConfig:
         Returns:
             New PlotConfig with updated values
         """
-        import dataclasses
-
         current_dict = dataclasses.asdict(self)
         current_dict.update(kwargs)
         return PlotConfig(**current_dict)
@@ -133,12 +138,11 @@ def setup_matplotlib(backend: str | None = "Agg") -> None:
     Args:
         backend: Matplotlib backend to use (default: "Agg")
     """
-    import matplotlib
-
     if backend:
         try:
             matplotlib.use(backend)
-        except Exception:
+        except (RuntimeError, ValueError):
+            # If backend cannot be set, continue with defaults
             pass
 
     # Apply standard matplotlib defaults

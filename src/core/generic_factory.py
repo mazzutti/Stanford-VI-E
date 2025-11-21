@@ -4,14 +4,8 @@ Eliminates duplicate factory code across CacheLoaderFactory, ExtractorFactory,
 ResamplerFactory, etc. by providing a reusable base class.
 """
 
-from typing import (
-    TypeVar,
-    Generic,
-    Any,
-    overload,
-    cast,
-)
 from collections.abc import Callable
+from typing import Any, Generic, TypeVar, cast, overload
 
 __all__ = ["GenericFactory"]
 

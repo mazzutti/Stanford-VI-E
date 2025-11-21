@@ -1,10 +1,12 @@
 """File management utilities."""
 
-from pathlib import Path
 import logging
+import shutil
+import subprocess
+import webbrowser
+from pathlib import Path
 
 from src.processing.managers.resource_manager import ResourceManager
-
 
 __all__ = ["FileManager"]
 
@@ -16,9 +18,7 @@ class FileManager(ResourceManager[Path]):
         """Initialize file manager with no-op strategies."""
         super().__init__(resource_dir=Path("."), logger=logger)
 
-    def open(
-        self, filepath: str, description: str | None = None, prefix: str = ""
-    ) -> bool:
+    def open(self, filepath: str, prefix: str = "") -> bool:
         """Open a file in a platform-friendly way.
 
         Prefer a pure-Python approach (`webbrowser.open`) and fall back to
@@ -39,25 +39,20 @@ class FileManager(ResourceManager[Path]):
 
         # Try webbrowser which is cross-platform for file:// URLs
         try:
-            import webbrowser
-
             webbrowser.open(f"file://{p.resolve()}")
             return True
-        except Exception:
+        except (ImportError, OSError, RuntimeError):
             pass
 
         # Fallback to platform-specific opener
         try:
-            import shutil
-            import subprocess
-
             if shutil.which("open"):
                 subprocess.run(["open", str(p)], check=False)
                 return True
             if shutil.which("xdg-open"):
                 subprocess.run(["xdg-open", str(p)], check=False)
                 return True
-        except Exception:
+        except (ImportError, OSError, RuntimeError):
             pass
 
         self._log_warning("%sCould not open file: %s", prefix, filepath)

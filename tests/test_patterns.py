@@ -8,41 +8,25 @@ Tests cover:
 """
 
 import unittest
-from unittest.mock import Mock, MagicMock, patch
 from dataclasses import dataclass
-from typing import Any
-
-# Observer Pattern Tests
-from src.analysis.patterns.observer import (
-    AnalysisObserver,
-    Observable,
-    AnalysisEvent,
-    EventType,
-    ProgressObserver,
-    LoggingObserver,
-)
-
-# Builder Pattern Tests
-from src.analysis.patterns.builder import (
-    AnalysisBuilderBase,
-    FaciesAnalyzerBuilder,
-    ProcessorChainBuilder,
-)
-
-# Command Pattern Tests
-from src.analysis.patterns.command import (
-    AnalysisCommand,
-    RunAnalysisCommand,
-    MacroCommand,
-    CommandQueue,
-)
+from typing import Any, List
+from unittest.mock import MagicMock, Mock, patch
 
 # Integration Tests
-from src.analysis.integrated_analyzer import (
-    IntegratedAnalyzer,
-    AnalysisContext,
-    AnalysisOperation,
-)
+from src.analysis.integrated_analyzer import (AnalysisContext,
+                                              AnalysisOperation,
+                                              IntegratedAnalyzer)
+# Builder Pattern Tests
+from src.analysis.patterns.builder import (AnalysisBuilderBase,
+                                           FaciesAnalyzerBuilder,
+                                           ProcessorChainBuilder)
+# Command Pattern Tests
+from src.analysis.patterns.command import (AnalysisCommand, CommandQueue,
+                                           MacroCommand, RunAnalysisCommand)
+# Observer Pattern Tests
+from src.analysis.patterns.observer import (AnalysisEvent, AnalysisObserver,
+                                            EventType, LoggingObserver,
+                                            Observable, ProgressObserver)
 
 
 class TestObserverPattern(unittest.TestCase):
@@ -500,7 +484,9 @@ def run_phase_3_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestObserverPattern))
     suite.addTests(loader.loadTestsFromTestCase(TestBuilderPattern))
     suite.addTests(loader.loadTestsFromTestCase(TestCommandPattern))
-    suite.addTests(loader.loadTestsFromTestCase(TestIntegration))
+    # `TestIntegration` was a typo; the intended integration test class
+    # in this module is `TestPatternsIntegration`.
+    suite.addTests(loader.loadTestsFromTestCase(TestPatternsIntegration))
     suite.addTests(loader.loadTestsFromTestCase(TestPhase3Metrics))
 
     # Run tests with verbose output

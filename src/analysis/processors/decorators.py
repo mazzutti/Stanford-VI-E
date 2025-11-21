@@ -1,12 +1,13 @@
 """Decorators for processor logging and performance monitoring."""
 
 import logging
+import time
+from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar, cast
-from collections.abc import Callable
-from numpy.typing import NDArray
 
 import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +90,6 @@ class ProcessorDecorators:
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
-                import time
-
                 start_time = time.perf_counter()
                 result = func(*args, **kwargs)
                 elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -145,7 +144,7 @@ class ProcessorDecorators:
                     )
                 if cube.size == 0:
                     raise ValueError(f"Cube is empty (shape: {cube.shape})")
-                logger.debug(f"Validated {expected_dims}D cube: shape={cube.shape}")
+                logger.debug("Validated %sD cube: shape=%s", expected_dims, cube.shape)
                 return func(self, cube, *args, **kwargs)
 
             return wrapper

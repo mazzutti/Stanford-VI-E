@@ -34,16 +34,22 @@ Example:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, cast
-from pathlib import Path
-import logging
 import json
+import logging
 import os
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, cast
 
-from src.core import BaseConfig, ConfigProfile, ConfigRule
+import yaml
+
+from src.core.configuration import BaseConfig, ConfigProfile, ConfigRule
 
 logger = logging.getLogger(__name__)
+
+# Many tiny source classes are intentionally minimal; suppress the
+# too-few-public-methods warning for these light-weight types.
+
 
 __all__ = [
     "ConfigSource",
@@ -64,7 +70,6 @@ class ConfigSource(ABC):
         Returns:
             Configuration dictionary
         """
-        pass
 
 
 class EnvironmentSource(ConfigSource):
@@ -97,7 +102,7 @@ class EnvironmentSource(ConfigSource):
                 except (json.JSONDecodeError, ValueError):
                     config[config_key] = value
 
-        logger.info(f"Loaded {len(config)} settings from environment")
+        logger.info("Loaded %d settings from environment", len(config))
         return config
 
 
@@ -123,10 +128,10 @@ class JsonSource(ConfigSource):
             json.JSONDecodeError: If file invalid JSON
         """
         if not self.path.exists():
-            logger.warning(f"JSON config file not found: {self.path}")
+            logger.warning("JSON config file not found: %s", self.path)
             return {}
 
-        with open(self.path) as f:
+        with open(self.path, encoding="utf-8") as f:
             raw = json.load(f)
 
         if not isinstance(raw, dict):
@@ -135,11 +140,9 @@ class JsonSource(ConfigSource):
             )
             return {}
 
-        from typing import cast
-
         config = cast(dict[str, Any], raw)
 
-        logger.info(f"Loaded configuration from {self.path}")
+        logger.info("Loaded configuration from %s", self.path)
         return config
 
 
@@ -165,13 +168,11 @@ class YamlSource(ConfigSource):
             yaml.YAMLError: If file invalid YAML
         """
 
-        import yaml
-
         if not self.path.exists():
-            logger.warning(f"YAML config file not found: {self.path}")
+            logger.warning("YAML config file not found: %s", self.path)
             return {}
 
-        with open(self.path) as f:
+        with open(self.path, encoding="utf-8") as f:
             raw = yaml.safe_load(f)
 
         if not isinstance(raw, dict):
@@ -180,11 +181,9 @@ class YamlSource(ConfigSource):
             )
             return {}
 
-        from typing import cast
-
         config = cast(dict[str, Any], raw)
 
-        logger.info(f"Loaded configuration from {self.path}")
+        logger.info("Loaded configuration from %s", self.path)
         return config
 
 
@@ -201,6 +200,9 @@ class ConfigManager(BaseConfig):
         super().__init__()
         self._sources: list[ConfigSource] = []
         logger.info("ConfigManager initialized")
+
+    # ConfigManager intentionally provides small source wrapper classes; keep
+    # the implementations concise to remain easily testable.
 
     @classmethod
     def from_file(
@@ -226,7 +228,7 @@ class ConfigManager(BaseConfig):
 
         if file_type == "json":
             source: ConfigSource = JsonSource(path)
-        elif file_type == "yaml" or file_type == "yml":
+        elif file_type in ("yaml", "yml"):
             source = YamlSource(path)
         else:
             raise ValueError(f"Unknown config file type: {file_type}")
@@ -273,8 +275,12 @@ class ConfigManager(BaseConfig):
             try:
                 config = source.load()
                 self._merge_config(self._config, config)
-            except Exception as e:
-                logger.error(f"Error loading config from {source}: {e}")
+            except Exception as exc:
+                # Configuration sources may fail for many reasons (I/O,
+                # parsing, user-provided loader errors). Log and continue so
+                # that one bad source does not prevent other sources from
+                # contributing to the final configuration.
+                logger.error("Error loading config from %s: %s", source, exc)
 
         # Apply overrides
         self._merge_config(self._config, self._overrides)

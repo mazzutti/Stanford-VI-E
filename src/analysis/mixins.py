@@ -31,18 +31,15 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Generic,
-    TypeVar,
-    cast,
-)
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast
 
 if TYPE_CHECKING:
     pass
+
+# Allow compact TypeVar/class names used across mixins for readability.
+# This module intentionally uses short/helper names in a few places.
+
 
 __all__ = [
     "SingletonMixin",
@@ -54,6 +51,8 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+# Allow compact TypeVar names used across mixins for readability.
+
 T_Config = TypeVar("T_Config")
 
 
@@ -63,6 +62,9 @@ class classproperty:
 
     The wrapped function receives the class as its single argument.
     """
+
+    # Allow concise mixin/type helper names which intentionally use compact
+    # TypeVar/class names for readability across the codebase.
 
     def __init__(self, func: "Callable[..., Any]") -> None:
         self._func = func
@@ -97,7 +99,7 @@ class SingletonMixin:
     _instance: ClassVar[Any | None] = None
     _lock: ClassVar[threading.RLock] = threading.RLock()
 
-    def __new__(cls: type[T], *args: Any, **kwargs: Any) -> T:
+    def __new__(cls: type[T], *_args: Any, **_kwargs: Any) -> T:
         """Create or return the singleton instance in a thread-safe manner."""
         with getattr(cls, "_lock"):
             if getattr(cls, "_instance", None) is None:
@@ -113,15 +115,15 @@ class SingletonMixin:
         """
         with getattr(cls, "_lock"):
             setattr(cls, "_instance", None)
-            logger.debug(f"Reset singleton {cls.__name__}")
+            logger.debug("Reset singleton %s", cls.__name__)
 
     @property
-    def is_initialized(cls) -> bool:
+    def is_initialized(self) -> bool:
         """Check if singleton has been initialized.
 
-        Can be accessed on the class or an instance; returns True if the
-        singleton instance currently exists, False otherwise.
+        Returns True if the singleton instance currently exists, False otherwise.
         """
+        cls = self.__class__
         with getattr(cls, "_lock"):
             return getattr(cls, "_instance", None) is not None
 
@@ -180,7 +182,7 @@ class ValidatableMixin:
                 f"missing methods: {missing}. "
                 f"Expected: {required_methods}"
             )
-        logger.debug(f"{obj_name} validated successfully: {type(obj).__name__}")
+        logger.debug("%s validated successfully: %s", obj_name, type(obj).__name__)
 
     def validate_self(self) -> None:
         """Validate that this instance implements its required methods.
@@ -244,7 +246,7 @@ class ConfigurableMixin(Generic[T_Config]):
                 f"{config_name} must be {expected_type.__name__}, "
                 f"got {type(config).__name__}"
             )
-        logger.debug(f"Config validated: {type(config).__name__}")
+        logger.debug("Config validated: %s", type(config).__name__)
 
     def get_configuration(self) -> T_Config | None:
         """Get the current configuration.
@@ -294,7 +296,7 @@ class StateTrackingMixin:
         with self._state_lock:
             old_state = self._state
             self._state = new_state
-            logger.debug(f"{self.__class__.__name__}: {old_state} -> {new_state}")
+            logger.debug("%s: %s -> %s", self.__class__.__name__, old_state, new_state)
 
     def get_state(self) -> str:
         """Get the current state.

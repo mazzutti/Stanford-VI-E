@@ -3,12 +3,15 @@
 Provides clean, maintainable approaches to finding cache files.
 """
 
-from pathlib import Path
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["CacheFileSelector"]
+
+# Small selector helper with a compact public surface; silence the
+# too-few-public-methods warning for this simple utility class.
 
 
 class CacheFileSelector:
@@ -47,7 +50,7 @@ class CacheFileSelector:
             raise ValueError("domain cannot be empty")
 
         if not cache_dir.exists():
-            logger.warning(f"Cache directory does not exist: {cache_dir}")
+            logger.warning("Cache directory does not exist: %s", cache_dir)
             return None
 
         # Try exact matches first
@@ -68,14 +71,14 @@ class CacheFileSelector:
         # Try NPZ first (preferred format)
         npz_path = cache_dir / f"{self.FILE_PREFIX}{domain}.npz"
         if npz_path.exists():
-            logger.debug(f"Found exact NPZ match: {npz_path}")
+            logger.debug("Found exact NPZ match: %s", npz_path)
             return npz_path
 
         # Try NPY if allowed
         if allow_npy:
             npy_path = cache_dir / f"{self.FILE_PREFIX}{domain}.npy"
             if npy_path.exists():
-                logger.debug(f"Found exact NPY match: {npy_path}")
+                logger.debug("Found exact NPY match: %s", npy_path)
                 return npy_path
 
         return None
@@ -87,12 +90,12 @@ class CacheFileSelector:
         matches = self._find_all_matches(cache_dir, domain, allow_npy)
 
         if not matches:
-            logger.debug(f"No pattern matches found for domain: {domain}")
+            logger.debug("No pattern matches found for domain: %s", domain)
             return None
 
         # Return most recently modified file
         latest = max(matches, key=lambda p: p.stat().st_mtime)
-        logger.debug(f"Found latest match: {latest}")
+        logger.debug("Found latest match: %s", latest)
         return latest
 
     def _find_all_matches(

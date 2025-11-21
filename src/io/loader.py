@@ -14,12 +14,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
 from typing import cast
+
 import numpy as np
 from numpy.typing import NDArray
 
+from src.io.file_locator import FileLocator
 from src.io.grid import GridSpec
 from src.io.gslib_reader import GSLibConfig, GSLibReader
-from src.io.file_locator import FileLocator
 
 __all__ = ["DatasetManager", "GslibLoader"]
 
@@ -158,7 +159,6 @@ class DatasetManager:
 
         """
         # No cleanup needed currently - provides hook for future resource management
-        pass
 
     def _assign_property(self, key: str, arr: NDArray[np.float64]) -> None:
         """Assign a loaded array to the appropriate property or _other mapping.
@@ -245,16 +245,18 @@ class DatasetManager:
             full_path = self._locator.find(key, folder_name, dir_path)
 
             try:
-                self._logger.info(f"Loading {key} from {full_path}...")
+                self._logger.info("Loading %s from %s...", key, full_path)
                 arr = self._reader.read(full_path, expected_shape)
                 self._assign_property(key, arr)
                 loaded_count += 1
             except (OSError, ValueError) as e:
-                self._logger.error(f"Failed to load {key} from {full_path}: {e}")
+                self._logger.error("Failed to load %s from %s: %s", key, full_path, e)
                 raise
 
         self._logger.info(
-            f"Successfully loaded {loaded_count} properties. Grid shape: {expected_shape}"
+            "Successfully loaded %s properties. Grid shape: %s",
+            loaded_count,
+            expected_shape,
         )
 
     def align_cache_array(
@@ -303,7 +305,8 @@ class DatasetManager:
                 return reshaped.astype(np.float64)
             except (ValueError, RuntimeError) as e:
                 self._logger.debug(
-                    f"Fortran-order reshape failed: {e}. Trying C-order reshape..."
+                    "Fortran-order reshape failed: %s. Trying C-order reshape...",
+                    e,
                 )
 
             # Fallback to C-order reshape
@@ -311,11 +314,13 @@ class DatasetManager:
                 reshaped = data.reshape(expected, order="C")
                 return reshaped.astype(np.float64)
             except (ValueError, RuntimeError) as e:
-                self._logger.debug(f"C-order reshape also failed: {e}")
+                self._logger.debug("C-order reshape also failed: %s", e)
 
         # Could not align
         self._logger.debug(
-            f"Cache array shape {data.shape} cannot be aligned to grid shape {expected}"
+            "Cache array shape %s cannot be aligned to grid shape %s",
+            data.shape,
+            expected,
         )
         return None
 

@@ -9,20 +9,21 @@ All tests validate both current implementation and utility classes that have
 been moved to src/utils for production use.
 """
 
-import pytest
-import numpy as np
-from numpy.testing import assert_allclose
-from unittest.mock import MagicMock
 from typing import Any
+from unittest.mock import MagicMock
 
+import numpy as np
+import pytest
+from numpy.testing import assert_allclose
+
+from src.utils.constants import CACHE_DIR_DEFAULT
+from src.utils.converters import (DensityConverter, UnitConverter,
+                                  VelocityConverter)
+from src.utils.lru import LRUCache, ShardedLRUCache
+from src.utils.normalizers import UnitNormalizer
 from src.utils.quantity import Quantity
 from src.utils.types import ProcessManagerProtocol
 from src.utils.units import UnitRegistry
-from src.utils.lru import LRUCache, ShardedLRUCache
-from src.utils.constants import CACHE_DIR_DEFAULT
-from src.utils.normalizers import UnitNormalizer
-from src.utils.converters import UnitConverter, VelocityConverter, DensityConverter
-
 
 # ============================================================================
 # TESTS FOR UTILITY CLASSES

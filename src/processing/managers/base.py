@@ -1,13 +1,11 @@
 """Base manager class with common functionality."""
 
-from abc import abstractmethod
 import logging
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 
-
 from src.processing.core.abstracts import Manager
-
 
 __all__ = ["BaseManager"]
 
@@ -34,7 +32,6 @@ class BaseManager(Manager):
         prefix: str = "",
     ) -> int:
         """Clear managed resources."""
-        pass
 
     @abstractmethod
     def summarize(
@@ -44,7 +41,6 @@ class BaseManager(Manager):
         prefix: str = "",
     ) -> None:
         """Print summary of managed resources."""
-        pass
 
     def _log_info(self, message: str, *args: Any) -> None:
         """Log info message."""

@@ -13,13 +13,13 @@ Example:
     >>> seismogram = processor.apply_wavelet(reflectivity, wavelet)
 """
 
-from . import wavelets, signal, reflectivity, domain
+from . import domain, reflectivity, signal, wavelets
+from .domain import DepthTimeConverter
+from .reflectivity import ZoeppritzSolver
+from .signal import SeismicSignalProcessor
 
 # Re-export main classes and functions
-from .wavelets import Wavelet, RickerWavelet
-from .signal import SeismicSignalProcessor
-from .reflectivity import ZoeppritzSolver
-from .domain import DepthTimeConverter
+from .wavelets import RickerWavelet, Wavelet
 
 __all__ = [
     # Submodules

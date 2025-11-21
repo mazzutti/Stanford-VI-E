@@ -5,19 +5,13 @@ These protocols enable duck-typing and flexible implementations while
 maintaining static type safety through Python's Protocol system.
 """
 
-from typing import (
-    Protocol,
-    Any,
-    TypeVar,
-    Generic,
-    TYPE_CHECKING,
-)
 from os import PathLike
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar
 
 import numpy as np
-from numpy.typing import NDArray
-from numpy.lib.npyio import NpzFile
 from matplotlib.figure import Figure
+from numpy.lib.npyio import NpzFile
+from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
 from src.io.loader import DatasetManager
@@ -39,6 +33,9 @@ __all__ = [
     "DatasetManagerFactory",
     "PlotterProtocol",
 ]
+# Protocol helper objects are intentionally compact; suppress noisy
+# too-few-public-methods warnings for these thin protocol shims.
+
 
 # Type variable for generic protocols
 T = TypeVar("T")
@@ -81,7 +78,7 @@ class Resampler(Protocol):
         Returns:
             Seismic array converted to depth domain
         """
-        ...
+        raise NotImplementedError()
 
 
 class ResamplerFactory(Protocol):
@@ -100,7 +97,7 @@ class ResamplerFactory(Protocol):
         Returns:
             Configured Resampler instance ready for use
         """
-        ...
+        raise NotImplementedError()
 
 
 class TimeResampler(Protocol):
@@ -123,7 +120,7 @@ class TimeResampler(Protocol):
         Returns:
             Tuple of (resampled_array, actual_dt_achieved)
         """
-        ...
+        raise NotImplementedError()
 
 
 # ============================================================================
@@ -151,7 +148,7 @@ class CacheLoaderProtocol(Protocol):
         Returns:
             Path to selected cache file, or None if no suitable file found
         """
-        ...
+        raise NotImplementedError()
 
     def load_full_stack(
         self, filename: str | PathLike[str]
@@ -164,7 +161,7 @@ class CacheLoaderProtocol(Protocol):
         Returns:
             Loaded array or None if file cannot be loaded
         """
-        ...
+        raise NotImplementedError()
 
 
 class CacheProtocol(Protocol, Generic[T]):
@@ -186,7 +183,7 @@ class CacheProtocol(Protocol, Generic[T]):
         Returns:
             Cached value or None if key not found
         """
-        ...
+        raise NotImplementedError()
 
     def set(self, key: str, value: T) -> None:
         """Store a value in cache.
@@ -195,7 +192,7 @@ class CacheProtocol(Protocol, Generic[T]):
             key: Cache key to store under
             value: Value to cache
         """
-        ...
+        raise NotImplementedError()
 
     def keys(self) -> list[str]:
         """Get all keys currently in cache.
@@ -203,11 +200,11 @@ class CacheProtocol(Protocol, Generic[T]):
         Returns:
             List of all cache keys
         """
-        ...
+        raise NotImplementedError()
 
     def clear(self) -> None:
         """Clear all entries from cache."""
-        ...
+        raise NotImplementedError()
 
     def info(self) -> dict[str, Any]:
         """Get cache metadata and statistics.
@@ -215,7 +212,7 @@ class CacheProtocol(Protocol, Generic[T]):
         Returns:
             Dictionary with cache info (size, hits, misses, etc.)
         """
-        ...
+        raise NotImplementedError()
 
 
 # ============================================================================
@@ -241,7 +238,7 @@ class SelectorProtocol(Protocol):
         Returns:
             Selected file path or None if no suitable file found
         """
-        ...
+        raise NotImplementedError()
 
 
 class ArchiveExtractorProtocol(Protocol):
@@ -260,7 +257,7 @@ class ArchiveExtractorProtocol(Protocol):
         Returns:
             Extracted data array or None if extraction fails
         """
-        ...
+        raise NotImplementedError()
 
 
 class DatasetManagerFactory(Protocol):
@@ -283,7 +280,7 @@ class DatasetManagerFactory(Protocol):
         Returns:
             Configured DatasetManager instance ready for use
         """
-        ...
+        raise NotImplementedError()
 
 
 class PlotterProtocol(Protocol):
@@ -306,4 +303,4 @@ class PlotterProtocol(Protocol):
         Returns:
             Matplotlib Figure containing all summary plots
         """
-        ...
+        raise NotImplementedError()

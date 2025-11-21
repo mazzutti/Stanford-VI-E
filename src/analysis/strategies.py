@@ -20,8 +20,8 @@ from typing import Any, TypeVar, cast
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.quantity import Quantity
 from src.core.parameterized_conversions import ConversionRegistry
+from src.utils.quantity import Quantity
 
 T = TypeVar("T", bound=int | float | np.number[Any])
 
@@ -55,17 +55,14 @@ class ArrayStatisticsStrategy(ABC):
     @abstractmethod
     def compute_mean(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute mean of array."""
-        pass
 
     @abstractmethod
     def compute_std(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute standard deviation of array."""
-        pass
 
     @abstractmethod
     def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median of array."""
-        pass
 
 
 class StandardArrayStatistics(ArrayStatisticsStrategy):

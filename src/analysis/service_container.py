@@ -22,15 +22,15 @@ from __future__ import annotations
 
 import logging
 
+from src.analysis.config_manager import ConfigManager
+from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
+from src.analysis.patterns.circuit_breaker import CircuitBreakerPool
 from src.analysis.patterns.dependency_injection import (
     Container,
     ContainerBuilder,
+    ServiceProvider,
 )
-from src.analysis.patterns.dependency_injection import ServiceProvider
 from src.analysis.patterns.event_bus import EventBus
-from src.analysis.patterns.circuit_breaker import CircuitBreakerPool
-from src.analysis.config_manager import ConfigManager
-from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -59,28 +59,28 @@ def create_container() -> Container:
     builder.register_singleton(
         "EventBus",
         EventBus,
-        factory=lambda: EventBus(),
+        factory=EventBus,
     )
 
     # Register circuit breaker pool as singleton
     builder.register_singleton(
         "CircuitBreakerPool",
         CircuitBreakerPool,
-        factory=lambda: CircuitBreakerPool(),
+        factory=CircuitBreakerPool,
     )
 
     # Register configuration manager as singleton
     builder.register_singleton(
         "ConfigManager",
         ConfigManager,
-        factory=lambda: ConfigManager(),
+        factory=ConfigManager,
     )
 
     # Register FaciesCorrelationAnalyzer as transient (no dependencies required)
     builder.register_transient(
         "FaciesCorrelationAnalyzer",
         FaciesCorrelationAnalyzer,
-        factory=lambda: FaciesCorrelationAnalyzer(),
+        factory=FaciesCorrelationAnalyzer,
     )
 
     # Register IntegratedAnalyzer as transient
@@ -113,7 +113,13 @@ def get_default_container() -> Container:
     Returns:
         Global Container instance
     """
+    # The module-level `_default_container` is intentionally managed as a
+    # mutable global singleton. The `global` statement is explicit and
+    # acceptable here given the module-level singleton semantics. Keep the
+    # justification narrow and disable pylint only for this statement.
+    # pylint: disable=global-statement
     global _default_container
+    # pylint: enable=global-statement
 
     if _default_container is None:
         _default_container = create_container()
@@ -124,7 +130,10 @@ def get_default_container() -> Container:
 
 def reset_default_container() -> None:
     """Reset the default global container."""
+    # See note in `get_default_container` about module-level singleton.
+    # pylint: disable=global-statement
     global _default_container
+    # pylint: enable=global-statement
     _default_container = None
     logger.info("Default container reset")
 
@@ -157,10 +166,14 @@ class ServiceContainerBuilder:
             event_bus = EventBus()
 
         self._event_bus = event_bus
+
+        def _event_bus_factory() -> EventBus:
+            return event_bus
+
         self.builder.register_singleton(
             "EventBus",
             EventBus,
-            factory=lambda: event_bus,
+            factory=_event_bus_factory,
         )
         logger.debug("EventBus registered")
         return self
@@ -180,10 +193,14 @@ class ServiceContainerBuilder:
             pool = CircuitBreakerPool()
 
         self._circuit_breaker_pool = pool
+
+        def _pool_factory() -> CircuitBreakerPool:
+            return pool
+
         self.builder.register_singleton(
             "CircuitBreakerPool",
             CircuitBreakerPool,
-            factory=lambda: pool,
+            factory=_pool_factory,
         )
         logger.debug("CircuitBreakerPool registered")
         return self
@@ -203,10 +220,14 @@ class ServiceContainerBuilder:
             config_manager = ConfigManager()
 
         self._config_manager = config_manager
+
+        def _config_factory() -> ConfigManager:
+            return config_manager
+
         self.builder.register_singleton(
             "ConfigManager",
             ConfigManager,
-            factory=lambda: config_manager,
+            factory=_config_factory,
         )
         logger.debug("ConfigManager registered")
         return self
@@ -224,7 +245,7 @@ class ServiceContainerBuilder:
         self.builder.register_transient(
             "FaciesCorrelationAnalyzer",
             FaciesCorrelationAnalyzer,
-            factory=lambda: FaciesCorrelationAnalyzer(),
+            factory=FaciesCorrelationAnalyzer,
         )
 
         logger.debug("FaciesCorrelationAnalyzer registered")

@@ -24,18 +24,17 @@ Example:
     ...     .build())
 """
 
+# This module intentionally performs local (call-time) imports inside
+# builder/factory methods to avoid import-time side-effects and cycles.
+# Silence the related pylint checks for this module (keep import-outside-toplevel).
+# pylint: disable=import-outside-toplevel
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import (
-    Generic,
-    TypeVar,
-    Any,
-    TYPE_CHECKING,
-    cast,
-)
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 if TYPE_CHECKING:
     from src.analysis.base import AnalyzerInterface
@@ -73,7 +72,10 @@ class Buildable(ABC, Generic[T]):
         ValueError
             If required configuration is missing
         """
-        ...
+        raise NotImplementedError()
+
+    # Builder helpers are intentionally compact; they provide fluent wiring
+    # and are expected to remain minimal.
 
 
 @dataclass
@@ -137,7 +139,7 @@ class AnalysisBuilder:
         >>> builder.with_dependency("factory", MyFactory())
         """
         self.dependencies[name] = dependency
-        logger.debug(f"Registered dependency '{name}' for domain '{self.domain}'")
+        logger.debug("Registered dependency '%s' for domain '%s'", name, self.domain)
         return self
 
     def with_resampler(self, resampler: Any) -> AnalysisBuilder:
@@ -202,7 +204,7 @@ class AnalysisBuilder:
         """
         self.config = config
         logger.debug(
-            f"Set configuration {type(config).__name__} for domain '{self.domain}'"
+            "Set configuration %s for domain '%s'", type(config).__name__, self.domain
         )
         return self
 
@@ -263,22 +265,26 @@ class AnalysisBuilder:
                 cfg = getattr(instance, "configure")
                 if callable(cfg):
                     cfg(self.config)
-                    logger.debug(f"Applied configuration to {analyzer_class.__name__}")
+                    logger.debug("Applied configuration to %s", analyzer_class.__name__)
 
             # Store metadata in instance for traceability
             if self._metadata and hasattr(instance, "_builder_metadata"):
                 setattr(instance, "_builder_metadata", self._metadata)
 
             logger.info(
-                f"Built analyzer '{self.domain}' of type {analyzer_class.__name__} "
-                f"with {len(self.dependencies)} dependencies"
+                "Built analyzer '%s' of type %s with %d dependencies",
+                self.domain,
+                analyzer_class.__name__,
+                len(self.dependencies),
             )
             return instance
 
         except TypeError as e:
             logger.error(
-                f"Failed to build {analyzer_class.__name__}: {e}. "
-                f"Available dependencies: {list(self.dependencies.keys())}"
+                "Failed to build %s: %s. Available dependencies: %s",
+                analyzer_class.__name__,
+                e,
+                list(self.dependencies.keys()),
             )
             raise ValueError(
                 f"Cannot instantiate {analyzer_class.__name__} with configured "
@@ -293,8 +299,11 @@ class AnalysisBuilder:
         AnalyzerInterface
             Configured FaciesCorrelationAnalyzer instance
         """
-        from src.analysis.facies import FaciesCorrelationAnalyzer
-        from typing import cast
+        # Lazy import to avoid import-time cycles when constructing analyzers
+
+        from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         return cast(
             "AnalyzerInterface[Any, Any]", self.build(FaciesCorrelationAnalyzer)
@@ -308,8 +317,11 @@ class AnalysisBuilder:
         RockPhysicsAnalyzer
             Configured RockPhysicsAnalyzer instance
         """
+        # Lazy import to avoid import-time cycles when constructing analyzers
+
         from src.analysis.rock_physics import RockPhysicsAnalyzer
-        from typing import cast
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         return cast("RockPhysicsAnalyzer", self.build(RockPhysicsAnalyzer))
 
@@ -377,14 +389,22 @@ def build_facies_analyzer(**kwargs: Any) -> AnalyzerInterface[Any, Any]:
     >>> analyzer = build_facies_analyzer(
     ...     resampler_factory=my_resampler,
     ...     config=my_config
-    ... )
+    ...
+    >>> custom = (AnalysisBuilder("custom")
+    ...     .with_dependency("factory", my_factory)
+    ...     .with_dependency("loader", my_loader)
+    ...     .build(AnalyzerClass))
     """
+
+    # Build a default AnalysisBuilder for facies and apply any provided
+    # keyword dependencies (mirrors `build_rock_physics_analyzer` behavior).
     builder = AnalysisBuilder("facies")
     for key, value in kwargs.items():
         if key == "config":
             builder = builder.with_config(value)
         else:
             builder = builder.with_dependency(key, value)
+
     return builder.build_facies_analyzer()
 
 

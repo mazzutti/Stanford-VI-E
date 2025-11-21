@@ -7,7 +7,6 @@ of concerns. All specific plotter implementations inherit from this class.
 import logging
 from abc import ABC
 
-
 from src.plotting.helpers.config import setup_matplotlib
 
 logger = logging.getLogger(__name__)

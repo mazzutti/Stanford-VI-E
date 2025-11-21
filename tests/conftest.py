@@ -4,14 +4,13 @@ This module configures the test environment, including disabling Numba JIT
 during coverage runs to allow proper coverage measurement of JIT-compiled code.
 """
 
-import os
-import sys
-
+import importlib.abc
 # Install an import hook to postpone annotation evaluation for `src` modules
 # This avoids editing `src/` files while preventing runtime errors caused by
 # evaluated annotations that mix GenericAlias and string forward refs.
 import importlib.machinery
-import importlib.abc
+import os
+import sys
 from pathlib import Path
 
 
@@ -58,7 +57,7 @@ sys.meta_path.insert(0, FutureAnnotationsFinder())
 # annotations at import-time do not fail with NameError.
 try:
     import builtins as _builtins
-    from typing import Any, Tuple, List, Dict, Optional, Union, Set
+    from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
     for _name in ("Tuple", "List", "Dict", "Any", "Optional", "Union", "Set"):
         if not hasattr(_builtins, _name):
@@ -76,8 +75,8 @@ except Exception:
 try:
     # Ensure typing.Callable resolves to collections.abc.Callable so tests that
     # import Callable from typing behave consistently with our TypeValidator.
-    import typing as _typing
     import collections.abc as _collections_abc
+    import typing as _typing
 
     if getattr(_typing, "Callable", None) is not _collections_abc.Callable:
         _typing.Callable = _collections_abc.Callable
@@ -85,8 +84,9 @@ try:
     # Monkeypatch ArrayValidator.validate_3d_array to raise TypeError when a
     # non-numpy input is provided (tests expect a TypeError with a helpful
     # message). We wrap the original implementation for numpy inputs.
-    from src.analysis.processors import validators as _validators
     import numpy as _np
+
+    from src.analysis.processors import validators as _validators
 
     _orig_validate_3d = _validators.ArrayValidator.validate_3d_array
 

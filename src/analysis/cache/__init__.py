@@ -24,17 +24,8 @@ Example:
     >>> data = extractor.extract(archive)
 """
 
-from .loader import (
-    CacheLoader,
-    CacheLoaderFactory,
-    CacheConfig,
-)
-from .extractors import (
-    ArrayExtractor,
-    NpzExtractor,
-    NpyExtractor,
-    ExtractorFactory,
-)
+from .extractors import ArrayExtractor, ExtractorFactory, NpyExtractor, NpzExtractor
+from .loader import CacheConfig, CacheLoader, CacheLoaderFactory
 
 __all__ = [
     # Loader

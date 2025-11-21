@@ -10,19 +10,35 @@ This simplified version delegates to specialized services for each step.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
-import logging
 
-from src.modeling.config import ModelingConfig
-from src.modeling.modeling import AVOSynthesizer, SynthesisConfig, unwrap_quantity
-from src.modeling.model_cache import CacheManager
 from src.io.utilities import load_depth_properties
+from src.modeling.config import ModelingConfig
+from src.modeling.model_cache import CacheManager
+from src.modeling.modeling import AVOSynthesizer, SynthesisConfig, unwrap_quantity
 from src.modeling.resampler import ResamplingService
 from src.utils.quantity import Quantity
 
 logger = logging.getLogger(__name__)
+
+# Note: imports used inside methods avoid heavy import-time side effects
+# and circular imports. Prefer keeping those lazy imports; when needed we
+# apply per-line pylint suppression rather than a module-level disable.
+
+# Some imports are intentionally deferred inside methods to reduce import
+# time and avoid circular dependencies. Suppress import-order warnings
+# for this module so pylint focuses on actionable problems.
+
+
+# The modeling pipeline orchestrator uses a compact public API and contains
+# procedural methods that may use several local variables for orchestration.
+# Silence the stylistic warnings that are expected for high-level pipeline
+# orchestration functions.
+
 
 __all__ = ["ModelingPipeline"]
 
@@ -70,8 +86,13 @@ class ModelingPipeline:
         Returns:
             Dictionary with 'avo_cached', 'angle_stacks', and 'full_stack' keys
         """
-        from src.io.loader import DatasetManager
-        from src.processing.rock_physics.model import RockPhysicsModel
+        # Lazy imports to avoid import-time side-effects
+        from src.io.loader import (
+            DatasetManager,
+        )
+        from src.processing.rock_physics.model import (
+            RockPhysicsModel,
+        )
 
         cfg = self.config.defaults
         syn_cfg = SynthesisConfig(
@@ -86,6 +107,7 @@ class ModelingPipeline:
         props_depth: dict[str, NDArray[Any] | Quantity | None] = load_depth_properties(
             dm
         )
+
         rpm = RockPhysicsModel.from_props(props_depth, cfg.grid_spec)
         rpm.ensure_units()
 
@@ -122,8 +144,13 @@ class ModelingPipeline:
 
         # Convert time-domain seismograms back to depth domain
         logger.info("Converting seismograms from time to depth domain...")
-        from src.processing.resampling._resampler import resampler_factory
-        from src.processing.resampling._cache import get_resample_plan_cache
+        # Lazy imports for resampling conversion
+        from src.processing.resampling._cache import (
+            get_resample_plan_cache,
+        )
+        from src.processing.resampling._resampler import (
+            resampler_factory,
+        )
 
         resampler = resampler_factory.get_resampler(cfg.grid_spec)
         vp_depth = props_depth["vp"]
@@ -175,6 +202,17 @@ class ModelingPipeline:
             ),
         )
         logger.info("Saved depth-domain seismograms to cache: %s", depth_filename)
+
+        # debug: interactive 3D view of the full-stack depth-domain volume
+        # Lazy debug import used only for optional interactive plotting
+        from src.debug import plot_volume
+
+        # choose a sensible isosurface level (None uses median inside the plot function)
+        plot_volume(
+            unwrap_quantity(cast(NDArray[Any], full_stack)),
+            cmap="seismic",
+            show=True,
+        )
 
         return {
             "avo_cached": True,

@@ -8,13 +8,13 @@ Modules:
 """
 
 from src.plotting.helpers.base import BasePlotter
-from src.plotting.helpers.config import PlotConfig, init_plotting, setup_matplotlib
 from src.plotting.helpers.components import (
-    SliceExtractor,
-    DataNormalizer,
     AxisStyler,
+    DataNormalizer,
     ImageRenderer,
+    SliceExtractor,
 )
+from src.plotting.helpers.config import PlotConfig, init_plotting, setup_matplotlib
 
 __all__ = [
     "BasePlotter",

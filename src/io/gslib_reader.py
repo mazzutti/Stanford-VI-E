@@ -10,12 +10,17 @@ Design:
 
 import logging
 from pathlib import Path
+
 import numpy as np
 from numpy.typing import NDArray
 
 __all__ = ["GSLibConfig", "GSLibReader"]
 
 logger = logging.getLogger(__name__)
+
+# This module contains small helper classes (config + reader) intended as
+# thin data holders and I/O helpers. Silence the too-few-public-methods
+# warning to reduce noise for these simple types.
 
 
 class GSLibConfig:
@@ -125,13 +130,20 @@ class GSLibReader:
             min_val = float(np.min(reshaped))
             max_val = float(np.max(reshaped))
             self._logger.debug(
-                f"Loaded {filepath}: shape={reshaped.shape}, dtype={reshaped.dtype}, "
-                f"min={min_val:.4f}, max={max_val:.4f} (z-axis flipped)"
+                "Loaded %s: shape=%s, dtype=%s, min=%.4f, max=%.4f (z-axis flipped)",
+                filepath,
+                reshaped.shape,
+                reshaped.dtype,
+                min_val,
+                max_val,
             )
         except (TypeError, ValueError):
             # Fallback if min/max computation fails
             self._logger.debug(
-                f"Loaded {filepath}: shape={reshaped.shape}, dtype={reshaped.dtype} (z-axis flipped)"
+                "Loaded %s: shape=%s, dtype=%s (z-axis flipped)",
+                filepath,
+                reshaped.shape,
+                reshaped.dtype,
             )
 
         return reshaped

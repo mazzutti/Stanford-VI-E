@@ -32,17 +32,11 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import (
-    TypeVar,
-    Protocol,
-    Generic,
-    Any,
-    cast,
-)
-from collections.abc import Callable
-from enum import Enum
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Generic, Protocol, TypeVar, cast
 
 __all__ = [
     "ValidatorResult",
@@ -62,6 +56,13 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 T_contra = TypeVar("T_contra", contravariant=True)
+
+# ValidatorChain is a compact composition helper used widely; keep the
+# implementation straightforward to make validators easy to compose.
+
+# Validator helper classes are intentionally small and composable. Silence
+# the too-few-public-methods warning for this module to reduce stylistic
+# noise for simple validator objects.
 
 
 class ValidatorResult(Enum):
@@ -91,7 +92,7 @@ class Validator(Protocol[T_contra]):
         list[str]
             List of error messages (empty if valid)
         """
-        ...
+        raise NotImplementedError()
 
 
 @dataclass
@@ -187,8 +188,8 @@ class ValidatorChain(Generic[T]):
                 errors.extend(validator_errors)
                 if self.stop_on_first_error and errors:
                     break
-            except Exception as e:
-                logger.warning(f"Validator raised exception: {e}")
+            except (RuntimeError, TypeError, ValueError) as e:
+                logger.warning("Validator raised exception: %s", e)
                 errors.append(f"Validation error: {e}")
         return errors
 
@@ -244,7 +245,7 @@ class ValidatorChain(Generic[T]):
                 if callable(v):
                     # __name__ may be dynamically typed; ensure a `str` is returned
                     return str(v.__class__.__name__)
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
             return str(v)
 

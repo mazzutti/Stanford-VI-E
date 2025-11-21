@@ -8,9 +8,10 @@ Key abstractions:
 - CacheStore: Interface that all cache backends must implement
 """
 
+import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Protocol, TypeVar, Generic
+from typing import Generic, Protocol, TypeVar
 
 T = TypeVar("T")  # Generic type for cached values
 
@@ -43,60 +44,60 @@ class FileSystemOps(Protocol):
 
     def read_file(self, path: Path) -> bytes:
         """Read file contents as bytes."""
-        ...
+        raise NotImplementedError()
 
     def write_file(self, path: Path, data: bytes) -> None:
         """Write file contents."""
-        ...
+        raise NotImplementedError()
 
     def delete_file(self, path: Path) -> None:
         """Delete a file."""
-        ...
+        raise NotImplementedError()
 
     def file_exists(self, path: Path) -> bool:
         """Check if file exists."""
-        ...
+        raise NotImplementedError()
 
     def get_file_size(self, path: Path) -> int:
         """Get file size in bytes."""
-        ...
+        raise NotImplementedError()
 
     def get_file_mtime(self, path: Path) -> float:
         """Get file modification time (seconds since epoch)."""
-        ...
+        raise NotImplementedError()
 
     def list_files(self, directory: Path, pattern: str) -> list[Path]:
         """List files matching pattern in directory."""
-        ...
+        raise NotImplementedError()
 
 
 class CacheStore(ABC, Generic[T]):
     """Abstract base class for cache storage implementations.
 
-        Defines the common interface that all cache backends (in-memory,
-        disk-backed, etc.) must implement for get/set/delete operations.
+    Defines the common interface that all cache backends (in-memory,
+    disk-backed, etc.) must implement for get/set/delete operations.
 
-        This is a Protocol-like interface for all cache implementations.
-        Subclasses should implement the get/set/has/delete/clear contract.
+    This is a Protocol-like interface for all cache implementations.
+    Subclasses should implement the get/set/has/delete/clear contract.
 
-        Type Parameters
-        ---------------
-        T
-            Type of objects stored in the cache (typically dict[str, Any] for
-            serialized data or bytes for binary content).
+    Type Parameters
+    ---------------
+    T
+        Type of objects stored in the cache (typically dict[str, Any] for
+        serialized data or bytes for binary content).
 
-        Methods
-        -------
-        get(key: str) -> T | None
-            Retrieve item from cache.
-        set(key: str, value: T) -> None
-            Store item in cache.
-        has(key: str) -> bool
-            Check if key exists in cache.
-        delete(key: str) -> bool
-            Delete cache entry.
-        clear() -> None
-            Clear all cache entries.
+    Methods
+    -------
+    get(key: str) -> T | None
+        Retrieve item from cache.
+    set(key: str, value: T) -> None
+        Store item in cache.
+    has(key: str) -> bool
+        Check if key exists in cache.
+    delete(key: str) -> bool
+        Delete cache entry.
+    clear() -> None
+        Clear all cache entries.
 
     """
 
@@ -104,18 +105,17 @@ class CacheStore(ABC, Generic[T]):
     def get(self, key: str) -> T | None:
         """Retrieve item from cache.
 
-                Parameters
-                ----------
-                key : str
-                    Cache key or prefix.
+        Parameters
+        ----------
+        key : str
+            Cache key or prefix.
 
-                Returns
-                -------
-                T | None
-                    Cached value or None if not found or expired.
+        Returns
+        -------
+        T | None
+            Cached value or None if not found or expired.
 
         """
-        pass
 
     @abstractmethod
     def set(self, key: str, value: T) -> None:
@@ -128,7 +128,6 @@ class CacheStore(ABC, Generic[T]):
         value : T
             Value to cache.
         """
-        pass
 
     @abstractmethod
     def has(self, key: str) -> bool:
@@ -144,7 +143,6 @@ class CacheStore(ABC, Generic[T]):
         bool
             True if key exists and is valid, False otherwise.
         """
-        pass
 
     @abstractmethod
     def delete(self, key: str) -> bool:
@@ -160,12 +158,10 @@ class CacheStore(ABC, Generic[T]):
         bool
             True if deleted, False if not found or error.
         """
-        pass
 
     @abstractmethod
     def clear(self) -> None:
         """Clear all cache entries."""
-        pass
 
 
 class DefaultFileSystemOps:
@@ -200,8 +196,6 @@ class DefaultFileSystemOps:
         try:
             return path.stat().st_mtime
         except (OSError, ValueError):
-            import sys
-
             return sys.maxsize
 
     def list_files(self, directory: Path, pattern: str) -> list[Path]:

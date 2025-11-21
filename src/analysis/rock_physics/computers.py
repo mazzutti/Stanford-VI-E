@@ -12,22 +12,32 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Any
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.processors.types import FloatingArray
-from src.analysis.types.base import Computer, AnalysisSchema
 from src.analysis.decorators import log_execution, time_operation
+from src.analysis.processors.types import FloatingArray
+from src.analysis.types.base import AnalysisSchema, Computer
 
 logger = logging.getLogger(__name__)
+
+# Some helper implementations import heavy signal-processing utilities
+# (e.g., Zoeppritz solver) lazily to avoid pulling large dependencies at
+# import time. These late imports are intentional; disable import-order
+# warnings so pylint focuses on functional issues.
+
 
 # Constants
 EPSILON = 1e-10
 DEFAULT_AVO_ANGLES_DEG = (0, 5, 10, 15, 20, 25)
 DEFAULT_FLUID_FACTOR_K = 1.0
+
+# Some lines in this numerical module may exceed the configured line
+# length due to descriptive messages or formatted diagnostics. Allow
+# occasional long lines here and keep the numeric routine disables.
 
 
 class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
@@ -104,7 +114,8 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
             dict with keys: 'intercept', 'gradient', 'product', 'scaled_gradient'
 
         Raises:
-            ValueError: if input arrays have mismatched shapes, invalid dimensions, or angles_deg is empty
+            ValueError: if input arrays have mismatched shapes, invalid dimensions, or
+                angles_deg is empty
         """
         return self._compute_avo(vp, vs, rho, angles_deg)
 
@@ -121,17 +132,23 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
 
         Handles the actual computation with logging and timing.
         """
+        # This numeric routine necessarily uses a number of locals and
+        # intermediate variables for clarity and vectorized operations.
+        # Keep the linter quiet for those localized style concerns.
+
         # Use the public validation helper defined on the class
         self.validate_inputs(vp, vs, rho)
 
         # Validate that angles are provided
-        if not angles_deg or len(angles_deg) == 0:
+        if not angles_deg:
             raise ValueError("angles_deg must contain at least one angle value")
 
         logger.info("Computing AVO attributes from rock physics...")
 
         # Local import to avoid heavy dependencies at module import time
-        from src.signal.reflectivity import ZoeppritzSolver
+        from src.signal.reflectivity import (
+            ZoeppritzSolver,
+        )
 
         solver = ZoeppritzSolver()
         angles_rad = np.deg2rad(angles_deg)
@@ -166,19 +183,43 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
             # reflectivities_2d shape: (n_angles, ni*nj)
             reflectivities_2d = reflectivities.reshape(len(angles_rad), -1)
 
+            # reflectivities_2d shape: (n_angles, ni*nj)
+            reflectivities_2d = reflectivities.reshape(len(angles_rad), -1)
+
             # Fit all traces using least squares (fast batch operation)
-            # Result shape: (2, ni*nj) where result[0] = intercepts, result[1] = gradients
-            solution, _, rank, _ = np.linalg.lstsq(
-                design_matrix, reflectivities_2d, rcond=None
+            # Ensure design_matrix has shape (n_angles, 2)
+            logger.debug(
+                "lstsq shapes: design_matrix=%s, reflectivities=%s",
+                getattr(design_matrix, "shape", None),
+                getattr(reflectivities_2d, "shape", None),
             )
+            try:
+                solution, _, rank, _ = np.linalg.lstsq(
+                    design_matrix, reflectivities_2d, rcond=None
+                )
+            except Exception as exc:
+                # Provide clearer diagnostics on shape mismatch and convert
+                # the original exception into a RuntimeError that includes
+                # matrix shape information for easier troubleshooting.
+                raise RuntimeError(
+                    (
+                        "AVO least-squares failed: incompatible matrix shapes - "
+                        f"design_matrix.shape={getattr(design_matrix, 'shape', None)}, "
+                        f"reflectivities_2d.shape={getattr(reflectivities_2d, 'shape', None)}: {exc}"
+                    )
+                ) from exc
 
             # Validate solution rank: design_matrix has shape (n_angles, 2)
             expected_rank = min(design_matrix.shape)
             if rank < expected_rank:
                 logger.warning(
-                    f"Rank-deficient design matrix at layer {k}: "
-                    f"rank={rank}, expected={expected_rank}. "
-                    f"Solution may be unreliable."
+                    (
+                        "Rank-deficient design matrix at layer %s: rank=%s, "
+                        "expected=%s. Solution may be unreliable."
+                    ),
+                    k,
+                    rank,
+                    expected_rank,
                 )
 
             coeffs = solution
@@ -207,8 +248,8 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
         intercept: FloatingArray,
         gradient: FloatingArray,
         k: int,
-        ni: int,
-        nj: int,
+        _ni: int,
+        _nj: int,
     ) -> None:
         """Mark invalid traces where coefficients are NaN or infinite.
 
@@ -247,7 +288,9 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
         """
         sin2_theta = np.asarray(np.sin(angles_rad) ** 2, dtype=float)
         ones = np.ones(len(sin2_theta), dtype=float)
-        return np.vstack([ones, sin2_theta]).T
+        # Return shape (n_angles, 2) so it can be used as the 'A' matrix in
+        # lstsq(A, B) where B has shape (n_angles, n_traces)
+        return np.column_stack([ones, sin2_theta])
 
     @staticmethod
     def validate_inputs(

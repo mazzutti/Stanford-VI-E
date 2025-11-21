@@ -21,8 +21,8 @@ Recommended usage:
     result = service.resample(data, plan)
 """
 
+from .backends import BackendError, BackendManager, ResamplerBackend
 from .service import ResamplerService
-from .backends import ResamplerBackend, BackendError, BackendManager
 
 __all__ = [
     # Primary public API

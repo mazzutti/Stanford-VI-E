@@ -1,6 +1,14 @@
+"""Validation result dataclass used across analysis validators.
+
+This small module provides a lightweight, import-safe dataclass used by
+validation helpers to return structured results without importing heavy
+analysis packages.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -18,3 +26,6 @@ class ValidationResult:
     arr2: NDArray[np.float64] | None = None
     n_removed: int = 0
     error_message: str = ""
+
+
+# This dataclass is intentionally small and import-safe; keep it simple

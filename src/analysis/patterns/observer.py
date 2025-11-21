@@ -28,9 +28,9 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,6 @@ class AnalysisObserver(ABC):
         Args:
             event: AnalysisEvent with result data
         """
-        pass
 
     @abstractmethod
     def on_data_changed(self, event: AnalysisEvent) -> None:
@@ -129,7 +128,6 @@ class AnalysisObserver(ABC):
         Args:
             event: AnalysisEvent with new data
         """
-        pass
 
     @abstractmethod
     def on_error(self, event: AnalysisEvent) -> None:
@@ -138,7 +136,6 @@ class AnalysisObserver(ABC):
         Args:
             event: AnalysisEvent with error information
         """
-        pass
 
     def on_progress(self, event: AnalysisEvent) -> None:
         """Called to report progress updates (optional).
@@ -146,7 +143,6 @@ class AnalysisObserver(ABC):
         Args:
             event: AnalysisEvent with progress data
         """
-        pass
 
 
 class Observable:
@@ -184,8 +180,9 @@ class Observable:
         if observer not in self._observers:
             self._observers.append(observer)
             logger.debug(
-                f"Attached observer {observer.__class__.__name__} to "
-                f"{self.__class__.__name__}"
+                "Attached observer %s to %s",
+                observer.__class__.__name__,
+                self.__class__.__name__,
             )
         return observer
 
@@ -201,8 +198,9 @@ class Observable:
         if observer in self._observers:
             self._observers.remove(observer)
             logger.debug(
-                f"Detached observer {observer.__class__.__name__} from "
-                f"{self.__class__.__name__}"
+                "Detached observer %s from %s",
+                observer.__class__.__name__,
+                self.__class__.__name__,
             )
             return True
         return False
@@ -213,7 +211,7 @@ class Observable:
         Args:
             event: AnalysisEvent to broadcast to all observers
         """
-        logger.debug(f"Notifying {len(self._observers)} observers: {event}")
+        logger.debug("Notifying %d observers: %s", len(self._observers), event)
 
         for observer in self._observers:
             try:
@@ -232,15 +230,18 @@ class Observable:
                 elif event.event_type == EventType.PROGRESS_UPDATE:
                     observer.on_progress(event)
             except Exception as e:
+                # Don't let one observer failure stop notification to others.
                 logger.error(
-                    f"Error notifying observer {observer.__class__.__name__}: {e}",
+                    "Error notifying observer %s: %s",
+                    observer.__class__.__name__,
+                    e,
                     exc_info=True,
                 )
 
     def clear_observers(self) -> None:
         """Remove all attached observers"""
         self._observers.clear()
-        logger.debug(f"Cleared all observers from {self.__class__.__name__}")
+        logger.debug("Cleared all observers from %s", self.__class__.__name__)
 
     @property
     def observer_count(self) -> int:
@@ -266,16 +267,16 @@ class ProgressObserver(AnalysisObserver):
 
     def on_result_computed(self, event: AnalysisEvent) -> None:
         """Handle result computed event"""
-        logger.info(f"{self.name}: Result computed - {event.source}")
+        logger.info("%s: Result computed - %s", self.name, event.source)
 
     def on_data_changed(self, event: AnalysisEvent) -> None:
         """Handle data changed event"""
-        logger.info(f"{self.name}: Data changed - {event.source}")
+        logger.info("%s: Data changed - %s", self.name, event.source)
 
     def on_error(self, event: AnalysisEvent) -> None:
         """Handle error event"""
         error = event.data
-        logger.error(f"{self.name}: Error in {event.source} - {error}")
+        logger.error("%s: Error in %s - %s", self.name, event.source, error)
 
     def on_progress(self, event: AnalysisEvent) -> None:
         """Handle progress update event"""
@@ -284,7 +285,7 @@ class ProgressObserver(AnalysisObserver):
         if "message" in event.context:
             self.message = event.context["message"]
 
-        logger.info(f"{self.name}: {self.message} ({self.progress * 100:.1f}%)")
+        logger.info("%s: %s (%.1f%%)", self.name, self.message, self.progress * 100)
 
 
 class LoggingObserver(AnalysisObserver):
@@ -318,7 +319,9 @@ class LoggingObserver(AnalysisObserver):
     def on_error(self, event: AnalysisEvent) -> None:
         """Log error event"""
         self.logger.error(
-            f"Error in {event.source}: {event.data}",
+            "Error in %s: %s",
+            event.source,
+            event.data,
             exc_info=isinstance(event.data, Exception),
         )
 
@@ -326,4 +329,4 @@ class LoggingObserver(AnalysisObserver):
         """Log progress event"""
         msg = event.context.get("message", "Progress update")
         progress = event.context.get("progress", 0)
-        self.logger.log(self.level, f"Progress: {msg} ({progress * 100:.1f}%)")
+        self.logger.log(self.level, "Progress: %s (%.1f%%)", msg, progress * 100)

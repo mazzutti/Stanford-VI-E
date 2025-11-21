@@ -3,21 +3,15 @@
 Tests cover all cache strategies, statistics, thread safety, and invalidation.
 """
 
-import pytest
 import time
 from threading import Thread
 from unittest.mock import patch
-from freezegun import freeze_time
-from src.analysis.caching import (
-    LRUCache,
-    LFUCache,
-    TTLCache,
-    FIFOCache,
-    CacheStats,
-    CacheManager,
-    cache_result,
-)
 
+import pytest
+from freezegun import freeze_time
+
+from src.analysis.caching import (CacheManager, CacheStats, FIFOCache,
+                                  LFUCache, LRUCache, TTLCache, cache_result)
 
 # ============================================================================
 # LRU CACHE TESTS

@@ -6,13 +6,10 @@ that records selection counts and cumulative runtimes per backend and plan
 fingerprint. This is intentionally small and test-friendly.
 """
 
-
 from __future__ import annotations
 
-
-from dataclasses import dataclass
 import hashlib
-
+from dataclasses import dataclass
 
 from src.processing.resampling._plan import ResamplePlan
 
@@ -69,7 +66,7 @@ class PlanFingerprint:
                 # For large arrays, hash first and last chunks to reduce overhead
                 h.update(buf[:1024].tobytes())
                 h.update(buf[-1024:].tobytes())
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             # Fallback: hash plan dimensions
             h.update(str((plan.ni, plan.nj, plan.nz)).encode())
 

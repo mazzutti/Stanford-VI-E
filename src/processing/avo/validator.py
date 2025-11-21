@@ -1,23 +1,26 @@
 """AVO validation and analysis utilities."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any, cast
-from numpy.typing import NDArray
-import numpy as np
-import logging
 
+import numpy as np
+from numpy.typing import NDArray
 
 from src.processing.core.abstracts import Validator
 from src.processing.core.constants import (
-    DEFAULT_MAX_AVO_ANGLE,
     DEFAULT_CONTRAST_THRESHOLD,
+    DEFAULT_MAX_AVO_ANGLE,
 )
-
 
 __all__ = ["AVOValidator", "AVOValidityReport"]
 
 
 logger = logging.getLogger(__name__)
+
+# Validation helpers for AVO may use several local temporaries for robust
+# checks; silence the local-variable warning for this module to reduce
+# stylistic noise while preserving behavior.
 
 
 @dataclass
@@ -248,8 +251,8 @@ class AVOValidator(Validator):
         """
         if contrast_flag and angle_flag:
             return [0, 10, 20]
-        elif contrast_flag:
+        if contrast_flag:
             return [0, 10, 15]
-        elif angle_flag:
+        if angle_flag:
             return [0, 10, 20]
         return None

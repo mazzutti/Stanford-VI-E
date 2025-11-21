@@ -2,13 +2,12 @@
 
 from dataclasses import dataclass
 from typing import Any
-from numpy.typing import ArrayLike, NDArray
-import numpy as np
 
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 from src.processing.materials.base import MaterialModel
 from src.utils.units import UnitRegistry
-
 
 __all__ = ["VsModel", "DensityModel"]
 
@@ -73,17 +72,34 @@ class DensityModel(MaterialModel):
 
     def to_kg_per_m3(self) -> None:
         """Convert density from g/cm^3 to kg/m^3 if needed."""
-        # Note: ensure_kg_per_m3 may not be implemented in UnitRegistry
-        # For now, we'll just return without conversion
-        # TODO: Implement ensure_kg_per_m3 in UnitRegistry if needed
-        pass
+        # Heuristic conversion: if values look like g/cc (small ~<100),
+        # convert to kg/m3 by multiplying by 1000. Otherwise assume already
+        # in kg/m3. This avoids depending on a missing helper in UnitRegistry.
+        arr = np.asarray(self.rho)
+        # Use UnitRegistry heuristic to guess likely unit
+        try:
+            if UnitRegistry().is_likely_in_unit(arr, "g/cc"):
+                self.rho = arr * 1000.0
+            else:
+                self.rho = arr
+        except (TypeError, ValueError):
+            # Conservative fallback: leave as-is
+            self.rho = arr
 
     def ensure_kg_per_m3(self) -> bool:
         """Convert rho to kg/m3 if needed. Returns True if conversion occurred."""
-        # Note: ensure_kg_per_m3 may not be implemented in UnitRegistry
-        # For now, we'll just return False (no conversion)
-        # TODO: Implement ensure_kg_per_m3 in UnitRegistry if needed
-        return False
+        arr = np.asarray(self.rho)
+        try:
+            if UnitRegistry().is_likely_in_unit(arr, "g/cc"):
+                self.rho = arr * 1000.0
+                return True
+            # Already in kg/m3
+            self.rho = arr
+            return False
+        except (TypeError, ValueError):
+            # If heuristic fails, do not convert
+            self.rho = arr
+            return False
 
     def ensure_units(self) -> bool:
         """Ensure rho is in kg/m3 (convenience alias for ensure_kg_per_m3)."""

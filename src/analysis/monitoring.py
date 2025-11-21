@@ -29,19 +29,23 @@ Usage:
     print(monitor.get_metrics())
 """
 
+# Module-level pylint disables: allow constructor/parameter names that match
+# the module `logger` variable to avoid renaming public API parameters.
+
+
 import json
-import time
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Literal, cast
-from collections.abc import Callable
-from types import TracebackType
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-from threading import RLock
-from functools import wraps
-from enum import Enum
 import statistics
+import time
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from functools import wraps
+from threading import RLock
+from types import TracebackType
+from typing import Any, Literal, cast
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +237,6 @@ class StructuredLogger:
         _exc_tb: TracebackType | None,
     ) -> None:
         """Context manager exit."""
-        pass
 
 
 class MetricsCollector:
@@ -397,7 +400,7 @@ class PerformanceMonitor:
 
         Args:
             name: Name of the operation
-            logger: Optional structured logger for output
+              logger: Optional structured logger for output  # pylint: disable=redefined-outer-name
         """
         self.name = name
         self.logger = logger
@@ -406,7 +409,8 @@ class PerformanceMonitor:
     def __enter__(self) -> "PerformanceMonitor":
         """Enter context - operation started."""
         if self.logger:
-            self.logger.debug(f"Operation started: {self.name}")
+            # Use structured context rather than positional formatting
+            self.logger.debug("Operation started", operation=self.name)
         return self
 
     def __exit__(
@@ -422,15 +426,18 @@ class PerformanceMonitor:
 
         if self.logger:
             if success:
+                # Record operation name in structured context
                 self.logger.info(
-                    f"Operation completed: {self.name}",
+                    "Operation completed",
+                    operation=self.name,
                     duration_ms=(
                         self.metrics.duration * 1000 if self.metrics.duration else 0
                     ),
                 )
             else:
                 self.logger.error(
-                    f"Operation failed: {self.name}",
+                    "Operation failed",
+                    operation=self.name,
                     error=error,
                     duration_ms=(
                         self.metrics.duration * 1000 if self.metrics.duration else 0
@@ -455,13 +462,11 @@ class HealthCheck(ABC):
         Returns:
             True if healthy, False otherwise
         """
-        pass
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Name of the health check."""
-        pass
 
 
 class SimpleHealthCheck(HealthCheck):
@@ -482,7 +487,7 @@ class SimpleHealthCheck(HealthCheck):
         """Perform health check."""
         try:
             return self._check_func()
-        except Exception:
+        except (RuntimeError, TypeError, OSError):
             return False
 
     @property

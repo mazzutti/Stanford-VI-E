@@ -6,13 +6,13 @@ through converter classes that handle specific unit types (velocity, density, et
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, cast
-from numpy.typing import ArrayLike, NDArray
-
-import numpy as np
 import logging
 import warnings
+from abc import ABC, abstractmethod
+from typing import Any, cast
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def _nanmax_abs(a: NDArray[np.floating[Any]]) -> float:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             return float(np.nanmax(np.abs(a)))
-    except Exception:
+    except (ValueError, TypeError, FloatingPointError):
         return float("inf")
 
 
@@ -58,7 +58,6 @@ class Converter(ABC):
     @abstractmethod
     def can_convert(self, from_unit: str, to_unit: str) -> bool:
         """Check if this converter can handle the conversion."""
-        pass
 
 
 class VelocityConverter(Converter):
@@ -82,7 +81,7 @@ class VelocityConverter(Converter):
 
         if from_unit == "km/s" and to_unit == "m/s":
             return val * self.conversion_factor
-        elif from_unit == "m/s" and to_unit == "km/s":
+        if from_unit == "m/s" and to_unit == "km/s":
             return val / self.conversion_factor
 
         raise ValueError(f"Unsupported velocity conversion: {from_unit} -> {to_unit}")
@@ -113,7 +112,7 @@ class DensityConverter(Converter):
 
         if from_unit == "g/cc" and to_unit == "kg/m3":
             return val * self.conversion_factor
-        elif from_unit == "kg/m3" and to_unit == "g/cc":
+        if from_unit == "kg/m3" and to_unit == "g/cc":
             return val / self.conversion_factor
 
         raise ValueError(f"Unsupported density conversion: {from_unit} -> {to_unit}")
@@ -149,8 +148,8 @@ class TimeConverter(Converter):
 
         try:
             v = float(value)
-        except Exception:
-            raise ValueError("Value must be numeric")
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Value must be numeric") from exc
 
         if self.threshold_low <= v < self.threshold_high:
             # Likely milliseconds
@@ -183,8 +182,8 @@ class LengthConverter(Converter):
 
         try:
             v = float(value)
-        except Exception:
-            raise ValueError("Value must be numeric")
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Value must be numeric") from exc
 
         if v < self.threshold:
             # Likely kilometers
@@ -253,7 +252,8 @@ class UnitRegistry:
 
         Args:
             arr: Input array or array-like
-            copy_on_convert: If True, always return a copy; if False, return original if no conversion
+            copy_on_convert: If True, always return a copy; if False, return
+                original if no conversion
 
         Returns:
             Tuple of (converted_array, was_converted)
@@ -281,7 +281,8 @@ class UnitRegistry:
 
         Args:
             arr: Input array or array-like
-            copy_on_convert: If True, always return a copy; if False, return original if no conversion
+            copy_on_convert: If True, always return a copy; if False, return
+                original if no conversion
 
         Returns:
             Tuple of (converted_array, was_converted)
@@ -289,7 +290,7 @@ class UnitRegistry:
         a = np.asarray(arr)
         try:
             maxabs = _nanmax_abs(a)
-        except Exception:
+        except (ValueError, TypeError, FloatingPointError):
             maxabs = float("inf")
 
         # If likely in km, convert to meters

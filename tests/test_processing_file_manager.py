@@ -4,11 +4,13 @@ Tests FileManager abstract base class and concrete implementations for
 managing file I/O operations in processing pipeline.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from unittest.mock import MagicMock, Mock, patch
 
-from src.processing.managers.file import FileManager
+import pytest
+
 from src.processing.managers.base import BaseManager
+from src.processing.managers.file import FileManager
 
 
 class TestFileManagerAbstractMethods:
@@ -430,8 +432,8 @@ class TestFileManagerOpenMethod:
         test_file = tmp_path / "test.html"
         test_file.write_text("<html><body>Test</body></html>")
 
-        # Mock webbrowser.open to raise exception
-        with patch("webbrowser.open", side_effect=Exception("Webbrowser failed")):
+        # Mock webbrowser.open to raise a runtime error (expected by the code)
+        with patch("webbrowser.open", side_effect=RuntimeError("Webbrowser failed")):
             with patch("shutil.which") as mock_which:
                 # Simulate 'open' command exists (macOS)
                 mock_which.return_value = "/usr/bin/open"
@@ -450,7 +452,7 @@ class TestFileManagerOpenMethod:
         test_file.write_text("Test content")
 
         # Mock both webbrowser and shutil.which
-        with patch("webbrowser.open", side_effect=Exception("Webbrowser failed")):
+        with patch("webbrowser.open", side_effect=RuntimeError("Webbrowser failed")):
             with patch("shutil.which") as mock_which:
                 # Simulate 'open' not found but 'xdg-open' exists (Linux)
                 def which_side_effect(cmd):
@@ -474,7 +476,7 @@ class TestFileManagerOpenMethod:
         test_file.write_text("Test content")
 
         # Mock all methods to fail
-        with patch("webbrowser.open", side_effect=Exception("Webbrowser failed")):
+        with patch("webbrowser.open", side_effect=RuntimeError("Webbrowser failed")):
             with patch("shutil.which", return_value=None):
                 result = fm.open(str(test_file))
 
@@ -489,10 +491,10 @@ class TestFileManagerOpenMethod:
         test_file.write_text("Test content")
 
         # Mock webbrowser and subprocess to fail
-        with patch("webbrowser.open", side_effect=Exception("Webbrowser failed")):
+        with patch("webbrowser.open", side_effect=RuntimeError("Webbrowser failed")):
             with patch("shutil.which", return_value="/usr/bin/open"):
                 with patch(
-                    "subprocess.run", side_effect=Exception("Subprocess failed")
+                    "subprocess.run", side_effect=RuntimeError("Subprocess failed")
                 ):
                     result = fm.open(str(test_file))
 
@@ -507,7 +509,7 @@ class TestFileManagerOpenMethod:
         test_file.write_text("Test content")
 
         with patch("webbrowser.open", return_value=True):
-            result = fm.open(str(test_file), description="Test file")
+            result = fm.open(str(test_file))
 
         assert result is True
 

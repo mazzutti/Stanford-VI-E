@@ -11,12 +11,9 @@ Tests cover:
 
 
 import pytest
-from src.analysis.validators import (
-    RangeValidator,
-    CountValidator,
-    QuantileValidator,
-    ValidationError,
-)
+
+from src.analysis.validators import (CountValidator, QuantileValidator,
+                                     RangeValidator, ValidationError)
 
 
 class TestRangeValidator:

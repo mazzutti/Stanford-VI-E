@@ -59,70 +59,50 @@ Key classes:
 
 import logging
 
+# AVO analysis
+from src.processing.avo.validator import AVOValidator, AVOValidityReport
 
 # Core abstractions and exceptions
 from src.processing.core import (
-    Processor,
-    Manager,
-    Resampler,
-    MaterialProperty,
-    Validator,
-    ProcessingError,
-    ResamplingError,
-    ValidationError,
     CacheError,
     ConfigurationError,
+    Manager,
+    MaterialProperty,
+    ProcessingError,
+    Processor,
+    Resampler,
+    ResamplingError,
+    ValidationError,
+    Validator,
 )
-
-
-# High-level services
-from src.processing.resampling.service import ResamplerService
-
 
 # Managers (simplified API)
 from src.processing.managers import (
     BaseManager,
     CacheManager,
     FileManager,
-    ProcessManager,
     ManagerHub,
+    ProcessManager,
 )
-
-
-# Rock physics
-from src.processing.rock_physics.model import RockPhysicsModel
-from src.processing.rock_physics.cache import ModelCache as RockPhysicsModelCache
-
 
 # Materials
-from src.processing.materials import (
-    MaterialModel,
-    VsModel,
-    DensityModel,
-)
+from src.processing.materials import DensityModel, MaterialModel, VsModel
 from src.processing.materials.velocity import VelocityModel
-
-
-# AVO analysis
-from src.processing.avo.validator import (
-    AVOValidator,
-    AVOValidityReport,
-)
-
+from src.processing.metrics import BackendMetrics
 
 # PHASE 1: New unified OOP service registry (single entry point)
-from src.processing.registry import (
-    ServiceRegistry,
-    get_registry,
-    reset_registry,
-)
-
+from src.processing.registry import ServiceRegistry, get_registry, reset_registry
+from src.processing.resampling._cache import ResamplePlanCache
 
 # Resampling components (for advanced usage)
 from src.processing.resampling.backends._manager import BackendManager
-from src.processing.resampling._cache import ResamplePlanCache
-from src.processing.metrics import BackendMetrics
 
+# High-level services
+from src.processing.resampling.service import ResamplerService
+from src.processing.rock_physics.cache import ModelCache as RockPhysicsModelCache
+
+# Rock physics
+from src.processing.rock_physics.model import RockPhysicsModel
 
 logger = logging.getLogger(__name__)
 

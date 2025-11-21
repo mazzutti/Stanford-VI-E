@@ -43,34 +43,39 @@ Example:
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
 from collections.abc import Callable
-from types import TracebackType
 from dataclasses import dataclass, field
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, cast
 
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 from src.analysis.facies.config import FaciesAnalysisConfig
-from src.analysis.models import FaciesCorrelationConfig
-from src.analysis.patterns.observer import (
-    Observable,
-    AnalysisEvent,
-    EventType,
-)
+
+# This module integrates many pattern implementations and intentionally
+# performs non-standard import ordering to avoid import cycles and heavy
+# top-level dependencies. Keep the imports as-is; suppress related pylint
+# import warnings with a short justification.
+
+
+if TYPE_CHECKING:
+    from src.analysis.models import FaciesCorrelationConfig
+
 from src.analysis.patterns.builder import FaciesAnalyzerBuilder
-from src.analysis.patterns.command import (
-    CommandQueue,
-    AnalysisCommand,
-)
-from src.analysis.patterns.event_bus import (
-    EventBus,
-    Event,
-    SubscriptionHandle,
-    EventHandler,
-)
-from src.analysis.patterns.dependency_injection import Container, ServiceProvider
 from src.analysis.patterns.circuit_breaker import CircuitBreaker
+from src.analysis.patterns.command import AnalysisCommand, CommandQueue
+from src.analysis.patterns.dependency_injection import Container, ServiceProvider
+from src.analysis.patterns.event_bus import (
+    Event,
+    EventBus,
+    EventHandler,
+    SubscriptionHandle,
+)
+from src.analysis.patterns.observer import AnalysisEvent, EventType, Observable
 
 logger = logging.getLogger(__name__)
+
+# IntegratedAnalyzer orchestrates multiple patterns; implementations can be
+# complex by design. Keep the high-level API here focused and explicit.
 
 __all__ = [
     "IntegratedAnalyzer",
@@ -134,7 +139,7 @@ class AnalysisOperation(AnalysisCommand):
         Returns:
             Analysis result
         """
-        logger.info(f"Executing analysis: {self.description}")
+        logger.info("Executing analysis: %s", self.description)
 
         # Notify observers of operation start
         self.analyzer.notify_event(
@@ -163,13 +168,14 @@ class AnalysisOperation(AnalysisCommand):
                 {"result": str(self.result), "context": self.context.to_dict()},
             )
 
-            logger.debug(f"Analysis execution succeeded: {self.description}")
+            logger.debug("Analysis execution succeeded: %s", self.description)
             return self.result
 
         except Exception as e:
-            logger.error(f"Analysis execution failed: {e}")
+            logger.error("Analysis execution failed: %s", e)
 
-            # Notify observers of error
+            # Notify observers of error (framework-level catch to ensure
+            # observers are informed about any unexpected failure).
             self.analyzer.notify_event(
                 EventType.ERROR_OCCURRED,
                 {"error": str(e), "context": self.context.to_dict()},
@@ -183,7 +189,7 @@ class AnalysisOperation(AnalysisCommand):
         Returns:
             True if undo successful
         """
-        logger.info(f"Undoing analysis: {self.description}")
+        logger.info("Undoing analysis: %s", self.description)
 
         try:
             # Restore previous results (if analyzer exposes the public attr)
@@ -200,11 +206,11 @@ class AnalysisOperation(AnalysisCommand):
                 {"context": self.context.to_dict()},
             )
 
-            logger.debug(f"Analysis undo succeeded: {self.description}")
+            logger.debug("Analysis undo succeeded: %s", self.description)
             return True
 
         except Exception as e:
-            logger.error(f"Analysis undo failed: {e}")
+            logger.error("Analysis undo failed: %s", e)
             return False
 
     def redo(self) -> Any:
@@ -213,7 +219,7 @@ class AnalysisOperation(AnalysisCommand):
         Returns:
             Analysis result
         """
-        logger.info(f"Redoing analysis: {self.description}")
+        logger.info("Redoing analysis: %s", self.description)
         return self.execute()
 
     @property
@@ -332,11 +338,14 @@ class IntegratedAnalyzer(Observable):
 
             return result
 
-        except Exception as e:
-            logger.error(f"Analysis failed: {e}")
+        except Exception as exc:
+            # Framework-level catch: ensure observers are notified of any
+            # unexpected failure in the underlying analyzer while preserving
+            # the original exception context when re-raising.
+            logger.error("Analysis failed: %s", exc)
             self.notify_event(
                 EventType.ERROR_OCCURRED,
-                {"error": str(e)},
+                {"error": str(exc)},
             )
             raise
 
@@ -503,7 +512,7 @@ class IntegratedAnalyzer(Observable):
         Returns:
             Subscription handle
         """
-        logger.debug(f"Subscribing to event type: {event_type}")
+        logger.debug("Subscribing to event type: %s", event_type)
 
         # Adapt string-based AnalysisEvent types to EventBus typed subscriptions.
         class _Adapter(EventHandler):
@@ -521,7 +530,7 @@ class IntegratedAnalyzer(Observable):
         Args:
             event: Event to publish
         """
-        logger.debug(f"Publishing event: {type(event).__name__}")
+        logger.debug("Publishing event: %s", type(event).__name__)
         self._event_bus.publish(event)
 
     def get_service(self, service_name: str) -> Any:
@@ -539,7 +548,7 @@ class IntegratedAnalyzer(Observable):
         if self._service_provider is None:
             raise RuntimeError("Service provider not configured")
 
-        logger.debug(f"Resolving service: {service_name}")
+        logger.debug("Resolving service: %s", service_name)
         return self._service_provider.resolve(service_name)
 
     def try_get_service(self, service_name: str, default: Any = None) -> Any:
@@ -556,7 +565,7 @@ class IntegratedAnalyzer(Observable):
             logger.warning("Service provider not configured")
             return default
 
-        logger.debug(f"Trying to resolve service: {service_name}")
+        logger.debug("Trying to resolve service: %s", service_name)
         return self._service_provider.try_resolve(service_name, default)
 
     def get_circuit_breaker(self, name: str) -> CircuitBreaker:
@@ -569,7 +578,7 @@ class IntegratedAnalyzer(Observable):
             CircuitBreaker instance
         """
         if name not in self._circuit_breakers:
-            logger.debug(f"Creating circuit breaker: {name}")
+            logger.debug("Creating circuit breaker: %s", name)
             self._circuit_breakers[name] = CircuitBreaker(name=name)
 
         return self._circuit_breakers[name]
@@ -593,7 +602,9 @@ class IntegratedAnalyzer(Observable):
         """Exit context manager."""
         logger.debug("Exiting IntegratedAnalyzer context")
         if exc_type is not None:
-            logger.error(f"Context exit with exception: {exc_type.__name__}: {exc_val}")
+            logger.error(
+                "Context exit with exception: %s: %s", exc_type.__name__, exc_val
+            )
 
     def __repr__(self) -> str:
         return (

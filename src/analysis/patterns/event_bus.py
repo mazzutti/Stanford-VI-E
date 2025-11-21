@@ -32,17 +32,17 @@ Example:
 
 from __future__ import annotations
 
+import logging
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any
 from collections.abc import Callable
-from types import TracebackType
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import logging
+from queue import Empty, Full, Queue
 from threading import Lock, Thread
-from queue import Queue, Empty
-import uuid
+from types import TracebackType
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,6 @@ class EventHandler(ABC):
         Args:
             event: Event to handle
         """
-        pass
 
     @property
     def handler_id(self) -> str:
@@ -201,7 +200,7 @@ class EventBus:
             # Sort by priority
             self._handlers[event_type].sort(key=lambda x: x[2].value)
 
-        logger.debug(f"Subscribed {handler.handler_id} to {event_type.__name__}")
+        logger.debug("Subscribed %s to %s", handler.handler_id, event_type.__name__)
 
         return SubscriptionHandle(self, event_type, handler)
 
@@ -228,14 +227,14 @@ class EventBus:
                 (h, f, p) for h, f, p in self._handlers[event_type] if h is not handler
             ]
 
-            if len(self._handlers[event_type]) == 0:
+            if not self._handlers[event_type]:
                 del self._handlers[event_type]
 
             removed = len(self._handlers.get(event_type, [])) < original_count
 
         if removed:
             logger.debug(
-                f"Unsubscribed {handler.handler_id} from {event_type.__name__}"
+                "Unsubscribed %s from %s", handler.handler_id, event_type.__name__
             )
 
         return removed
@@ -249,7 +248,7 @@ class EventBus:
         # Run middleware
         for middleware in self._middleware:
             if not middleware(event):
-                logger.debug(f"Event blocked by middleware: {event}")
+                logger.debug("Event blocked by middleware: %s", event)
                 return
 
         # Store in history
@@ -260,7 +259,7 @@ class EventBus:
             handlers = self._handlers.get(type(event), []).copy()
 
         if not handlers:
-            logger.debug(f"No handlers for event: {type(event).__name__}")
+            logger.debug("No handlers for event: %s", type(event).__name__)
             return
 
         # Call handlers
@@ -269,12 +268,16 @@ class EventBus:
                 if filter_fn is None or filter_fn.matches(event):
                     handler.handle(event)
                     logger.debug(
-                        f"Handled {type(event).__name__} " f"by {handler.handler_id}"
+                        "Handled %s by %s", type(event).__name__, handler.handler_id
                     )
             except Exception as e:
+                # Handler exceptions should not stop the event bus; log and
+                # continue to allow other handlers to receive the event.
                 logger.error(
-                    f"Error handling {type(event).__name__} "
-                    f"in {handler.handler_id}: {e}"
+                    "Error handling %s in %s: %s",
+                    type(event).__name__,
+                    handler.handler_id,
+                    e,
                 )
 
     def add_middleware(self, middleware: Callable[[Event], bool]) -> EventBus:
@@ -353,7 +356,7 @@ class AsyncEventBus(EventBus):
             worker.start()
             self._workers.append(worker)
 
-        logger.info(f"AsyncEventBus initialized with {worker_threads} workers")
+        logger.info("AsyncEventBus initialized with %s workers", worker_threads)
 
     def publish(self, event: Event) -> None:
         """Publish event asynchronously.
@@ -366,7 +369,7 @@ class AsyncEventBus(EventBus):
             return
 
         self._queue.put(event)
-        logger.debug(f"Queued event: {type(event).__name__}")
+        logger.debug("Queued event: %s", type(event).__name__)
 
     def _worker_loop(self) -> None:
         """Worker thread loop for processing events."""
@@ -379,9 +382,9 @@ class AsyncEventBus(EventBus):
                 self._queue.task_done()
             except Empty:
                 continue
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, OSError) as e:
                 if self._running:
-                    logger.debug(f"Worker loop: {e}")
+                    logger.debug("Worker loop: %s", e)
 
     def stop(self) -> None:
         """Stop the event bus and worker threads."""
@@ -392,7 +395,7 @@ class AsyncEventBus(EventBus):
         for _ in self._workers:
             try:
                 self._queue.put(None, timeout=1)
-            except Exception:
+            except Full:
                 pass
 
         # Wait for workers to finish
@@ -458,6 +461,8 @@ class EventDispatcher:
             try:
                 handler(event)
             except Exception as e:
-                logger.error(f"Error dispatching {event_type.__name__}: {e}")
+                # Route handlers are application-level; swallow and log
+                # unexpected errors to avoid crashing dispatch.
+                logger.error("Error dispatching %s: %s", event_type.__name__, e)
         else:
-            logger.warning(f"No route for event: {event_type.__name__}")
+            logger.warning("No route for event: %s", event_type.__name__)

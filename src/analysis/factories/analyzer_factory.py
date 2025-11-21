@@ -18,16 +18,16 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from src.analysis.domain import DomainHandlerFactory
 from src.analysis.factories.builder import AnalyzerBuilder
 from src.analysis.models import FaciesCorrelationConfig
 from src.analysis.processors import (
     BoundaryDetector,
     CubeAligner,
+    FaciesDiscriminationCalculator,
     GradientCorrelationCalculator,
     InterfaceReflectionAnalyzer,
-    FaciesDiscriminationCalculator,
 )
-from src.analysis.domain import DomainHandlerFactory
 
 if TYPE_CHECKING:
     from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer

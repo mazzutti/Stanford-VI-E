@@ -22,19 +22,28 @@ Modules:
 
 from __future__ import annotations
 
+import json
+import logging
+import os
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import (
-    Any,
-    TypeVar,
-    cast,
-)
-from collections.abc import Callable
-import logging
+from typing import Any, TypeVar, cast
+
+import yaml
 
 logger = logging.getLogger(__name__)
+
+# Allow small helper classes and avoid noisy warnings for simple dataclasses
+# that intentionally expose few public methods.
+
+
+# Some small helper classes in this module intentionally expose a single
+# public method. Suppress the too-few-public-methods warning for these
+# lightweight types to avoid noisy linting while preserving real issues.
+
 
 T = TypeVar("T")
 
@@ -78,9 +87,11 @@ class ConfigProfile(Enum):
         """
         try:
             return cls[value.upper()]
-        except KeyError:
+        except KeyError as exc:
             valid = [p.value for p in cls]
-            raise ValueError(f"Invalid profile '{value}'. Valid profiles: {valid}")
+            raise ValueError(
+                f"Invalid profile '{value}'. Valid profiles: {valid}"
+            ) from exc
 
 
 # Type alias for validator callables to improve type inference
@@ -143,6 +154,8 @@ class ConfigRule:
                 if not validator(value):
                     return False, f"Validation failed for {self.key}: {value}"
             except Exception as e:
+                # validators are user-provided; treat exceptions as validation
+                # failures and include the exception message in the error.
                 return False, f"Validation error for {self.key}: {e}"
 
         return True, None
@@ -220,7 +233,7 @@ class ConfigValidator:
                 errors.append(cast(str, error))
                 logger.error(cast(str, error))
 
-        return len(errors) == 0, errors
+        return (not errors), errors
 
     def clear(self) -> None:
         """Clear all rules."""
@@ -243,7 +256,6 @@ class ConfigSource(ABC):
         dict[str, Any]
             Loaded configuration dictionary
         """
-        pass
 
 
 class ConfigSourceRegistry:
@@ -273,9 +285,30 @@ class ConfigSourceRegistry:
             JSON source instance
 
         """
-        from src.analysis.config_manager import JsonSource
 
-        return cast(ConfigSource, JsonSource(path))
+        class _JsonSourceImpl(ConfigSource):
+            def __init__(self, p: str | Path) -> None:
+                self._path = Path(p)
+
+            def load(self) -> dict[str, Any]:
+                if not self._path.exists():
+                    logger.warning("JSON config file not found: %s", self._path)
+                    return {}
+                try:
+                    with open(self._path, encoding="utf-8") as f:
+                        raw = json.load(f)
+                except (json.JSONDecodeError, OSError, ValueError) as e:
+                    logger.error("Failed to load JSON config %s: %s", self._path, e)
+                    return {}
+                if not isinstance(raw, dict):
+                    logger.warning(
+                        "JSON config at %s did not contain a mapping; ignoring",
+                        self._path,
+                    )
+                    return {}
+                return cast(dict[str, Any], raw)
+
+        return _JsonSourceImpl(path)
 
     @staticmethod
     def create_yaml_source(path: str | Path) -> ConfigSource:
@@ -292,9 +325,34 @@ class ConfigSourceRegistry:
             YAML source instance
 
         """
-        from src.analysis.config_manager import YamlSource
 
-        return cast(ConfigSource, YamlSource(path))
+        class _YamlSourceImpl(ConfigSource):
+            def __init__(self, p: str | Path) -> None:
+                self._path = Path(p)
+
+            def load(self) -> dict[str, Any]:
+                if yaml is None:
+                    raise RuntimeError(
+                        "PyYAML is not installed; cannot load YAML configs"
+                    )
+                if not self._path.exists():
+                    logger.warning("YAML config file not found: %s", self._path)
+                    return {}
+                try:
+                    with open(self._path, encoding="utf-8") as f:
+                        raw = yaml.safe_load(f)
+                except (yaml.YAMLError, OSError, ValueError) as e:
+                    logger.error("Failed to load YAML config %s: %s", self._path, e)
+                    return {}
+                if not isinstance(raw, dict):
+                    logger.warning(
+                        "YAML config at %s did not contain a mapping; ignoring",
+                        self._path,
+                    )
+                    return {}
+                return cast(dict[str, Any], raw)
+
+        return _YamlSourceImpl(path)
 
     @staticmethod
     def create_env_source(prefix: str = "APP_") -> ConfigSource:
@@ -310,9 +368,24 @@ class ConfigSourceRegistry:
         ConfigSource
             Environment source instance
         """
-        from src.analysis.config_manager import EnvironmentSource
 
-        return cast(ConfigSource, EnvironmentSource(prefix))
+        class _EnvSourceImpl(ConfigSource):
+            def __init__(self, pfx: str = "APP_") -> None:
+                self._prefix = pfx
+
+            def load(self) -> dict[str, Any]:
+                config: dict[str, Any] = {}
+                for key, value in os.environ.items():
+                    if key.startswith(self._prefix):
+                        config_key = key[len(self._prefix) :].lower().replace("_", ".")
+                        try:
+                            config[config_key] = json.loads(value)
+                        except (json.JSONDecodeError, ValueError):
+                            config[config_key] = value
+                logger.info("Loaded %d settings from environment", len(config))
+                return config
+
+        return _EnvSourceImpl(prefix)
 
 
 class BaseConfig(ABC):
@@ -349,7 +422,7 @@ class BaseConfig(ABC):
         self._overrides: dict[str, Any] = {}
         self._validator = ConfigValidator()
         self._profile = ConfigProfile.DEVELOPMENT
-        logger.debug(f"Initialized {self.__class__.__name__}")
+        logger.debug("Initialized %s", self.__class__.__name__)
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value with dot notation.
@@ -413,7 +486,7 @@ class BaseConfig(ABC):
             current = current[part]
         current[parts[-1]] = value
 
-        logger.debug(f"Configuration set: {key}={value}")
+        logger.debug("Configuration set: %s=%s", key, value)
         return self
 
     def set_default(self, key: str, value: Any) -> BaseConfig:
@@ -521,7 +594,7 @@ class BaseConfig(ABC):
             profile = ConfigProfile.from_string(profile)
 
         self._profile = profile
-        logger.info(f"Configuration profile set to: {profile.value}")
+        logger.info("Configuration profile set to: %s", profile.value)
         return self
 
     def get_profile(self) -> ConfigProfile:

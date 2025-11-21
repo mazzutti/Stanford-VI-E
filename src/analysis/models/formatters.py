@@ -9,8 +9,10 @@ for flexible, reusable formatting behavior.
 """
 
 from __future__ import annotations
-from typing import ClassVar
+
 from abc import ABC, abstractmethod
+from typing import ClassVar
+
 import numpy as np
 
 __all__ = ["StatisticsFormatter", "FormattableModel"]
@@ -124,7 +126,6 @@ class FormattableModel(ABC):
         Raises:
             NotImplementedError: Must be implemented by subclasses
         """
-        pass
 
     def __repr__(self) -> str:
         """Return repr with high precision (6 decimals by default).

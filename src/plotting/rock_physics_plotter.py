@@ -7,16 +7,17 @@ Uses PlotConfig and ImageRenderer for clean visualization.
 import logging
 from typing import Any, Literal
 
+import math
 import numpy as np
-from numpy.typing import NDArray
 from matplotlib.axes import Axes
+from matplotlib.colorbar import Colorbar
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
-from matplotlib.colorbar import Colorbar
+from numpy.typing import NDArray
 
 from src.plotting.helpers.base import BasePlotter
-from src.plotting.helpers.config import PlotConfig
 from src.plotting.helpers.components import ImageRenderer
+from src.plotting.helpers.config import PlotConfig
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +53,19 @@ class RockPhysicsPlotter(BasePlotter):
 
         slice_data: NDArray[Any]
         if slice_type == "inline":
-            slice_data = data[idx, :, :].T  # Transpose for correct orientation
+            slice_data = data[idx, :, :]
             xlabel = "Crossline Index"
             ylabel = "Depth Index"
             title = config.title or f"Inline {idx}"
 
         elif slice_type == "crossline":
-            slice_data = data[:, idx, :].T  # Transpose for correct orientation
+            slice_data = data[:, idx, :]
             xlabel = "Inline Index"
             ylabel = "Depth Index"
             title = config.title or f"Crossline {idx}"
 
         else:  # depthslice
-            slice_data = data[:, :, idx]  # No transpose for depth slice
+            slice_data = data[:, :, idx]
             xlabel = "Inline Index"
             ylabel = "Crossline Index"
             title = config.title or f"Depth {idx}m"
@@ -100,7 +101,7 @@ class RockPhysicsPlotter(BasePlotter):
         """
         n_attrs = len(attributes)
         n_cols = min(3, n_attrs)
-        n_rows = (n_attrs + n_cols - 1) // n_cols
+        n_rows = math.ceil(n_attrs / n_cols)
 
         fig.suptitle(
             f"Rock Physics Attributes ({slice_type.capitalize()} {idx})", fontsize=14

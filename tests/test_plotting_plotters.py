@@ -3,14 +3,14 @@
 Tests verify SlicePlotter, OverlayPlotter, and RockPhysicsPlotter rendering.
 """
 
-import pytest
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pytest
 
-from src.plotting.slice_plotter import SlicePlotter
+from src.plotting.helpers.config import PlotConfig
 from src.plotting.overlay_plotter import OverlayPlotter
 from src.plotting.rock_physics_plotter import RockPhysicsPlotter
-from src.plotting.helpers.config import PlotConfig
+from src.plotting.slice_plotter import SlicePlotter
 
 
 class TestSlicePlotterRendering:

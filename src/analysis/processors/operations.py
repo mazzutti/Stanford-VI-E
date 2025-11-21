@@ -47,6 +47,9 @@ class AlignmentOps:
     Designed to work with CubeAligner instances from BaseProcessor.
     """
 
+    # Stateless helper class used as a namespace for related functions.
+    # It intentionally exposes only a small public surface.
+
     @staticmethod
     def align_cubes(
         aligner: Any,
@@ -78,6 +81,9 @@ class AlignmentOps:
 
 class ReshapeOps:
     """Stateless operations for array reshaping."""
+
+    # Stateless helper class used as a namespace for related functions.
+    # It intentionally exposes only a small public surface.
 
     @staticmethod
     def reshape_to_traces(
@@ -118,12 +124,12 @@ class ReshapeOps:
         try:
             seismic_2d = seismic_aligned.reshape(n_traces, nk)
             facies_2d = facies_aligned.reshape(n_traces, nk).astype(int, copy=False)
-        except ValueError as e:
+        except ValueError as exc:
             raise ValueError(
-                f"Failed to reshape to (n_traces={n_traces}, nk={nk}): {e}"
-            )
+                f"Failed to reshape to (n_traces={n_traces}, nk={nk}): {exc}"
+            ) from exc
 
-        logger.debug(f"Reshaped cubes from (ni={ni}, nj={nj}, nk={nk}) to traces")
+        logger.debug("Reshaped cubes from (ni=%s, nj=%s, nk=%s) to traces", ni, nj, nk)
         # Ensure the return type matches the annotation (NDArray[Any])
         return cast(tuple[NDArray[Any], NDArray[Any]], (seismic_2d, facies_2d))
 
@@ -155,8 +161,7 @@ class ExtractionOps:
         """
         if mask_value:
             return cast(NDArray[Any], data[mask])
-        else:
-            return cast(NDArray[Any], data[~mask])
+        return cast(NDArray[Any], data[~mask])
 
     @staticmethod
     def extract_by_labels(
@@ -196,7 +201,9 @@ class ExtractionOps:
         label_order = sorted(label_amps_dict.keys())
 
         logger.debug(
-            f"Extracted amplitudes for {len(label_order)} unique labels: {label_order}"
+            "Extracted amplitudes for %d unique labels: %s",
+            len(label_order),
+            label_order,
         )
 
         return label_amps_dict, label_order
@@ -246,7 +253,7 @@ class ExtractionOps:
         # Extract amplitudes
         amplitudes = seismic_2d[rows, ks]
 
-        logger.debug(f"Found {len(rows)} transitions")
+        logger.debug("Found %d transitions", len(rows))
 
         return from_facies, to_facies, amplitudes
 
@@ -279,8 +286,11 @@ class StatsOps:
             stats = compute_amplitude_stats(amplitudes)
             facies_stats[label] = stats
             logger.debug(
-                f"Facies {label}: mean={stats.mean:.4f}, std={stats.std:.4f}, "
-                f"count={stats.count}"
+                "Facies %s: mean=%.4f, std=%.4f, count=%d",
+                label,
+                stats.mean,
+                stats.std,
+                stats.count,
             )
 
         return facies_stats
@@ -337,8 +347,10 @@ class StatsOps:
                     matrix[i, j] = mean_diff / std_sum
 
         logger.debug(
-            f"Computed separation matrix ({n}x{n}): "
-            f"max_separation={np.max(matrix):.4f}"
+            "Computed separation matrix (%dx%d): max_separation=%.4f",
+            n,
+            n,
+            np.max(matrix),
         )
 
         return matrix

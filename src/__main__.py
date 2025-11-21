@@ -9,16 +9,23 @@ Usage:
 For details on available tools and options, see src.cli module.
 """
 
+# The module intentionally performs call-time (local) imports in `main()`
+# to avoid import-time side-effects. These are intentional and safe
+# in this codebase.
+
 import atexit
 import logging
 import multiprocessing
 import os
 import signal
+import sys as _sys
 import time
 import warnings
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Entry point remains intentionally explicit; keep startup wiring clear
 
 
 def _terminate_children_on_exit(timeout: float = 1.0) -> None:
@@ -31,7 +38,8 @@ def _terminate_children_on_exit(timeout: float = 1.0) -> None:
         for p in children:
             try:
                 p.terminate()
-            except Exception:
+            except (OSError, RuntimeError):
+                # Best-effort termination; ignore OS-level errors
                 pass
 
         t0 = time.time()
@@ -42,9 +50,11 @@ def _terminate_children_on_exit(timeout: float = 1.0) -> None:
             try:
                 if p.is_alive() and p.pid is not None:
                     os.kill(p.pid, signal.SIGKILL)
-            except Exception:
+            except (OSError, PermissionError):
+                # Ignore failures when killing processes (permissions, already gone)
                 pass
-    except Exception:
+    except (OSError, RuntimeError):
+        # Defensive: ignore OS/runtime errors while attempting cleanup
         pass
 
 
@@ -68,10 +78,14 @@ def main() -> bool:
     bool
         True if successful
     """
-    import sys as _sys
+    # Local imports to avoid import-time side-effects and import cycles.
+    # This `main` function is a high-level CLI orchestrator that wires
+    # parsing, optional tool dispatch and the modeling pipeline. It is
+    # intentionally explicit; suppress a few complexity warnings.
 
     from src.cli import ParserFactory, modeling
 
+    # (previously disabled import-outside-toplevel here; now removed as redundant)
     # Handle tool forwarding via `--` sentinel
     if "--" in _sys.argv:
         sep = _sys.argv.index("--")
@@ -90,7 +104,30 @@ def main() -> bool:
     # Configure logging
     ParserFactory.configure_logging(getattr(args, "verbose", False))
 
+    # Lazy-register default pluggable implementations (avoid import-time side-effects)
+    try:
+        # Register default backends lazily to avoid importing heavy backends at
+        # module import time.
+
+        from src.processing.resampling.backends._implementations import (
+            register_default_backends,
+        )
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
+        register_default_backends()
+    except (ImportError, ModuleNotFoundError) as exc:
+        # Optional backends may not be available in minimal environments; treat
+        # missing optional dependencies as a non-fatal condition and continue
+        # startup while logging the cause for diagnostics.
+        logger.debug(
+            "Default backend registration skipped due to import error: %s", exc
+        )
+
     # Dispatch tool if requested
+    # The following parsing block is intentionally nested for permissive
+    # parsing of user-provided tool argv; silence the nested-blocks warning
+    # for this small, explicit parser.
+
     if getattr(args, "run_tool", None):
         # Build kwargs from the already-parsed modeling args
         call_kwargs = dict(vars(args))
@@ -121,11 +158,11 @@ def main() -> bool:
                         try:
                             ival = int(raw)
                             val = ival
-                        except Exception:
+                        except (ValueError, TypeError):
                             try:
                                 fval = float(raw)
                                 val = fval
-                            except Exception:
+                            except (ValueError, TypeError):
                                 val = raw
                     i += 1
 

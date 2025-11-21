@@ -3,20 +3,15 @@ Tests for Phase 5.5: Rate Limiting
 """
 
 import time
-import pytest
 from threading import Thread
 
-from src.analysis.rate_limiting import (
-    RateLimitExceeded,
-    RateLimitStrategy,
-    RateLimitStats,
-    TokenBucketLimiter,
-    SlidingWindowLimiter,
-    LeakyBucketLimiter,
-    RateLimitPolicy,
-    RateLimitPool,
-    rate_limit,
-)
+import pytest
+
+from src.analysis.rate_limiting import (LeakyBucketLimiter, RateLimitExceeded,
+                                        RateLimitPolicy, RateLimitPool,
+                                        RateLimitStats, RateLimitStrategy,
+                                        SlidingWindowLimiter,
+                                        TokenBucketLimiter, rate_limit)
 
 
 class TestRateLimitExceeded:

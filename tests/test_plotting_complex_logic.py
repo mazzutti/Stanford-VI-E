@@ -4,9 +4,10 @@ These tests cover data analysis, statistical computation, and complex plotting
 scenarios that require mocking AvoResults and handling edge cases.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 from unittest.mock import Mock
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 
 from src.plotting.facies_plotter import FaciesPlotter

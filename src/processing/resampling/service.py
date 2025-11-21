@@ -12,27 +12,27 @@ possible.
 
 from __future__ import annotations
 
-
+import logging
 from dataclasses import dataclass
 from typing import Any
 
-
 from numpy.typing import ArrayLike, NDArray
-import logging
-
 
 from src.io.grid import GridSpec
-from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling._cache import get_resample_plan_cache
+from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling.backends._manager import BackendManager
 from src.utils.quantity import Quantity, to_ndarray
-
 
 __all__ = ["ResamplerService"]
 
 
 # module logger
 logger = logging.getLogger(__name__)
+
+# The ResamplerService intentionally uses a lazy import to avoid heavy
+# resampler initialization and to break import cycles. Suppress pylint's
+# import-order warnings for this module (imports are deliberate).
 
 
 @dataclass
@@ -51,10 +51,18 @@ class ResamplerService:
     def __post_init__(self) -> None:
         if self.cache is None:
             self.cache = get_resample_plan_cache()
-        from src.processing.resampling._resampler import DepthTimeResampler
+        from src.processing.resampling._resampler import (
+            DepthTimeResampler,
+        )
 
-        self._inner = DepthTimeResampler(grid_spec=self.grid_spec)
+        # Inject the BackendManager into the inner DepthTimeResampler so the
+        # resampler doesn't need to import the application-level
+        # `src.processing` registry (breaking import cycles).
+        # Create BackendManager first and inject into the inner resampler.
         self._backend_mgr = BackendManager()
+        self._inner = DepthTimeResampler(
+            grid_spec=self.grid_spec, backend_manager=self._backend_mgr
+        )
 
     def depth_to_time(
         self,

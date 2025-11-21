@@ -8,27 +8,28 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
+import numpy as np
+import plotly.graph_objects as go
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
-from matplotlib.axes import Axes
-import numpy as np
 from numpy.typing import NDArray
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from src.io.loader import DatasetManager
-
-    class PlotlyPlotter:
-        @staticmethod
-        def inject_3d_interaction_script(path: str) -> None: ...
-
+from src.io.loader import DatasetManager
+from src.plotting.mixins import ImshowWithColorbarMixin
+from src.plotting.plotly_plotter import PlotlyPlotter
 
 logger = logging.getLogger(__name__)
+
+# Some plotting helpers import heavy plotting backends and helpers inside
+# methods to avoid import-time costs and optional dependencies. Prefer
+# adding per-import suppression at the call site rather than a module-level
+# disable.
 
 
 class PropertyPlotter(ABC):
@@ -64,7 +65,7 @@ class PropertyPlotter(ABC):
             logger.setLevel(logging.DEBUG)
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Output directory: {self.output_dir}")
+        logger.info("Output directory: %s", self.output_dir)
 
     @abstractmethod
     def load_data(self) -> None:
@@ -73,7 +74,6 @@ class PropertyPlotter(ABC):
         This method should populate the internal data structures
         needed for plotting. Must be implemented by subclasses.
         """
-        pass
 
     @abstractmethod
     def get_properties(self) -> dict[str, dict[str, Any]]:
@@ -90,7 +90,53 @@ class PropertyPlotter(ABC):
 
         Must be implemented by subclasses.
         """
-        pass
+
+    @abstractmethod
+    def _compute_slice_indices_and_bounds(
+        self, data: NDArray[np.floating[Any]], title: str, units: str
+    ) -> tuple[int, int, int, float, float, str]:
+        """Compute middle slice indices, percentile bounds and colorbar label.
+
+        Subclasses must implement this to provide the middle inline/crossline/depth
+        indices, the vmin/vmax bounds (as floats) and the colorbar label string.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _imshow_with_colorbar(
+        self,
+        ax: Axes,
+        arr: NDArray[Any],
+        title: str,
+        xlabel: str,
+        ylabel: str,
+        cmap: str,
+        vmin: float,
+        vmax: float,
+        colorbar_label: str,
+    ) -> AxesImage:
+        # Abstract plotting helpers necessarily take multiple configuration
+        # parameters to support flexible rendering. Silence pylint's
+        # argument-count noise for this abstract API, including positional
+        # argument warnings which arise from flexible caller patterns.
+
+        """Render an image on `ax` with labels and a colorbar.
+
+        Subclasses should return the `AxesImage` created so callers can
+        further manipulate the image if needed.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _make_plotly_traces(
+        self, data: NDArray[np.floating[Any]], cmap: str, units: str
+    ) -> tuple[list[go.Surface], int, int, int]:
+        """Create Plotly Surface traces for inline, crossline and depth slices.
+
+        Subclasses implement this to return a list of three `go.Surface` traces
+        (inline, crossline, depth) along with the mid indices (i, j, k).
+        """
+        raise NotImplementedError()
 
     def plot_3d_slices(
         self,
@@ -101,6 +147,11 @@ class PropertyPlotter(ABC):
         cmap: str = "viridis",
         dpi: int = 300,
     ) -> Path:
+        # Plotting glue necessarily carries many arguments for configuration.
+        # Narrowly disable argument/locals checks for clarity and to avoid
+        # noise from Pylint in this high-level orchestrator method, including
+        # positional-argument checks which are common for plotting APIs.
+
         """Generate a 3-slice PNG plot (inline, crossline, depth) for 3D data.
 
         Parameters
@@ -129,68 +180,54 @@ class PropertyPlotter(ABC):
         axes = cast(Sequence[Axes], axes)
         fig.suptitle(title, fontsize=16, fontweight="bold")
 
-        # Get middle indices for slicing
-        ni, nj, nk = data.shape
-        mid_i: int = ni // 2
-        mid_j: int = nj // 2
-        mid_k: int = nk // 2
-
-        # Get data range for consistent colorbar (2nd and 98th percentile)
-        vmin: float
-        vmax: float
-        vmin, vmax = np.percentile(data, [2, 98])
-
-        # Create colorbar label with units
-        colorbar_label: str = f"{title}\n[{units}]"
+        # Compute indices, bounds and colorbar label via helper
+        mid_i, mid_j, mid_k, vmin, vmax, colorbar_label = (
+            self._compute_slice_indices_and_bounds(data, title, units)
+        )
 
         # Inline slice (constant i)
-        im1: AxesImage = axes[0].imshow(
-            data[mid_i, :, :].T,
-            aspect="auto",
-            origin="upper",
+        self._imshow_with_colorbar(
+            axes[0],
+            data[mid_i, :, :],
+            title=f"Inline (i={mid_i})",
+            xlabel="Crossline (j)",
+            ylabel="Depth (k)",
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
+            colorbar_label=colorbar_label,
         )
-        axis0_any = cast(Any, axes[0])
-        axis0_any.set_title(f"Inline (i={mid_i})")
-        axis0_any.set_xlabel("Crossline (j)")
-        axis0_any.set_ylabel("Depth (k)")
-        cast(Any, plt).colorbar(im1, ax=axes[0], label=colorbar_label)
 
         # Crossline slice (constant j)
-        im2: AxesImage = axes[1].imshow(
-            data[:, mid_j, :].T,
-            aspect="auto",
-            origin="upper",
+        self._imshow_with_colorbar(
+            axes[1],
+            data[:, mid_j, :],
+            title=f"Crossline (j={mid_j})",
+            xlabel="Inline (i)",
+            ylabel="Depth (k)",
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
+            colorbar_label=colorbar_label,
         )
-        axis1_any = cast(Any, axes[1])
-        axis1_any.set_title(f"Crossline (j={mid_j})")
-        axis1_any.set_xlabel("Inline (i)")
-        axis1_any.set_ylabel("Depth (k)")
-        cast(Any, plt).colorbar(im2, ax=axes[1], label=colorbar_label)
 
         # Depth slice (constant k)
-        im3: AxesImage = axes[2].imshow(
-            data[:, :, mid_k].T,
-            aspect="auto",
-            origin="upper",
+        self._imshow_with_colorbar(
+            axes[2],
+            data[:, :, mid_k],
+            title=f"Depth Slice (k={mid_k})",
+            xlabel="Inline (i)",
+            ylabel="Crossline (j)",
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
+            colorbar_label=colorbar_label,
         )
-        axis2_any = cast(Any, axes[2])
-        axis2_any.set_title(f"Depth Slice (k={mid_k})")
-        axis2_any.set_xlabel("Inline (i)")
-        axis2_any.set_ylabel("Crossline (j)")
-        cast(Any, plt).colorbar(im3, ax=axes[2], label=colorbar_label)
+
         fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
-        logger.debug(f"Saved 3D slice plot: {output_path}")
+        logger.debug("Saved 3D slice plot: %s", output_path)
 
         return output_path
 
@@ -219,7 +256,7 @@ class PropertyPlotter(ABC):
 
         # Step 2: Get properties
         properties: dict[str, dict[str, Any]] = self.get_properties()
-        logger.info(f"Found {len(properties)} properties to plot")
+        logger.info("Found %d properties to plot", len(properties))
 
         # Step 3: Generate plots
         generated_files: list[str] = []
@@ -228,7 +265,7 @@ class PropertyPlotter(ABC):
         for prop_key, prop_info in properties.items():
             data = prop_info.get("data")
             if data is None:
-                logger.warning(f"Property '{prop_key}' has no data, skipping")
+                logger.warning("Property '%s' has no data, skipping", prop_key)
                 continue
 
             try:
@@ -236,7 +273,7 @@ class PropertyPlotter(ABC):
                 prop_units = prop_info["units"]
                 prop_cmap = prop_info.get("cmap", "viridis")
 
-                logger.info(f"Plotting {prop_name} with shape {data.shape}")
+                logger.info("Plotting %s with shape %s", prop_name, data.shape)
 
                 output_file = self.output_dir / f"{file_prefix}_{prop_key}.png"
 
@@ -250,18 +287,18 @@ class PropertyPlotter(ABC):
                 )
 
                 generated_files.append(str(output_file))
-                logger.info(f"  ✓ Generated: {output_file}")
+                logger.info("  ✓ Generated: %s", output_file)
 
-            except Exception as e:
-                logger.error(f"Failed to plot {prop_key}: {e}")
+            except (RuntimeError, ValueError, TypeError, OSError) as e:
+                logger.error("Failed to plot %s: %s", prop_key, e)
                 continue
 
-        logger.info(f"✓ Generated {len(generated_files)} property plots")
+        logger.info("✓ Generated %d property plots", len(generated_files))
 
         return generated_files
 
 
-class RockPhysicsPropertyPlotter(PropertyPlotter):
+class RockPhysicsPropertyPlotter(ImshowWithColorbarMixin, PropertyPlotter):
     """Plotter for rock physics attributes.
 
     Loads attributes from NPZ cache files and generates visualizations
@@ -291,9 +328,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         super().__init__(output_dir, verbose)
         self.cache_dir = Path(cache_dir)
         self.domain = domain
-        from typing import Any as _Any
-
-        self.data: _Any = None
+        self.data: Any = None
 
     def load_data(self) -> None:
         """Load rock physics attributes from NPZ cache file."""
@@ -313,7 +348,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
                 )
             raise FileNotFoundError(error_msg)
 
-        logger.info(f"Loading data from: {cache_file}")
+        logger.info("Loading data from: %s", cache_file)
         self.data = np.load(cache_file, allow_pickle=True)
         # Guard against unexpected np.load return types (ndarray, NpzFile, None)
         if self.data is None:
@@ -321,17 +356,17 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         elif hasattr(self.data, "files"):
             try:
                 keys = list(self.data.files)
-            except Exception:
+            except (AttributeError, TypeError):
                 keys = []
         elif hasattr(self.data, "keys"):
             try:
                 keys = list(self.data.keys())
-            except Exception:
+            except (AttributeError, TypeError):
                 keys = []
         else:
             keys = []
 
-        logger.info(f"Available attributes: {keys}")
+        logger.info("Available attributes: %s", keys)
 
     def get_properties(self) -> dict[str, dict[str, Any]]:
         """Get rock physics attributes metadata.
@@ -376,10 +411,16 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         if self.data is None:
             raise RuntimeError("Data not loaded. Call load_data() first.")
 
-        from src.plotting.rock_physics_plotter import RockPhysicsPlotter
+        # The importer is intentionally local to avoid heavy optional
+        # dependencies during import-time. Silence pylint for this
+        # intentional pattern at the function level.
+
+        from src.plotting.rock_physics_plotter import (
+            RockPhysicsPlotter,
+        )
 
         properties = self.get_properties()
-        attr_data_dict = {k: self.data[k] for k in properties.keys() if k in self.data}
+        attr_data_dict = {k: self.data[k] for k in properties if k in self.data}
 
         if not attr_data_dict:
             logger.warning("No attributes available for comparison plot")
@@ -397,8 +438,8 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
 
             # Create a new dictionary with names that include units
             attr_data_dict_with_units = {
-                f"{properties[k]['name']}\n[{properties[k]['units']}]": self.data[k]
-                for k in properties.keys()
+                f"{prop['name']}\n[{prop['units']}]": self.data[k]
+                for k, prop in properties.items()
                 if k in self.data
             }
 
@@ -416,11 +457,11 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
             fig.savefig(output_file, dpi=300, bbox_inches="tight")
             plt.close(fig)
 
-            logger.info(f"  ✓ Generated: {output_file}")
+            logger.info("  ✓ Generated: %s", output_file)
             return str(output_file)
 
-        except Exception as e:
-            logger.error(f"Failed to generate comparison plot: {e}")
+        except (RuntimeError, ValueError, TypeError, OSError) as e:
+            logger.error("Failed to generate comparison plot: %s", e)
             return None
 
     def generate_3d_plotly_visualizations(self) -> list[str]:
@@ -434,13 +475,7 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         if self.data is None:
             raise RuntimeError("Data not loaded. Call load_data() first.")
 
-        try:
-            import plotly.graph_objects as go
-        except ImportError:
-            logger.error(
-                "Plotly is required for 3D plots. Install with: pip install plotly"
-            )
-            return []
+        # Plotly is imported at module level
 
         logger.info(
             "Generating 3D interactive Plotly visualizations for rock physics attributes..."
@@ -452,100 +487,39 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
             if data is None:
-                logger.warning(f"Property '{prop_key}' not loaded, skipping")
+                logger.warning("Property '%s' not loaded, skipping", prop_key)
                 continue
 
             logger.info(
-                f"Creating 3D plot for {prop_info['name']} with shape {data.shape}"
+                "Creating 3D plot for %s with shape %s", prop_info["name"], data.shape
             )
 
-            ni, nj, nk = data.shape
-            mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
-
-            # Create figure with 3D orthogonal slices
+            # Create Plotly traces using shared helper
             fig: go.Figure = go.Figure()
-
-            # Create coordinate arrays for the grid (cast to NDArray[Any])
-            i_coords = cast(NDArray[Any], np.arange(ni))
-            j_coords = cast(NDArray[Any], np.arange(nj))
-            k_coords = cast(
-                NDArray[Any], np.arange(nk)[::-1]
-            )  # Reverse to make depth increase downward
-
-            # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=np.full(J_yz.shape, mid_i),
-                    y=J_yz,
-                    z=K_yz,
-                    surfacecolor=data[mid_i, :, ::-1],  # Flip along k dimension
-                    colorscale=prop_info["cmap"],
-                    name=f"Inline (i={mid_i})",
-                    showscale=True,
-                    colorbar=dict(
-                        title=prop_info["units"],
-                        x=1.02,
-                        len=0.75,
-                    ),
-                )
+            traces, _, _, _ = self._make_plotly_traces(
+                data, prop_info["cmap"], prop_info["units"]
             )
 
-            # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=I_xz,
-                    y=np.full(I_xz.shape, mid_j),
-                    z=K_xz,
-                    surfacecolor=data[:, mid_j, ::-1],  # Flip along k dimension
-                    colorscale=prop_info["cmap"],
-                    name=f"Crossline (j={mid_j})",
-                    showscale=False,
-                )
-            )
-
-            # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=I_xy,
-                    y=J_xy,
-                    z=np.full(I_xy.shape, k_coords[mid_k]),
-                    surfacecolor=data[:, :, mid_k],
-                    colorscale=prop_info["cmap"],
-                    name=f"Depth Slice (k={mid_k})",
-                    showscale=False,
-                )
-            )
+            for t in traces:
+                fig.add_trace(t)
 
             fig.update_layout(
                 template=None,
-                title=dict(
-                    text=f"Rock Physics: {prop_info['name']}",
-                    x=0.5,
-                    xanchor="center",
-                ),
-                scene=dict(
-                    xaxis=dict(
-                        title="Inline (i)",
-                    ),
-                    yaxis=dict(
-                        title="Crossline (j)",
-                    ),
-                    zaxis=dict(
-                        title="Depth (k)",
-                        autorange="reversed",
-                    ),
-                    aspectmode="data",
-                    camera=dict(
-                        eye=dict(x=1.5, y=1.5, z=1.3),
-                        center=dict(x=0, y=0, z=0),
-                    ),
-                ),
+                title={
+                    "text": f"Rock Physics: {prop_info['name']}",
+                    "x": 0.5,
+                    "xanchor": "center",
+                },
+                scene={
+                    "xaxis": {"title": "Inline (i)"},
+                    "yaxis": {"title": "Crossline (j)"},
+                    "zaxis": {"title": "Depth (k)", "autorange": "reversed"},
+                    "aspectmode": "data",
+                    "camera": {
+                        "eye": {"x": 1.5, "y": 1.5, "z": 1.3},
+                        "center": {"x": 0, "y": 0, "z": 0},
+                    },
+                },
                 autosize=True,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
@@ -563,16 +537,17 @@ class RockPhysicsPropertyPlotter(PropertyPlotter):
                 },
             )
 
-            # Inject CSS and JavaScript for fullscreen display using centralized PlotlyPlotter method
+            # Inject optional CSS/JS for fullscreen display.
+            # Failure is non-fatal; the injector logs issues.
             PlotlyPlotter.inject_3d_interaction_script(str(output_file))
 
             generated_files.append(str(output_file))
-            logger.info(f"  ✓ Saved: {output_file}")
+            logger.info("  ✓ Saved: %s", output_file)
 
         return generated_files
 
 
-class OriginalPropertyPlotter(PropertyPlotter):
+class OriginalPropertyPlotter(ImshowWithColorbarMixin, PropertyPlotter):
     """Plotter for original Stanford VI-E properties.
 
     Loads properties from GSLIB files and generates visualizations
@@ -604,7 +579,6 @@ class OriginalPropertyPlotter(PropertyPlotter):
 
     def load_data(self) -> None:
         """Load original properties from GSLIB files."""
-        from src.io.loader import DatasetManager
         from src.io.grid import GridSpec
 
         logger.info("Loading original Stanford VI-E properties...")
@@ -669,13 +643,7 @@ class OriginalPropertyPlotter(PropertyPlotter):
         if self.manager is None:
             raise RuntimeError("Data not loaded. Call load_data() first.")
 
-        try:
-            import plotly.graph_objects as go
-        except ImportError:
-            logger.error(
-                "Plotly is required for 3D plots. Install with: pip install plotly"
-            )
-            return []
+        # Plotly is imported at module level
 
         logger.info("Generating 3D interactive Plotly visualizations...")
 
@@ -685,100 +653,39 @@ class OriginalPropertyPlotter(PropertyPlotter):
         for prop_key, prop_info in properties.items():
             data = prop_info["data"]
             if data is None:
-                logger.warning(f"Property '{prop_key}' not loaded, skipping")
+                logger.warning("Property '%s' not loaded, skipping", prop_key)
                 continue
 
             logger.info(
-                f"Creating 3D plot for {prop_info['name']} with shape {data.shape}"
+                "Creating 3D plot for %s with shape %s", prop_info["name"], data.shape
             )
 
-            ni, nj, nk = data.shape
-            mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2
-
-            # Create figure with 3D orthogonal slices
+            # Create Plotly traces using shared helper
             fig: go.Figure = go.Figure()
-
-            # Create coordinate arrays for the grid (cast to NDArray[Any])
-            i_coords = cast(NDArray[Any], np.arange(ni))
-            j_coords = cast(NDArray[Any], np.arange(nj))
-            k_coords = cast(
-                NDArray[Any], np.arange(nk)[::-1]
-            )  # Reverse to make depth increase downward
-
-            # Inline slice (constant i=mid_i) - YZ plane at x=mid_i
-            J_yz, K_yz = np.meshgrid(j_coords, k_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=np.full_like(J_yz, mid_i),
-                    y=J_yz,
-                    z=K_yz,
-                    surfacecolor=data[mid_i, :, ::-1],  # Flip along k dimension
-                    colorscale=prop_info["cmap"],
-                    name=f"Inline (i={mid_i})",
-                    showscale=True,
-                    colorbar=dict(
-                        title=prop_info["units"],
-                        x=1.02,
-                        len=0.75,
-                    ),
-                )
+            traces, _, _, _ = self._make_plotly_traces(
+                data, prop_info["cmap"], prop_info["units"]
             )
 
-            # Crossline slice (constant j=mid_j) - XZ plane at y=mid_j
-            I_xz, K_xz = np.meshgrid(i_coords, k_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=I_xz,
-                    y=np.full_like(I_xz, mid_j),
-                    z=K_xz,
-                    surfacecolor=data[:, mid_j, ::-1],  # Flip along k dimension
-                    colorscale=prop_info["cmap"],
-                    name=f"Crossline (j={mid_j})",
-                    showscale=False,
-                )
-            )
-
-            # Depth slice (constant k=mid_k) - XY plane at z=mid_k
-            I_xy, J_xy = np.meshgrid(i_coords, j_coords, indexing="ij")
-
-            fig.add_trace(
-                go.Surface(
-                    x=I_xy,
-                    y=J_xy,
-                    z=np.full_like(I_xy, k_coords[mid_k]),
-                    surfacecolor=data[:, :, mid_k],
-                    colorscale=prop_info["cmap"],
-                    name=f"Depth Slice (k={mid_k})",
-                    showscale=False,
-                )
-            )
+            for t in traces:
+                fig.add_trace(t)
 
             fig.update_layout(
                 template=None,
-                title=dict(
-                    text=f"Original Data: {prop_info['name']}",
-                    x=0.5,
-                    xanchor="center",
-                ),
-                scene=dict(
-                    xaxis=dict(
-                        title="Inline (i)",
-                    ),
-                    yaxis=dict(
-                        title="Crossline (j)",
-                    ),
-                    zaxis=dict(
-                        title="Depth (k)",
-                        autorange="reversed",
-                    ),
-                    aspectmode="data",
-                    camera=dict(
-                        eye=dict(x=1.5, y=1.5, z=1.3),
-                        center=dict(x=0, y=0, z=0),
-                    ),
-                ),
+                title={
+                    "text": f"Original Data: {prop_info['name']}",
+                    "x": 0.5,
+                    "xanchor": "center",
+                },
+                scene={
+                    "xaxis": {"title": "Inline (i)"},
+                    "yaxis": {"title": "Crossline (j)"},
+                    "zaxis": {"title": "Depth (k)", "autorange": "reversed"},
+                    "aspectmode": "data",
+                    "camera": {
+                        "eye": {"x": 1.5, "y": 1.5, "z": 1.3},
+                        "center": {"x": 0, "y": 0, "z": 0},
+                    },
+                },
                 autosize=True,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
@@ -796,10 +703,11 @@ class OriginalPropertyPlotter(PropertyPlotter):
                 },
             )
 
-            # Inject CSS and JavaScript for fullscreen display using centralized PlotlyPlotter method
+            # Inject optional CSS/JS for fullscreen display.
+            # Failure is non-fatal; the injector logs issues.
             PlotlyPlotter.inject_3d_interaction_script(str(output_file))
 
             generated_files.append(str(output_file))
-            logger.info(f"  ✓ Saved: {output_file}")
+            logger.info("  ✓ Saved: %s", output_file)
 
         return generated_files

@@ -15,17 +15,12 @@ Pattern: Pipeline/Chain of Responsibility
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Generic,
-    TypeVar,
-    cast,
-)
-from collections.abc import Callable
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, Generic, TypeVar, cast
 
 __all__ = [
     "StageResult",
@@ -37,8 +32,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-T_In = TypeVar("T_In")  # Input type for stage
-T_Out = TypeVar("T_Out")  # Output type for stage
+# Type variable names use an underscore for readability across the
+# pipeline modules; these conventional names are intentional.
+T_In = TypeVar("T_In")
+T_Out = TypeVar("T_Out")
 
 
 @dataclass
@@ -127,7 +124,6 @@ class PipelineStage(ABC, Generic[T_In, T_Out]):
         str
             Unique stage name.
         """
-        pass
 
     @abstractmethod
     def can_execute(self, input_data: T_In) -> bool:
@@ -146,7 +142,6 @@ class PipelineStage(ABC, Generic[T_In, T_Out]):
         bool
             True if stage can execute, False to skip stage.
         """
-        pass
 
     @abstractmethod
     def execute(self, input_data: T_In) -> T_Out:
@@ -167,7 +162,6 @@ class PipelineStage(ABC, Generic[T_In, T_Out]):
         Exception
             If stage execution fails. Pipeline will catch and wrap in StageResult.
         """
-        pass
 
     def __call__(self, input_data: T_In) -> T_Out:
         """Allow stage to be called as function.
@@ -245,7 +239,7 @@ class Pipeline(Generic[T_In, T_Out]):
         >>> pipeline.add_stage(Stage1()).add_stage(Stage2()).add_stage(Stage3())
         """
         self._stages.append(stage)
-        logger.debug(f"Added stage '{stage.name}' to pipeline '{self.name}'")
+        logger.debug("Added stage '%s' to pipeline '%s'", stage.name, self.name)
         return self
 
     def execute(self, input_data: T_In) -> T_Out:
@@ -278,7 +272,7 @@ class Pipeline(Generic[T_In, T_Out]):
         >>> result = pipeline.execute(raw_data)
         """
         current = input_data
-        logger.info(f"Starting pipeline execution: {self.name}")
+        logger.info("Starting pipeline execution: %s", self.name)
 
         for stage in self._stages:
             # ensure start_time is always defined before any potential exception
@@ -287,11 +281,13 @@ class Pipeline(Generic[T_In, T_Out]):
 
                 # Check if stage can execute with current data
                 if not stage.can_execute(current):
-                    logger.debug(f"Skipping stage '{stage.name}' (precondition failed)")
+                    logger.debug(
+                        "Skipping stage '%s' (precondition failed)", stage.name
+                    )
                     continue
 
                 # Execute stage
-                logger.debug(f"Executing stage: {stage.name}")
+                logger.debug("Executing stage: %s", stage.name)
                 output = stage.execute(current)
 
                 # Record result
@@ -303,11 +299,11 @@ class Pipeline(Generic[T_In, T_Out]):
                     duration_ms=duration,
                 )
                 self._results[stage.name] = result
-                logger.debug(f"Stage '{stage.name}' completed in {duration:.1f}ms")
+                logger.debug("Stage '%s' completed in %.1fms", stage.name, duration)
 
                 current = output
 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, OSError) as e:
                 duration = (datetime.now() - start_time).total_seconds() * 1000
                 result = StageResult(
                     stage_name=stage.name,
@@ -316,12 +312,12 @@ class Pipeline(Generic[T_In, T_Out]):
                     duration_ms=duration,
                 )
                 self._results[stage.name] = result
-                logger.error(f"Stage '{stage.name}' failed: {e}")
+                logger.error("Stage '%s' failed: %s", stage.name, e)
                 raise RuntimeError(
                     f"Pipeline '{self.name}' failed at stage '{stage.name}': {e}"
                 ) from e
 
-        logger.info(f"Pipeline '{self.name}' completed successfully")
+        logger.info("Pipeline '%s' completed successfully", self.name)
         return cast(T_Out, current)
 
     def get_stage_result(self, stage_name: str) -> StageResult[Any] | None:
@@ -467,8 +463,8 @@ class ConditionalStage(PipelineStage[T_In, T_Out]):
             condition_met = self._condition(input_data)
             inner_can_execute = self._inner_stage.can_execute(input_data)
             return condition_met and inner_can_execute
-        except Exception as e:
-            logger.warning(f"Condition check failed for {self.name}: {e}")
+        except (RuntimeError, TypeError, ValueError) as e:
+            logger.warning("Condition check failed for %s: %s", self.name, e)
             return False
 
     def execute(self, input_data: T_In) -> T_Out:

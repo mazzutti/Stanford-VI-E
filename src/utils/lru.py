@@ -1,7 +1,13 @@
+"""Lightweight in-memory LRU cache utilities.
+
+Provides a simple LRUCache and a sharded variant for reduced contention
+under concurrency. These helpers are intentionally small and have few
+dependencies so they can be used in performance-sensitive code paths.
+"""
+
+import threading
 from collections import OrderedDict
 from typing import Generic, TypeVar
-import threading
-
 
 T = TypeVar("T")
 
@@ -19,34 +25,42 @@ class LRUCache(Generic[T]):
         self._lock = threading.RLock()
 
     def get(self, key: str) -> T | None:
+        """Return value for `key` or `None` if not present.
+
+        Marks the key as recently used when present.
+        """
         with self._lock:
             v = self._data.get(key)
             if v is not None:
                 # mark recently used
                 try:
                     self._data.move_to_end(key)
-                except Exception:
+                except (KeyError, AttributeError, TypeError):
                     pass
             return v
 
     def set(self, key: str, value: T) -> None:
+        """Store `value` under `key`, evicting oldest items when full."""
         with self._lock:
             self._data[key] = value
             try:
                 while self.maxsize > 0 and len(self._data) > self.maxsize:
                     self._data.popitem(last=False)
-            except Exception:
+            except (KeyError, IndexError):
                 pass
 
     def keys(self) -> list[str]:
+        """Return current cache keys in LRU order (least-recently-used first)."""
         with self._lock:
             return list(self._data.keys())
 
     def clear(self) -> None:
+        """Clear all cache entries."""
         with self._lock:
             self._data.clear()
 
     def info(self) -> dict[str, int]:
+        """Return `maxsize` and current size of the cache."""
         with self._lock:
             return {"maxsize": self.maxsize, "currsize": len(self._data)}
 
@@ -70,27 +84,36 @@ class ShardedLRUCache(Generic[T]):
         ]
 
     def _pick(self, key: str) -> LRUCache[T]:
+        """Select the shard responsible for `key`."""
         return self._shards[hash(key) % self.shards]
 
     def get(self, key: str) -> T | None:
+        """Return value for `key` from the appropriate shard."""
         return self._pick(key).get(key)
 
     def set(self, key: str, value: T) -> None:
+        """Store `value` under `key` in the appropriate shard."""
         self._pick(key).set(key, value)
 
     def keys(self) -> list[str]:
-        # aggregate keys from all shards; order is shard-local LRU order
+        """Aggregate keys from all shards (order is shard-local LRU order)."""
         ks: list[str] = []
         for s in self._shards:
             ks.extend(s.keys())
         return ks
 
     def clear(self) -> None:
+        """Clear all shards' caches."""
         for s in self._shards:
             s.clear()
 
     def info(self) -> dict[str, int]:
+        """Return aggregated `maxsize` and `currsize` across shards."""
         total = sum(s.info().get("currsize", 0) for s in self._shards)
         # report maxsize as sum of shard maxsizes
         max_total = sum(s.info().get("maxsize", 0) for s in self._shards)
         return {"maxsize": max_total, "currsize": total}
+
+
+# LRU utilities are intentionally small and dependency-free; they are
+# designed for embedded use in performance-sensitive code paths.

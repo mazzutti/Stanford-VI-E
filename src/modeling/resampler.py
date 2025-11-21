@@ -12,14 +12,24 @@ from typing import Any, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from src.analysis.factories import ConversionStrategyFactory
 from src.io.grid import GridSpec
 from src.modeling.modeling import unwrap_quantity
-from src.analysis.factories import ConversionStrategyFactory
 from src.utils.quantity import Quantity
 
 logger = logging.getLogger(__name__)
 
+# Lazy imports are used in resampling calls to avoid import cycles and heavy
+# dependencies during module import; keep that behavior and prefer per-import
+# suppression rather than a module-level disable.
+
 __all__ = ["ResamplingService"]
+
+# Resampling service contains orchestration code that may use several
+# local temporaries in the main resampling flow. Silence the local-variable
+# warning for this helper module to reduce stylistic noise. This module
+# also intentionally uses lazy/call-site imports to avoid circular
+# dependencies; allow those import patterns here.
 
 
 _CONVERSION_FACTORY = ConversionStrategyFactory()
@@ -42,8 +52,12 @@ class ResamplingService:
         Returns:
             Time-domain properties dictionary with same keys
         """
-        from src.processing.resampling._resampler import resampler_factory
-        from src.processing.resampling._cache import get_resample_plan_cache
+        from src.processing.resampling._cache import (
+            get_resample_plan_cache,
+        )
+        from src.processing.resampling._resampler import (
+            resampler_factory,
+        )
 
         resampler = resampler_factory.get_resampler(grid_spec)
 

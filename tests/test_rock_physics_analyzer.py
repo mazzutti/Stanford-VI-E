@@ -16,21 +16,18 @@ import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+import pytest
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-from src.analysis.rock_physics import (
-    AVOAttributesComputer,
-    LambdaMuRhoComputer,
-    FluidFactorComputer,
-    AttributeDiscriminationAnalyzer,
-    RockPhysicsAnalyzer,
-    RockPhysicsConstants,
-    DEFAULT_AVO_ANGLES_DEG,
-    DEFAULT_FLUID_FACTOR_K,
-)
-
+from src.analysis.rock_physics import (DEFAULT_AVO_ANGLES_DEG,
+                                       DEFAULT_FLUID_FACTOR_K,
+                                       AttributeDiscriminationAnalyzer,
+                                       AVOAttributesComputer,
+                                       FluidFactorComputer,
+                                       LambdaMuRhoComputer,
+                                       RockPhysicsAnalyzer,
+                                       RockPhysicsConstants)
 
 # ============================================================================
 # FIXTURES FOR MOCKING ZOEPPRITZ SOLVER
@@ -587,7 +584,7 @@ class TestExceptionHandling:
         with patch.object(
             analyzer_instance,
             "compute_fluid_factor",
-            side_effect=Exception("Test fluid factor error"),
+            side_effect=RuntimeError("Test fluid factor error"),
         ):
             # Should not raise, fluid factor is optional
             result = analyzer_instance._compute_all_attributes(vp, vs, rho, [0, 10, 20])
@@ -604,8 +601,10 @@ class TestExceptionHandling:
         attr = np.array([1.0, 1.0, 1.0, 1.0])  # Constant array
         facies = np.array([0, 1, 0, 1])
 
-        # Mock pearsonr to raise exception in the module where it's used
-        with patch("scipy.stats.pearsonr", side_effect=Exception("Correlation error")):
+        # Mock pearsonr to raise a runtime error in the module where it's used
+        with patch(
+            "scipy.stats.pearsonr", side_effect=RuntimeError("Correlation error")
+        ):
             result = analyzer.analyze_single(attr, facies, "test_attr")
 
         # Should gracefully return with correlation values set to 0.0, 1.0
@@ -624,7 +623,7 @@ class TestExceptionHandling:
 
         # Mock the discrimination analyzer's analyze_single to raise for one attribute
         with patch(
-            "scipy.stats.pearsonr", side_effect=Exception("Test analysis error")
+            "scipy.stats.pearsonr", side_effect=RuntimeError("Test analysis error")
         ):
             result = analyzer_instance.compare_all_attributes(attributes, facies)
 
@@ -707,7 +706,7 @@ class TestExceptionHandling:
                     with patch.object(
                         analyzer_instance,
                         "compare_all_attributes",
-                        side_effect=Exception("Discrimination failed"),
+                        side_effect=RuntimeError("Discrimination failed"),
                     ):
                         # Should not raise, discrimination is optional
                         result = analyzer_instance.run(

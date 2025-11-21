@@ -8,15 +8,15 @@ import logging
 from typing import Any, cast
 
 import numpy as np
-from numpy.typing import NDArray
-from scipy.ndimage import sobel, gaussian_filter
 from matplotlib.axes import Axes
-from matplotlib.image import AxesImage
 from matplotlib.colorbar import Colorbar
+from matplotlib.image import AxesImage
+from numpy.typing import NDArray
+from scipy.ndimage import gaussian_filter, sobel
 
 from src.plotting.helpers.base import BasePlotter
-from src.plotting.helpers.config import PlotConfig
 from src.plotting.helpers.components import ImageRenderer
+from src.plotting.helpers.config import PlotConfig
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class OverlayPlotter(BasePlotter):
 
     def detect_facies_boundaries(
         self,
-        facies_slice: NDArray[np.floating[Any]],
+        facies_slice: NDArray[Any],
         sigma: float = 0.5,
         threshold: float = 0.1,
     ) -> NDArray[np.bool_]:
@@ -90,38 +90,18 @@ class OverlayPlotter(BasePlotter):
         nj_facies, nk_facies = facies_slice.shape
         # meshgrid and coordinate arrays can produce partially-unknown types
         # Use explicit dtypes to give Pyright concrete array types
-        J: NDArray[Any] = np.arange(nj_facies, dtype=float)
-        K: NDArray[Any] = np.arange(nk_facies, dtype=float) * float(config.k_scale)
-        jj, kk = np.meshgrid(J, K, indexing="ij")
+        j_coords: NDArray[Any] = np.arange(nj_facies, dtype=float)
+        k_coords: NDArray[Any] = np.arange(nk_facies, dtype=float) * float(
+            config.k_scale
+        )
+        jj, kk = np.meshgrid(j_coords, k_coords, indexing="ij")
         # Convert meshgrid outputs to concrete ndarrays
         jj = np.asarray(jj)
         kk = np.asarray(kk)
 
         # Overlay boundary contours
-        boundary_levels: NDArray[Any] = np.asarray([0.5])
-        ax.contour(
-            jj.T,
-            kk.T,
-            boundaries.T,
-            levels=boundary_levels,
-            colors="lime",
-            linewidths=1.5,
-            linestyles="solid",
-            alpha=0.8,
-        )
-
-        # Overlay facies transitions as dashed lines
-        facies_levels: NDArray[Any] = np.asarray([0.5, 1.5, 2.5])
-        ax.contour(
-            jj.T,
-            kk.T,
-            facies_slice.T,
-            levels=facies_levels,
-            colors="white",
-            linewidths=0.5,
-            linestyles="dashed",
-            alpha=0.5,
-        )
+        # Overlay boundaries and facies contours via helper to reduce locals
+        self._overlay_boundaries(ax, boundaries, facies_slice, config)
 
         self._log_debug(
             f"plotted overlay: seismic shape={seismic_slice.shape}, "
@@ -129,6 +109,52 @@ class OverlayPlotter(BasePlotter):
         )
 
         return im, cbar
+
+    def _overlay_boundaries(
+        self,
+        ax: Axes,
+        boundaries: NDArray[np.bool_],
+        facies_slice: NDArray[np.floating[Any]],
+        config: PlotConfig,
+    ) -> None:
+        """Helper to overlay boundary contours and facies transition lines.
+
+        Extracted from `plot_seismic_with_facies_overlay` to reduce local
+        variable counts and improve readability.
+        """
+        nj_facies, nk_facies = facies_slice.shape
+
+        j_coords: NDArray[Any] = np.arange(nj_facies, dtype=float)
+        k_coords: NDArray[Any] = np.arange(nk_facies, dtype=float) * float(
+            config.k_scale
+        )
+        jj, kk = np.meshgrid(j_coords, k_coords, indexing="ij")
+        jj = np.asarray(jj)
+        kk = np.asarray(kk)
+
+        # Boundary contour
+        ax.contour(
+            jj,
+            kk,
+            boundaries,
+            levels=np.asarray([0.5]),
+            colors="lime",
+            linewidths=1.5,
+            linestyles="solid",
+            alpha=0.8,
+        )
+
+        # Facies transition dashed lines
+        ax.contour(
+            jj,
+            kk,
+            facies_slice,
+            levels=np.asarray([0.5, 1.5, 2.5]),
+            colors="white",
+            linewidths=0.5,
+            linestyles="dashed",
+            alpha=0.5,
+        )
 
     def plot_facies_only(
         self,

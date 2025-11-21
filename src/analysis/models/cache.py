@@ -4,9 +4,10 @@ This module contains models for cached data and display cube results.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, cast
 from functools import cached_property
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray

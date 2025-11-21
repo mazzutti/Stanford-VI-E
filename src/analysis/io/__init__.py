@@ -11,10 +11,7 @@ Example:
     >>> printer("Analysis Complete", ["Results saved to output/"])
 """
 
-from .header import (
-    HeaderPrinter,
-    printer,
-)
+from .header import HeaderPrinter, printer
 
 __all__ = [
     "HeaderPrinter",
