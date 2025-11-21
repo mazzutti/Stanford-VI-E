@@ -116,7 +116,9 @@ class SeismicSignalProcessor:
             for j in range(nj):
                 trace = reflectivity[i, j, :]
                 seismogram[i, j, :] = _fftconvolve(
-                    trace, wavelet_arr, mode=cast(Any, mode)
+                    cast(NDArray[np.float64], trace),
+                    cast(NDArray[np.float64], wavelet_arr),
+                    mode=cast(Any, mode),
                 )
 
         return seismogram

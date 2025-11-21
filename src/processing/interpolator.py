@@ -92,14 +92,14 @@ class BatchedInterpolator:
         time_axis_arr: NDArray[Any],
     ) -> NDArray[Any]:
         interp_func = interp1d(
-            twt_1d,
-            depth_block,
+            cast(NDArray[np.float64], twt_1d),
+            cast(NDArray[np.float64], depth_block),
             kind=cast(Any, self.kind),
             axis=0,
             bounds_error=False,
             fill_value=0.0,
         )
-        return cast(NDArray[Any], interp_func(time_axis_arr))
+        return cast(NDArray[Any], interp_func(cast(NDArray[np.float64], time_axis_arr)))
 
     def _interp_per_column(
         self,
@@ -114,13 +114,15 @@ class BatchedInterpolator:
             twt_col = twt_block[:, col]
             depth_col = depth_block[:, col]
             interp_func = interp1d(
-                twt_col,
-                depth_col,
+                cast(NDArray[np.float64], twt_col),
+                cast(NDArray[np.float64], depth_col),
                 kind=cast(Any, self.kind),
                 bounds_error=False,
                 fill_value=0.0,
             )
-            out[:, col] = cast(NDArray[Any], interp_func(time_axis_arr))
+            out[:, col] = cast(
+                NDArray[Any], interp_func(cast(NDArray[np.float64], time_axis_arr))
+            )
         return out
 
     def _nearest_vectorized(
