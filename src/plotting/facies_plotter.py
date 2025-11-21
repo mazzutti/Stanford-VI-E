@@ -8,6 +8,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.patches import Patch
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -235,10 +237,15 @@ class FaciesPlotter(BasePlotter):
             ax.set_xticks(range(1, len(avo_facies_data) + 1))
             ax.set_xticklabels(facies_labels, rotation=0, fontsize=8)
             cmap_colors: NDArray[Any] = np.asarray(
-                plt.get_cmap("tab10")(np.linspace(0, 0.4, len(bp["boxes"])))
+                cm.get_cmap("tab10")(np.linspace(0, 0.4, len(bp["boxes"])))
             )
             for patch, color in zip(bp["boxes"], cmap_colors):
-                patch.set_facecolor(color)
+                if isinstance(patch, Patch):
+                    patch.set_facecolor(color)
+                else:
+                    setter = getattr(patch, "set_facecolor", None)
+                    if callable(setter):
+                        setter(color)
         ax.set_ylabel("AVO Amplitude")
         ax.set_title("AVO: Amplitude by Facies Type")
         ax.grid(True, alpha=0.3, axis="y")

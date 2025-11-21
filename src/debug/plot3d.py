@@ -128,7 +128,10 @@ def make_colorbar(
 
     cb = fig.colorbar(sm, ax=ax, boundaries=bounds, ticks=ticks, shrink=0.6)
     if ticklabels is not None:
-        cb.set_ticklabels(ticklabels)
+        # Type checkers may report an incompatible type for the
+        # `set_ticklabels` parameter; cast to Any to satisfy static
+        # analysis while preserving runtime behavior.
+        cb.set_ticklabels(cast(Any, ticklabels))
 
 
 def compute_slice_facecolors(

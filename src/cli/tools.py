@@ -192,7 +192,7 @@ def _plot_facies_matplotlib(
 
     _plt.tight_layout()
     png_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(png_path, dpi=300, bbox_inches="tight")
+    fig.savefig(str(png_path), dpi=300, bbox_inches="tight")
     _plt.close(fig)
     return png_path
 

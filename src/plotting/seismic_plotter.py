@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, Sequence
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -134,7 +134,7 @@ class SeismicPlotter(BasePlotter):
         plt.tight_layout()
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        fig.savefig(str(output_path), dpi=300, bbox_inches="tight")
         plt.close(fig)
 
         logger.info("  ✓ Generated: %s", output_path)
@@ -170,7 +170,7 @@ class SeismicPlotter(BasePlotter):
         plt.tight_layout()
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        fig.savefig(str(output_path), dpi=300, bbox_inches="tight")
         plt.close(fig)
 
         logger.info("  ✓ Generated: %s", output_path)
@@ -299,7 +299,7 @@ class SeismicPlotter(BasePlotter):
 
     def _render_three_slices(
         self,
-        axes: list[Axes],
+        axes: Sequence[Axes] | NDArray[Any],
         arr: NDArray[np.floating[Any]],
         extractor: SliceExtractor,
         config: PlotConfig,

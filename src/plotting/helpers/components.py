@@ -12,6 +12,7 @@ from typing import Any, cast
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colorbar import Colorbar
@@ -165,7 +166,7 @@ class DataNormalizer:
         Returns:
             Colormap with n_colors
         """
-        cmap = plt.get_cmap("tab10")
+        cmap = cm.get_cmap("tab10")
         colors = list(cmap(np.linspace(0, 0.4, n_colors)))
         return ListedColormap(colors)
 

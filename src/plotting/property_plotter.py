@@ -224,7 +224,7 @@ class PropertyPlotter(ABC):
             colorbar_label=colorbar_label,
         )
 
-        fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(str(output_path), dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
         logger.debug("Saved 3D slice plot: %s", output_path)
@@ -454,7 +454,7 @@ class RockPhysicsPropertyPlotter(ImshowWithColorbarMixin, PropertyPlotter):
             )
 
             output_file = self.output_dir / "rock_physics_comparison.png"
-            fig.savefig(output_file, dpi=300, bbox_inches="tight")
+            fig.savefig(str(output_file), dpi=300, bbox_inches="tight")
             plt.close(fig)
 
             logger.info("  ✓ Generated: %s", output_file)

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colorbar import Colorbar
@@ -464,8 +465,7 @@ class SlicePlotter(BasePlotter):
         )
 
         denom = vmax - vmin if vmax != vmin else 1.0
-        plt_any = cast(Any, plt)
-        cmap_fn = plt_any.get_cmap(config.cmap)
+        cmap_fn = cm.get_cmap(config.cmap)
         return slice_i, slice_j, slice_k, vmin, vmax, denom, cmap_fn
 
     def _build_3d_grids(

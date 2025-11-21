@@ -1,3 +1,3 @@
-from matplotlib.axes import AxesImage
+from matplotlib.image import AxesImage
 
 __all__ = ["AxesImage"]
