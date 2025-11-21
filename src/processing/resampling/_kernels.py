@@ -1,9 +1,7 @@
 """Optimized resampling kernels using Numba JIT compilation.
 
-
 Centralizes numba-compiled functions for depth-to-time and time-to-depth
 resampling, reducing complexity in the main DepthTimeResampler class.
-
 
 Functions are compiled once and cached by numba for subsequent calls.
 """
@@ -19,11 +17,9 @@ from src.processing.resampling._interpolation import linear_interpolate_value
 # use a number of local temporaries and loop variables for clarity and
 # speed. Silence the local-variable warning for this module's kernels.
 
-
 # ============================================================================
 # Depth-to-Time Resampling Kernels
 # ============================================================================
-
 
 @njit(parallel=True)
 def resample_depth_to_time_nearest(
@@ -68,7 +64,6 @@ def resample_depth_to_time_nearest(
                         out_array[ii, jj, ti] = prop[k - 1]
                     else:
                         out_array[ii, jj, ti] = prop[k]
-
 
 @njit(parallel=True)
 def resample_depth_to_time_linear(
@@ -115,11 +110,9 @@ def resample_depth_to_time_linear(
                     v1 = trace[k]
                     out_array[ii, jj, ti] = linear_interpolate_value(t, t0, t1, v0, v1)
 
-
 # ============================================================================
 # Time-to-Depth Resampling Kernels (Irregular Time-Domain Input)
 # ============================================================================
-
 
 @njit(parallel=True)
 def resample_depth_to_time_from_irregular_nearest(
@@ -161,7 +154,6 @@ def resample_depth_to_time_from_irregular_nearest(
                         out_array[ii, jj, ti] = prop[k - 1]
                     else:
                         out_array[ii, jj, ti] = prop[k]
-
 
 @njit(parallel=True)
 def resample_depth_to_time_from_irregular_linear(

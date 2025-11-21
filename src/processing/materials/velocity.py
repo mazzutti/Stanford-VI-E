@@ -17,7 +17,6 @@ __all__ = ["VelocityModel"]
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class VelocityModel:
     """Wrapper for a P-wave velocity cube.

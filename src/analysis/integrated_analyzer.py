@@ -56,7 +56,6 @@ from src.analysis.facies.config import FaciesAnalysisConfig
 # top-level dependencies. Keep the imports as-is; suppress related pylint
 # import warnings with a short justification.
 
-
 if TYPE_CHECKING:
     from src.analysis.models import FaciesCorrelationConfig
 
@@ -83,7 +82,6 @@ __all__ = [
     "AnalysisOperation",
 ]
 
-
 @dataclass
 class AnalysisContext:
     """Context information for an analysis operation.
@@ -107,7 +105,6 @@ class AnalysisContext:
             "domain": self.domain,
             "parameters": self.parameters.copy(),
         }
-
 
 class AnalysisOperation(AnalysisCommand):
     """Operation that encapsulates a single analysis run.
@@ -229,7 +226,6 @@ class AnalysisOperation(AnalysisCommand):
             f"Analysis(domain={self.context.domain}, "
             f"cache_dir={self.context.cache_dir})"
         )
-
 
 class IntegratedAnalyzer(Observable):
     """Enhanced FaciesCorrelationAnalyzer with integrated design patterns.

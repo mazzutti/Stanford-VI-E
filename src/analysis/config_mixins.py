@@ -7,9 +7,7 @@ to avoid duplication across different analyzer configurations.
 # These mixin classes intentionally provide a small public surface; silence
 # the too-few-public-methods warning so lint focuses on real issues.
 
-
 from abc import abstractmethod
-
 
 class ValidatableConfigMixin:
     """Mixin providing standard configuration validation pattern.
@@ -58,7 +56,6 @@ class ValidatableConfigMixin:
             return True
         except ValueError:
             return False
-
 
 # Small mixins like this are intentionally minimal and focus on
 # providing a consistent validation API for dataclass configs.

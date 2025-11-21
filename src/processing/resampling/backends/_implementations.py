@@ -38,18 +38,15 @@ except (ImportError, ModuleNotFoundError):  # pragma: no cover - optional import
 # Keep both names pointing to the same value.
 BatchedInterpolator_runtime = batched_interpolator_runtime
 
-
 logger = logging.getLogger(__name__)
 
 # The backend implementations may import resampler factories or optional
 # interpolator helpers at runtime. These imports are optional and are
 # intentionally deferred; disable import-order warnings to reduce noise.
 
-
 # Some runtime helper names intentionally use compact snake_case or
 # non-Pascal identifiers for clarity in optional runtime bindings
 # (e.g., `batched_interpolator_runtime`). Relax naming checks here.
-
 
 class VectorizedBackend:
     """Backend that handles uniform TWT (fast vectorized path).
@@ -102,7 +99,6 @@ class VectorizedBackend:
         # Accept and ignore extra kwargs for Protocol compatibility.
         _ = kwargs
         return BackendResult(array=arr)
-
 
 class BatchedInterpolatorBackend:
     """Backend that uses the BatchedInterpolator (CPU fallback).
@@ -162,9 +158,7 @@ class BatchedInterpolatorBackend:
         _ = kwargs
         return BackendResult(array=arr)
 
-
 # Register default backends
-
 
 def register_default_backends(manager: BackendManager | None = None) -> None:
     """Register the default backend implementations.
@@ -201,7 +195,6 @@ def register_default_backends(manager: BackendManager | None = None) -> None:
         manager.register(BatchedInterpolatorBackend.name, BatchedInterpolatorBackend())
     except (KeyError, RuntimeError, TypeError):
         pass
-
 
 # Backwards-compatible alias used by older code/tests that imported the
 # internal name `_register_default_backends`.

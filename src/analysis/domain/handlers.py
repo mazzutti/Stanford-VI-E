@@ -46,7 +46,6 @@ logger = logging.getLogger(__name__)
 # Type aliases for better clarity
 HandlerFactory = Callable[[], "DomainHandler"]
 
-
 class HandlerStatistics(NamedTuple):
     """Statistics about handler usage and performance.
 
@@ -79,7 +78,6 @@ class HandlerStatistics(NamedTuple):
             f"avg_time={self.average_runtime_ms:.2f}ms"
         )
 
-
 class DisplayCubes(NamedTuple):
     """Semantic container for display-ready cubes.
 
@@ -93,7 +91,6 @@ class DisplayCubes(NamedTuple):
 
     avo: NDArray[np.float64]
     facies: NDArray[np.int64]
-
 
 class CubeProcessor(Protocol):
     """Protocol defining the interface for cube processors.
@@ -122,7 +119,6 @@ class CubeProcessor(Protocol):
     ) -> DisplayCubes:
         """Prepare AVO and facies cubes for display in this domain."""
         raise NotImplementedError()
-
 
 @dataclass(frozen=True)
 class DomainHandler(ABC):
@@ -282,7 +278,6 @@ class DomainHandler(ABC):
                 "Error during cleanup of %s handler: %s", self.domain.name, e
             )
 
-
 class DepthDomainHandler(DomainHandler):
     """Handler for depth-domain processing (no transformation needed)."""
 
@@ -317,7 +312,6 @@ class DepthDomainHandler(DomainHandler):
         """
         logger.info("Processing in DEPTH domain (no transformation required)")
         return DisplayCubes(avo=avo, facies=facies_depth)
-
 
 class TimeDomainHandler(DomainHandler):
     """Handler for time-domain processing (requires resampling)."""
@@ -359,7 +353,6 @@ class TimeDomainHandler(DomainHandler):
             target_dt=grid_spec.dt,
         )
         return DisplayCubes(avo=avo, facies=facies_time)
-
 
 class DomainHandlerRegistry:
     """Registry for domain handler instances using the registry pattern.
@@ -582,10 +575,8 @@ class DomainHandlerRegistry:
         else:
             logger.debug("All handlers cleaned up successfully")
 
-
 # Global registry instance for singleton access
 _default_registry = DomainHandlerRegistry()
-
 
 class DomainHandlerFactory:
     """Factory for creating and accessing appropriate domain handlers.

@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 # Many tiny source classes are intentionally minimal; suppress the
 # too-few-public-methods warning for these light-weight types.
 
-
 __all__ = [
     "ConfigSource",
     "ConfigManager",
@@ -58,7 +57,6 @@ __all__ = [
     "JsonSource",
     "YamlSource",
 ]
-
 
 class ConfigSource(ABC):
     """Abstract base for configuration sources."""
@@ -70,7 +68,6 @@ class ConfigSource(ABC):
         Returns:
             Configuration dictionary
         """
-
 
 class EnvironmentSource(ConfigSource):
     """Load configuration from environment variables."""
@@ -104,7 +101,6 @@ class EnvironmentSource(ConfigSource):
 
         logger.info("Loaded %d settings from environment", len(config))
         return config
-
 
 class JsonSource(ConfigSource):
     """Load configuration from JSON file."""
@@ -145,7 +141,6 @@ class JsonSource(ConfigSource):
         logger.info("Loaded configuration from %s", self.path)
         return config
 
-
 class YamlSource(ConfigSource):
     """Load configuration from YAML file."""
 
@@ -185,7 +180,6 @@ class YamlSource(ConfigSource):
 
         logger.info("Loaded configuration from %s", self.path)
         return config
-
 
 class ConfigManager(BaseConfig):
     """Centralized configuration management with validation and profiles.

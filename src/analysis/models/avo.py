@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 # be optional). These late imports are intentional; silence pylint's
 # import-outside-toplevel warnings here with a brief justification.
 
-
 # Type aliases for common patterns
 TransitionStatsMap = dict[Transition, FaciesStats | None]
 TransitionArrayMap = dict[Transition, NDArray[np.float64] | None]
@@ -35,7 +34,6 @@ __all__ = [
     "AvoStats",
     "AvoResults",
 ]
-
 
 @dataclass
 class TechniqueComparison:
@@ -137,7 +135,6 @@ class TechniqueComparison:
             winner=data["winner"],
             difference=float(data["difference"]),
         )
-
 
 @dataclass
 class AvoStats(FormattableModel):
@@ -274,7 +271,6 @@ class AvoStats(FormattableModel):
             "spearman_correlation": self.spearman_correlation or 0.0,
             "spearman_pvalue": self.spearman_pvalue or 0.0,
         }
-
 
 @dataclass
 class AvoResults:

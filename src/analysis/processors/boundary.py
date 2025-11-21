@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["BoundaryDetector", "CubeAligner", "NeighborDirection"]
 
-
 class NeighborDirection(Enum):
     """Enum for 4-connected neighbor directions in boundary detection.
 
@@ -44,7 +43,6 @@ class NeighborDirection(Enum):
     def all_directions(cls) -> list["NeighborDirection"]:
         """Get all neighbor directions except center."""
         return [cls.UP, cls.DOWN, cls.LEFT, cls.RIGHT]
-
 
 class BoundaryDetector(BaseProcessor):
     """Detects facies boundaries in 3D cubes using 4-connected neighbor logic.
@@ -218,7 +216,6 @@ class BoundaryDetector(BaseProcessor):
             If cube is not 3D or is empty.
         """
         ArrayValidator.validate_3d_array(facies_cube, "facies_cube")
-
 
 class CubeAligner(BaseProcessor):
     """Aligns and crops multiple 3D cubes to a common shape."""

@@ -17,7 +17,6 @@ T = TypeVar("T")  # Generic type for cached values
 
 __all__ = ["FileSystemOps", "CacheStore"]
 
-
 class FileSystemOps(Protocol):
     """Protocol for file system operations used by cache implementations.
 
@@ -69,7 +68,6 @@ class FileSystemOps(Protocol):
     def list_files(self, directory: Path, pattern: str) -> list[Path]:
         """List files matching pattern in directory."""
         raise NotImplementedError()
-
 
 class CacheStore(ABC, Generic[T]):
     """Abstract base class for cache storage implementations.
@@ -163,7 +161,6 @@ class CacheStore(ABC, Generic[T]):
     def clear(self) -> None:
         """Clear all cache entries."""
 
-
 class DefaultFileSystemOps:
     """Default implementation of FileSystemOps using real filesystem."""
 
@@ -203,7 +200,6 @@ class DefaultFileSystemOps:
         if not directory.exists():
             return []
         return list(directory.glob(pattern))
-
 
 __all__ = [
     "FileSystemOps",

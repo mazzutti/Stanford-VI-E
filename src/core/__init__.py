@@ -19,7 +19,6 @@ from .types import Buildable, ValidatorResult
 
 __all__ = ["Buildable", "ValidatorResult"]
 
-
 # Order of submodules to attempt when resolving an attribute lazily.
 _SUBMODULES = [
     "configuration",
@@ -28,7 +27,6 @@ _SUBMODULES = [
     "processors",
     "validation",
 ]
-
 
 def __getattr__(name: str) -> Any:  # pragma: no cover - exercised by tests
     """Lazily import and return attributes from core submodules.
@@ -47,7 +45,6 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - exercised by tests
         if hasattr(module, name):
             return getattr(module, name)
     raise AttributeError(f"module {__name__} has no attribute {name}")
-
 
 def __dir__() -> list[str]:
     names = list(globals().keys()) + list(__all__)

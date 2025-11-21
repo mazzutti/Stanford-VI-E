@@ -19,7 +19,6 @@ __all__ = [
     "DisplayCubesResult",
 ]
 
-
 @dataclass
 class CacheLoadResult:
     """Represents cached data load results with validation."""
@@ -79,7 +78,6 @@ class CacheLoadResult:
     def __str__(self) -> str:
         """Return string representation."""
         return f"CacheLoadResult(filename={self.filename}, shape={self.shape})"
-
 
 @dataclass
 class DisplayCubesResult:

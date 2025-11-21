@@ -39,7 +39,6 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-
 class CircuitBreakerState(Enum):
     """States of the circuit breaker."""
 
@@ -47,14 +46,11 @@ class CircuitBreakerState(Enum):
     OPEN = "open"  # Failing state, blocking requests
     HALF_OPEN = "half_open"  # Recovery state, testing with limited requests
 
-
 class CircuitBreakerOpen(Exception):
     """Raised when circuit breaker is in OPEN state."""
 
-
 class CircuitBreakerException(Exception):
     """Base exception for circuit breaker errors."""
-
 
 @dataclass
 class CircuitBreakerStats:
@@ -93,7 +89,6 @@ class CircuitBreakerStats:
             f"rejected_calls={self.rejected_calls}, "
             f"time_in_state={time_in_state:.1f}s)"
         )
-
 
 class CircuitBreaker:
     """
@@ -268,7 +263,6 @@ class CircuitBreaker:
         stats = self.get_stats()
         return f"<{self.name}: {stats}>"
 
-
 class CircuitBreakerPool:
     """
     Manages multiple circuit breakers for different services.
@@ -342,10 +336,8 @@ class CircuitBreakerPool:
         """Get number of registered circuit breakers."""
         return len(self._breakers)
 
-
 # Global pool instance
 _global_pool = CircuitBreakerPool()
-
 
 def circuit_breaker(
     name: str | None = None,
@@ -388,21 +380,17 @@ def circuit_breaker(
 
     return decorator
 
-
 def get_circuit_breaker(name: str) -> CircuitBreaker | None:
     """Get a circuit breaker by name."""
     return _global_pool.get_breaker(name)
-
 
 def get_all_circuit_breakers() -> dict[str, CircuitBreaker]:
     """Get all circuit breakers."""
     return _global_pool.get_all_breakers()
 
-
 def reset_circuit_breaker(name: str) -> None:
     """Reset a circuit breaker."""
     _global_pool.reset_breaker(name)
-
 
 def reset_all_circuit_breakers() -> None:
     """Reset all circuit breakers."""

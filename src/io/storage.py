@@ -27,7 +27,6 @@ __all__ = ["DiskStore", "MemoryStore"]
 
 logger = logging.getLogger(__name__)
 
-
 def _hash_for_obj(obj: dict[str, str | int | float | bool] | bytes | bytearray) -> str:
     """Create a SHA1 hex digest for JSON-serializable objects or raw bytes."""
     if isinstance(obj, (bytes, bytearray)):
@@ -38,7 +37,6 @@ def _hash_for_obj(obj: dict[str, str | int | float | bool] | bytes | bytearray) 
         except (TypeError, ValueError):
             data = str(obj).encode("utf8")
     return hashlib.sha1(data).hexdigest()
-
 
 class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     """Persistent disk-based cache storage using NPZ format.
@@ -280,7 +278,6 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             self.logger.debug("Cleared cache directory: %s", self.cache_dir)
         except OSError as e:
             self.logger.debug("Error clearing cache directory: %s", e)
-
 
 class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     """In-memory cache storage for testing and lightweight use.

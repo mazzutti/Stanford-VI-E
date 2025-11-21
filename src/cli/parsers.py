@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ParserFactory", "tool"]
 
-
 class ParserFactory:
     """Factory for creating and managing argument parsers."""
 
@@ -365,7 +364,6 @@ class ParserFactory:
             return fn()
         except (RuntimeError, TypeError, ValueError, OSError) as exc:
             raise SystemExit(f"Error running tool '{tool_name}': {exc}") from exc
-
 
 # Convenience alias
 tool = ParserFactory.tool

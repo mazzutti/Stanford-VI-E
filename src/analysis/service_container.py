@@ -44,7 +44,6 @@ __all__ = [
 # Global container instance
 _default_container: Container | None = None
 
-
 def create_container() -> Container:
     """Create and configure the service container.
 
@@ -89,7 +88,6 @@ def create_container() -> Container:
 
     return builder.build()
 
-
 def create_service_provider(container: Container | None = None) -> ServiceProvider:
     """Create a service provider from a container.
 
@@ -105,7 +103,6 @@ def create_service_provider(container: Container | None = None) -> ServiceProvid
     logger.debug("Creating service provider")
     # Access the container's service provider instance directly
     return container.service_provider
-
 
 def get_default_container() -> Container:
     """Get or create the default global container.
@@ -127,7 +124,6 @@ def get_default_container() -> Container:
 
     return _default_container
 
-
 def reset_default_container() -> None:
     """Reset the default global container."""
     # See note in `get_default_container` about module-level singleton.
@@ -136,7 +132,6 @@ def reset_default_container() -> None:
     # pylint: enable=global-statement
     _default_container = None
     logger.info("Default container reset")
-
 
 class ServiceContainerBuilder:
     """Helper class for building customized service containers.

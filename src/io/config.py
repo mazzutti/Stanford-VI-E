@@ -8,7 +8,6 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 @dataclass
 class CachePolicy:
     """Unified configuration for cache storage and pruning.
@@ -99,7 +98,6 @@ class CachePolicy:
         """Ensure cache_dir is a Path object."""
         self.cache_dir = Path(self.cache_dir)
 
-
 @dataclass
 class DataLoaderConfig:
     """Configuration for data loading operations.
@@ -119,7 +117,6 @@ class DataLoaderConfig:
         """Validate data_path."""
         if not self.data_path or not self.data_path.strip():
             raise ValueError("data_path cannot be empty")
-
 
 __all__ = [
     "CachePolicy",

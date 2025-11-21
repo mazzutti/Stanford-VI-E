@@ -26,7 +26,6 @@ __all__ = ["DatasetManager", "GslibLoader"]
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class DatasetManager:
     """Manager for loading and accessing Stanford VI-E dataset properties.
@@ -357,7 +356,6 @@ class DatasetManager:
         dm = cls(data_path=data_path, file_map=file_map, grid_spec=grid_spec)
         dm.load()
         return dm
-
 
 class GslibLoader:
     """Singleton factory for loading GSLIB files.

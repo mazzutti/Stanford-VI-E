@@ -12,7 +12,6 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-
 @dataclass(frozen=True)
 class ValidationResult:
     """Result of array validation operations.
@@ -26,6 +25,5 @@ class ValidationResult:
     arr2: NDArray[np.float64] | None = None
     n_removed: int = 0
     error_message: str = ""
-
 
 # This dataclass is intentionally small and import-safe; keep it simple

@@ -38,7 +38,6 @@ __all__ = [
     "MacroCommand",
 ]
 
-
 class AnalysisCommand(ABC):
     """Abstract base class for analysis commands.
 
@@ -102,7 +101,6 @@ class AnalysisCommand(ABC):
             f"executed={self.executed}, "
             f"timestamp={self.timestamp.isoformat()})"
         )
-
 
 class RunAnalysisCommand(AnalysisCommand):
     """Command for running a single analysis operation.
@@ -193,7 +191,6 @@ class RunAnalysisCommand(AnalysisCommand):
         """Get command description."""
         data_summary = ", ".join(self.data.keys()) if self.data else "no data"
         return f"Run {self.analyzer.__class__.__name__} " f"on {data_summary}"
-
 
 class MacroCommand(AnalysisCommand):
     """Composite command that executes multiple commands as one.
@@ -288,7 +285,6 @@ class MacroCommand(AnalysisCommand):
     def description(self) -> str:
         """Get macro description."""
         return f"Macro '{self.name}' ({len(self.commands)} commands)"
-
 
 class CommandQueue:
     """Manages command execution, undo/redo history.

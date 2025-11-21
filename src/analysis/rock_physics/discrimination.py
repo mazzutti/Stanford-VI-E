@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 EPSILON = 1e-10
 SNR_EPSILON = 1e-10
 
-
 class DiscriminationResult(TypedDict):
     """Typed result for attribute discrimination analysis.
 
@@ -39,7 +38,6 @@ class DiscriminationResult(TypedDict):
     mean_class1: float
     std_class0: float
     std_class1: float
-
 
 class AttributeDiscriminationAnalyzer:
     """Analyzes discrimination power of attributes versus facies.

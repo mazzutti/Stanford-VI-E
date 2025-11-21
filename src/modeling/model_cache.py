@@ -27,7 +27,6 @@ __all__ = ["CacheManager"]
 
 logger = logging.getLogger(__name__)
 
-
 class _CacheHasher:
     """Internal hash computation for cache keys.
 
@@ -68,7 +67,6 @@ class _CacheHasher:
                     h.update(str(e).encode())
 
         return h.hexdigest()[:CACHE_HASH_LENGTH]
-
 
 class CacheManager:
     """Manages caching of AVO and other modeling results.

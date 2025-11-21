@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-
 class UnitConverter(ABC):
     """Abstract base class for unit converters using Strategy pattern.
 
@@ -92,7 +91,6 @@ class UnitConverter(ABC):
             arr = arr.astype(float)
         return arr
 
-
 class VelocityConverter(UnitConverter):
     """Converts velocity values between km/s and m/s.
 
@@ -167,7 +165,6 @@ class VelocityConverter(UnitConverter):
             return arr, True
 
         return arr, False
-
 
 class DensityConverter(UnitConverter):
     """Converts density values between g/cc and kg/m³.

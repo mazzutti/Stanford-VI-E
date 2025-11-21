@@ -53,7 +53,6 @@ __all__ = [
 
 T = TypeVar("T")
 
-
 class Lifecycle(Enum):
     """Service lifecycle management strategies."""
 
@@ -61,14 +60,11 @@ class Lifecycle(Enum):
     SINGLETON = "singleton"  # Single instance, reused
     SCOPED = "scoped"  # Single instance per scope
 
-
 class RegistrationError(Exception):
     """Raised when service registration fails."""
 
-
 class ResolutionError(Exception):
     """Raised when service resolution fails."""
-
 
 class ServiceDescriptor:
     """Describes a registered service with lifecycle and factory information."""
@@ -108,7 +104,6 @@ class ServiceDescriptor:
             f"type={self.service_type.__name__}, "
             f"lifecycle={self.lifecycle.value})"
         )
-
 
 class LifecycleManager:
     """Manages component lifecycle and instance caching."""
@@ -181,7 +176,6 @@ class LifecycleManager:
         with self._lock:
             self._scopes.pop(scope_id, None)
         logger.debug("Scope %r cleared", scope_id)
-
 
 class ServiceProvider:
     """Provides access to registered services."""
@@ -277,7 +271,6 @@ class ServiceProvider:
             return self.resolve(service_name, scope_id)
         except ResolutionError:
             return default
-
 
 class Container:
     """Dependency injection container for service registration and resolution."""
@@ -454,7 +447,6 @@ class Container:
         services = len(self.get_services())
         singletons = self._lifecycle_manager.singleton_count()
         return f"Container(services={services}, singletons={singletons})"
-
 
 class ContainerBuilder:
     """Fluent builder for Container configuration."""

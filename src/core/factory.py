@@ -55,11 +55,9 @@ __all__ = [
 
 T = TypeVar("T")  # Generic type for builder output
 
-
 # ============================================================================
 # Buildable Protocol & Base Classes
 # ============================================================================
-
 
 class Buildable(ABC, Generic[T]):
     """Protocol for buildable objects.
@@ -86,11 +84,9 @@ class Buildable(ABC, Generic[T]):
     # Small factory helpers are intentionally compact; this keeps the
     # public API concise while avoiding noisy lint warnings.
 
-
 # ============================================================================
 # Fluent Builder (Generic)
 # ============================================================================
-
 
 @dataclass
 class FluentBuilder(Generic[T]):
@@ -202,11 +198,9 @@ class FluentBuilder(Generic[T]):
         """Build and return configured component."""
         raise NotImplementedError("Subclasses must implement build()")
 
-
 # ============================================================================
 # Factory Implementations
 # ============================================================================
-
 
 class BuildableFactory(ABC, Generic[T]):
     """Base factory for creating buildable objects.
@@ -292,7 +286,6 @@ class BuildableFactory(ABC, Generic[T]):
 
         return self._creators[creator_name](**creator_args)
 
-
 class ServiceFactory:
     """Factory for creating named services/components.
 
@@ -352,7 +345,6 @@ class ServiceFactory:
         self._instances.clear()
         logger.debug("Cleared singleton instances")
 
-
 class AnalyzerFactory(BuildableFactory[Any]):
     """Specialized factory for creating analyzers.
 
@@ -410,11 +402,9 @@ class AnalyzerFactory(BuildableFactory[Any]):
 
         return RockPhysicsAnalyzer(config=config) if config else RockPhysicsAnalyzer()
 
-
 # ============================================================================
 # Helper Functions
 # ============================================================================
-
 
 def create_analyzer(
     analyzer_type: str = "facies",
@@ -441,11 +431,9 @@ def create_analyzer(
         return factory.create_rock_physics_analyzer(config=config)
     raise ValueError(f"Unknown analyzer type: {analyzer_type}")
 
-
 # ============================================================================
 # Component Builder Base Class
 # ============================================================================
-
 
 class ComponentBuilder(Buildable[T], ABC):
     """Abstract component builder combining builder and buildable patterns.

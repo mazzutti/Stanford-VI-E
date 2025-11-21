@@ -26,7 +26,6 @@ from src.cli.parsers import ParserFactory, tool
 # deliberate — silence import-order warnings at module level with a brief
 # justification so pylint focuses on real issues.
 
-
 logger = logging.getLogger(__name__)
 
 # Shared small helpers to avoid duplication with tools_modeling
@@ -62,7 +61,6 @@ from .tools_plotting import (  # noqa: E402
     regenerate_all_3d_plots,
 )
 
-
 @tool
 def cleanup_cache(
     cache_dir: str = ".cache", _dry_run: bool = False, verbose: bool = False
@@ -97,7 +95,6 @@ def cleanup_cache(
         return result.count, result.bytes_freed / (1024**2)
     return 0, 0.0
 
-
 # Modeling and analysis tools have been moved to `tools_modeling.py` to
 # reduce the size of this facade module. Re-export the symbols so external
 # callers can keep using the original names.
@@ -109,7 +106,6 @@ from .tools_modeling import (  # noqa: E402
     regenerate_seismograms,
     seismograms,
 )
-
 
 @tool
 def export_top_facies_layers(
@@ -157,7 +153,6 @@ def export_top_facies_layers(
 
     return result
 
-
 def _plot_facies_matplotlib(
     top: np.ndarray, n_layers: int, out_dir: Path
 ) -> Path | None:
@@ -196,7 +191,6 @@ def _plot_facies_matplotlib(
     _plt.close(fig)
     return png_path
 
-
 def _plot_facies_plotly(
     top: np.ndarray, n_layers: int, out_dir: Path, out: str | None, plot_out: str | None
 ) -> Path | None:
@@ -224,7 +218,6 @@ def _plot_facies_plotly(
     )
     return html_path
 
-
 def _get_top_layers(cache_dir: str, force_regeneration: bool) -> np.ndarray:
     """Return the top two geological facies layers as a numpy array."""
     from src.gen.facies import DefaultCacheProvider as FaciesDefaultCacheProvider
@@ -238,7 +231,6 @@ def _get_top_layers(cache_dir: str, force_regeneration: bool) -> np.ndarray:
         force_regeneration=force_regeneration,
     )
     return np.asarray(extractor.extract_top_two_geological_layers())
-
 
 @tool
 def regenerate_rock_physics() -> bool:
@@ -287,7 +279,6 @@ def regenerate_rock_physics() -> bool:
         return False
 
     return True
-
 
 @tool
 def rock_physics_attributes(
@@ -347,7 +338,6 @@ def rock_physics_attributes(
         )
     except (RuntimeError, ImportError, ValueError, OSError) as exc:
         raise SystemExit(f"Rock physics delegator unavailable: {exc}") from exc
-
 
 @tool
 def resample_rock_physics_to_time(
@@ -428,7 +418,6 @@ def resample_rock_physics_to_time(
         "attributes_resampled": resampled_names,
     }
 
-
 def _resample_attributes(
     rp_data: Any, resampler: Any, vp_depth: np.ndarray, plan: Any
 ) -> tuple[dict[str, Any], list[str]]:
@@ -483,7 +472,6 @@ def _resample_attributes(
 
     return resampled_attrs, resampled_names
 
-
 def _load_vp_depth() -> tuple[Any, np.ndarray]:
     """Load Vp property via DatasetManager and return GridSpec and Vp ndarray.
 
@@ -507,7 +495,6 @@ def _load_vp_depth() -> tuple[Any, np.ndarray]:
     vp_depth = to_ndarray(vp_prop)
     logger.info("Loaded Vp shape: %s", vp_depth.shape)
     return grid_spec, vp_depth
-
 
 def _get_resampler_and_plan(grid_spec: Any, vp_depth: np.ndarray) -> tuple[Any, Any]:
     """Return (resampler, plan) for given grid_spec and vp_depth."""

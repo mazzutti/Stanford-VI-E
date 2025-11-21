@@ -3,6 +3,9 @@
 This file provides pragmatic, permissive signatures for a handful of
 commonly-used `Axes` members (including `clear`) so callers in the
 repository don't propagate "partially unknown" diagnostics.
+
+Also declares `AxesImage` once so other local matplotlib stubs can
+alias to the canonical type.
 """
 
 from collections.abc import Sequence

@@ -16,7 +16,6 @@ from src.signal import RickerWavelet
 
 __all__ = ["ModelingDefaults", "ModelingConfig"]
 
-
 @dataclass(frozen=True)
 class ModelingDefaults:
     """Default parameters for the complete modeling pipeline.
@@ -64,7 +63,6 @@ class ModelingDefaults:
         """Create default Ricker wavelet."""
         ricker = RickerWavelet(f_peak=self.peak_frequency, dt=self.grid_dt)
         return np.asarray(ricker.samples, dtype=np.float64)
-
 
 @dataclass
 class ModelingConfig:

@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 # import time. These late imports are intentional; disable import-order
 # warnings so pylint focuses on functional issues.
 
-
 # Constants
 EPSILON = 1e-10
 DEFAULT_AVO_ANGLES_DEG = (0, 5, 10, 15, 20, 25)
@@ -38,7 +37,6 @@ DEFAULT_FLUID_FACTOR_K = 1.0
 # Some lines in this numerical module may exceed the configured line
 # length due to descriptive messages or formatted diagnostics. Allow
 # occasional long lines here and keep the numeric routine disables.
-
 
 class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
     """Computes AVO (Amplitude Variation with Offset) attributes.
@@ -313,7 +311,6 @@ class AVOAttributesComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]])
                 f"Input arrays must be 3D. Got shape {vp.shape} ({vp.ndim}D)"
             )
 
-
 class LambdaMuRhoComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
     """Computes Lamé parameters and derived rock physics attributes.
 
@@ -412,7 +409,6 @@ class LambdaMuRhoComputer(Computer[tuple[Any, ...], dict[str, FloatingArray]]):
             "mu_rho": mu_rho,
             "lambda_mu_ratio": lambda_mu_ratio,
         }
-
 
 class FluidFactorComputer(Computer[tuple[Any, ...], FloatingArray]):
     """Computes fluid factor attribute.

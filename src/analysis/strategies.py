@@ -39,11 +39,9 @@ __all__ = [
     "UnitSystem",
 ]
 
-
 # ============================================================================
 # Array Statistics Strategies
 # ============================================================================
-
 
 class ArrayStatisticsStrategy(ABC):
     """Abstract base for array statistics computation strategies.
@@ -64,7 +62,6 @@ class ArrayStatisticsStrategy(ABC):
     def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median of array."""
 
-
 class StandardArrayStatistics(ArrayStatisticsStrategy):
     """Standard array statistics using numpy defaults."""
 
@@ -79,7 +76,6 @@ class StandardArrayStatistics(ArrayStatisticsStrategy):
     def compute_median(self, arr: NDArray[Any]) -> int | float | np.number[Any]:
         """Compute median using numpy."""
         return cast(int | float | np.number[Any], np.median(arr))
-
 
 class RobustArrayStatistics(ArrayStatisticsStrategy):
     """Robust array statistics using median and IQR."""
@@ -97,11 +93,9 @@ class RobustArrayStatistics(ArrayStatisticsStrategy):
         """Compute median."""
         return cast(int | float | np.number[Any], np.median(arr))
 
-
 # ============================================================================
 # Unit Conversion Strategies
 # ============================================================================
-
 
 class UnitSystem(Enum):
     """Enumeration of supported unit systems."""
@@ -110,7 +104,6 @@ class UnitSystem(Enum):
     METRIC = "metric"  # km, s, km/s
     IMPERIAL = "imperial"  # ft, s, ft/s
     CGS = "cgs"  # cm, s, cm/s
-
 
 class ConversionStrategy(ABC):
     """Abstract base class for unit conversion strategies.
@@ -166,7 +159,6 @@ class ConversionStrategy(ABC):
         """
         return Quantity(converted, target_unit) if was_quantity else converted
 
-
 class VelocityConversionStrategy(ConversionStrategy):
     """Velocity conversion strategy supporting m/s, km/s, ft/s conversions.
 
@@ -189,7 +181,6 @@ class VelocityConversionStrategy(ConversionStrategy):
     def validate_units(self, unit: str) -> bool:
         """Validate velocity unit."""
         return self._converter.validate_units(unit)
-
 
 class TimeConversionStrategy(ConversionStrategy):
     """Time conversion strategy supporting s, ms, µs conversions.
@@ -214,7 +205,6 @@ class TimeConversionStrategy(ConversionStrategy):
         """Validate time unit."""
         return self._converter.validate_units(unit)
 
-
 class DepthConversionStrategy(ConversionStrategy):
     """Depth conversion strategy supporting m, km, ft conversions.
 
@@ -237,7 +227,6 @@ class DepthConversionStrategy(ConversionStrategy):
     def validate_units(self, unit: str) -> bool:
         """Validate depth unit."""
         return self._converter.validate_units(unit)
-
 
 class AmplitudeConversionStrategy(ConversionStrategy):
     """Amplitude/scaling conversion strategy supporting linear and dB scales.

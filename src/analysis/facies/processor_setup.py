@@ -24,7 +24,6 @@ from src.analysis.processors.management import (
 
 logger = logging.getLogger(__name__)
 
-
 def get_facies_processor_registry() -> ProcessorRegistry:
     """Get or initialize the facies processor registry.
 
@@ -41,36 +40,29 @@ def get_facies_processor_registry() -> ProcessorRegistry:
         setattr(get_facies_processor_registry, "_registry", inst)
     return inst
 
-
 def _create_boundary_detector() -> BoundaryDetector:
     """Factory function for BoundaryDetector."""
     return BoundaryDetector()
-
 
 def _create_cube_aligner() -> CubeAligner:
     """Factory function for CubeAligner."""
     return CubeAligner()
 
-
 def _create_boundary_amp_extractor() -> BoundaryAmplitudeExtractor:
     """Factory function for BoundaryAmplitudeExtractor."""
     return BoundaryAmplitudeExtractor()
-
 
 def _create_gradient_calculator() -> GradientCorrelationCalculator:
     """Factory function for GradientCorrelationCalculator."""
     return GradientCorrelationCalculator()
 
-
 def _create_interface_analyzer() -> InterfaceReflectionAnalyzer:
     """Factory function for InterfaceReflectionAnalyzer."""
     return InterfaceReflectionAnalyzer()
 
-
 def _create_facies_discriminator() -> FaciesDiscriminationCalculator:
     """Factory function for FaciesDiscriminationCalculator."""
     return FaciesDiscriminationCalculator()
-
 
 def register_facies_processors() -> None:
     """Register all facies domain processors with the central registry.
@@ -176,7 +168,6 @@ def register_facies_processors() -> None:
         logger.error("Failed to register facies processors: %s", exc)
         raise RuntimeError(f"Facies processor registration failed: {exc}") from exc
 
-
 def verify_facies_processors_registered() -> bool:
     """Verify that all expected facies processors are registered.
 
@@ -215,7 +206,6 @@ def verify_facies_processors_registered() -> bool:
     if extra:
         logger.warning("Extra processors: %s", extra)
     return False
-
 
 def list_facies_processors() -> list[str]:
     """Get list of registered facies processor names.

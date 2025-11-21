@@ -39,7 +39,6 @@ __all__ = [
 
 # pyright: reportUnnecessaryCast=false
 
-
 class AlignmentOps:
     """Stateless operations for cube alignment.
 
@@ -77,7 +76,6 @@ class AlignmentOps:
         return cast(
             tuple[NDArray[Any], NDArray[Any]], aligner.align(seismic_cube, facies_cube)
         )
-
 
 class ReshapeOps:
     """Stateless operations for array reshaping."""
@@ -132,7 +130,6 @@ class ReshapeOps:
         logger.debug("Reshaped cubes from (ni=%s, nj=%s, nk=%s) to traces", ni, nj, nk)
         # Ensure the return type matches the annotation (NDArray[Any])
         return cast(tuple[NDArray[Any], NDArray[Any]], (seismic_2d, facies_2d))
-
 
 class ExtractionOps:
     """Stateless operations for extracting data subsets."""
@@ -256,7 +253,6 @@ class ExtractionOps:
         logger.debug("Found %d transitions", len(rows))
 
         return from_facies, to_facies, amplitudes
-
 
 class StatsOps:
     """Stateless operations for statistics aggregation."""

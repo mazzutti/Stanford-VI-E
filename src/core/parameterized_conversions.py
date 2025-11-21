@@ -20,10 +20,8 @@ __all__ = ["ParameterizedConversionStrategy", "ConversionRegistry"]
 # noisy too-few-public-methods warnings for this parameterized strategy
 # which serves as a thin framework.
 
-
 # Provide a small, explicit allowance for compact helper objects to keep
 # lint focused on substantive issues in larger modules.
-
 
 class ParameterizedConversionStrategy:
     """Generic conversion strategy driven by conversion rules.
@@ -112,7 +110,6 @@ class ParameterizedConversionStrategy:
     ) -> NDArray[Any] | Quantity:
         """Preserve Quantity wrapper if input was Quantity."""
         return Quantity(converted, target_unit) if was_quantity else converted
-
 
 class ConversionRegistry:
     """Central registry for all conversion strategies.

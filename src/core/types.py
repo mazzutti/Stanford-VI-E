@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-
 @runtime_checkable
 class Buildable(Protocol):
     """Protocol for objects that can be built by a builder/factory.
@@ -26,7 +25,6 @@ class Buildable(Protocol):
         to allow flexible builder patterns across the codebase.
         """
         raise NotImplementedError()
-
 
 # Lightweight alias type for validation result containers used across modules.
 ValidatorResult = dict

@@ -40,7 +40,6 @@ Example:
 # pyright: reportUnknownMemberType=false
 # pyright: reportUnknownArgumentType=false
 
-
 from __future__ import annotations
 
 import logging
@@ -64,7 +63,6 @@ T = TypeVar("T")  # Generic data type for result content
 T_co = TypeVar("T_co", covariant=True)  # Covariant for inheritance
 V = TypeVar("V")
 
-
 class ResultData(Protocol[T_co]):
     """Protocol for result data classes.
 
@@ -75,7 +73,6 @@ class ResultData(Protocol[T_co]):
     def __repr__(self) -> str:
         """Return string representation."""
         raise NotImplementedError()
-
 
 @dataclass(frozen=True)
 class ResultMetadata:
@@ -122,7 +119,6 @@ class ResultMetadata:
     def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary."""
         return asdict(self)
-
 
 @dataclass
 class Result(Generic[T]):
@@ -422,10 +418,8 @@ class Result(Generic[T]):
 
     # ============================================================================
 
-
 # Helper Functions for Result Creation
 # ============================================================================
-
 
 class MappingResult(Result[dict[str, V]], Generic[V]):
     """Specialized Result for mapping/dict-like data with precise typing.
@@ -467,7 +461,6 @@ class MappingResult(Result[dict[str, V]], Generic[V]):
         return MappingResult(
             data=combined_data, metadata=combined_metadata, tags=combined_tags
         )
-
 
 def wrap_result(
     data: T,
@@ -514,7 +507,6 @@ def wrap_result(
         metadata=metadata,
         tags=tags or [],
     )
-
 
 def create_metadata(
     name: str = "result",

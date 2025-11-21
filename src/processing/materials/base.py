@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 
 __all__ = ["MaterialModel"]
 
-
 class MaterialModel(ABC):
     """Base class for unit-aware material property models.
 

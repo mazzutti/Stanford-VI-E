@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 # helpers use multiple local temporaries for layout and rendering. Silence
 # related stylistic warnings to keep lint focused on higher-risk issues.
 
-
 class FaciesPlotter(BasePlotter):
     """Plotter for facies-correlation summary figures.
 

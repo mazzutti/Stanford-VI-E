@@ -17,7 +17,6 @@ import numpy as np
 import plotly.graph_objects as go
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from matplotlib.image import AxesImage
 from numpy.typing import NDArray
 
 from src.io.loader import DatasetManager
@@ -114,7 +113,7 @@ class PropertyPlotter(ABC):
         vmin: float,
         vmax: float,
         colorbar_label: str,
-    ) -> AxesImage:
+    ) -> Any:
         # Abstract plotting helpers necessarily take multiple configuration
         # parameters to support flexible rendering. Silence pylint's
         # argument-count noise for this abstract API, including positional

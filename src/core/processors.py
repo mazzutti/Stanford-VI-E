@@ -41,7 +41,6 @@ __all__ = ["Processor", "BaseProcessor", "AutoLoggingMixin"]
 # intentionally expose a compact public API. Suppress the simple
 # too-few-public-methods warning to focus lint on real issues.
 
-
 class AutoLoggingMixin:
     """Mixin that automatically configures logging for any class.
 
@@ -74,13 +73,11 @@ class AutoLoggingMixin:
             exc_info=True,
         )
 
-
 # Module note: processor base classes are intentionally compact wrappers
 # used across the codebase to provide consistent interfaces.
 # Some methods intentionally perform imports inside properties to avoid
 # circular imports; silence import-outside-toplevel so pylint focuses
 # on actionable problems in the implementations.
-
 
 class Processor(ABC):
     """Abstract base class for all data processors (unified interface).
@@ -118,7 +115,6 @@ class Processor(ABC):
         Any
             Result of the processor operation (type varies by processor).
         """
-
 
 class BaseProcessor(Processor, AutoLoggingMixin):
     """Base class for data processors providing shared initialization and utilities.

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 def make_plotly_colorbar(
     k_unit: str | None,
     show_colorbar: bool,

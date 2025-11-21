@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast, Sequence
+from typing import TYPE_CHECKING, Any, cast
+from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes

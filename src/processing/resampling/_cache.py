@@ -1,10 +1,8 @@
 """ResamplePlanCache
 
-
 A small LRU cache for ResamplePlan instances keyed by the velocity array
 content and grid/time parameters. Avoids recomputing the same plan when the
 same vp cube is reused across multiple resampling calls.
-
 
 The cache stores a bounded number of entries and evicts least-recently-used
 plans when over capacity.
@@ -29,7 +27,6 @@ logger = logging.getLogger(__name__)
 # Small LRU cache helper with a compact public surface; silence the
 # too-few-public-methods warning for this utility type.
 
-
 @dataclass(frozen=True)
 class _CacheKey:
     grid_shape: tuple[int, ...]
@@ -38,7 +35,6 @@ class _CacheKey:
     target_dt: float | None
     target_nt: int | None
     vp_hash: str
-
 
 class ResamplePlanCache:
     """LRU cache for ResamplePlan objects.
@@ -120,9 +116,7 @@ class ResamplePlanCache:
             self._store.popitem(last=False)
         return plan
 
-
 __all__ = ["ResamplePlanCache", "get_resample_plan_cache", "set_resample_plan_cache"]
-
 
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     """Return the module-level ResamplePlanCache singleton, creating it
@@ -133,7 +127,6 @@ def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
         inst = ResamplePlanCache(maxsize=maxsize)
         setattr(get_resample_plan_cache, "_cache", inst)
     return inst
-
 
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""

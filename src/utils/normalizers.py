@@ -4,7 +4,6 @@ Provides centralized unit alias handling and normalization for velocity,
 density, and other physical quantities.
 """
 
-
 class UnitNormalizer:
     """Normalizes unit strings to canonical forms.
 

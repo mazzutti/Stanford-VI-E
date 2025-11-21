@@ -20,7 +20,6 @@ from src.plotting.helpers.config import PlotConfig
 
 logger = logging.getLogger(__name__)
 
-
 class OverlayPlotter(BasePlotter):
     """Plotter for seismic data with facies boundary overlays.
 

@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 # FileLocator is a small utility class with a compact public surface; silence
 # too-few-public-methods to reduce stylistic noise for this helper.
 
-
 class FileLocator:
     """Locates data files using various search strategies.
 

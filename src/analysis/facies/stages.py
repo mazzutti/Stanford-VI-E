@@ -20,7 +20,6 @@ from src.analysis.pipelines.orchestrator import PipelineStage
 
 logger = logging.getLogger(__name__)
 
-
 class ValidateInputsStage(PipelineStage[Any, Any]):
     """Validates required inputs and configuration.
 
@@ -78,7 +77,6 @@ class ValidateInputsStage(PipelineStage[Any, Any]):
         logger.debug("Inputs validated: cache_dir=%s, domain=%s", cache_dir, domain)
         return input_data
 
-
 class LoadAnalysisDataStage(PipelineStage[Any, Any]):
     """Loads analysis data (seismic, facies, velocity) from cache.
 
@@ -114,7 +112,6 @@ class LoadAnalysisDataStage(PipelineStage[Any, Any]):
         logger.debug("Data loading completed (delegated to AnalysisPipeline)")
         input_data["data_loaded"] = True
         return input_data
-
 
 class DomainTransformationStage(PipelineStage[Any, Any]):
     """Transforms seismic data between time and depth domains as needed.
@@ -164,7 +161,6 @@ class DomainTransformationStage(PipelineStage[Any, Any]):
         input_data["domain_transformed"] = True
         return input_data
 
-
 class BoundaryDetectionStage(PipelineStage[Any, Any]):
     """Detects facies boundaries in 3D facies cube.
 
@@ -204,7 +200,6 @@ class BoundaryDetectionStage(PipelineStage[Any, Any]):
         logger.debug("Detecting facies boundaries...")
         input_data["boundaries_detected"] = True
         return input_data
-
 
 class AvoAnalysisStage(PipelineStage[Any, Any]):
     """Performs comprehensive AVO analysis.
@@ -251,7 +246,6 @@ class AvoAnalysisStage(PipelineStage[Any, Any]):
         input_data["analysis_complete"] = True
         return input_data
 
-
 class ResultsAggregationStage(PipelineStage[Any, Any]):
     """Aggregates analysis results for plotting.
 
@@ -288,7 +282,6 @@ class ResultsAggregationStage(PipelineStage[Any, Any]):
         input_data["results_aggregated"] = True
         return input_data
 
-
 class PlottingStage(PipelineStage[Any, Any]):
     """Generates visualization plots from analysis results.
 
@@ -324,7 +317,6 @@ class PlottingStage(PipelineStage[Any, Any]):
         # Figure generation delegated to existing plotter
         input_data["plotting_complete"] = True
         return input_data
-
 
 def create_facies_analysis_pipeline() -> list["PipelineStage[Any, Any]"]:
     """Create a sequence of pipeline stages for facies analysis.

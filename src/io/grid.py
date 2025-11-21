@@ -11,7 +11,6 @@ from dataclasses import dataclass
 # Type alias for clarity
 GridShape = tuple[int, int, int]
 
-
 @dataclass
 class GridSpec:
     """Encapsulate a 3D grid shape and spacing.
@@ -72,7 +71,6 @@ class GridSpec:
         Useful for compatibility with older helpers that expect a tuple.
         """
         return self.shape, self.dz, self.dt
-
 
 __all__ = ["GridSpec"]
 

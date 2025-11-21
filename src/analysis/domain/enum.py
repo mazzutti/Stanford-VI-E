@@ -7,7 +7,6 @@ from enum import Enum
 
 __all__ = ["Domain"]
 
-
 class Domain(str, Enum):
     """Canonical domain values used across analysis and plotting.
 

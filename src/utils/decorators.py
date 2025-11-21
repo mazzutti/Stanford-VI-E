@@ -28,7 +28,6 @@ __all__ = [
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-
 def log_execution(func: F) -> F:
     """Decorator that logs start and completion of method execution."""
 
@@ -48,10 +47,8 @@ def log_execution(func: F) -> F:
 
     return cast(F, wrapper)
 
-
 # Decorators here are intentionally lightweight and dependency-free so they
 # can be used in performance-sensitive modules without pulling heavy deps.
-
 
 def time_operation(
     label: str = "",
@@ -86,7 +83,6 @@ def time_operation(
 
     return decorator
 
-
 def validate_input(
     validator: Callable[[Any], bool],
     error_msg: str = "Input validation failed",
@@ -104,7 +100,6 @@ def validate_input(
         return cast(F, wrapper)
 
     return decorator
-
 
 def memoize(func: F) -> F:
     """Simple per-process memoize decorator for instance methods."""
@@ -132,7 +127,6 @@ def memoize(func: F) -> F:
     wrapper_any.cache_info = lambda: f"Cache size: {len(cache)}"
 
     return cast(F, wrapper)
-
 
 def retry(
     max_attempts: int = 3,

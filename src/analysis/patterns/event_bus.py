@@ -57,7 +57,6 @@ __all__ = [
     "SubscriptionHandle",
 ]
 
-
 class EventPriority(Enum):
     """Event processing priority levels."""
 
@@ -66,7 +65,6 @@ class EventPriority(Enum):
     NORMAL = 2  # Standard priority
     LOW = 3  # Process after normal
     DEFERRED = 4  # Process when idle
-
 
 @dataclass
 class Event:
@@ -82,7 +80,6 @@ class Event:
             f"id={self.event_id[:8]}..., "
             f"source={self.source})"
         )
-
 
 class EventHandler(ABC):
     """Abstract base class for event handlers."""
@@ -103,7 +100,6 @@ class EventHandler(ABC):
             Handler ID
         """
         return f"{self.__class__.__name__}_{id(self)}"
-
 
 class EventFilter:
     """Filters events based on criteria."""
@@ -132,7 +128,6 @@ class EventFilter:
                 return False
         return True
 
-
 class SubscriptionHandle:
     """Handle for managing event subscriptions."""
 
@@ -157,7 +152,6 @@ class SubscriptionHandle:
             True if unsubscribed, False if not found
         """
         return self.bus.unsubscribe(self.event_type, self.handler)
-
 
 class EventBus:
     """Synchronous event bus for event-driven architecture."""
@@ -334,7 +328,6 @@ class EventBus:
             f"history={len(self._event_history)})"
         )
 
-
 class AsyncEventBus(EventBus):
     """Asynchronous event bus for non-blocking event processing."""
 
@@ -417,7 +410,6 @@ class AsyncEventBus(EventBus):
     ) -> None:
         """Exit context manager."""
         self.stop()
-
 
 class EventDispatcher:
     """Dispatches events with customizable routing."""

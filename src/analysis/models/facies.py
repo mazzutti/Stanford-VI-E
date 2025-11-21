@@ -11,7 +11,6 @@ error handling and reduced code duplication.
 # are intentional; disable import-outside-toplevel warnings with a small
 # justification so pylint focuses on actionable issues.
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -28,7 +27,6 @@ from .formatters import FormattableModel
 __all__ = [
     "FaciesStats",
 ]
-
 
 @total_ordering
 @dataclass(slots=True)

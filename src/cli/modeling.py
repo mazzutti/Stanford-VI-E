@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 # to avoid import-time side-effects and circular imports; disable pylint's
 # import-outside-toplevel for clarity while preserving lazy imports.
 
-
 __all__ = ["load_data", "run_modeling", "save_results"]
-
 
 def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
     """Load static dataset used by the modeling pipeline.
@@ -98,9 +96,7 @@ def load_data() -> tuple[Any, str, dict[str, str], GridSpec]:
 
     return props_depth, data_path, file_map, grid_spec
 
-
 # `args` accepted for CLI compatibility; suppress unused-argument.
-
 
 def run_modeling(
     props_depth: dict[str, Any],
@@ -180,7 +176,6 @@ def run_modeling(
         "ny": ny,
         "nt_samples": nt_samples,
     }
-
 
 def save_results() -> None:
     """Display modeling summary and next steps."""

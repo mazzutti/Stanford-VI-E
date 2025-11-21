@@ -87,10 +87,8 @@ logger = logging.getLogger(__name__)
 
 # Small interface types use compact TypeVar names intentionally.
 
-
 T_Config = TypeVar("T_Config")  # Analyzer-specific configuration type
 T_Result = TypeVar("T_Result")  # Analyzer-specific result type
-
 
 class AnalysisConfig(ABC):
     """Base class for analyzer-specific configuration objects.
@@ -124,7 +122,6 @@ class AnalysisConfig(ABC):
             f"{self.__class__.__name__} must implement to_dict() "
             "or be decorated with @dataclass"
         )
-
 
 class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
     """Unified interface for all domain-specific analyzers.

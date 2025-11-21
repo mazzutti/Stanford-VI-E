@@ -26,17 +26,14 @@ __all__ = [
 # Type variable short names (T, T_In, T_Out) are conventional here; suppress
 # naming warnings to avoid noise across many small protocol modules.
 
-
 # Type variables for generic constraints
 T_In = TypeVar("T_In")  # Input type
 T_Out = TypeVar("T_Out")  # Output type
 T = TypeVar("T")  # Generic type
 
-
 # ============================================================================
 # Core Computational Abstractions
 # ============================================================================
-
 
 @dataclass
 class ComputationResult(Generic[T_Out]):
@@ -57,7 +54,6 @@ class ComputationResult(Generic[T_Out]):
 
     metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
     """Additional metadata about computation (performance, validation details, etc)."""
-
 
 @dataclass
 class AnalysisSchema:
@@ -80,7 +76,6 @@ class AnalysisSchema:
         default_factory=lambda: cast(dict[str, str], {})
     )
     """Any constraints on the analysis (e.g., 'vp >= 1000 m/s')."""
-
 
 class Computer(ABC, Generic[T_In, T_Out]):
     """Abstract base for domain-specific computational components.

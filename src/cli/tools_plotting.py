@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 # Also allow call-time imports in this CLI module which intentionally
 # perform lazy imports to keep the CLI lightweight on import.
 
-
 # Note: call-site imports continue to use inline disables where needed.
-
 
 @tool
 def plot_3d_interactive(argv: list[str] | None = None) -> dict[str, str]:
@@ -69,7 +67,6 @@ def plot_3d_interactive(argv: list[str] | None = None) -> dict[str, str]:
 
     return {"cache_file": avo_fn}
 
-
 @tool
 def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
     """3D orthogonal slice visualization.
@@ -107,7 +104,6 @@ def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
 
     return {"avo": avo_fn or ""}
 
-
 @tool
 def plot_seismic_full_stack(
     domain: str = "time", cache_dir: str = ".cache", out_dir: str = "docs/images"
@@ -137,7 +133,6 @@ def plot_seismic_full_stack(
             print(f"[INFO] Generated: {p}")
     else:
         print(f"[INFO] No caches found for domain: {domain}")
-
 
 @tool
 def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -> None:
@@ -175,7 +170,6 @@ def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -
 
     print(f"[INFO] Successfully generated {len(generated_files)} plot(s)")
     print("[INFO] Rock physics attribute plotting complete!")
-
 
 @tool
 def plot_original_properties(
@@ -244,7 +238,6 @@ def plot_original_properties(
             "count": 0,
             "properties": [],
         }
-
 
 @tool
 def regenerate_all_3d_plots(

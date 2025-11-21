@@ -1,5 +1,0 @@
-{
-  "typeCheckingMode": "basic",
-  "exclude": ["tests", "**/.venv"],
-  "reportMissingImports": false
-}

@@ -11,7 +11,6 @@ from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
-
 class LRUCache(Generic[T]):
     """A tiny LRU cache wrapper around OrderedDict.
 
@@ -64,7 +63,6 @@ class LRUCache(Generic[T]):
         with self._lock:
             return {"maxsize": self.maxsize, "currsize": len(self._data)}
 
-
 class ShardedLRUCache(Generic[T]):
     """A simple sharded LRU cache that composes multiple LRUCache shards.
 
@@ -113,7 +111,6 @@ class ShardedLRUCache(Generic[T]):
         # report maxsize as sum of shard maxsizes
         max_total = sum(s.info().get("maxsize", 0) for s in self._shards)
         return {"maxsize": max_total, "currsize": total}
-
 
 # LRU utilities are intentionally small and dependency-free; they are
 # designed for embedded use in performance-sensitive code paths.

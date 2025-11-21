@@ -1,6 +1,5 @@
 """Simple BackendManager to centralize backend registration and selection.
 
-
 This is intentionally small and aligned with the existing
 `backends` module API. It provides an instance that can be used for
 dependency injection when needed.
@@ -10,7 +9,6 @@ from __future__ import annotations
 
 from src.processing.resampling._plan import ResamplePlan
 from src.processing.resampling.backends._base import ResamplerBackend
-
 
 class BackendManager:
     """Registry and selector for ResamplerBackend implementations.
@@ -81,7 +79,6 @@ class BackendManager:
     def is_verbose(self) -> bool:
         """Return whether verbose selection logging is enabled."""
         return self._verbose
-
 
 __all__ = [
     "BackendManager",

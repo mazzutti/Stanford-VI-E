@@ -51,7 +51,6 @@ T = TypeVar("T")  # legacy/placeholder TypeVar (unused for builder)
 # R is the concrete analyzer return type used by build()
 R = TypeVar("R")
 
-
 class Buildable(ABC, Generic[T]):
     """Protocol for buildable objects.
 
@@ -76,7 +75,6 @@ class Buildable(ABC, Generic[T]):
 
     # Builder helpers are intentionally compact; they provide fluent wiring
     # and are expected to remain minimal.
-
 
 @dataclass
 class AnalysisBuilder:
@@ -368,7 +366,6 @@ class AnalysisBuilder:
         """Return human-readable string."""
         return self.summary()
 
-
 # Convenience factory functions for common builder patterns
 def build_facies_analyzer(**kwargs: Any) -> AnalyzerInterface[Any, Any]:
     """Create a FaciesCorrelationAnalyzer quickly.
@@ -406,7 +403,6 @@ def build_facies_analyzer(**kwargs: Any) -> AnalyzerInterface[Any, Any]:
             builder = builder.with_dependency(key, value)
 
     return builder.build_facies_analyzer()
-
 
 def build_rock_physics_analyzer(**kwargs: Any) -> RockPhysicsAnalyzer:
     """Create a RockPhysicsAnalyzer quickly.

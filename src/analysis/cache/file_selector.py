@@ -13,7 +13,6 @@ __all__ = ["CacheFileSelector"]
 # Small selector helper with a compact public surface; silence the
 # too-few-public-methods warning for this simple utility class.
 
-
 class CacheFileSelector:
     """Select cache files with clear, simple logic."""
 

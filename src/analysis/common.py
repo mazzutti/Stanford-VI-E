@@ -55,7 +55,6 @@ __all__ = ["AnalysisCommon"]
 
 logger = logging.getLogger(__name__)
 
-
 class AnalysisCommon(SingletonMixin, ValidatableMixin):
     """Object-oriented facade exposing analysis helper methods.
 

@@ -44,7 +44,6 @@ __all__ = [
 # Constants
 _FULL_STACK_KEY = "full_stack"
 
-
 class ArrayExtractor(ABC):
     """Abstract base for array extraction from various file formats.
 
@@ -67,7 +66,6 @@ class ArrayExtractor(ABC):
             Extracted array as float64, or None if extraction failed.
 
         """
-
 
 class NpzExtractor(ArrayExtractor):
     """Extracts arrays from NPZ (compressed) archive files.
@@ -160,7 +158,6 @@ class NpzExtractor(ArrayExtractor):
             )
             return None
 
-
 class NpyExtractor(ArrayExtractor):
     """Extracts arrays from NPY (uncompressed) single-array files.
 
@@ -203,7 +200,6 @@ class NpyExtractor(ArrayExtractor):
                 "Failed to extract from NPY array: %s: %s", type(exc).__name__, exc
             )
             return None
-
 
 class ExtractorFactory:
     """Factory for creating appropriate extractors based on file type.

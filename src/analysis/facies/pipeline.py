@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 class AnalysisPipeline:
     """Orchestrator for facies correlation analysis workflow.
 

@@ -19,7 +19,6 @@ from src.analysis.validators_registry import ValidatorRegistry
 # This configuration dataclass intentionally aggregates many tuning
 # parameters; disable the instance-attribute lint for this data holder.
 
-
 @dataclass
 class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
     """Configuration for the rock physics analysis pipeline.

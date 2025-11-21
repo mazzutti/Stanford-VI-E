@@ -52,7 +52,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_CACHE_DIR = ".cache"
 DEFAULT_DOMAIN = Domain.DEPTH
 
-
 class FaciesCorrelationAnalyzer(
     CompositeMixin, PipelineAnalyzer[FaciesCorrelationConfig, Figure]
 ):

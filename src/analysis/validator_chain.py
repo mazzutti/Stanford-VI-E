@@ -64,14 +64,12 @@ T_contra = TypeVar("T_contra", contravariant=True)
 # the too-few-public-methods warning for this module to reduce stylistic
 # noise for simple validator objects.
 
-
 class ValidatorResult(Enum):
     """Result of validation."""
 
     SUCCESS = "success"
     FAILURE = "failure"
     WARNING = "warning"
-
 
 class Validator(Protocol[T_contra]):
     """Protocol for validation functions.
@@ -93,7 +91,6 @@ class Validator(Protocol[T_contra]):
             List of error messages (empty if valid)
         """
         raise NotImplementedError()
-
 
 @dataclass
 class ValidatorChain(Generic[T]):
@@ -260,7 +257,6 @@ class ValidatorChain(Generic[T]):
         """Return human-readable string."""
         return self.summary()
 
-
 @dataclass
 class ValidatorComposite(Generic[T]):
     """Composite validator combining multiple chains with OR logic.
@@ -332,9 +328,7 @@ class ValidatorComposite(Generic[T]):
         """Check if value passes any chain."""
         return len(self.validate(value)) == 0
 
-
 # Built-in validators (composable)
-
 
 def not_none(message: str = "is required") -> Callable[[Any], list[str]]:
     """Validator that checks if value is not None.
@@ -356,7 +350,6 @@ def not_none(message: str = "is required") -> Callable[[Any], list[str]]:
     _not_none.__name__ = "not_none"
     return _not_none
 
-
 def positive(message: str = "must be positive") -> Callable[[Any], list[str]]:
     """Validator that checks if value is positive.
 
@@ -377,7 +370,6 @@ def positive(message: str = "must be positive") -> Callable[[Any], list[str]]:
     _positive.__name__ = "positive"
     return _positive
 
-
 def negative(message: str = "must be negative") -> Callable[[Any], list[str]]:
     """Validator that checks if value is negative.
 
@@ -397,7 +389,6 @@ def negative(message: str = "must be negative") -> Callable[[Any], list[str]]:
 
     _negative.__name__ = "negative"
     return _negative
-
 
 def in_range(
     min_val: int | float,
@@ -428,7 +419,6 @@ def in_range(
 
     _in_range.__name__ = f"in_range({min_val}, {max_val})"
     return _in_range
-
 
 def length_between(
     min_len: int,
@@ -463,7 +453,6 @@ def length_between(
     _length_between.__name__ = f"length_between({min_len}, {max_len})"
     return _length_between
 
-
 def matches_type(
     expected_type: type, message: str | None = None
 ) -> Callable[[Any], list[str]]:
@@ -489,7 +478,6 @@ def matches_type(
 
     _matches_type.__name__ = f"matches_type({expected_type.__name__})"
     return _matches_type
-
 
 def is_callable(message: str = "must be callable") -> Callable[[Any], list[str]]:
     """Validator that checks if value is callable.

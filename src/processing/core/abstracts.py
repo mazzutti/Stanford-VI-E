@@ -21,7 +21,6 @@ from src.core.processors import Processor
 if TYPE_CHECKING:
     from src.processing.resampling._plan import ResamplePlan
 
-
 __all__ = [
     "Processor",
     "Manager",
@@ -30,10 +29,8 @@ __all__ = [
     "Validator",
 ]
 
-
 T = TypeVar("T")
 R = TypeVar("R")
-
 
 class Manager(ABC):
     """Abstract base class for managers.
@@ -74,7 +71,6 @@ class Manager(ABC):
             prefix: Prefix for log messages
         """
 
-
 class Resampler(ABC):
     """Abstract base class for resampling operations.
 
@@ -105,7 +101,6 @@ class Resampler(ABC):
             Inverse resampled data array
         """
 
-
 class MaterialProperty(ABC):
     """Abstract base class for material properties.
 
@@ -135,7 +130,6 @@ class MaterialProperty(ABC):
         Raises:
             ValueError: If validation fails
         """
-
 
 class Validator(ABC):
     """Abstract base class for validators.

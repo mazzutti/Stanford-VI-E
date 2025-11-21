@@ -23,7 +23,6 @@ __all__ = [
     "get_formatting_helper",
 ]
 
-
 # Thin facade for formatting helpers
 class FormattingHelper:
     """Helper class for formatting output."""
@@ -54,10 +53,8 @@ class FormattingHelper:
         """Print cache file information."""
         return print_cache_info(cache_file)
 
-
 # Module-level instance
 _formatting_helper = FormattingHelper()
-
 
 def get_formatting_helper() -> FormattingHelper:
     """Get the formatting helper instance.
@@ -67,16 +64,13 @@ def get_formatting_helper() -> FormattingHelper:
     """
     return _formatting_helper
 
-
 __all__.append("get_formatting_helper")
-
 
 def print_header(title: str) -> None:
     """Log a standardized header block for console output."""
     logger.info("%s", "\n" + "=" * 70)
     logger.info("%s", title)
     logger.info("%s", "=" * 70)
-
 
 def print_angle_summary(
     angles: Sequence[float],
@@ -111,14 +105,12 @@ def print_angle_summary(
             gradient.mean(),
         )
 
-
 def print_selected_angles(
     selected_angles: NDArray[np.floating[Any]], weights: NDArray[np.floating[Any]]
 ) -> None:
     """Log selected angles and their associated weights."""
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
-
 
 def print_cache_info(cache_file: str | None) -> None:
     """Log information about the saved cache file when present."""

@@ -25,7 +25,6 @@ from src.plotting.helpers.config import PlotConfig
 
 logger = logging.getLogger(__name__)
 
-
 def plot_3d_slices_to_png(
     data: NDArray[np.floating[Any]],
     output_path: Any,  # Path or str
@@ -109,7 +108,6 @@ def plot_3d_slices_to_png(
 
     return output_path
 
-
 def _prepare_3d_slice_meta(
     data: NDArray[np.floating[Any]], title: str, units: str
 ) -> tuple[int, int, int, float, float, str]:
@@ -128,7 +126,6 @@ def _prepare_3d_slice_meta(
     # Create colorbar label with units
     colorbar_label: str = f"{title}\n[{units}]"
     return mid_i, mid_j, mid_k, vmin, vmax, colorbar_label
-
 
 def _render_three_slices_to_axes(
     axes: Sequence[Axes],
@@ -192,7 +189,6 @@ def _render_three_slices_to_axes(
     ax2.set_ylabel("Crossline (j)")
     ax2.figure.colorbar(im3, ax=ax2, label=colorbar_label)
 
-
 def _plot_3d_surface(
     ax3d_any: Any,
     x: NDArray[Any],
@@ -223,7 +219,6 @@ def _plot_3d_surface(
 
     # Use short variable names for grid coordinates (x, y, z) — lowercase
     # names satisfy the linting conventions while keeping the code concise.
-
 
 class SlicePlotter(BasePlotter):
     """Plotter for 2D and 3D orthogonal slice visualizations.

@@ -16,7 +16,6 @@ from src.utils.units import UnitRegistry, get_unit_registry
 
 logger = logging.getLogger(__name__)
 
-
 class Quantity:
     """Unit-aware array wrapper with conversion support.
 
@@ -155,9 +154,7 @@ class Quantity:
         """Right multiplication."""
         return self.__mul__(other)
 
-
 __all__ = ["Quantity"]
-
 
 def to_ndarray(obj: NDArray[Any] | Quantity | Any) -> NDArray[Any]:
     """Normalize a `Quantity` or array-like into a plain `ndarray[Any]`.
@@ -166,6 +163,5 @@ def to_ndarray(obj: NDArray[Any] | Quantity | Any) -> NDArray[Any]:
     single, well-typed place to convert Quantity->ndarray.
     """
     return obj.array if isinstance(obj, Quantity) else np.asarray(obj)
-
 
 __all__.append("to_ndarray")

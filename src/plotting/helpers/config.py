@@ -16,7 +16,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 @dataclass
 class PlotConfig:
     """Central configuration for all plotting operations.
@@ -120,7 +119,6 @@ class PlotConfig:
             f"is_categorical={self.is_categorical}, title='{self.title}')"
         )
 
-
 # ============================================================================
 # Matplotlib Initialization Utilities
 # ============================================================================
@@ -130,7 +128,6 @@ __all__ = [
     "setup_matplotlib",
     "init_plotting",
 ]
-
 
 def setup_matplotlib(backend: str | None = "Agg") -> None:
     """Setup matplotlib with backend and default configuration.
@@ -158,7 +155,6 @@ def setup_matplotlib(backend: str | None = "Agg") -> None:
     plt.rcParams["image.resample"] = True
     plt.rcParams["image.composite_image"] = True
 
-
 def init_plotting(backend: str | None = "Agg") -> tuple[ModuleType, ModuleType]:
     """Initialize matplotlib and return (plt, np) for convenience.
 
@@ -170,7 +166,6 @@ def init_plotting(backend: str | None = "Agg") -> tuple[ModuleType, ModuleType]:
     """
     setup_matplotlib(backend)
     return plt, np
-
 
 # Module logger
 logger = logging.getLogger(__name__)

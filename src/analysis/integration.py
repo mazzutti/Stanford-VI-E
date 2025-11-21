@@ -37,7 +37,6 @@ __all__ = [
     "EventSubscriber",
 ]
 
-
 class EventSubscriber:
     """Helper for subscribing to analysis events."""
 
@@ -175,7 +174,6 @@ class EventSubscriber:
         logger.debug("Subscribed to processor execution started events")
         return self
 
-
 class SystemConfiguration:
     """Configuration for the analysis system.
 
@@ -205,7 +203,6 @@ class SystemConfiguration:
             f"retry={self.enable_retry}, "
             f"di={self.enable_dependency_injection})"
         )
-
 
 class AnalysisSystem:
     """Integrated analysis system with all patterns enabled.

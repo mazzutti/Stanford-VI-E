@@ -11,7 +11,6 @@ __all__ = ["GenericFactory"]
 
 T = TypeVar("T")
 
-
 class GenericFactory(Generic[T]):
     """Base factory with registration pattern.
 

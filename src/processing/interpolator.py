@@ -1,9 +1,7 @@
 """BatchedInterpolator
 
-
 Provides a small helper to perform vectorized or block-wise interpolation of
 depth->time (and nearest-neighbor categorical) for many traces at once.
-
 
 This centralizes the flatten/reshape/block logic used in the resampler and
 provides a single place to tune block size vs memory.
@@ -20,7 +18,6 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import interp1d
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class BatchedInterpolator:
@@ -208,7 +205,6 @@ class BatchedInterpolator:
             )
 
         return out
-
 
 __all__ = ["BatchedInterpolator"]
 

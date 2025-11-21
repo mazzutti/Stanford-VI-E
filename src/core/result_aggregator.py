@@ -9,7 +9,6 @@ from typing import Any, cast
 
 __all__ = ["ResultAggregator", "ResultSummary"]
 
-
 @dataclass
 class ResultSummary:
     """Simple result summary container."""
@@ -37,7 +36,6 @@ class ResultSummary:
             "metadata": self.metadata,
             "errors": self.errors,
         }
-
 
 class ResultAggregator:
     """Aggregate analysis results with clean, simple interface.
@@ -118,7 +116,6 @@ class ResultAggregator:
     def _is_metric(value: Any) -> bool:
         """Check if value is a numeric metric."""
         return isinstance(value, (int, float))
-
 
 class ChainableDict(dict[str, Any]):
     """Dictionary with chainable operations for cleaner code."""

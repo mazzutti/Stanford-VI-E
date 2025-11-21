@@ -36,7 +36,6 @@ __all__ = [
     "ProcessorChainBuilder",
 ]
 
-
 class AnalysisBuilderBase(ABC):
     """Abstract base class for analysis builders.
 
@@ -82,7 +81,6 @@ class AnalysisBuilderBase(ABC):
         self._config.clear()
         logger.debug("Reset %s", self.__class__.__name__)
         return self
-
 
 class FaciesAnalyzerBuilder(AnalysisBuilderBase):
     """Fluent builder for FaciesCorrelationAnalyzer configuration.
@@ -280,7 +278,6 @@ class FaciesAnalyzerBuilder(AnalysisBuilderBase):
         )
 
         return analyzer
-
 
 class ProcessorChainBuilder(AnalysisBuilderBase):
     """Fluent builder for processor chain configuration.

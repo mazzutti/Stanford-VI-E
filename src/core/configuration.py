@@ -39,14 +39,11 @@ logger = logging.getLogger(__name__)
 # Allow small helper classes and avoid noisy warnings for simple dataclasses
 # that intentionally expose few public methods.
 
-
 # Some small helper classes in this module intentionally expose a single
 # public method. Suppress the too-few-public-methods warning for these
 # lightweight types to avoid noisy linting while preserving real issues.
 
-
 T = TypeVar("T")
-
 
 __all__ = [
     "ConfigProfile",
@@ -56,7 +53,6 @@ __all__ = [
     "ConfigSource",
     "ConfigSourceRegistry",
 ]
-
 
 class ConfigProfile(Enum):
     """Configuration profiles for different environments."""
@@ -93,10 +89,8 @@ class ConfigProfile(Enum):
                 f"Invalid profile '{value}'. Valid profiles: {valid}"
             ) from exc
 
-
 # Type alias for validator callables to improve type inference
 Validator = Callable[[Any], bool]
-
 
 @dataclass
 class ConfigRule:
@@ -159,7 +153,6 @@ class ConfigRule:
                 return False, f"Validation error for {self.key}: {e}"
 
         return True, None
-
 
 class ConfigValidator:
     """Validates configuration against defined rules.
@@ -239,7 +232,6 @@ class ConfigValidator:
         """Clear all rules."""
         self.rules.clear()
 
-
 class ConfigSource(ABC):
     """Abstract base for configuration sources.
 
@@ -256,7 +248,6 @@ class ConfigSource(ABC):
         dict[str, Any]
             Loaded configuration dictionary
         """
-
 
 class ConfigSourceRegistry:
     """Registry for configuration sources.
@@ -386,7 +377,6 @@ class ConfigSourceRegistry:
                 return config
 
         return _EnvSourceImpl(prefix)
-
 
 class BaseConfig(ABC):
     """Abstract base class for configuration objects.

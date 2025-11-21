@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["FileLoader", "NPZExtractor"]
 
-
 class NPZExtractor:
     """Extract arrays from NPZ archives with a simple, clear interface."""
 
@@ -54,7 +53,6 @@ class NPZExtractor:
             logger.error("Failed to extract from NPZ: %s", e)
 
         return None
-
 
 class FileLoader:
     """Simplified file loading with clean separation of concerns."""

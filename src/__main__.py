@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Entry point remains intentionally explicit; keep startup wiring clear
 
-
 def _terminate_children_on_exit(timeout: float = 1.0) -> None:
     """Attempt to terminate leftover multiprocessing children at exit."""
     try:
@@ -57,7 +56,6 @@ def _terminate_children_on_exit(timeout: float = 1.0) -> None:
         # Defensive: ignore OS/runtime errors while attempting cleanup
         pass
 
-
 # Register cleanup on exit
 atexit.register(_terminate_children_on_exit)
 
@@ -66,7 +64,6 @@ warnings.filterwarnings(
     "ignore",
     message=r"resource_tracker: There appear to be .* leaked semaphore objects",
 )
-
 
 def main() -> bool:
     """Main entry point for the application.
@@ -180,7 +177,6 @@ def main() -> bool:
     modeling.save_results()
 
     return True
-
 
 if __name__ == "__main__":
     main()

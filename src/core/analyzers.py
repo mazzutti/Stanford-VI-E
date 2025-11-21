@@ -62,7 +62,6 @@ __all__ = [
 ConfigT = TypeVar("ConfigT")  # Configuration type
 ResultT = TypeVar("ResultT")  # Result type
 
-
 class AnalyzerState(Enum):
     """Lifecycle state of an analyzer."""
 
@@ -72,7 +71,6 @@ class AnalyzerState(Enum):
     COMPLETED = "completed"  # Analysis finished
     FAILED = "failed"  # Analysis failed
     DISPOSED = "disposed"  # Resources cleaned up
-
 
 @dataclass
 class AnalysisMetrics:
@@ -84,11 +82,9 @@ class AnalysisMetrics:
     memory_used: int = 0
     error_count: int = 0
 
-
 # ============================================================================
 # Core Analyzer Classes
 # ============================================================================
-
 
 class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
     """Abstract base class for all analyzers.
@@ -323,11 +319,9 @@ class BaseAnalyzer(ABC, Generic[ConfigT, ResultT]):
         """Return human-readable string."""
         return f"{self.name} (state={self._state.value})"
 
-
 # ============================================================================
 # Specialized Analyzer Classes
 # ============================================================================
-
 
 class AnalyzerLifecycle(BaseAnalyzer[ConfigT, ResultT]):
     """Enhanced analyzer with lifecycle hooks.
@@ -358,7 +352,6 @@ class AnalyzerLifecycle(BaseAnalyzer[ConfigT, ResultT]):
 
     def on_analysis_failed(self, data: Any, error: Exception) -> None:
         """Called when analysis fails. Override for error handling."""
-
 
 class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
     """Analyzer that chains multiple processing steps.
@@ -400,11 +393,9 @@ class PipelineAnalyzer(BaseAnalyzer[ConfigT, ResultT]):
             result = stage_func(result)
         return cast(ResultT, result)
 
-
 # ============================================================================
 # Mixins for Shared Functionality
 # ============================================================================
-
 
 class CompositeMixin:
     """Mixin for analyzers that compose multiple sub-analyzers."""
@@ -424,7 +415,6 @@ class CompositeMixin:
     def get_sub_analyzer(self, name: str) -> Any:
         """Get sub-analyzer by name."""
         return self._sub_analyzers.get(name)
-
 
 class CacheMixin:
     """Mixin for analyzers that use caching."""
@@ -452,7 +442,6 @@ class CacheMixin:
         self._cache.clear()
         logger.debug("%s: Cache cleared", self.name)
 
-
 class ValidationMixin:
     """Mixin for analyzers with validation requirements."""
 
@@ -474,7 +463,6 @@ class ValidationMixin:
                 logger.warning("%s: Validation failed for %s", self.name, validator)
                 return False
         return True
-
 
 class MetricsMixin:
     """Mixin for tracking analysis metrics."""

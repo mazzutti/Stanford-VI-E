@@ -31,13 +31,11 @@ _RESOURCES_DIR = Path(__file__).parent / "resources"
 # small parameters for caller convenience. Silence a small set of
 # convention/refactor messages that are noise for UI glue code.
 
-
 # Interaction constants (only defaults used by injected JS)
 _WHEEL_ZOOM_SENSITIVITY = 2.5
 _COLORBAR_DEFAULT_LEN = 0.7
 _RESIZE_THROTTLE_MS = 300
 _RETRY_ATTEMPTS = 5
-
 
 class PlotlyPlotter(BasePlotter):
     """Small wrapper to build Plotly 3D figures for volume data.

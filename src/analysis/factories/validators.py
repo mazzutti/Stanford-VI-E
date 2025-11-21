@@ -11,7 +11,6 @@ from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
-
 class TypeValidator:
     """Validates values against expected types.
 
@@ -70,7 +69,6 @@ class TypeValidator:
                 )
 
             return
-
 
 # TypeValidator is a small utility with a compact public surface used by the
 # builder machinery. Silence too-few-public-methods for this helper class.

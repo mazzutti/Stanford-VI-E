@@ -34,7 +34,6 @@ __all__ = [
     "AvoAnalysisResult",
 ]
 
-
 @dataclass(slots=True)
 class GradientCorrelationResult(StatisticalResult, FormattableModel):
     """Represents gradient correlation analysis results with validation.
@@ -187,7 +186,6 @@ class GradientCorrelationResult(StatisticalResult, FormattableModel):
             boundaries=np.array(data["boundaries"], dtype=np.bool_),
         )
 
-
 @dataclass(slots=True)
 class BoundaryAmpsResult(StatisticalResult, FormattableModel):
     """Represents amplitude measurements at and away from boundaries.
@@ -327,7 +325,6 @@ class BoundaryAmpsResult(StatisticalResult, FormattableModel):
             away_from_boundaries=away_from_boundaries,
             boundary_mask=boundary_mask,
         )
-
 
 @dataclass(slots=True)
 class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
@@ -505,7 +502,6 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
             separation_matrix=np.array(data["separation_matrix"]),
             label_order=list(data.get("label_order", facies_stats.keys())),
         )
-
 
 @dataclass
 class InterfaceReflectionResult(StatisticalResult, FormattableModel):
@@ -688,7 +684,6 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
             transitions_summary=transitions_summary,
             interface_stats=interface_stats,
         )
-
 
 @dataclass
 class AvoAnalysisResult(StatisticalResult, FormattableModel):

@@ -44,7 +44,6 @@ from functools import wraps
 from threading import RLock
 from typing import Any
 
-
 class RateLimitExceeded(Exception):
     """Exception raised when rate limit is exceeded."""
 
@@ -61,14 +60,12 @@ class RateLimitExceeded(Exception):
         super().__init__(message)
         self.retry_after = retry_after
 
-
 class RateLimitStrategy(Enum):
     """Rate limiting strategies."""
 
     TOKEN_BUCKET = "token_bucket"
     SLIDING_WINDOW = "sliding_window"
     LEAKY_BUCKET = "leaky_bucket"
-
 
 @dataclass
 class RateLimitStats:
@@ -93,7 +90,6 @@ class RateLimitStats:
         self.rejected_requests = 0
         self.last_reset = time.time()
 
-
 class RateLimiter(ABC):
     """Abstract base class for rate limiters."""
 
@@ -112,7 +108,6 @@ class RateLimiter(ABC):
     @abstractmethod
     def get_stats(self) -> RateLimitStats:
         """Get limiter statistics."""
-
 
 class TokenBucketLimiter(RateLimiter):
     """
@@ -203,7 +198,6 @@ class TokenBucketLimiter(RateLimiter):
             f"TokenBucketLimiter(name={self.name}, "
             f"capacity={self.capacity}, refill_rate={self.refill_rate})"
         )
-
 
 class SlidingWindowLimiter(RateLimiter):
     """
@@ -300,7 +294,6 @@ class SlidingWindowLimiter(RateLimiter):
             f"max_requests={self.max_requests}, window_size={self.window_size})"
         )
 
-
 class LeakyBucketLimiter(RateLimiter):
     """
     Leaky Bucket algorithm implementation.
@@ -393,7 +386,6 @@ class LeakyBucketLimiter(RateLimiter):
             f"capacity={self.capacity}, leak_rate={self.leak_rate})"
         )
 
-
 class RateLimitPolicy:
     """
     Configuration policy for rate limiting.
@@ -447,7 +439,6 @@ class RateLimitPolicy:
             return LeakyBucketLimiter(self.capacity, self.rate, name)
 
         raise ValueError(f"Unknown strategy: {self.strategy}")
-
 
 class RateLimitPool:
     """
@@ -538,7 +529,6 @@ class RateLimitPool:
             return {
                 name: limiter.get_stats() for name, limiter in self._limiters.items()
             }
-
 
 def rate_limit(
     limiter: RateLimiter, tokens: int = 1, raise_on_limit: bool = False

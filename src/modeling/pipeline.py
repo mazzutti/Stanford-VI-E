@@ -33,15 +33,12 @@ logger = logging.getLogger(__name__)
 # time and avoid circular dependencies. Suppress import-order warnings
 # for this module so pylint focuses on actionable problems.
 
-
 # The modeling pipeline orchestrator uses a compact public API and contains
 # procedural methods that may use several local variables for orchestration.
 # Silence the stylistic warnings that are expected for high-level pipeline
 # orchestration functions.
 
-
 __all__ = ["ModelingPipeline"]
-
 
 class ModelingPipeline:
     """Orchestrates the complete AVO modeling workflow.

@@ -16,7 +16,6 @@ __all__ = [
 
 T = TypeVar("T")
 
-
 class ClearStrategy(Protocol):
     """Strategy for clearing resources.
 
@@ -37,7 +36,6 @@ class ClearStrategy(Protocol):
         """
         raise NotImplementedError()
 
-
 class SummarizeStrategy(Protocol):
     """Strategy for summarizing resources.
 
@@ -54,7 +52,6 @@ class SummarizeStrategy(Protocol):
         """
         raise NotImplementedError()
 
-
 class NoOpClearStrategy:
     """No-operation clear strategy.
 
@@ -67,7 +64,6 @@ class NoOpClearStrategy:
         _ = (resource_dir, patterns)
         return 0
 
-
 class NoOpSummarizeStrategy:
     """No-operation summarize strategy.
 
@@ -78,7 +74,6 @@ class NoOpSummarizeStrategy:
     def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Do nothing."""
         _ = (resource_dir, keys)
-
 
 class ResourceManager(BaseManager, Generic[T]):
     """Generic resource manager with pluggable strategies.

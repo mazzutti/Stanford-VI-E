@@ -35,7 +35,6 @@ __all__ = [
     "SynthesisConfig",
 ]
 
-
 def unwrap_quantity(
     value: Quantity | NDArray[np.floating[Any]],
 ) -> NDArray[np.floating[Any]]:
@@ -44,11 +43,9 @@ def unwrap_quantity(
         return value.array
     return np.asarray(value)
 
-
 # Backwards-compatible alias: some tests and callers expect a private
 # helper named `_unwrap_quantity`. Keep an alias to avoid breaking imports.
 _unwrap_quantity = unwrap_quantity
-
 
 @dataclass
 class SynthesisConfig:
@@ -58,7 +55,6 @@ class SynthesisConfig:
     add_noise: bool = False
     snr_db: float = 20
     noise_seed: int | None = None
-
 
 class AngleModel:
     """Manages angle-dependent quality weights and noise characteristics.
@@ -163,7 +159,6 @@ class AngleModel:
             weighted_stack += stack * weight
 
         return weighted_stack
-
 
 class AVOSynthesizer:
     """Synthesizes angle-dependent AVO seismograms from rock properties.

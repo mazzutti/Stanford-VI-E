@@ -11,7 +11,6 @@ from src.utils.units import UnitRegistry
 
 __all__ = ["VsModel", "DensityModel"]
 
-
 @dataclass
 class VsModel(MaterialModel):
     """S-wave velocity model with unit handling.
@@ -51,7 +50,6 @@ class VsModel(MaterialModel):
             raise ValueError("vs contains non-finite values")
         if np.any(vs_arr <= 0.0):
             raise ValueError("vs contains non-positive values")
-
 
 @dataclass
 class DensityModel(MaterialModel):

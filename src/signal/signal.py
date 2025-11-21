@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 # avoid a hard dependency. Suppress import-order warnings at module level
 # with a brief justification so pylint focuses on actionable issues.
 
-
 __all__ = [
     "SeismicSignalProcessor",
 ]
@@ -117,7 +116,7 @@ class SeismicSignalProcessor:
                 trace = reflectivity[i, j, :]
                 seismogram[i, j, :] = _fftconvolve(
                     cast(NDArray[np.float64], trace),
-                    cast(NDArray[np.float64], wavelet_arr),
+                    wavelet_arr,
                     mode=cast(Any, mode),
                 )
 

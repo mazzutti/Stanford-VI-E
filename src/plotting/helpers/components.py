@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 # argument-heavy helpers are by-design; disable the argument-count
 # and positional-argument checks at module level to reduce noisy reports.
 
-
 class SliceExtractor:
     """Extract 2D slices from 3D data cubes.
 
@@ -126,7 +125,6 @@ class SliceExtractor:
             return self.extract_depthslice(cube, idx)
         raise ValueError(f"Unknown orientation: {orientation}")
 
-
 class DataNormalizer:
     """Compute data limits and normalize data for visualization."""
 
@@ -169,7 +167,6 @@ class DataNormalizer:
         cmap = cm.get_cmap("tab10")
         colors = list(cmap(np.linspace(0, 0.4, n_colors)))
         return ListedColormap(colors)
-
 
 class AxisStyler:
     """Apply consistent styling to matplotlib axes."""
@@ -233,7 +230,6 @@ class AxisStyler:
             # in the type stubs; ignore attribute errors only.
             pass
         return cast(Colorbar, cbar)
-
 
 class ImageRenderer:
     """Render 2D arrays as images with colorbars."""

@@ -1,6 +1,5 @@
 """Processing utilities package.
 
-
 High-level processing operations for seismic data transformation, including:
 - Depth/time resampling (ResamplerService)
 - Process management (ManagerHub, ProcessManager, CacheManager, FileManager)
@@ -8,9 +7,7 @@ High-level processing operations for seismic data transformation, including:
 - Rock physics models with caching
 - Material property models with unit handling
 
-
 PHASE 1 REFACTORING: Single unified entry point via ServiceRegistry.
-
 
 The module is organized into subpackages:
     core: Abstract base classes and core interfaces
@@ -19,7 +16,6 @@ The module is organized into subpackages:
     rock_physics: Rock physics data models and caching
     avo: AVO analysis and validation
     resampling: Depth/time resampling (backends, plans, service)
-
 
 Service Registry (OOP Approach - Recommended):
     Use ServiceRegistry for dependency injection and service management:
@@ -37,7 +33,6 @@ Service Registry (OOP Approach - Recommended):
     Or for convenience:
 
         service = ResamplerService()  # Uses default registry internally
-
 
 Key classes:
     ServiceRegistry: OOP service registry for dependency injection (SINGLE ENTRY POINT)
@@ -105,7 +100,6 @@ from src.processing.rock_physics.cache import ModelCache as RockPhysicsModelCach
 from src.processing.rock_physics.model import RockPhysicsModel
 
 logger = logging.getLogger(__name__)
-
 
 __all__ = [
     # Core abstractions

@@ -25,7 +25,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 class DiskCache:
     """Disk-backed cache manager.
 
@@ -254,7 +253,6 @@ class DiskCache:
                 self._futures.clear()
         self._executor.shutdown(wait=wait)
 
-
 def make_disk_cache(
     cache_dir: str = ".cache",
     max_cache_bytes: int = 10 * 1024**3,
@@ -273,10 +271,8 @@ def make_disk_cache(
         periodic_prune_interval_seconds=periodic_prune_interval_seconds,
     )
 
-
 # Module-level singleton instance for the default disk cache.
 default_disk_cache: DiskCache = make_disk_cache()
-
 
 def get_default_disk_cache(
     cache_dir: str | None = None,

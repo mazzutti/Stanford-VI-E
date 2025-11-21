@@ -15,13 +15,11 @@ from src.processing.core.constants import (
 
 __all__ = ["AVOValidator", "AVOValidityReport"]
 
-
 logger = logging.getLogger(__name__)
 
 # Validation helpers for AVO may use several local temporaries for robust
 # checks; silence the local-variable warning for this module to reduce
 # stylistic noise while preserving behavior.
-
 
 @dataclass
 class AVOValidityReport:
@@ -94,7 +92,6 @@ class AVOValidityReport:
             "angle_flag": self.angle_flag,
             "suggested_angles": self.suggested_angles,
         }
-
 
 class AVOValidator(Validator):
     """Validates AVO linearization assumptions and provides recommendations.

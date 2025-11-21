@@ -11,7 +11,6 @@ code paths that trigger R0801 (duplicate-code) findings.
 # argument-count warnings that would otherwise be noisy for this
 # focused plotting helper.
 
-
 from __future__ import annotations
 
 from typing import Any, cast
@@ -23,7 +22,6 @@ from numpy.typing import NDArray
 from src.plotting.helpers.colorbar import make_plotly_colorbar
 from src.plotting.helpers.configs import TraceConfig
 
-
 def _build_mesh_ranges(
     shape: tuple[int, int, int], k_scale_val: float
 ) -> tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float64]]:
@@ -32,7 +30,6 @@ def _build_mesh_ranges(
     j_r: NDArray[np.int64] = np.arange(nj_val, dtype=np.int64)
     k_r: NDArray[np.float64] = np.arange(nk_val, dtype=np.float64) * float(k_scale_val)
     return i_r, j_r, k_r
-
 
 def _make_inline_trace(
     arr_local: NDArray[Any],
@@ -63,7 +60,6 @@ def _make_inline_trace(
         name=f"Inline {inline_i}",
     )
 
-
 def _make_crossline_trace(
     arr_local: NDArray[Any],
     cross_j: int,
@@ -89,7 +85,6 @@ def _make_crossline_trace(
         showscale=False,
         name=f"Crossline {cross_j}",
     )
-
 
 def _make_depth_trace(
     arr_local: NDArray[Any],
@@ -125,7 +120,6 @@ def _make_depth_trace(
             k_unit_local, show_colorbar_local, colorbar_len_local, for_inline=False
         ),
     )
-
 
 def make_plotly_surface_traces(
     arr: NDArray[Any],
@@ -181,7 +175,6 @@ def make_plotly_surface_traces(
     )
 
     return traces_out
-
 
 def make_plotly_surface_traces_from_config(
     arr: NDArray[Any],

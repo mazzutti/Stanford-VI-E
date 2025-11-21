@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from src.io.loader import DatasetManager
 from src.utils.quantity import Quantity
 
-
 def load_depth_properties(
     dm: DatasetManager,
 ) -> dict[str, NDArray[Any] | Quantity | None]:

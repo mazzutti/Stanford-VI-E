@@ -194,9 +194,7 @@ class GradientCorrelationCalculator(BaseProcessor):
                 logger.warning("Zero variance detected in correlation computation")
                 return np.nan, np.nan
 
-            corr, pval = correlation_fn(
-                seismic_grad_valid, cast(NDArray[np.float64], boundaries_valid)
-            )
+            corr, pval = correlation_fn(seismic_grad_valid, boundaries_valid)
             logger.debug(
                 "Computed correlation: %.4f (p=%.4e) using %s",
                 corr,

@@ -1,6 +1,5 @@
 """ResamplePlan
 
-
 Helpers to precompute time axes, two-way time (TWT) arrays, padded axes and
 block layout for resampling operations. This centralizes the decision logic
 used by resamplers (uniform TWT detection, blocks, padded arrays) to avoid
@@ -26,7 +25,6 @@ IndexTuple = tuple[int, int, int]
 # ResamplePlan intentionally stores several computed arrays and helper
 # fields as attributes for efficient reuse. These attributes increase
 # the dataclass attribute count but are correct for the data model.
-
 
 @dataclass
 class ResamplePlan:
@@ -162,9 +160,7 @@ class ResamplePlan:
         b = self.block_size
         return [(start, min(start + b, ntr)) for start in range(0, ntr, b)]
 
-
 __all__ = ["ResamplePlan"]
-
 
 # Module logger
 logger = logging.getLogger(__name__)

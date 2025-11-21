@@ -1,13 +1,10 @@
 """Service registry for dependency injection and singleton management.
 
-
 Centralizes creation and access to all processing services using a class-based
 factory pattern instead of functional decorators.
 
-
 This is the single unified entry point for all services (Phase 1 refactoring).
 All module-level singleton functions are consolidated here.
-
 
 Usage:
     registry = ServiceRegistry.get_default()
@@ -16,7 +13,6 @@ Usage:
     cache = registry.get_resample_cache()
     metrics = registry.get_backend_metrics()
     hub = registry.get_manager_hub()
-
 
 Example:
     >>> from src.processing import ServiceRegistry
@@ -45,12 +41,9 @@ if TYPE_CHECKING:
     from src.processing.resampling.backends._manager import BackendManager
     from src.processing.resampling.service import ResamplerService
 
-
 __all__ = ["ServiceRegistry", "get_registry", "reset_registry"]
 
-
 logger = logging.getLogger(__name__)
-
 
 class ServiceRegistry:
     """Centralized OOP service registry for dependency injection.
@@ -310,7 +303,6 @@ class ServiceRegistry:
         self._instances.clear()
         self._logger.info("Cleared all service instances")
 
-
 def get_registry() -> ServiceRegistry:
     """Get the global service registry singleton.
 
@@ -323,7 +315,6 @@ def get_registry() -> ServiceRegistry:
         inst = ServiceRegistry()
         setattr(get_registry, "_instance", inst)
     return inst
-
 
 def reset_registry() -> None:
     """Reset the global registry (mainly for testing)."""

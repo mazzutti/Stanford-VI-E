@@ -24,7 +24,6 @@ from src.utils.quantity import Quantity
 # helpers at call-time in factory methods; keep the lazy imports and
 # silence pylint's import-outside-toplevel for this module.
 
-
 class SeismogramTopLayersExtractor:
     """Extract top N layers from a 3D seismogram cube.
 
@@ -164,9 +163,7 @@ class SeismogramTopLayersExtractor:
         assert arr is not None
         return cls(arr)
 
-
 __all__ = ["SeismogramTopLayersExtractor", "CacheProvider", "DefaultCacheProvider"]
-
 
 class CacheProvider(Protocol):
     """Protocol describing an injectable cache provider for depth-domain AVO caches."""
@@ -187,7 +184,6 @@ class CacheProvider(Protocol):
         Returns:
             The generated ndarray or ``None`` on failure.
         """
-
 
 class DefaultCacheProvider:
     """Default implementation that uses `CacheManager` and `ModelingPipeline`.

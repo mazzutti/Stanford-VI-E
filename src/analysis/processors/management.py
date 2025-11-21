@@ -72,7 +72,6 @@ T = TypeVar("T")  # Generic processor type
 # REGISTRY SECTION
 # ============================================================================
 
-
 @dataclass
 class ProcessorMetadata:
     """Metadata about a registered processor.
@@ -103,7 +102,6 @@ class ProcessorMetadata:
     def matches_tags(self, required_tags: list[str]) -> bool:
         """Check if processor has all required tags."""
         return all(tag in self.tags for tag in required_tags)
-
 
 class ProcessorRegistry:
     """Central registry for processor creation and management."""
@@ -268,7 +266,6 @@ class ProcessorRegistry:
         domains = {m.domain for m in self._metadata.values()}
         return f"ProcessorRegistry({count} processors in domains: {domains})"
 
-
 def get_default_processor_registry() -> ProcessorRegistry:
     """Get or create the global default processor registry.
 
@@ -280,7 +277,6 @@ def get_default_processor_registry() -> ProcessorRegistry:
         inst = ProcessorRegistry()
         setattr(get_default_processor_registry, "_instance", inst)
     return inst
-
 
 def register_processor(
     name: str,
@@ -306,7 +302,6 @@ def register_processor(
     """
     get_default_processor_registry().register(name, factory, domain=domain, **kwargs)
 
-
 def create_processor(name: str) -> Any:
     """Create a processor from the default registry.
 
@@ -329,11 +324,9 @@ def create_processor(name: str) -> Any:
     """
     return get_default_processor_registry().create(name)
 
-
 # ============================================================================
 # CONFIGURATION SECTION
 # ============================================================================
-
 
 class PadConfig(TypedDict):
     """Type definition for padding configuration dictionaries.
@@ -347,7 +340,6 @@ class PadConfig(TypedDict):
     mode: str
     """Padding mode ('edge', 'constant', 'reflect', etc.)."""
 
-
 class DilationConfig(TypedDict):
     """Type definition for binary dilation configuration dictionaries.
 
@@ -356,7 +348,6 @@ class DilationConfig(TypedDict):
 
     iterations: int
     """Number of dilation iterations."""
-
 
 @dataclass(frozen=True)
 # ProcessorConfig intentionally contains many configuration fields
@@ -455,7 +446,6 @@ class ProcessorConfig:
         ]
         return "\n".join(lines)
 
-
 @dataclass(frozen=True)
 class BoundaryComputationConfig:
     """Immutable configuration for boundary detection and dilation operations.
@@ -505,7 +495,6 @@ class BoundaryComputationConfig:
         ]
         return "\n".join(lines)
 
-
 # ============================================================================
 # UTILITY FUNCTIONS SECTION
 # ============================================================================
@@ -513,7 +502,6 @@ class BoundaryComputationConfig:
 # Statistics strategy support (simplified, no abstraction overhead)
 # Stored in a one-element list so we can mutate without `global`.
 _default_strategy: list[ArrayStatisticsStrategy] = [StandardArrayStatistics()]
-
 
 def set_default_statistics_strategy(strategy: ArrayStatisticsStrategy) -> None:
     """Set default statistics strategy for all operations.
@@ -525,7 +513,6 @@ def set_default_statistics_strategy(strategy: ArrayStatisticsStrategy) -> None:
     """
     _default_strategy[0] = strategy
 
-
 def get_default_statistics_strategy() -> ArrayStatisticsStrategy:
     """Get current default statistics strategy.
 
@@ -535,7 +522,6 @@ def get_default_statistics_strategy() -> ArrayStatisticsStrategy:
         Current default strategy.
     """
     return _default_strategy[0]
-
 
 def convert_numpy_scalars_to_float(
     *values: NDArray[np.floating[Any]] | np.floating[Any],
@@ -558,7 +544,6 @@ def convert_numpy_scalars_to_float(
         return float(val.item() if hasattr(val, "item") else val)
     return tuple(float(v.item() if hasattr(v, "item") else v) for v in values)
 
-
 def compute_quartiles(amps: NDArray[np.float64]) -> tuple[float, float]:
     """Efficiently compute Q1 and Q3 percentiles from amplitude array.
 
@@ -576,7 +561,6 @@ def compute_quartiles(amps: NDArray[np.float64]) -> tuple[float, float]:
     result = convert_numpy_scalars_to_float(*percentiles)
     q1, q3 = cast(tuple[float, float], result)
     return q1, q3
-
 
 def filter_finite_values(
     arr1: NDArray[np.float64], arr2: NDArray[np.float64]
@@ -608,7 +592,6 @@ def filter_finite_values(
 
     return arr1[valid_mask], arr2[valid_mask], n_removed
 
-
 def flatten_and_filter_finite(
     arr: NDArray[np.float64], bool_mask: NDArray[np.bool_]
 ) -> tuple[NDArray[np.float64] | None, NDArray[np.float64] | None]:
@@ -617,7 +600,6 @@ def flatten_and_filter_finite(
     mask_flat = bool_mask.flatten().astype(float)
     arr_filtered, mask_filtered, _ = filter_finite_values(arr_flat, mask_flat)
     return arr_filtered, mask_filtered
-
 
 def reshape_3d_to_2d(
     seismic_cube: NDArray[np.float64], facies_cube: NDArray[np.int64]
@@ -654,7 +636,6 @@ def reshape_3d_to_2d(
 
     return seismic_2d, facies_2d
 
-
 def align_and_reshape(
     aligner: CubeAligner,
     seismic_cube: NDArray[np.float64],
@@ -685,7 +666,6 @@ def align_and_reshape(
     facies_aligned = aligner.align(facies_cube)
     return reshape_3d_to_2d(seismic_aligned, facies_aligned)
 
-
 def compute_vertical_gradient(
     seismic_cube: NDArray[np.float64],
 ) -> NDArray[np.float64]:
@@ -715,7 +695,6 @@ def compute_vertical_gradient(
     )
     return cast(NDArray[np.float64], seismic_grad_abs)
 
-
 def extract_amplitude_subset(
     data: NDArray[np.float64], mask: NDArray[np.bool_], mask_value: bool = True
 ) -> NDArray[np.float64]:
@@ -738,7 +717,6 @@ def extract_amplitude_subset(
     if mask_value:
         return data[mask]
     return data[~mask]
-
 
 def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
     """Compute statistical summary of amplitude array.

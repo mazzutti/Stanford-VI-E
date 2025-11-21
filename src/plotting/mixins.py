@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 from matplotlib.axes import Axes
-from matplotlib.image import AxesImage
+
+# Use a dynamic return type for imshow to avoid mismatches between
+# `matplotlib.axes.AxesImage` and other module-level stubs across
+# different environments. The concrete object is not relied upon by
+# downstream code beyond being image-like, so `Any` keeps typing
+# stable in editors (Pylance) and mypy.
 from numpy.typing import NDArray
 
 from src.plotting.helpers.configs import TraceConfig
@@ -37,8 +42,8 @@ class ImshowWithColorbarMixin:
         vmin: float,
         vmax: float,
         colorbar_label: str,
-    ) -> AxesImage:
-        im: AxesImage = ax.imshow(
+    ) -> Any:
+        im: Any = ax.imshow(
             arr,
             aspect="auto",
             origin="upper",
@@ -53,7 +58,7 @@ class ImshowWithColorbarMixin:
         return im
 
     def _compute_slice_indices_and_bounds(
-        self, data: NDArray[np.floating[Any]], title: str, units: str
+        self, data: NDArray[Any], title: str, units: str
     ) -> tuple[int, int, int, float, float, str]:
         ni, nj, nk = data.shape
         mid_i: int = ni // 2
@@ -65,7 +70,7 @@ class ImshowWithColorbarMixin:
         return mid_i, mid_j, mid_k, float(vmin), float(vmax), colorbar_label
 
     def _make_plotly_traces(
-        self, data: NDArray[np.floating[Any]], cmap: str, units: str
+        self, data: NDArray[Any], cmap: str, units: str
     ) -> tuple[list[go.Surface], int, int, int]:
         ni, nj, nk = data.shape
         mid_i, mid_j, mid_k = ni // 2, nj // 2, nk // 2

@@ -25,7 +25,6 @@ from collections.abc import Iterator, Sequence
 
 logger = logging.getLogger(__name__)
 
-
 class HeaderPrinter:
     """Formats and logs analysis pipeline headers.
 
@@ -292,7 +291,6 @@ class HeaderPrinter:
     def _log(self, message: str) -> None:
         """Log a message at the configured level."""
         self._logger.log(self.log_level, "%s", message)
-
 
 # Module-level convenience instance
 printer = HeaderPrinter()

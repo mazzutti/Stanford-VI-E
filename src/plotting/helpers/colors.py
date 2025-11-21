@@ -15,7 +15,6 @@ from matplotlib import cm
 from matplotlib.colors import BoundaryNorm, ListedColormap, Normalize
 from numpy.typing import NDArray
 
-
 def _resolve_cmap(name: str, n_colors: int | None = None) -> Any:
     """Resolve a Matplotlib colormap by name in a case-insensitive way.
 
@@ -63,7 +62,6 @@ def _resolve_cmap(name: str, n_colors: int | None = None) -> Any:
                     return ListedColormap(colors)
             raise LookupError(f"colormap not found: {name}") from exc
 
-
 def _mpl_to_plotly(name: str, samples: int = 256) -> list[list[float | str]]:
     """Convert a Matplotlib colormap name to a Plotly colorscale list."""
     cmap = _resolve_cmap(name)
@@ -71,7 +69,6 @@ def _mpl_to_plotly(name: str, samples: int = 256) -> list[list[float | str]]:
     colors = [mcolors.to_hex(cmap(s)) for s in scalars]
     step = 1.0 / (len(colors) - 1)
     return [[i * step, colors[i]] for i in range(len(colors))]
-
 
 def _compute_symmetric_bounds(
     arr: NDArray[np.floating[Any]], indices: tuple[int, int, int]
@@ -88,7 +85,6 @@ def _compute_symmetric_bounds(
     p = float(np.percentile(combined, 99.5))
     vmax = float(p) if p != 0.0 else 1.0
     return -vmax, vmax
-
 
 def compute_plotly_colorscale_and_bounds(
     arr: NDArray[np.floating[Any]],
@@ -115,7 +111,6 @@ def compute_plotly_colorscale_and_bounds(
 
     cmin, cmax = _compute_symmetric_bounds(arr, indices)
     return colorscale_to_use, cmin, cmax
-
 
 def prepare_colormap_and_norm(
     volume: NDArray[np.floating[Any]], cmap: str, is_categorical: bool
@@ -145,7 +140,6 @@ def prepare_colormap_and_norm(
         categorical_info = None
 
     return cmap_func, norm, categorical_info
-
 
 def slice_to_rgba(
     slice_arr: NDArray[np.floating[Any]],
@@ -179,7 +173,6 @@ def slice_to_rgba(
     # Palette indexing can produce an array typed as Any; cast to the
     # declared return type so static checkers understand the real shape.
     return cast(NDArray[np.floating[Any]], colors)
-
 
 def prepare_colorbar_mappable(
     cmap_func: Any,

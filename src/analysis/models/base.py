@@ -28,11 +28,9 @@ __all__ = [
     "ANALYSIS_COMPONENTS_COUNT",
 ]
 
-
 # ValidationConfig is a small holder of configuration constants used across
 # the analysis models. It intentionally exposes only class-level constants
 # and may trigger too-few-public-methods; silence that for clarity.
-
 
 class ValidationConfig:
     """Centralized validation configuration for statistical analysis.
@@ -47,18 +45,15 @@ class ValidationConfig:
     PVALUE_MAX: ClassVar[float] = 1.0
     SIGNIFICANCE_THRESHOLD: ClassVar[float] = 0.05
 
-
 # ValidationConfig is a small holder of constants used across the module.
 # It intentionally exposes only class-level constants and may trigger
 # too-few-public-methods lint; silence that as it's a data holder.
-
 
 # Formatting precision constants
 STATS_REPR_PRECISION = 6  # FaciesStats repr output precision
 STR_PRECISION = 4  # FaciesStats str output precision
 SUMMARY_PRECISION = 4  # Default precision for summary string formatting (e.g., 0.0000)
 ANALYSIS_COMPONENTS_COUNT = 4  # AvoAnalysisResult analysis component count
-
 
 class ModelUtilities:
     """Object-oriented utilities for model validation, conversion, and computation.
@@ -432,7 +427,6 @@ class ModelUtilities:
             transition = Transition.from_string_key(transition_data)
             result[transition] = np.array(amps) if amps else None
         return result
-
 
 class StatisticalResult(ABC):
     """Abstract base class for statistical result models.

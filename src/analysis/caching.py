@@ -65,14 +65,12 @@ T = TypeVar("T")
 # Caching utilities intentionally include multiple implementations and
 # ergonomics for tests; keep the module comprehensive and clear.
 
-
 class CacheInvalidationEvent(Enum):
     """Cache invalidation events."""
 
     EVICTED = "evicted"
     EXPIRED = "expired"
     MANUAL = "manual"
-
 
 @dataclass
 class CacheStats:
@@ -98,7 +96,6 @@ class CacheStats:
             f"CacheStats(hits={self.hits}, misses={self.misses}, "
             f"hit_rate={self.hit_rate:.1f}%, size={self.size}/{self.max_size})"
         )
-
 
 class CacheStrategy(ABC):
     """Abstract base class for cache implementations."""
@@ -153,7 +150,6 @@ class CacheStrategy(ABC):
         Returns:
             CacheStats with hit/miss info
         """
-
 
 class LRUCache(CacheStrategy):
     """Least Recently Used cache implementation.
@@ -263,7 +259,6 @@ class LRUCache(CacheStrategy):
                 max_size=self.max_size,
             )
 
-
 class LFUCache(CacheStrategy):
     """Least Frequently Used cache implementation.
 
@@ -370,7 +365,6 @@ class LFUCache(CacheStrategy):
                 size=len(self._cache),
                 max_size=self.max_size,
             )
-
 
 class TTLCache(CacheStrategy):
     """Time-to-Live cache implementation.
@@ -498,7 +492,6 @@ class TTLCache(CacheStrategy):
                 max_size=self.max_size,
             )
 
-
 class FIFOCache(CacheStrategy):
     """First-In-First-Out cache implementation.
 
@@ -601,7 +594,6 @@ class FIFOCache(CacheStrategy):
                 max_size=self.max_size,
             )
 
-
 class CacheManager:
     """Manages multiple named caches.
 
@@ -673,7 +665,6 @@ class CacheManager:
         """String representation."""
         with self._lock:
             return f"CacheManager(caches={list(self._caches.keys())})"
-
 
 def cache_result(
     max_size: int = 1000,

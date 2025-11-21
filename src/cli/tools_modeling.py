@@ -33,7 +33,6 @@ __all__ = [
     "export_top_seismogram_layers",
 ]
 
-
 @tool
 def analysis_rock_physics(
     _venv_python: str | None = None, cache_dir: str = ".cache", _prompt: bool = True
@@ -88,7 +87,6 @@ def analysis_rock_physics(
 
     return True
 
-
 @tool
 def analyze_facies_correlation(
     cache_dir: str = ".cache",
@@ -113,7 +111,6 @@ def analyze_facies_correlation(
         verbose=verbose,
     )
 
-
 @tool
 def seismograms(
     cache_dir: str = ".cache",
@@ -133,7 +130,6 @@ def seismograms(
         skip_cleanup=skip_cleanup,
         verbose=verbose,
     )
-
 
 @tool
 def analysis_seismograms() -> bool:
@@ -208,7 +204,6 @@ def analysis_seismograms() -> bool:
 
     return True
 
-
 @tool
 def regenerate_seismograms() -> bool:
     """Regenerate seismograms without interactive steps."""
@@ -239,7 +234,6 @@ def regenerate_seismograms() -> bool:
         return False
 
     return True
-
 
 @tool
 def export_top_seismogram_layers(

@@ -1,6 +1,5 @@
 """Metrics scaffolding for resampling backends.
 
-
 Provides a PlanFingerprint and a simple in-memory BackendMetrics collector
 that records selection counts and cumulative runtimes per backend and plan
 fingerprint. This is intentionally small and test-friendly.
@@ -12,7 +11,6 @@ import hashlib
 from dataclasses import dataclass
 
 from src.processing.resampling._plan import ResamplePlan
-
 
 @dataclass(frozen=True)
 class PlanFingerprint:
@@ -79,7 +77,6 @@ class PlanFingerprint:
             uniform_twt=bool(plan.uniform_twt),
             vp_hash=h.hexdigest(),
         )
-
 
 class BackendMetrics:
     """In-memory metrics collector for backend selection and runtimes.
@@ -159,7 +156,6 @@ class BackendMetrics:
             Cumulative runtime in seconds (0.0 if no prior runs).
         """
         return float(self.runtimes.get((backend_name, fingerprint.vp_hash), 0.0))
-
 
 __all__ = [
     "PlanFingerprint",

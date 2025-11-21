@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 T_In = TypeVar("T_In")
 T_Out = TypeVar("T_Out")
 
-
 @dataclass
 class StageResult(Generic[T_Out]):
     """Result from executing a pipeline stage.
@@ -76,7 +75,6 @@ class StageResult(Generic[T_Out]):
         """
         status = "✓" if self.success else "✗"
         return f"{status} {self.stage_name} ({self.duration_ms:.1f}ms)"
-
 
 class PipelineStage(ABC, Generic[T_In, T_Out]):
     """Abstract interface for a single pipeline stage.
@@ -177,7 +175,6 @@ class PipelineStage(ABC, Generic[T_In, T_Out]):
             Processed output.
         """
         return self.execute(input_data)
-
 
 class Pipeline(Generic[T_In, T_Out]):
     """Composable pipeline of analysis stages.
@@ -403,7 +400,6 @@ class Pipeline(Generic[T_In, T_Out]):
         """
         return f"Pipeline(name='{self.name}', stages={len(self._stages)})"
 
-
 class ConditionalStage(PipelineStage[T_In, T_Out]):
     """Pipeline stage that executes based on a predicate function.
 
@@ -481,7 +477,6 @@ class ConditionalStage(PipelineStage[T_In, T_Out]):
             Output from inner stage.
         """
         return self._inner_stage.execute(input_data)
-
 
 class ParallelPipeline:
     """Execute multiple pipelines in parallel.

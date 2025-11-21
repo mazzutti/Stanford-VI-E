@@ -8,7 +8,6 @@ from src.io.disk_cache import DiskCache
 
 __all__ = ["ModelCache"]
 
-
 class ModelCache:
     """Manages caches for derived attributes of a rock physics model.
 

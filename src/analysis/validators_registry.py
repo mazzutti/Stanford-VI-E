@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ValidatorRegistry"]
 
-
 class ValidatorRegistry:
     """Central registry for common validation logic.
 

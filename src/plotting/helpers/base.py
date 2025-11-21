@@ -11,7 +11,6 @@ from src.plotting.helpers.config import setup_matplotlib
 
 logger = logging.getLogger(__name__)
 
-
 class BasePlotter(ABC):
     """Abstract base class for all plotting implementations.
 

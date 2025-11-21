@@ -1,6 +1,5 @@
 """Depth <-> Time resampling utilities.
 
-
 Provides a testable Resampler that centralizes depth/time conversions
 using a `GridSpec` object.
 """
@@ -28,7 +27,6 @@ from src.utils.units import UnitRegistry
 
 __all__ = ["DepthTimeResampler", "set_backend_verbose", "is_backend_verbose"]
 
-
 # Module logger
 logger = logging.getLogger(__name__)
 
@@ -38,9 +36,7 @@ logger = logging.getLogger(__name__)
 # with a focused justification so that other genuine issues remain
 # visible in the codebase.
 
-
 # Module-level lazy proxies are defined later in this file
-
 
 # Enable extra backend debug logging if the environment flag is set.
 # Use a mutable container to avoid `global` in setter function.
@@ -58,12 +54,10 @@ if _backend_state.get("verbose"):
         "RESAMPLE_BACKEND_VERBOSE enabled: backend debug logs ON"
     )
 
-
 # Numba-optimized generic resampling kernels. These are defined at
 # module level to avoid nesting compiled functions inside methods which
 # increases function complexity and interferes static analysis.
 # Numba kernels are naturally verbose; allow larger local-variable counts.
-
 
 @njit(parallel=True)
 def _nearest_resample_numba_jitted(
@@ -99,9 +93,7 @@ def _nearest_resample_numba_jitted(
                     else:
                         out_arr[ii, jj, ti] = prop[k]
 
-
 # Numba kernels are naturally verbose; allow larger local-variable counts.
-
 
 @njit(parallel=True)
 def _linear_resample_numba_jitted(
@@ -138,7 +130,6 @@ def _linear_resample_numba_jitted(
                     v1 = trace[k]
                     out_arr[ii, jj, ti] = linear_interpolate_value(t, t0, t1, v0, v1)
 
-
 def set_backend_verbose(on: bool) -> None:
     """Programmatically enable/disable backend verbose logging for this module.
 
@@ -154,11 +145,9 @@ def set_backend_verbose(on: bool) -> None:
         logger.setLevel(logging.INFO)
         logger.info("Backend verbose logging disabled via set_backend_verbose(False)")
 
-
 def is_backend_verbose() -> bool:
     """Return whether backend verbose logging is enabled for this module."""
     return bool(_backend_state.get("verbose"))
-
 
 @dataclass
 class DepthTimeResampler:
@@ -937,9 +926,7 @@ class DepthTimeResampler:
 
         return res_vec.reshape(nt, ni, nj).transpose(1, 2, 0)
 
-
 # Thin factory to provide DepthTimeResampler instances per GridSpec.
-
 
 class ResamplerFactory:
     """Factory that returns cached DepthTimeResampler instances keyed by
@@ -964,17 +951,13 @@ class ResamplerFactory:
             self._cache[key] = DepthTimeResampler(grid_spec=grid_spec)
         return self._cache[key]
 
-
 __all__.extend(["ResamplerFactory"])
 
-
 # Module-level singleton instance for convenient access
-
 
 def _create_resampler_factory() -> ResamplerFactory:
     """Factory function to create ResamplerFactory singleton."""
     return ResamplerFactory()
-
 
 resampler_factory: ResamplerFactory = _create_resampler_factory()
 __all__.append("resampler_factory")

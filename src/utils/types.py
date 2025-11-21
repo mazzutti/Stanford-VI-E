@@ -19,7 +19,6 @@ ClearCacheType = Callable[[list[str] | None, Path | None, str], int]
 OpenFileType = Callable[[str, str], bool]
 SummarizeType = Callable[[str, list[str] | None, str], None]
 
-
 @runtime_checkable
 class ProcessManagerProtocol(Protocol):
     """Protocol describing the minimal ProcessManager interface used by
@@ -53,6 +52,5 @@ class ProcessManagerProtocol(Protocol):
     ) -> None:
         """Summarize cache contents (side-effect logging); no return value."""
         raise NotImplementedError()
-
 
 __all__ = ["ClearCacheType", "OpenFileType", "SummarizeType", "ProcessManagerProtocol"]

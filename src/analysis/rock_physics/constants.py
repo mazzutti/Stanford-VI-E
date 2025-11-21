@@ -5,7 +5,6 @@ from __future__ import annotations
 # Constants container is an intentional data holder and may trigger
 # too-few-public-methods; silence that lint here for clarity.
 
-
 class RockPhysicsConstants:
     """Central repository for rock physics computation constants and defaults.
 

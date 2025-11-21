@@ -14,7 +14,6 @@ from src.analysis.base import AnalysisConfig
 from src.analysis.config_mixins import ValidatableConfigMixin
 from src.analysis.validators_registry import ValidatorRegistry
 
-
 @dataclass
 class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
     """Configuration for facies correlation analysis pipeline.

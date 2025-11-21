@@ -12,7 +12,6 @@ __all__ = ["CacheManager", "CacheClearStrategy", "CacheSummarizeStrategy"]
 # compact public surface. Silence too-few-public-methods to reduce noise
 # for these simple DSL-like helper types.
 
-
 class CacheClearStrategy:
     """Strategy for clearing cache files."""
 
@@ -67,7 +66,6 @@ class CacheClearStrategy:
         except (ImportError, RuntimeError, OSError):
             return 0
 
-
 class CacheSummarizeStrategy:
     """Strategy for summarizing cache files."""
 
@@ -112,7 +110,6 @@ class CacheSummarizeStrategy:
                 self.logger.info("  %s: %s (%.1f MB)", k, latest.name, size_mb)
             else:
                 self.logger.info("  %s: <none>", k)
-
 
 class CacheManager(ResourceManager[Path]):
     """Manages cache directory operations: clearing and summarizing cache files."""

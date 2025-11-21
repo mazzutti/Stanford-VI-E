@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 @dataclass(frozen=True)
 class ColorsConfig:
     """Configuration describing colorscale selection.
@@ -22,7 +21,6 @@ class ColorsConfig:
 
     colorscale: str | list[list[float | str]] = "RdBu"
     is_categorical: bool = False
-
 
 @dataclass(frozen=True)
 class TraceConfig:

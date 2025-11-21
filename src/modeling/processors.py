@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 # avoid import-time cost and circular imports. Silence import-order
 # warnings for this module with a brief justification.
 
-
 __all__ = ["ReflectivityComputer", "WaveletConvolver"]
-
 
 class ReflectivityComputer:
     """Computes angle-dependent reflectivity using Zoeppritz approximation.
@@ -98,7 +96,6 @@ class ReflectivityComputer:
             rc_full[i0:i1] = rc_pad
 
         return rc_full
-
 
 class WaveletConvolver:
     """Performs efficient 3D wavelet convolution on seismic data.

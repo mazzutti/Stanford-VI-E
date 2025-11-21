@@ -34,11 +34,9 @@ logger = logging.getLogger(__name__)
 # to avoid import cycles and reduce CLI/import-time overhead. These late
 # imports are intentional; disable import-order warnings with a short note.
 
-
 # Some factories intentionally have a compact public surface or use multiple
 # internal return paths to implement simple dispatchers. These are low-risk
 # structural shapes; silence the related stylistic noise at module scope.
-
 
 __all__ = [
     "ServiceFactory",
@@ -47,7 +45,6 @@ __all__ = [
     "ComputerServiceFactory",
     "ServiceLocator",
 ]
-
 
 class ServiceFactory(ABC):
     """Base factory for service creation.
@@ -78,7 +75,6 @@ class ServiceFactory(ABC):
         ValueError
             If parameters are invalid.
         """
-
 
 class CacheServiceFactory(ServiceFactory):
     """Factory for cache-related services.
@@ -155,7 +151,6 @@ class CacheServiceFactory(ServiceFactory):
         # satisfy the static checker (CacheLoader implements the protocol
         # at runtime but signatures are slightly more permissive).
         return cast(CacheLoaderProtocol, CacheLoader(selector=_selector))
-
 
 class ProcessorServiceFactory(ServiceFactory):
     """Factory for processor-related services.
@@ -403,7 +398,6 @@ class ProcessorServiceFactory(ServiceFactory):
         logger.debug("Creating FaciesDiscriminationCalculator")
         return FaciesDiscriminationCalculator()
 
-
 class ComputerServiceFactory(ServiceFactory):
     """Factory for computer/calculator services.
 
@@ -491,7 +485,6 @@ class ComputerServiceFactory(ServiceFactory):
 
         logger.debug("Creating FluidFactorComputer")
         return FluidFactorComputer()
-
 
 class ServiceLocator:
     """Service Locator providing centralized access to service factories.

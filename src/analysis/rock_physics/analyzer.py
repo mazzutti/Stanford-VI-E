@@ -45,9 +45,7 @@ logger = logging.getLogger(__name__)
 # Many functions in this module are pipeline wiring and accept several
 # arguments; allow the complexity checks locally for readability.
 
-
 # Local generics not required in this module
-
 
 @dataclass
 class RockPhysicsPipelineResult:
@@ -67,9 +65,7 @@ class RockPhysicsPipelineResult:
     discrimination: dict[str, DiscriminationResult]
     output_path: str | None = None
 
-
 PipelineContext = dict[str, Any]
-
 
 class RockPhysicsAnalyzer(
     CompositeMixin,

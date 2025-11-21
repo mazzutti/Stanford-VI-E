@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ContextBuilder", "GridContext"]
 
-
 @dataclass
 class GridContext:
     """Simplified grid configuration."""
@@ -36,7 +35,6 @@ class GridContext:
         dz = float(config.dz)
         dt = float(config.dt)
         return cls(shape=shape, dz=dz, dt=dt)
-
 
 class ContextBuilder:
     """Build analysis context with simple, clear steps.
@@ -99,7 +97,6 @@ class ContextBuilder:
     def build(self) -> dict[str, Any]:
         """Build final context dictionary."""
         return self.context.copy()
-
 
 class ContextValidator:
     """Validate context contains required fields."""

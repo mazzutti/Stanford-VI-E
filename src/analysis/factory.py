@@ -38,7 +38,6 @@ __all__ = [
 
 T = TypeVar("T")
 
-
 def create_analyzer_with_patterns(
     event_bus: EventBus | None = None,
     container: Container | None = None,
@@ -81,7 +80,6 @@ def create_analyzer_with_patterns(
 
     logger.debug("Analyzer created with patterns successfully")
     return analyzer
-
 
 def _attach_event_bus_to_analyzer(
     analyzer: IntegratedAnalyzer, event_bus: EventBus
@@ -153,7 +151,6 @@ def _attach_event_bus_to_analyzer(
     # This demonstrates the pattern connection point
     logger.debug("Event bus adapter attached to analyzer")
 
-
 def create_event_handler(
     handler_class: type[T],
     container: Container | None = None,
@@ -179,7 +176,6 @@ def create_event_handler(
 
     logger.debug("Event handler created: %s", handler_class.__name__)
     return handler
-
 
 def create_resilient_processor(
     processor_func: Callable[..., Any],
@@ -221,7 +217,6 @@ def create_resilient_processor(
 
     logger.debug("Resilient processor created: %s", processor_func.__name__)
     return resilient_processor
-
 
 class ComponentFactory:
     """Factory for creating components with integrated patterns.

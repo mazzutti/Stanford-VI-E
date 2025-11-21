@@ -24,7 +24,6 @@ __all__ = [
     "SeismogramAnalyzer",
 ]
 
-
 # Object-oriented facade for seismogram utilities
 class SeismogramAnalyzer:
     """Coordinates seismogram analysis and modeling tasks.

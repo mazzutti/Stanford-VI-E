@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 # These late imports are deliberate; disable import-order warnings here
 # so pylint focuses on real problems.
 
-
 __all__ = [
     "Validatable",
     "ValidationHelpers",
@@ -30,7 +29,6 @@ __all__ = [
 ]
 
 T = TypeVar("T")  # TypeVar for generic return type in validate_or_return
-
 
 class Validatable(Protocol):
     """Protocol for objects that can be validated.
@@ -46,7 +44,6 @@ class Validatable(Protocol):
     def assert_valid(self) -> None:
         """Assert object is valid, raise ValidationError if not."""
         raise NotImplementedError()
-
 
 class ValidationHelpers:
     """Helper class for common validation patterns.
@@ -112,7 +109,6 @@ class ValidationHelpers:
                     f"Array '{name}' cannot be empty (shape: {arr.shape})"
                 )
 
-
 class _ValidationErrors:
     """Centralized validation error messages for consistency and maintainability."""
 
@@ -141,7 +137,6 @@ class _ValidationErrors:
             f"Parameter '{param_name}' must be non-negative, got {value}. "
             f"Suggested fix: use a positive integer or zero."
         )
-
 
 class ArrayValidator:
     """Centralized validation logic for array inputs to processors.
@@ -235,7 +230,6 @@ class ArrayValidator:
         if value < 0:
             raise ValueError(_ValidationErrors.invalid_parameter(param_name, value))
 
-
 class DomainValidator:
     """Centralized validation for Domain enums.
 
@@ -303,7 +297,6 @@ class DomainValidator:
             )
 
         return domain
-
 
 class PathValidator:
     """Centralized validation for file paths and directories.

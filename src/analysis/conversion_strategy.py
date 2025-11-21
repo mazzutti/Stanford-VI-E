@@ -30,7 +30,6 @@ __all__ = [
     "VelocityConversionStrategy",
 ]
 
-
 class UnitType(str, Enum):
     """Enumeration of supported unit types."""
 
@@ -38,7 +37,6 @@ class UnitType(str, Enum):
     TIME = "time"
     DEPTH = "depth"
     AMPLITUDE = "amplitude"
-
 
 class ConversionStrategy(ABC):
     """Abstract base class for unit conversion strategies.
@@ -102,7 +100,6 @@ class ConversionStrategy(ABC):
     def __repr__(self) -> str:
         """Return string representation."""
         return f"{self.__class__.__name__}({self.from_unit} → {self.to_unit})"
-
 
 class VelocityConversionStrategy(ConversionStrategy):
     """Strategy for velocity unit conversions.
@@ -181,7 +178,6 @@ class VelocityConversionStrategy(ConversionStrategy):
         """Target unit name."""
         return self._to_unit
 
-
 class TimeConversionStrategy(ConversionStrategy):
     """Strategy for time unit conversions.
 
@@ -259,7 +255,6 @@ class TimeConversionStrategy(ConversionStrategy):
         """Target unit name."""
         return self._to_unit
 
-
 class DepthConversionStrategy(ConversionStrategy):
     """Strategy for depth/distance unit conversions.
 
@@ -336,7 +331,6 @@ class DepthConversionStrategy(ConversionStrategy):
     def to_unit(self) -> str:
         """Target unit name."""
         return self._to_unit
-
 
 class AmplitudeConversionStrategy(ConversionStrategy):
     """Strategy for seismic amplitude unit conversions.
@@ -423,7 +417,6 @@ class AmplitudeConversionStrategy(ConversionStrategy):
     def to_unit(self) -> str:
         """Target unit name."""
         return self._to_unit
-
 
 class ConversionStrategyFactory:
     """Factory for creating conversion strategies.

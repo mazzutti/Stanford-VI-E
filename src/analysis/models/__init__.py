@@ -19,7 +19,6 @@ from __future__ import annotations
 # This package aggregates many public symbols and long import lines for
 # convenience; silence long-line warnings at module scope.
 
-
 # Duplicate `__all__` exports across small modules are intentional for
 # explicit public API assembly; silence duplicate-code here.
 # pylint: disable=duplicate-code

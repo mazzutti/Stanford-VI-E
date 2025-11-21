@@ -16,9 +16,7 @@ from src.utils.quantity import Quantity
 # and circular dependencies (e.g., DiskCache and ModelCache). Relax import
 # ordering checks in this module so lint focuses on functional issues.
 
-
 __all__ = ["RockPhysicsModel"]
-
 
 import logging
 
@@ -28,7 +26,6 @@ logger = logging.getLogger(__name__)
 # method scope to prevent import-time side effects and circular imports.
 # These deferred imports are intentional; disable the import-order
 # warnings at module level with a short justification.
-
 
 @dataclass
 class RockPhysicsModel:

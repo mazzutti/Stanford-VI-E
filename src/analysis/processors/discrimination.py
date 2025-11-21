@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["FaciesDiscriminationCalculator"]
 
-
 class FaciesDiscriminationCalculator(BaseProcessor):
     """Calculates facies discrimination capability using amplitude statistics."""
 

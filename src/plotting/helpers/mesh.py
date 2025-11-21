@@ -15,7 +15,6 @@ import numpy as np
 # numerical code. These names are conventional in geometry/math code and
 # are intentionally allowed here.
 
-
 @dataclass(frozen=True)
 class Coords:
     """Simple container for 1D coords and separation value."""
@@ -24,7 +23,6 @@ class Coords:
     y: np.ndarray
     z: np.ndarray
     sep: float
-
 
 @dataclass(frozen=True)
 class MeshGrids:
@@ -40,14 +38,12 @@ class MeshGrids:
     xz: "PlaneXZ"
     yz: "PlaneYZ"
 
-
 @dataclass(frozen=True)
 class CoordsAndGrids:
     """Wrapper grouping `Coords` and `MeshGrids` together."""
 
     coords: Coords
     grids: MeshGrids
-
 
 def compute_1d_coords_and_sep(
     shape: tuple[int, int, int], spacing: tuple[float, float, float]
@@ -71,7 +67,6 @@ def compute_1d_coords_and_sep(
     sep = rng * 1e-6
     return Coords(x=x, y=y, z=z, sep=sep)
 
-
 def compute_plane_xy(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneXY":
     """Compute mesh arrays for the inline-crossline (XY) plane."""
     x, y, z = coords.x, coords.y, coords.z
@@ -83,7 +78,6 @@ def compute_plane_xy(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneXY":
     Z = np.full_like(X, z[iz] + coords.sep)
     return PlaneXY(x=X, y=Y, z=Z)
 
-
 def compute_plane_xz(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneXZ":
     """Compute mesh arrays for the inline-depth (XZ) plane."""
     x, y, z = coords.x, coords.y, coords.z
@@ -91,7 +85,6 @@ def compute_plane_xz(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneXZ":
     X2, Z2 = np.meshgrid(x, z, indexing="ij")
     Y2 = np.full_like(X2, y[iy] - coords.sep)
     return PlaneXZ(x=X2, y=Y2, z=Z2)
-
 
 def compute_plane_yz(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneYZ":
     """Compute mesh arrays for the crossline-depth (YZ) plane."""
@@ -101,11 +94,9 @@ def compute_plane_yz(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneYZ":
     X3 = np.full_like(Y3, x[ix] + coords.sep)
     return PlaneYZ(x=X3, y=Y3, z=Z3)
 
-
 # Use short coordinate variable names across this module for clarity in
 # numerical code. These names are conventional in geometry/math code and
 # are intentionally allowed here.
-
 
 @dataclass(frozen=True)
 class PlaneXY:
@@ -115,7 +106,6 @@ class PlaneXY:
     y: np.ndarray
     z: np.ndarray
 
-
 @dataclass(frozen=True)
 class PlaneXZ:
     """Mesh arrays for the inline-depth (XZ) plane."""
@@ -123,7 +113,6 @@ class PlaneXZ:
     x: np.ndarray
     y: np.ndarray
     z: np.ndarray
-
 
 @dataclass(frozen=True)
 class PlaneYZ:
@@ -133,14 +122,12 @@ class PlaneYZ:
     y: np.ndarray
     z: np.ndarray
 
-
 def compute_mesh_grids(coords: Coords, idxs: tuple[int, int, int]) -> MeshGrids:
     """Compute the various mesh grids used to build quad faces."""
     xy_plane = compute_plane_xy(coords, idxs)
     xz_plane = compute_plane_xz(coords, idxs)
     yz_plane = compute_plane_yz(coords, idxs)
     return MeshGrids(xy=xy_plane, xz=xz_plane, yz=yz_plane)
-
 
 def compute_coords_and_grids(
     shape: tuple[int, int, int],
@@ -151,7 +138,6 @@ def compute_coords_and_grids(
     coords = compute_1d_coords_and_sep(shape, spacing)
     grids = compute_mesh_grids(coords, idxs)
     return CoordsAndGrids(coords=coords, grids=grids)
-
 
 def add_quads_to_lists(
     faces: list[list[tuple[float, float, float]]],

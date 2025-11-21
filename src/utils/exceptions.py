@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-
 def safe_call(
     func: Callable[..., Any],
     *args: Any,
@@ -59,7 +58,6 @@ def safe_call(
         if log_exceptions:
             logger.error("Error calling %s: %s", func.__name__, exc, exc_info=True)
         return default
-
 
 def ignore_errors(
     exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
@@ -95,7 +93,6 @@ def ignore_errors(
         return cast(F, wrapper)
 
     return decorator
-
 
 def log_errors(
     exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
@@ -137,7 +134,6 @@ def log_errors(
         return cast(F, wrapper)
 
     return decorator
-
 
 def handle_errors(
     exc_types: type[BaseException] | tuple[type[BaseException], ...] = Exception,
@@ -186,7 +182,6 @@ def handle_errors(
         return cast(F, wrapper)
 
     return decorator
-
 
 @contextmanager
 def safe_context(

@@ -46,7 +46,6 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")  # Generic config type
 
-
 class Configurable(Protocol):
     """Protocol for objects that can be configured.
 
@@ -62,7 +61,6 @@ class Configurable(Protocol):
             Configuration object
         """
         raise NotImplementedError()
-
 
 @dataclass
 class ConfigBuilder(Generic[T]):
@@ -362,9 +360,7 @@ class ConfigBuilder(Generic[T]):
         """Return human-readable string."""
         return self.__repr__()
 
-
 # Convenience factory functions
-
 
 def build_config(config_class: type[T], **kwargs: Any) -> T:
     """Quick factory to build a configuration.
@@ -389,7 +385,6 @@ def build_config(config_class: type[T], **kwargs: Any) -> T:
     for key, value in kwargs.items():
         builder.set(key, value)
     return builder.build()
-
 
 def config_with_defaults(
     config_class: type[T], defaults: dict[str, Any], **kwargs: Any

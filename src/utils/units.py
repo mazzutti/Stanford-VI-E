@@ -16,7 +16,6 @@ from numpy.typing import ArrayLike, NDArray
 
 logger = logging.getLogger(__name__)
 
-
 def _nanmax_abs(a: NDArray[np.floating[Any]]) -> float:
     """Helper to safely compute max absolute value."""
     try:
@@ -25,7 +24,6 @@ def _nanmax_abs(a: NDArray[np.floating[Any]]) -> float:
             return float(np.nanmax(np.abs(a)))
     except (ValueError, TypeError, FloatingPointError):
         return float("inf")
-
 
 class Converter(ABC):
     """Abstract base class for unit converters.
@@ -59,7 +57,6 @@ class Converter(ABC):
     def can_convert(self, from_unit: str, to_unit: str) -> bool:
         """Check if this converter can handle the conversion."""
 
-
 class VelocityConverter(Converter):
     """Converts between velocity units (m/s <-> km/s)."""
 
@@ -90,7 +87,6 @@ class VelocityConverter(Converter):
         """Check if both units are supported velocity units."""
         return from_unit in self.canonical_units and to_unit in self.canonical_units
 
-
 class DensityConverter(Converter):
     """Converts between density units (kg/m3 <-> g/cc)."""
 
@@ -120,7 +116,6 @@ class DensityConverter(Converter):
     def can_convert(self, from_unit: str, to_unit: str) -> bool:
         """Check if both units are supported density units."""
         return from_unit in self.canonical_units and to_unit in self.canonical_units
-
 
 class TimeConverter(Converter):
     """Converts time values with heuristic detection."""
@@ -160,7 +155,6 @@ class TimeConverter(Converter):
         """Time converter works with any time-like units."""
         return to_unit in ("s", "seconds")
 
-
 class LengthConverter(Converter):
     """Converts length values with heuristic detection."""
 
@@ -193,7 +187,6 @@ class LengthConverter(Converter):
     def can_convert(self, from_unit: str, to_unit: str) -> bool:
         """Length converter works with any length-like units."""
         return to_unit in ("m", "meters")
-
 
 class UnitRegistry:
     """Central registry managing all unit conversions.
@@ -303,7 +296,6 @@ class UnitRegistry:
             return a.copy(), False
         return a, False
 
-
 __all__ = [
     "Converter",
     "VelocityConverter",
@@ -316,10 +308,8 @@ __all__ = [
 # Module-level registry singleton (eagerly initialized)
 unit_registry: UnitRegistry = UnitRegistry()
 
-
 def get_unit_registry(instance: UnitRegistry | None = None) -> UnitRegistry:
     """Return provided UnitRegistry or the module-level singleton."""
     return instance if instance is not None else unit_registry
-
 
 __all__.extend(["unit_registry", "get_unit_registry"])

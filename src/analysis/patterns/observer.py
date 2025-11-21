@@ -43,7 +43,6 @@ __all__ = [
     "LoggingObserver",
 ]
 
-
 class EventType:
     """Event type constants for analysis notifications"""
 
@@ -69,7 +68,6 @@ class EventType:
     # Error events
     ERROR_OCCURRED = "error_occurred"
     WARNING_ISSUED = "warning_issued"
-
 
 class AnalysisEvent:
     """Encapsulates an analysis event with metadata"""
@@ -104,7 +102,6 @@ class AnalysisEvent:
             f"AnalysisEvent(type={self.event_type!r}, "
             f"source={self.source!r}, timestamp={self.timestamp})"
         )
-
 
 class AnalysisObserver(ABC):
     """Abstract base class for analysis event observers.
@@ -143,7 +140,6 @@ class AnalysisObserver(ABC):
         Args:
             event: AnalysisEvent with progress data
         """
-
 
 class Observable:
     """Mixin to add observable behavior to any analysis component.
@@ -248,7 +244,6 @@ class Observable:
         """Get the number of attached observers"""
         return len(self._observers)
 
-
 class ProgressObserver(AnalysisObserver):
     """Observer that tracks and reports progress updates.
 
@@ -286,7 +281,6 @@ class ProgressObserver(AnalysisObserver):
             self.message = event.context["message"]
 
         logger.info("%s: %s (%.1f%%)", self.name, self.message, self.progress * 100)
-
 
 class LoggingObserver(AnalysisObserver):
     """Observer that logs all analysis events.

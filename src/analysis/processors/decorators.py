@@ -15,7 +15,6 @@ __all__ = ["ProcessorDecorators"]
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-
 class ProcessorDecorators:
     """Factory for processor decorators providing logging and performance monitoring.
 

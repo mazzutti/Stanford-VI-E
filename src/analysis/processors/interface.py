@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["InterfaceReflectionAnalyzer"]
 
-
 class InterfaceReflectionAnalyzer(BaseProcessor):
     """Analyzes reflection amplitudes at facies interfaces."""
 

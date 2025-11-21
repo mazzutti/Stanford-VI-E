@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 # Small pruning helpers and strategy classes intentionally expose a
 # compact public surface; silence too-few-public-methods for clarity.
 
-
 def should_expire_by_ttl(
     file_path: Path,
     ttl_seconds: int | None,
@@ -66,7 +65,6 @@ def should_expire_by_ttl(
         return age_seconds > ttl_seconds
     except (OSError, ValueError):
         return False
-
 
 def should_expire_by_size(
     files: Sequence[Path],
@@ -105,7 +103,6 @@ def should_expire_by_size(
         return total > max_cache_bytes
     except (OSError, ValueError):
         return False
-
 
 @dataclass
 class PruneStrategy:
@@ -230,7 +227,6 @@ class PruneStrategy:
         except (OSError, ValueError):
             return sys.maxsize
 
-
 @dataclass
 class PruneResult:
     """Results from a pruning operation.
@@ -262,7 +258,6 @@ class PruneResult:
         if self.errors > 0:
             msg += f", {self.errors} errors"
         return msg
-
 
 class Pruner:
     """Executes cache pruning strategy and removes files.

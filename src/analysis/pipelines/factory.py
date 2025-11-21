@@ -25,7 +25,6 @@ __all__ = [
 # Lightweight pipeline stage builders and factories; intentionally concise
 # to keep pipeline wiring straightforward.
 
-
 class StageBuilder(PipelineStage[Any, Any]):
     """Convenience base class for building stages with common patterns."""
 
@@ -56,7 +55,6 @@ class StageBuilder(PipelineStage[Any, Any]):
         """Add a precondition for execution."""
         self._precondition = predicate
         return self
-
 
 class StageFactory:
     """Factory for creating stages with fluent configuration."""

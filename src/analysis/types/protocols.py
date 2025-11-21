@@ -19,7 +19,6 @@ from src.io.loader import DatasetManager
 if TYPE_CHECKING:
     from src.analysis.models import AvoResults
 
-
 __all__ = [
     "T",
     "ResamplePlan",
@@ -36,16 +35,13 @@ __all__ = [
 # Protocol helper objects are intentionally compact; suppress noisy
 # too-few-public-methods warnings for these thin protocol shims.
 
-
 # Type variable for generic protocols
 T = TypeVar("T")
-
 
 # ============================================================================
 # Resampling Protocols
 # ============================================================================
 # Protocols for converting seismic data between time and depth domains.
-
 
 class ResamplePlan(Protocol):
     """Opaque plan marker used by the resampler.
@@ -53,7 +49,6 @@ class ResamplePlan(Protocol):
     This is a marker protocol that represents a resampling plan.
     Implementations may store plan data and state needed for resampling.
     """
-
 
 class Resampler(Protocol):
     """Protocol for resampling seismic data in depth-time conversion.
@@ -80,7 +75,6 @@ class Resampler(Protocol):
         """
         raise NotImplementedError()
 
-
 class ResamplerFactory(Protocol):
     """Factory for creating Resampler instances.
 
@@ -98,7 +92,6 @@ class ResamplerFactory(Protocol):
             Configured Resampler instance ready for use
         """
         raise NotImplementedError()
-
 
 class TimeResampler(Protocol):
     """Protocol for resampling data to uniform time intervals.
@@ -122,12 +115,10 @@ class TimeResampler(Protocol):
         """
         raise NotImplementedError()
 
-
 # ============================================================================
 # Cache Protocols
 # ============================================================================
 # Protocols for caching and loading seismic analysis data.
-
 
 class CacheLoaderProtocol(Protocol):
     """Protocol for loading cache files from disk.
@@ -162,7 +153,6 @@ class CacheLoaderProtocol(Protocol):
             Loaded array or None if file cannot be loaded
         """
         raise NotImplementedError()
-
 
 class CacheProtocol(Protocol, Generic[T]):
     """Protocol for generic caching implementations.
@@ -214,12 +204,10 @@ class CacheProtocol(Protocol, Generic[T]):
         """
         raise NotImplementedError()
 
-
 # ============================================================================
 # Factory & Strategy Protocols
 # ============================================================================
 # Protocols for creating objects and implementing custom strategies.
-
 
 class SelectorProtocol(Protocol):
     """Protocol for cache file selection strategies.
@@ -240,7 +228,6 @@ class SelectorProtocol(Protocol):
         """
         raise NotImplementedError()
 
-
 class ArchiveExtractorProtocol(Protocol):
     """Protocol for extracting data from archive files.
 
@@ -258,7 +245,6 @@ class ArchiveExtractorProtocol(Protocol):
             Extracted data array or None if extraction fails
         """
         raise NotImplementedError()
-
 
 class DatasetManagerFactory(Protocol):
     """Factory for creating DatasetManager instances.
@@ -281,7 +267,6 @@ class DatasetManagerFactory(Protocol):
             Configured DatasetManager instance ready for use
         """
         raise NotImplementedError()
-
 
 class PlotterProtocol(Protocol):
     """Protocol for creating analysis result visualizations.

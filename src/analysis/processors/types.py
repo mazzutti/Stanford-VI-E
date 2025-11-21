@@ -29,7 +29,6 @@ __all__ = [
 # Allow non-PascalCase TypeVar names used across the codebase for readability
 # in type hints (StatsType etc.). This is stylistic and safe to relax.
 
-
 # Specific array types for cleaner type hints
 Float64Array = NDArray[np.float64]
 """Type alias for 64-bit float arrays."""
@@ -55,7 +54,6 @@ StatsType = TypeVar("StatsType")
 
 # Allow non-PascalCase TypeVar names used across the codebase for readability
 # in type hints (StatsType etc.). This is stylistic and safe to relax.
-
 
 # Common result type aliases
 FilterResult = tuple[Float64Array, Float64Array, int]

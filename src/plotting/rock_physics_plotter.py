@@ -21,7 +21,6 @@ from src.plotting.helpers.config import PlotConfig
 
 logger = logging.getLogger(__name__)
 
-
 class RockPhysicsPlotter(BasePlotter):
     """Plotter for rock physics attributes.
 

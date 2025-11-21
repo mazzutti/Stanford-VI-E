@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 # thin data holders and I/O helpers. Silence the too-few-public-methods
 # warning to reduce noise for these simple types.
 
-
 class GSLibConfig:
     """Configuration for GSLIB file reading.
 
@@ -52,7 +51,6 @@ class GSLibConfig:
         "s-wave": "Svelocity.dat",
     }
     """Mapping of velocity folder name patterns to special filename conventions."""
-
 
 class GSLibReader:
     """Reader for GSLIB format files.

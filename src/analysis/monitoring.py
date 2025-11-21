@@ -32,7 +32,6 @@ Usage:
 # Module-level pylint disables: allow constructor/parameter names that match
 # the module `logger` variable to avoid renaming public API parameters.
 
-
 import json
 import logging
 import statistics
@@ -49,7 +48,6 @@ from typing import Any, Literal, cast
 
 logger = logging.getLogger(__name__)
 
-
 class LogLevel(Enum):
     """Standard log levels."""
 
@@ -59,7 +57,6 @@ class LogLevel(Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
-
 class MetricType(Enum):
     """Types of metrics."""
 
@@ -67,7 +64,6 @@ class MetricType(Enum):
     GAUGE = "gauge"  # Point-in-time value
     HISTOGRAM = "histogram"  # Distribution of values
     TIMER = "timer"  # Timing measurements
-
 
 @dataclass
 class LogEvent:
@@ -87,7 +83,6 @@ class LogEvent:
     def __str__(self) -> str:
         return f"[{self.timestamp}] {self.level}: {self.message}"
 
-
 @dataclass
 class MetricValue:
     """A single metric value."""
@@ -103,7 +98,6 @@ class MetricValue:
         return f"{self.name}({self.type.value}): {self.value}" + (
             f" [{tags_str}]" if tags_str else ""
         )
-
 
 @dataclass
 class PerformanceMetrics:
@@ -133,7 +127,6 @@ class PerformanceMetrics:
         status = "✓" if self.success else "✗"
         duration_ms = (self.duration * 1000) if self.duration else "N/A"
         return f"{status} {self.name}: {duration_ms:.2f}ms"
-
 
 class StructuredLogger:
     """
@@ -237,7 +230,6 @@ class StructuredLogger:
         _exc_tb: TracebackType | None,
     ) -> None:
         """Context manager exit."""
-
 
 class MetricsCollector:
     """
@@ -388,7 +380,6 @@ class MetricsCollector:
         with self._lock:
             self._metrics.clear()
 
-
 class PerformanceMonitor:
     """
     Context manager for monitoring performance of operations.
@@ -450,7 +441,6 @@ class PerformanceMonitor:
         """Get performance metrics."""
         return self.metrics
 
-
 class HealthCheck(ABC):
     """Abstract base class for health checks."""
 
@@ -467,7 +457,6 @@ class HealthCheck(ABC):
     @abstractmethod
     def name(self) -> str:
         """Name of the health check."""
-
 
 class SimpleHealthCheck(HealthCheck):
     """Simple callable-based health check."""
@@ -494,7 +483,6 @@ class SimpleHealthCheck(HealthCheck):
     def name(self) -> str:
         """Name of the health check."""
         return self._name
-
 
 class HealthCheckRegistry:
     """
@@ -548,7 +536,6 @@ class HealthCheckRegistry:
             True if all checks pass, False otherwise
         """
         return all(self.check_all().values())
-
 
 def monitor(
     logger: StructuredLogger | None = None,

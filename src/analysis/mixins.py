@@ -40,7 +40,6 @@ if TYPE_CHECKING:
 # Allow compact TypeVar/class names used across mixins for readability.
 # This module intentionally uses short/helper names in a few places.
 
-
 __all__ = [
     "SingletonMixin",
     "ValidatableMixin",
@@ -54,7 +53,6 @@ T = TypeVar("T")
 # Allow compact TypeVar names used across mixins for readability.
 
 T_Config = TypeVar("T_Config")
-
 
 class classproperty:
     """Descriptor that acts like a property on instances and a read-only
@@ -73,7 +71,6 @@ class classproperty:
         if objtype is None:
             objtype = type(obj)
         return self._func(objtype)
-
 
 class SingletonMixin:
     """Mixin providing thread-safe singleton pattern with optional reconfiguration.
@@ -137,7 +134,6 @@ class SingletonMixin:
         with getattr(cls, "_lock"):
             return cast(T | None, getattr(cls, "_instance", None))
 
-
 class ValidatableMixin:
     """Mixin providing protocol validation for dependency injection.
 
@@ -199,7 +195,6 @@ class ValidatableMixin:
             protocol_name=self.__class__.__name__,
         )
 
-
 class ConfigurableMixin(Generic[T_Config]):
     """Mixin for standard configuration management with validation.
 
@@ -255,7 +250,6 @@ class ConfigurableMixin(Generic[T_Config]):
             Current configuration object or None if not configured.
         """
         return self._config
-
 
 class StateTrackingMixin:
     """Mixin for tracking component lifecycle state.

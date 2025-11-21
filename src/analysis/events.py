@@ -42,7 +42,6 @@ __all__ = [
 
 # Events are small dataclasses used by the EventBus; keep them compact
 
-
 class AnalysisEventType(Enum):
     """Analysis event types."""
 
@@ -53,7 +52,6 @@ class AnalysisEventType(Enum):
     RESUMED = "analysis.resumed"
     PROGRESS = "analysis.progress"
 
-
 class CacheEventType(Enum):
     """Cache event types."""
 
@@ -62,14 +60,12 @@ class CacheEventType(Enum):
     INVALIDATED = "cache.invalidated"
     CLEARED = "cache.cleared"
 
-
 class ProcessorEventType(Enum):
     """Processor event types."""
 
     EXECUTION_STARTED = "processor.execution_started"
     EXECUTION_COMPLETED = "processor.execution_completed"
     EXECUTION_FAILED = "processor.execution_failed"
-
 
 class ConfigurationEventType(Enum):
     """Configuration event types."""
@@ -78,14 +74,12 @@ class ConfigurationEventType(Enum):
     RELOADED = "configuration.reloaded"
     VALIDATED = "configuration.validated"
 
-
 class ErrorEventType(Enum):
     """Error event types."""
 
     OCCURRED = "error.occurred"
     RECOVERED = "error.recovered"
     CRITICAL = "error.critical"
-
 
 @dataclass
 class AnalysisStartedEvent(Event):
@@ -102,7 +96,6 @@ class AnalysisStartedEvent(Event):
         self.event_type = AnalysisEventType.STARTED.value
         self.priority = 50
 
-
 @dataclass
 class AnalysisCompletedEvent(Event):
     """Event fired when analysis completes successfully."""
@@ -117,7 +110,6 @@ class AnalysisCompletedEvent(Event):
         """Initialize event metadata."""
         self.event_type = AnalysisEventType.COMPLETED.value
         self.priority = 50
-
 
 @dataclass
 class AnalysisFailedEvent(Event):
@@ -139,7 +131,6 @@ class AnalysisFailedEvent(Event):
         self.event_type = AnalysisEventType.FAILED.value
         self.priority = 100
 
-
 @dataclass
 class CacheHitEvent(Event):
     """Event fired on cache hit."""
@@ -153,7 +144,6 @@ class CacheHitEvent(Event):
         self.event_type = CacheEventType.HIT.value
         self.priority = 20
 
-
 @dataclass
 class CacheMissEvent(Event):
     """Event fired on cache miss."""
@@ -166,7 +156,6 @@ class CacheMissEvent(Event):
         """Initialize event metadata."""
         self.event_type = CacheEventType.MISS.value
         self.priority = 20
-
 
 @dataclass
 class CacheInvalidatedEvent(Event):
@@ -182,7 +171,6 @@ class CacheInvalidatedEvent(Event):
         self.event_type = CacheEventType.INVALIDATED.value
         self.priority = 60
 
-
 @dataclass
 class ProcessorExecutionStartedEvent(Event):
     """Event fired when processor execution starts."""
@@ -196,7 +184,6 @@ class ProcessorExecutionStartedEvent(Event):
         """Initialize event metadata."""
         self.event_type = ProcessorEventType.EXECUTION_STARTED.value
         self.priority = 30
-
 
 @dataclass
 class ProcessorExecutionCompletedEvent(Event):
@@ -213,7 +200,6 @@ class ProcessorExecutionCompletedEvent(Event):
         self.event_type = ProcessorEventType.EXECUTION_COMPLETED.value
         self.priority = 30
 
-
 @dataclass
 class ProcessorExecutionFailedEvent(Event):
     """Event fired when processor execution fails."""
@@ -229,7 +215,6 @@ class ProcessorExecutionFailedEvent(Event):
         self.event_type = ProcessorEventType.EXECUTION_FAILED.value
         self.priority = 90
 
-
 @dataclass
 class ConfigurationChangedEvent(Event):
     """Event fired when configuration changes."""
@@ -244,7 +229,6 @@ class ConfigurationChangedEvent(Event):
         """Initialize event metadata."""
         self.event_type = ConfigurationEventType.CHANGED.value
         self.priority = 40
-
 
 @dataclass
 class ErrorOccurredEvent(Event):

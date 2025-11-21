@@ -20,11 +20,9 @@ logger = logging.getLogger(__name__)
 # import-time cycles and heavy dependencies. Suppress import-order
 # warnings here so pylint focuses on actionable code issues.
 
-
 __all__ = [
     "DepthTimeConverter",
 ]
-
 
 class DepthTimeConverter:
     """Converts depth-domain properties to two-way time (TWT) domain.

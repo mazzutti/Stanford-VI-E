@@ -50,7 +50,6 @@ __all__ = [
 
 T = TypeVar("T")
 
-
 class ProcessorState(Enum):
     """Enumeration of processor execution states."""
 
@@ -59,7 +58,6 @@ class ProcessorState(Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CACHED = "cached"
-
 
 @dataclass
 class ExecutionMetrics:
@@ -103,7 +101,6 @@ class ExecutionMetrics:
             self.end_time = time.time()
             self.duration = self.end_time - self.start_time
 
-
 @dataclass
 class ExecutionRecord:
     """Records execution history for state tracking.
@@ -125,7 +122,6 @@ class ExecutionRecord:
     timestamp: datetime = field(default_factory=datetime.now)
     metrics: ExecutionMetrics = field(default_factory=ExecutionMetrics)
     error_message: str | None = None
-
 
 class LoggingMixin:
     """Provides automatic logging capability to processors.
@@ -167,7 +163,6 @@ class LoggingMixin:
     def log_critical(self, message: str) -> None:
         """Log a critical-level message."""
         logger.critical("[%s] %s", self.__class__.__name__, message)
-
 
 class CachingMixin:
     """Provides transparent result caching to processors.
@@ -260,7 +255,6 @@ class CachingMixin:
         self._cache[cache_key] = result
         return result
 
-
 class ValidationMixin:
     """Provides input/output validation capability to processors.
 
@@ -338,7 +332,6 @@ class ValidationMixin:
             raise ValueError(f"{self.__class__.__name__}: output validation failed")
 
         return data
-
 
 class StateTrackingMixin:
     """Tracks processor execution state and history.
@@ -443,7 +436,6 @@ class StateTrackingMixin:
 
         """
         return self._execution_history[-1] if self._execution_history else None
-
 
 class ErrorHandlingMixin:
     """Provides consistent error handling and recovery patterns.
@@ -565,7 +557,6 @@ class ErrorHandlingMixin:
             raise last_error
         raise RuntimeError("Retry exhausted without error")
 
-
 class MetricsMixin:
     """Tracks execution metrics and performance data.
 
@@ -660,7 +651,6 @@ class MetricsMixin:
         if metrics:
             metrics.cache_misses += 1
 
-
 class _MetricsContext:
     """Context manager for metrics tracking."""
 
@@ -685,7 +675,6 @@ class _MetricsContext:
     def __exit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> None:
         """Exit context, end metrics."""
         self.mixin.end_metrics()
-
 
 class ProcessorMixinManager:
     """Manager for composable processor mixins.

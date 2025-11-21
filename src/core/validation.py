@@ -43,7 +43,6 @@ logger = logging.getLogger(__name__)
 # Small helper classes in this module are intentionally compact; suppress
 # noisy too-few-public-methods warnings so lint focuses on substantive issues.
 
-
 # Module-level allowance: this module intentionally exposes compact helper
 # classes and protocol stubs used widely across the codebase.
 
@@ -83,10 +82,8 @@ T_contra = TypeVar("T_contra", contravariant=True)
 # Type aliases
 ArrayNamePair = tuple[NDArray[Any], str]
 
-
 class ValidationError(Exception):
     """Raised when validation fails."""
-
 
 class ValidatorResult(Enum):
     """Result of validation."""
@@ -94,7 +91,6 @@ class ValidatorResult(Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     WARNING = "warning"
-
 
 class Validator(Protocol[T_contra]):
     """Protocol for validation functions.
@@ -117,7 +113,6 @@ class Validator(Protocol[T_contra]):
         """
         raise NotImplementedError()
 
-
 class Validatable(Protocol):
     """Protocol for objects that can be validated.
 
@@ -133,11 +128,9 @@ class Validatable(Protocol):
         """Assert object is valid, raise ValidationError if not."""
         raise NotImplementedError()
 
-
 # ============================================================================
 # Core Validators
 # ============================================================================
-
 
 class BaseValidator(ABC):
     """Abstract base class for all data validators.
@@ -173,7 +166,6 @@ class BaseValidator(ABC):
     ) -> str:
         """Format a consistent validation error message."""
         return f"Invalid {name}: {actual} (requirement: {requirement})"
-
 
 class RangeValidator(BaseValidator):
     """Validates numeric values fall within expected ranges."""
@@ -276,7 +268,6 @@ class RangeValidator(BaseValidator):
         """Validate value is valid probability [0, 1]."""
         RangeValidator.validate_pvalue(value, name=name, allow_nan=allow_nan)
 
-
 class CountValidator(BaseValidator):
     """Validates count-like values (non-negative integers)."""
 
@@ -304,7 +295,6 @@ class CountValidator(BaseValidator):
                 f"{name}={value} is zero, but allow_zero=False (must be > 0)"
             )
         logger.debug("%s=%s is valid", name, value)
-
 
 class QuantileValidator(BaseValidator):
     """Validates quantile values."""
@@ -337,7 +327,6 @@ class QuantileValidator(BaseValidator):
                     f"{name} not strictly increasing: "
                     f"{quantiles[i]} >= {quantiles[i + 1]}"
                 )
-
 
 class ArrayValidator(BaseValidator):
     """Validates array properties."""
@@ -381,7 +370,6 @@ class ArrayValidator(BaseValidator):
                 f"{name} has shape {array.shape}, expected {expected_shape}"
             )
 
-
 class DomainValidator(BaseValidator):
     """Validates domain values."""
 
@@ -398,7 +386,6 @@ class DomainValidator(BaseValidator):
         # for API consistency and future domain-specific checks.
         return None
 
-
 class PathValidator(BaseValidator):
     """Validates file paths."""
 
@@ -413,11 +400,9 @@ class PathValidator(BaseValidator):
         if must_exist and not path.exists():
             raise ValidationError(f"{name} does not exist: {path}")
 
-
 # ============================================================================
 # Validator Chain (Composition Pattern)
 # ============================================================================
-
 
 class ValidatorStrategy(ABC):
     """Strategy for combining multiple validators."""
@@ -425,7 +410,6 @@ class ValidatorStrategy(ABC):
     @abstractmethod
     def combine(self, errors: list[list[str]]) -> list[str]:
         """Combine errors from multiple validators."""
-
 
 class AndStrategy(ValidatorStrategy):
     """Require all validators to pass."""
@@ -437,7 +421,6 @@ class AndStrategy(ValidatorStrategy):
             all_errors.extend(err_list)
         return all_errors
 
-
 class OrStrategy(ValidatorStrategy):
     """Require at least one validator to pass."""
 
@@ -446,7 +429,6 @@ class OrStrategy(ValidatorStrategy):
         if all(errors):  # All have errors
             return errors[0]  # Return first error
         return []
-
 
 @dataclass
 class ValidatorChain(Generic[T]):
@@ -480,7 +462,6 @@ class ValidatorChain(Generic[T]):
         """Allow using chain as a callable validator."""
         return self.validate(value)
 
-
 @dataclass
 class ValidatorComposite:
     """Composite validator combining multiple validator chains."""
@@ -506,11 +487,9 @@ class ValidatorComposite:
                 errors.append(str(result))
         return errors
 
-
 # ============================================================================
 # Built-in Validators (Factory Functions)
 # ============================================================================
-
 
 def not_none(error_msg: str = "value cannot be None") -> Validator[Any]:
     """Validator that ensures value is not None."""
@@ -519,7 +498,6 @@ def not_none(error_msg: str = "value cannot be None") -> Validator[Any]:
         return [] if value is not None else [error_msg]
 
     return validate
-
 
 def positive(error_msg: str = "value must be positive") -> Validator[Any]:
     """Validator that ensures value > 0."""
@@ -532,7 +510,6 @@ def positive(error_msg: str = "value must be positive") -> Validator[Any]:
 
     return validate
 
-
 def negative(error_msg: str = "value must be negative") -> Validator[Any]:
     """Validator that ensures value < 0."""
 
@@ -543,7 +520,6 @@ def negative(error_msg: str = "value must be negative") -> Validator[Any]:
             return [f"cannot compare {type(value).__name__} to 0"]
 
     return validate
-
 
 def in_range(
     min_val: float,
@@ -560,7 +536,6 @@ def in_range(
             return [f"cannot compare {type(value).__name__} to bounds"]
 
     return validate
-
 
 def length_between(
     min_len: int,
@@ -579,7 +554,6 @@ def length_between(
 
     return validate
 
-
 def matches_type(
     expected_type: type,
     error_msg: str | None = None,
@@ -595,7 +569,6 @@ def matches_type(
 
     return validate
 
-
 def is_callable(error_msg: str = "value must be callable") -> Validator[Any]:
     """Validator that ensures value is callable."""
 
@@ -604,11 +577,9 @@ def is_callable(error_msg: str = "value must be callable") -> Validator[Any]:
 
     return validate
 
-
 # ============================================================================
 # Validation Helpers
 # ============================================================================
-
 
 class ValidationHelpers:
     """Helper class for common validation patterns."""

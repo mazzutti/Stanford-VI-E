@@ -17,7 +17,6 @@ __all__ = [
 # Module logger
 logger = logging.getLogger(__name__)
 
-
 class Wavelet:
     """Base class representing a seismic wavelet.
 
@@ -64,7 +63,6 @@ class Wavelet:
             f"nsamples={self.nsamples}, dt={self.dt:.6f}s, "
             f"duration={self.duration:.6f}s)"
         )
-
 
 class RickerWavelet(Wavelet):
     """A Ricker (zero-phase) wavelet.

@@ -17,7 +17,6 @@ import numpy as np
 
 __all__ = ["StatisticsFormatter", "FormattableModel"]
 
-
 class StatisticsFormatter:
     """Strategy for formatting statistical data with configurable precision.
 
@@ -83,7 +82,6 @@ class StatisticsFormatter:
                 lines.append(f"  {k:<{max_key_len}}: {v:.{self.precision}f}")
 
         return "\n".join(lines)
-
 
 class FormattableModel(ABC):
     """Base class for models that need consistent statistical formatting.

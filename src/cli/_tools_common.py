@@ -13,11 +13,9 @@ from typing import Any
 
 import numpy as np
 
-
 def ensure_parent(path: Path) -> None:
     """Ensure the parent directory of `path` exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
-
 
 def save_npz(path: Path, /, **arrays: Any) -> Path:
     """Save arrays to a compressed npz file, creating parent dirs.
@@ -27,7 +25,6 @@ def save_npz(path: Path, /, **arrays: Any) -> Path:
     ensure_parent(path)
     np.savez_compressed(path, **arrays)
     return path
-
 
 def save_npz_with_timestamp(
     cache_dir: str | Path, prefix: str, /, **arrays: Any
@@ -42,7 +39,6 @@ def save_npz_with_timestamp(
     cache_file = cache_path / f"{prefix}_{ts}.npz"
     np.savez_compressed(cache_file, **arrays)
     return cache_file
-
 
 def choose_html_path(
     plot_out: str | None, out: str | None, default_dir: Path, default_name: str

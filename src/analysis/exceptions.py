@@ -23,7 +23,6 @@ Usage:
     ...     logger.warning("Cache file not found: %s", e)
 """
 
-
 class AnalysisException(Exception):
     """Base exception for all analysis module errors.
 
@@ -32,10 +31,8 @@ class AnalysisException(Exception):
     except clause.
     """
 
-
 class CacheError(AnalysisException):
     """Base class for cache-related errors."""
-
 
 class CacheLoadingError(CacheError):
     """Raised when cache file cannot be loaded.
@@ -49,7 +46,6 @@ class CacheLoadingError(CacheError):
         - NumPy cannot parse the file
     """
 
-
 class CacheSelectionError(CacheError):
     """Raised when no suitable cache file can be found.
 
@@ -61,7 +57,6 @@ class CacheSelectionError(CacheError):
         - Cache directory doesn't exist
         - Search strategy found no matches
     """
-
 
 class CacheExtractionError(CacheError):
     """Raised when data cannot be extracted from cache archive.
@@ -75,7 +70,6 @@ class CacheExtractionError(CacheError):
         - Archive structure is unexpected
     """
 
-
 class ValidationError(AnalysisException):
     """Raised when data validation fails.
 
@@ -87,7 +81,6 @@ class ValidationError(AnalysisException):
         - P-value < 0 or > 1
         - Array shape mismatch
     """
-
 
 class DomainError(AnalysisException):
     """Raised for domain-related errors.
@@ -101,7 +94,6 @@ class DomainError(AnalysisException):
         - Domain conversion failed
     """
 
-
 class ProcessingError(AnalysisException):
     """Raised when data processing fails.
 
@@ -114,7 +106,6 @@ class ProcessingError(AnalysisException):
         - Gradient analysis failed
     """
 
-
 class ConfigurationError(AnalysisException):
     """Raised for configuration-related errors.
 
@@ -126,7 +117,6 @@ class ConfigurationError(AnalysisException):
         - Invalid sharding configuration
         - Missing required processor
     """
-
 
 class BuilderValidationError(ValueError):
     """Raised when builder validation fails.
@@ -153,7 +143,6 @@ class BuilderValidationError(ValueError):
         super().__init__(message)
         self.missing_deps = missing_deps or []
 
-
 class BuilderFrozenError(RuntimeError):
     """Raised when attempting to modify a frozen builder.
 
@@ -164,7 +153,6 @@ class BuilderFrozenError(RuntimeError):
         - Setting processor after freeze()
         - Setting config after freeze()
     """
-
 
 class ComputationError(AnalysisException):
     """Raised when computational operations fail.
@@ -179,22 +167,17 @@ class ComputationError(AnalysisException):
         - Interpolation produced invalid values
     """
 
-
 class AlignmentError(ComputationError):
     """Raised when cube alignment fails."""
-
 
 class DetectionError(ComputationError):
     """Raised when boundary detection fails."""
 
-
 class ExtractionError(ComputationError):
     """Raised when amplitude extraction fails."""
 
-
 class InterpolationError(ComputationError):
     """Raised when interpolation fails."""
-
 
 class StateError(AnalysisException):
     """Raised when object state is invalid for operation.
@@ -207,7 +190,6 @@ class StateError(AnalysisException):
         - Invalid state transition
         - Required setup not completed
     """
-
 
 class ExceptionContextBuilder:
     """Builder for creating AnalysisExceptions with proper error context.

@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["BoundaryAmplitudeExtractor"]
 
-
 class BoundaryAmplitudeExtractor(BaseProcessor):
     """Extracts amplitudes at and away from facies boundaries."""
 

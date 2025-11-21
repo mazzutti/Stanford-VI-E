@@ -9,7 +9,6 @@ from src.processing.managers.file import FileManager
 
 __all__ = ["ProcessManager", "ManagerHub"]
 
-
 class ProcessManager(BaseManager):
     """Facade for process-related utilities with simpler API.
 
@@ -102,7 +101,6 @@ class ProcessManager(BaseManager):
     ) -> None:
         """Alias for summarize() to match ProcessManagerProtocol."""
         return self.summarize(cache_dir=cache_dir, keys=keys, prefix=prefix)
-
 
 class ManagerHub(BaseManager):
     """Unified facade for all resource managers.

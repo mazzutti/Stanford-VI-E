@@ -43,7 +43,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 class AnalyzerBuilder:
     """Builder for FaciesCorrelationAnalyzer with fluent configuration."""
 
@@ -480,7 +479,7 @@ class AnalyzerBuilder:
 
         # Validation rules
         # Example: if self._config is None:
-        #     missing_critical.append("config")
+        # missing_critical.append("config")
 
         # Check for common incomplete configurations
         if self._config is None:

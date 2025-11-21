@@ -1,9 +1,7 @@
 """ResamplerService - High-level resampling service.
 
-
 Lightweight service that composes DepthTimeResampler, ResamplePlanCache,
 and BackendManager to provide a single entrypoint for depth<->time resampling.
-
 
 The service is intentionally thin: it delegates heavy work to DepthTimeResampler
 and to the registered backends while ensuring the shared plan cache is used when
@@ -26,14 +24,12 @@ from src.utils.quantity import Quantity, to_ndarray
 
 __all__ = ["ResamplerService"]
 
-
 # module logger
 logger = logging.getLogger(__name__)
 
 # The ResamplerService intentionally uses a lazy import to avoid heavy
 # resampler initialization and to break import cycles. Suppress pylint's
 # import-order warnings for this module (imports are deliberate).
-
 
 @dataclass
 class ResamplerService:

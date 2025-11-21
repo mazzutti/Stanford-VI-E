@@ -46,7 +46,6 @@ __all__ = [
 # spurious type-checker errors when those are `ndarray`.
 CategoricalInfo = tuple[Any, Any, int] | None
 
-
 # map slice values to indices using mapping (fallback to 0)
 def map_slice_to_indices(arr: np.ndarray, mapping: dict[float, int]) -> np.ndarray:
     """Map values in arr to integer indices using mapping.
@@ -59,7 +58,6 @@ def map_slice_to_indices(arr: np.ndarray, mapping: dict[float, int]) -> np.ndarr
     for key, val in mapping.items():
         out[np.isclose(arr, key)] = val
     return out
-
 
 def project_and_sort_faces(
     ax: Axes3D,
@@ -85,7 +83,6 @@ def project_and_sort_faces(
     sorted_colors = [face_colors[int(k)] for k in order]
     return sorted_faces, sorted_colors
 
-
 def make_and_add_poly_collection(
     ax: Axes3D,
     sorted_faces: list[list[tuple[float, float, float]]],
@@ -96,7 +93,6 @@ def make_and_add_poly_collection(
         sorted_faces, facecolors=sorted_colors, linewidths=0, antialiased=False
     )
     ax.add_collection3d(poly)
-
 
 def make_colorbar(
     fig: Figure,
@@ -133,7 +129,6 @@ def make_colorbar(
         # analysis while preserving runtime behavior.
         cb.set_ticklabels(cast(Any, ticklabels))
 
-
 def compute_slice_facecolors(
     slice_arr: np.ndarray,
     cmap_func: Callable[[np.ndarray], np.ndarray],
@@ -157,7 +152,6 @@ def compute_slice_facecolors(
     fc = (colors[:-1, :-1] + colors[1:, :-1] + colors[:-1, 1:] + colors[1:, 1:]) / 4.0
     return colors, fc
 
-
 def set_reverse_crossline_ticks(
     ax: Axes3D, y: np.ndarray, reverse_crossline: bool
 ) -> None:
@@ -180,7 +174,6 @@ def set_reverse_crossline_ticks(
     # a fixed number of ticks (this is headless/test-friendly).
     getattr(ax, "set_yticks")(ticks)
     getattr(ax, "set_yticklabels")(labels)
-
 
 def _build_and_add_face_collection(
     ax: Axes3D,
@@ -214,7 +207,6 @@ def _build_and_add_face_collection(
     sorted_faces, sorted_colors = project_and_sort_faces(ax, faces, face_colors)
     make_and_add_poly_collection(ax, sorted_faces, sorted_colors)
 
-
 def _prepare_coords_and_grids(
     shape: tuple[int, int, int],
     idxs: tuple[int, int, int],
@@ -236,7 +228,6 @@ def _prepare_coords_and_grids(
     z = coords.coords.z
     return coords, x, y, z
 
-
 def _prepare_figure_ax(
     figsize: tuple[float, float] = (9, 7)
 ) -> tuple[Figure, Axes3D, bool]:
@@ -244,7 +235,6 @@ def _prepare_figure_ax(
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection="3d")
     return fig, cast(Axes3D, ax), True
-
 
 def _compute_facecolors_for_slices(
     slices: tuple[np.ndarray, np.ndarray, np.ndarray],
@@ -268,7 +258,6 @@ def _compute_facecolors_for_slices(
         slice_yz, cmap_func, norm, alpha, categorical_info
     )
     return fc_xy, fc_xz, fc_yz
-
 
 def select_slices_and_indices(
     volume: np.ndarray, indices: tuple[int, int, int] | None = None
@@ -301,7 +290,6 @@ def select_slices_and_indices(
 
     return (nx, ny, nz), (ix, iy, iz), (slice_xy, slice_xz, slice_yz)
 
-
 def axis_setup(
     ax: Axes3D,
     x: np.ndarray,
@@ -332,7 +320,6 @@ def axis_setup(
     # Reverse crossline labels if requested
     set_reverse_crossline_ticks(ax, y, reverse_crossline)
 
-
 def save_and_show(save_path: str | None, show: bool, created_fig: bool) -> None:
     """Handle saving and optionally showing the created figure.
 
@@ -360,7 +347,6 @@ def save_and_show(save_path: str | None, show: bool, created_fig: bool) -> None:
             return
 
         plt.show()
-
 
 def plot_volume(
     volume: np.ndarray,

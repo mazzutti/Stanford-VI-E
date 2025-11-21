@@ -10,7 +10,6 @@ from src.processing.managers.resource_manager import ResourceManager
 
 __all__ = ["FileManager"]
 
-
 class FileManager(ResourceManager[Path]):
     """Manages file operations: opening and checking file existence."""
 

@@ -18,14 +18,12 @@ from numpy.typing import NDArray
 
 from src.processing.resampling._plan import ResamplePlan
 
-
 class BackendError(RuntimeError):
     """Raised for backend-specific errors during resampling operations.
 
     Backends should raise this error for internal failures that callers may
     want to catch and handle specially.
     """
-
 
 class ResamplerBackend(Protocol):
     """Protocol that resampler backends should follow.
@@ -57,7 +55,6 @@ class ResamplerBackend(Protocol):
         """
         raise NotImplementedError()
 
-
 @dataclass
 class BackendResult:
     """Standardized result returned by resampler backends.
@@ -68,7 +65,6 @@ class BackendResult:
 
     array: NDArray[Any]
     dt: float | None = None
-
 
 def validate_backend_result(obj: BackendResult | object) -> bool:
     """Return True if `obj` is a BackendResult with a numpy array inside.
@@ -88,14 +84,12 @@ def validate_backend_result(obj: BackendResult | object) -> bool:
     except (TypeError, ValueError):
         return False
 
-
 __all__ = [
     "BackendError",
     "ResamplerBackend",
     "BackendResult",
     "validate_backend_result",
 ]
-
 
 # Module logger
 logger = logging.getLogger(__name__)

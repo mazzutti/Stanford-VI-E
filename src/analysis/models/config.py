@@ -17,7 +17,6 @@ __all__ = [
     "FaciesCorrelationConfig",
 ]
 
-
 @dataclass(frozen=True, slots=True)
 class Transition:
     """Immutable, hashable representation of a facies transition.
@@ -117,7 +116,6 @@ class Transition:
                 f"Invalid facies indices in transition string {key!r}: {exc}"
             ) from exc
         return cls(from_facies=from_facies, to_facies=to_facies)
-
 
 @dataclass
 class FaciesCorrelationConfig(ValidatableConfigMixin):

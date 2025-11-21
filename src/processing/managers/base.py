@@ -9,7 +9,6 @@ from src.processing.core.abstracts import Manager
 
 __all__ = ["BaseManager"]
 
-
 class BaseManager(Manager):
     """Base class for all managers with common functionality.
 

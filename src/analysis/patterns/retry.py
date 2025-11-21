@@ -40,7 +40,6 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
-
 class RetryStrategyType(Enum):
     """Available retry strategies."""
 
@@ -48,7 +47,6 @@ class RetryStrategyType(Enum):
     LINEAR = "linear"
     FIBONACCI = "fibonacci"
     CONSTANT = "constant"
-
 
 class RetryStrategy(ABC):
     """
@@ -73,7 +71,6 @@ class RetryStrategy(ABC):
     @abstractmethod
     def __str__(self) -> str:
         pass
-
 
 class ExponentialBackoffStrategy(RetryStrategy):
     """
@@ -105,7 +102,6 @@ class ExponentialBackoffStrategy(RetryStrategy):
     def __str__(self) -> str:
         return f"ExponentialBackoff(base={self.base}, max={self.max_delay}s)"
 
-
 class LinearBackoffStrategy(RetryStrategy):
     """
     Linear backoff strategy: delay = initial_delay * (1 + attempt)
@@ -133,7 +129,6 @@ class LinearBackoffStrategy(RetryStrategy):
 
     def __str__(self) -> str:
         return f"LinearBackoff(max={self.max_delay}s)"
-
 
 class FibonacciBackoffStrategy(RetryStrategy):
     """
@@ -179,7 +174,6 @@ class FibonacciBackoffStrategy(RetryStrategy):
     def __str__(self) -> str:
         return f"FibonacciBackoff(max={self.max_delay}s)"
 
-
 class ConstantBackoffStrategy(RetryStrategy):
     """
     Constant backoff strategy: delay = initial_delay (no increase)
@@ -196,7 +190,6 @@ class ConstantBackoffStrategy(RetryStrategy):
 
     def __str__(self) -> str:
         return "ConstantBackoff"
-
 
 @dataclass
 class RetryStats:
@@ -234,7 +227,6 @@ class RetryStats:
             f"success_rate={self.success_rate:.1f}%, "
             f"avg_delay={self.average_delay:.2f}s)"
         )
-
 
 class RetryPolicy:
     """
@@ -391,10 +383,8 @@ class RetryPolicy:
             f"strategy={self.strategy}>"
         )
 
-
 class TimeoutError(Exception):
     """Raised when operation exceeds timeout."""
-
 
 def timeout(seconds: float) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
@@ -430,7 +420,6 @@ def timeout(seconds: float) -> Callable[[Callable[..., Any]], Callable[..., Any]
         return wrapper
 
     return decorator
-
 
 def retry(
     max_attempts: int = 3,
