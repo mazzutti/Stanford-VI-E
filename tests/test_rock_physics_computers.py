@@ -11,16 +11,14 @@ Tests focus on:
 # mypy: ignore-errors
 
 
-import pytest
 import numpy as np
+import pytest
 
-from src.analysis.rock_physics.computers import (
-    AVOAttributesComputer,
-    FluidFactorComputer,
-    LambdaMuRhoComputer,
-    DEFAULT_AVO_ANGLES_DEG,
-    DEFAULT_FLUID_FACTOR_K,
-)
+from src.analysis.rock_physics.computers import (DEFAULT_AVO_ANGLES_DEG,
+                                                 DEFAULT_FLUID_FACTOR_K,
+                                                 AVOAttributesComputer,
+                                                 FluidFactorComputer,
+                                                 LambdaMuRhoComputer)
 
 
 # Test fixtures

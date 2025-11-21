@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar, Any
+from typing import TYPE_CHECKING, Any, TypeVar
+
 from numpy.typing import ArrayLike, NDArray
 
 # Import unified Processor from src.core
@@ -57,7 +58,6 @@ class Manager(ABC):
         Returns:
             Number of resources cleared
         """
-        pass
 
     @abstractmethod
     def summarize(
@@ -73,7 +73,6 @@ class Manager(ABC):
             keys: Optional keys to filter
             prefix: Prefix for log messages
         """
-        pass
 
 
 class Resampler(ABC):
@@ -93,7 +92,6 @@ class Resampler(ABC):
         Returns:
             Resampled data array
         """
-        pass
 
     @abstractmethod
     def inverse_resample(self, data: ArrayLike, plan: ResamplePlan) -> NDArray[Any]:
@@ -106,7 +104,6 @@ class Resampler(ABC):
         Returns:
             Inverse resampled data array
         """
-        pass
 
 
 class MaterialProperty(ABC):
@@ -118,12 +115,10 @@ class MaterialProperty(ABC):
     @abstractmethod
     def get_data(self) -> NDArray[Any]:
         """Return the underlying data array."""
-        pass
 
     @abstractmethod
     def set_data(self, data: NDArray[Any]) -> None:
         """Update the underlying data array."""
-        pass
 
     @abstractmethod
     def ensure_units(self) -> bool:
@@ -132,7 +127,6 @@ class MaterialProperty(ABC):
         Returns:
             True if conversion occurred, False otherwise
         """
-        pass
 
     @abstractmethod
     def validate(self) -> None:
@@ -141,7 +135,6 @@ class MaterialProperty(ABC):
         Raises:
             ValueError: If validation fails
         """
-        pass
 
 
 class Validator(ABC):
@@ -157,7 +150,6 @@ class Validator(ABC):
         Returns:
             Validation report (type depends on implementation)
         """
-        pass
 
     @abstractmethod
     def is_valid(self, *args: NDArray[Any], **kwargs: NDArray[Any]) -> bool:
@@ -166,4 +158,3 @@ class Validator(ABC):
         Returns:
             True if valid, False otherwise
         """
-        pass

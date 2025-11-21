@@ -8,18 +8,19 @@ error handling and reduced code duplication.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, cast
 from functools import cached_property
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .base import StatisticalResult, ModelUtilities, ValidationConfig
+from ..validators import RangeValidator, ValidationError
+from .base import ModelUtilities, StatisticalResult, ValidationConfig
 from .config import Transition
 from .facies import FaciesStats
 from .formatters import FormattableModel
-from ..validators import RangeValidator, ValidationError
 
 # Type aliases for common patterns
 TransitionStatsMap = dict[Transition, FaciesStats | None]
@@ -401,9 +402,14 @@ class FaciesDiscriminationResult(StatisticalResult, FormattableModel):
         max_idx = np.unravel_index(
             np.argmax(self.separation_matrix), self.separation_matrix.shape
         )
-        facies_a = self.label_order[max_idx[0]]
-        facies_b = self.label_order[max_idx[1]]
-        separation = float(self.separation_matrix[max_idx])
+        # np.unravel_index may return numpy integer types; cast to int for
+        # indexing Python lists to satisfy static analyzers and guarantee
+        # compatibility across Python/numpy versions.
+        ia = int(max_idx[0])
+        ib = int(max_idx[1])
+        facies_a = self.label_order[ia]
+        facies_b = self.label_order[ib]
+        separation = float(self.separation_matrix[ia, ib])
         return facies_a, facies_b, separation
 
     def get_stats_dict(self) -> dict[str, float]:
@@ -539,7 +545,7 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
 
     def is_valid(self) -> bool:
         """Check if result has valid transitions with data."""
-        return len(self.transitions_summary) > 0 and any(
+        return bool(self.transitions_summary) and any(
             stats is not None for stats in self.transitions_summary.values()
         )
 
@@ -646,10 +652,11 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
             - valid: Number of transitions with valid statistical data
             - valid_list: List of transition strings (e.g., "0->1")
         """
+        valid_list = [str(t) for t in self.valid_transitions]
         return (
             f"InterfaceReflectionResult(transitions={self.transition_count}, "
             f"valid={len(self.valid_transitions)}, "
-            f"valid_list={[str(t) for t in self.valid_transitions]})"
+            f"valid_list={valid_list})"
         )
 
     @classmethod
@@ -658,10 +665,10 @@ class InterfaceReflectionResult(StatisticalResult, FormattableModel):
 
         Args:
             data: Dictionary with keys:
-                - transitions_summary: Dictionary mapping transitions to FaciesStats (reconstructed)
-                  Keys must be dicts with from_facies/to_facies keys
-                - interface_stats: Dictionary mapping transitions to amplitude arrays (reconstructed)
-                  Keys must be dicts with from_facies/to_facies keys
+                - transitions_summary: Dictionary mapping transitions to FaciesStats
+                  (reconstructed). Keys must be dicts with from_facies/to_facies keys
+                - interface_stats: Dictionary mapping transitions to amplitude arrays
+                  (reconstructed). Keys must be dicts with from_facies/to_facies keys
 
         Returns:
             InterfaceReflectionResult instance with reconstructed transition maps.
@@ -720,7 +727,7 @@ class AvoAnalysisResult(StatisticalResult, FormattableModel):
 
     def has_interface_data(self) -> bool:
         """Check if interface analysis data exists."""
-        return len(self.interface_summary) > 0
+        return bool(self.interface_summary)
 
     @property
     def all_valid_components(self) -> list[str]:

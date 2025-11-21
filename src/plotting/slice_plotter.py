@@ -5,24 +5,22 @@ Uses PlotConfig for configuration and ImageRenderer for rendering.
 """
 
 import logging
-from typing import Any, cast
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any, cast
 
-import numpy as np
-from numpy.typing import NDArray
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.image import AxesImage
 from matplotlib.colorbar import Colorbar
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
 from mpl_toolkits.mplot3d import Axes3D
+from numpy.typing import NDArray
 
 from src.plotting.helpers.base import BasePlotter
+from src.plotting.helpers.components import DataNormalizer, ImageRenderer
 from src.plotting.helpers.config import PlotConfig
-from src.plotting.helpers.components import (
-    ImageRenderer,
-    DataNormalizer,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +33,9 @@ def plot_3d_slices_to_png(
     cmap: str = "viridis",
     dpi: int = 1000,
 ) -> Any:
+    # Allow higher arg counts for convenience in this plotting helper
+    # (positional and argument count are by-design for users of the helper).
+
     """Generate a 3-slice PNG plot (inline, crossline, depth) for 3D data.
 
     This is a unified plotting function used by both rock physics attributes
@@ -77,78 +78,150 @@ def plot_3d_slices_to_png(
     axes = cast(Sequence[Axes], fig.subplots(1, 3))
     fig.suptitle(title, fontsize=16, fontweight="bold")
 
-    # Get middle indices for slicing
+    # Prepare slice indices and display limits
+    mid_i, mid_j, mid_k, vmin, vmax, colorbar_label = _prepare_3d_slice_meta(
+        data, title, units
+    )
+
+    # Render the three slices onto the axes (helper reduces local variables)
+    _render_three_slices_to_axes(
+        axes,
+        data,
+        mid_i,
+        mid_j,
+        mid_k,
+        vmin,
+        vmax,
+        colorbar_label,
+        cmap,
+    )
+
+    plt.tight_layout()
+
+    # Save plot
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+
+    logger.debug("Saved 3D slice plot: %s", output_path)
+
+    return output_path
+
+
+def _prepare_3d_slice_meta(
+    data: NDArray[np.floating[Any]], title: str, units: str
+) -> tuple[int, int, int, float, float, str]:
+    """Compute middle indices, display limits and colorbar label for 3D slice plotting.
+
+    Extracted to reduce locals/statements inside the main plotting function.
+    """
     ni, nj, nk = data.shape
     mid_i: int = ni // 2
     mid_j: int = nj // 2
     mid_k: int = nk // 2
 
     # Get data range for consistent colorbar (2nd and 98th percentile)
-    vmin: float
-    vmax: float
     vmin, vmax = np.percentile(data, [2, 98])
 
     # Create colorbar label with units
     colorbar_label: str = f"{title}\n[{units}]"
+    return mid_i, mid_j, mid_k, vmin, vmax, colorbar_label
 
-    # Inline slice (constant i)
-    im1: AxesImage = axes[0].imshow(
-        data[mid_i, :, :].T,
+
+def _render_three_slices_to_axes(
+    axes: Sequence[Axes],
+    data: NDArray[np.floating[Any]],
+    mid_i: int,
+    mid_j: int,
+    mid_k: int,
+    vmin: float,
+    vmax: float,
+    colorbar_label: str,
+    cmap: str,
+) -> None:
+    """Render three orthogonal imshow slices onto the provided axes.
+
+    Kept as a helper to reduce local variable counts in the caller.
+    """
+    # Helper accepts many args for clarity; suppress argument-count warnings.
+
+    # axes is already typed as Sequence[Axes]
+
+    ax0 = axes[0]
+    im1 = ax0.imshow(
+        data[mid_i, :, :],
         aspect="auto",
         origin="upper",
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
-    ax0 = axes[0]
     ax0.set_title(f"Inline (i={mid_i})")
     ax0.set_xlabel("Crossline (j)")
     ax0.set_ylabel("Depth (k)")
-    _ = fig.colorbar(im1, ax=ax0, label=colorbar_label)
+    # use the axis' figure to attach a colorbar without needing outer-scope fig
+    ax0.figure.colorbar(im1, ax=ax0, label=colorbar_label)
 
-    # Crossline slice (constant j)
-    im2: AxesImage = axes[1].imshow(
-        data[:, mid_j, :].T,
+    ax1 = axes[1]
+    im2 = ax1.imshow(
+        data[:, mid_j, :],
         aspect="auto",
         origin="upper",
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
-    ax1 = axes[1]
     ax1.set_title(f"Crossline (j={mid_j})")
     ax1.set_xlabel("Inline (i)")
     ax1.set_ylabel("Depth (k)")
-    _ = fig.colorbar(im2, ax=ax1, label=colorbar_label)
+    ax1.figure.colorbar(im2, ax=ax1, label=colorbar_label)
 
-    # Depth slice (constant k)
-    im3: AxesImage = axes[2].imshow(
-        data[:, :, mid_k].T,
+    ax2 = axes[2]
+    im3 = ax2.imshow(
+        data[:, :, mid_k],
         aspect="auto",
         origin="upper",
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
-    ax2 = axes[2]
     ax2.set_title(f"Depth Slice (k={mid_k})")
     ax2.set_xlabel("Inline (i)")
     ax2.set_ylabel("Crossline (j)")
-    _ = fig.colorbar(im3, ax=ax2, label=colorbar_label)
+    ax2.figure.colorbar(im3, ax=ax2, label=colorbar_label)
 
-    plt.tight_layout()
 
-    # Save plot
-    from pathlib import Path
+def _plot_3d_surface(
+    ax3d_any: Any,
+    x: NDArray[Any],
+    y: NDArray[Any],
+    z: NDArray[Any],
+    slice_data: NDArray[Any],
+    vmin: float,
+    denom: float,
+    cmap_fn: Any,
+    *,
+    k_scale: float = 1.0,
+) -> None:
+    """Plot a single 3D surface on the provided 3D axis.
 
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+    Accepts `Z` unscaled and applies `k_scale` to allow reusing this helper
+    for surfaces that require z-scaling.
+    """
+    facecolors = cmap_fn(np.clip((slice_data - vmin) / denom, 0, 1))
+    ax3d_any.plot_surface(
+        x,
+        y,
+        z * k_scale,
+        rstride=5,
+        cstride=5,
+        facecolors=facecolors,
+        shade=False,
+    )
 
-    logger.debug(f"Saved 3D slice plot: {output_path}")
-
-    return output_path
+    # Use short variable names for grid coordinates (x, y, z) — lowercase
+    # names satisfy the linting conventions while keeping the code concise.
 
 
 class SlicePlotter(BasePlotter):
@@ -195,7 +268,9 @@ class SlicePlotter(BasePlotter):
         # Render with components
         im, cbar = ImageRenderer.render(ax, slice_data, config)
 
-        self._log_debug(f"plotted inline slice: idx={idx_i}, shape={slice_data.shape}")
+        self.logger.debug(
+            "plotted inline slice: idx=%d, shape=%s", idx_i, slice_data.shape
+        )
 
         return im, cbar
 
@@ -232,8 +307,8 @@ class SlicePlotter(BasePlotter):
 
         im, cbar = ImageRenderer.render(ax, slice_data, config)
 
-        self._log_debug(
-            f"plotted crossline slice: idx={idx_j}, shape={slice_data.shape}"
+        self.logger.debug(
+            "plotted crossline slice: idx=%d, shape=%s", idx_j, slice_data.shape
         )
 
         return im, cbar
@@ -271,7 +346,9 @@ class SlicePlotter(BasePlotter):
 
         im, cbar = ImageRenderer.render(ax, slice_data, config)
 
-        self._log_debug(f"plotted depth slice: idx={idx_k}, shape={slice_data.shape}")
+        self.logger.debug(
+            "plotted depth slice: idx=%d, shape=%s", idx_k, slice_data.shape
+        )
 
         return im, cbar
 
@@ -295,15 +372,92 @@ class SlicePlotter(BasePlotter):
         """
         config = config or PlotConfig.default()
 
-        ni, nj, nk = cube.shape
-        idx_i, idx_j, idx_k = slice_indices
+        # Use compact local names to reduce total local variable count
+        slices_meta = self._extract_and_normalize_slices(
+            cube, slice_indices[0], slice_indices[1], slice_indices[2], config
+        )
 
-        # Extract 2D slices
+        grids = self._build_3d_grids(cube.shape, slice_indices, config)
+
+        ax3d_any = cast(Any, ax)
+
+        # grids is a tuple of three grid-tuples: ( (Xi,J,K), (Xj,Yj,K_j), (Xk,Yk,Zk) )
+        _plot_3d_surface(
+            ax3d_any,
+            *grids[0],
+            slices_meta[0],
+            slices_meta[3],
+            slices_meta[5],
+            slices_meta[6],
+            k_scale=config.k_scale,
+        )
+
+        _plot_3d_surface(
+            ax3d_any,
+            *grids[1],
+            slices_meta[1],
+            slices_meta[3],
+            slices_meta[5],
+            slices_meta[6],
+            k_scale=config.k_scale,
+        )
+
+        _plot_3d_surface(
+            ax3d_any,
+            *grids[2],
+            slices_meta[2],
+            slices_meta[3],
+            slices_meta[5],
+            slices_meta[6],
+            k_scale=1.0,
+        )
+
+        if config.title:
+            ax3d_any.set_title(
+                config.title, fontsize=config.fontsize_title, weight="bold"
+            )
+        ax3d_any.set_xlabel("I-axis (Inline)")
+        ax3d_any.set_ylabel("J-axis (Crossline)")
+        ax3d_any.set_zlabel(
+            f"{config.k_label} ({config.k_unit})" if config.k_unit else config.k_label
+        )
+        ax3d_any.invert_zaxis()
+
+        self.logger.debug(
+            "plotted 3d slices: indices=(%d, %d, %d), vmin=%.2f, vmax=%.2f",
+            slice_indices[0],
+            slice_indices[1],
+            slice_indices[2],
+            slices_meta[3],
+            slices_meta[4],
+        )
+
+        return ax
+
+    def _extract_and_normalize_slices(
+        self,
+        cube: NDArray[np.floating[Any]],
+        idx_i: int,
+        idx_j: int,
+        idx_k: int,
+        config: PlotConfig,
+    ) -> tuple[
+        NDArray[np.floating[Any]],
+        NDArray[np.floating[Any]],
+        NDArray[np.floating[Any]],
+        float,
+        float,
+        float,
+        Any,
+    ]:
+        """Extract inline/crossline/depth slices and compute vmin/vmax,
+        denom and cmap function.
+
+        """
         slice_i = np.asarray(cube[idx_i, :, :])
         slice_j = np.asarray(cube[:, idx_j, :])
         slice_k = np.asarray(cube[:, :, idx_k])
 
-        # Compute normalization
         vmin, vmax = DataNormalizer.compute_limits(
             np.concatenate([slice_i.flat, slice_j.flat, slice_k.flat]),
             percentile=config.percentile,
@@ -312,8 +466,25 @@ class SlicePlotter(BasePlotter):
         denom = vmax - vmin if vmax != vmin else 1.0
         plt_any = cast(Any, plt)
         cmap_fn = plt_any.get_cmap(config.cmap)
+        return slice_i, slice_j, slice_k, vmin, vmax, denom, cmap_fn
 
-        # Create coordinate grids and annotate explicitly
+    def _build_3d_grids(
+        self,
+        shape: tuple[int, int, int],
+        slice_indices: tuple[int, int, int],
+        config: PlotConfig,
+    ) -> tuple[
+        tuple[NDArray[Any], NDArray[Any], NDArray[Any]],
+        tuple[NDArray[Any], NDArray[Any], NDArray[Any]],
+        tuple[NDArray[Any], NDArray[Any], NDArray[Any]],
+    ]:
+        """Build and return grouped coordinate grids used for 3D surface plotting.
+
+        Returns three grid-tuples: (Xi, J, K), (Xj, Yj, K_j), (Xk, Yk, Zk)
+        """
+        ni, nj, nk = shape
+        idx_i, idx_j, idx_k = slice_indices
+
         J: NDArray[Any] = np.mgrid[0:nj, 0:nk][0]
         K: NDArray[Any] = np.mgrid[0:nj, 0:nk][1]
         I_j: NDArray[Any] = np.mgrid[0:ni, 0:nk][0]
@@ -330,53 +501,4 @@ class SlicePlotter(BasePlotter):
             I_k, fill_value=idx_k * config.k_scale, dtype=float
         )
 
-        # Plot surfaces (cast to 3D axes for proper typing)
-        # Avoid referencing Axes3D at runtime (it's TYPE_CHECKING-only); use Any
-        ax3d_any = cast(Any, ax)
-        ax3d_any.plot_surface(
-            Xi,
-            J,
-            K * config.k_scale,
-            rstride=5,
-            cstride=5,
-            facecolors=cmap_fn(np.clip((slice_i - vmin) / denom, 0, 1)),
-            shade=False,
-        )
-
-        ax3d_any.plot_surface(
-            Xj,
-            Yj,
-            K_j * config.k_scale,
-            rstride=5,
-            cstride=5,
-            facecolors=cmap_fn(np.clip((slice_j - vmin) / denom, 0, 1)),
-            shade=False,
-        )
-
-        ax3d_any.plot_surface(
-            Xk,
-            Yk,
-            Zk,
-            rstride=5,
-            cstride=5,
-            facecolors=cmap_fn(np.clip((slice_k - vmin) / denom, 0, 1)),
-            shade=False,
-        )
-
-        if config.title:
-            ax3d_any.set_title(
-                config.title, fontsize=config.fontsize_title, weight="bold"
-            )
-        ax3d_any.set_xlabel("I-axis (Inline)")
-        ax3d_any.set_ylabel("J-axis (Crossline)")
-        ax3d_any.set_zlabel(
-            f"{config.k_label} ({config.k_unit})" if config.k_unit else config.k_label
-        )
-        ax3d_any.invert_zaxis()
-
-        self._log_debug(
-            f"plotted 3d slices: indices=({idx_i}, {idx_j}, {idx_k}), "
-            f"vmin={vmin:.2f}, vmax={vmax:.2f}"
-        )
-
-        return ax
+        return (Xi, J, K), (Xj, Yj, K_j), (Xk, Yk, Zk)

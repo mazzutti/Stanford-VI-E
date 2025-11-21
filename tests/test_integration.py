@@ -13,32 +13,21 @@ Tests cover:
 """
 
 import time
-import pytest
 from typing import Any
 
+import pytest
+
 from src.analysis.caching import CacheManager, LRUCache, TTLCache
-from src.analysis.patterns.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerState,
-    CircuitBreakerOpen,
-)
-from src.analysis.patterns.retry import RetryPolicy, ExponentialBackoffStrategy
-from src.analysis.rate_limiting import (
-    TokenBucketLimiter,
-    SlidingWindowLimiter,
-    LeakyBucketLimiter,
-    RateLimitPool,
-    RateLimitExceeded,
-    rate_limit,
-)
-from src.analysis.monitoring import (
-    StructuredLogger,
-    MetricsCollector,
-    PerformanceMonitor,
-    HealthCheckRegistry,
-    SimpleHealthCheck,
-    monitor,
-)
+from src.analysis.monitoring import (HealthCheckRegistry, MetricsCollector,
+                                     PerformanceMonitor, SimpleHealthCheck,
+                                     StructuredLogger, monitor)
+from src.analysis.patterns.circuit_breaker import (CircuitBreaker,
+                                                   CircuitBreakerOpen,
+                                                   CircuitBreakerState)
+from src.analysis.patterns.retry import ExponentialBackoffStrategy, RetryPolicy
+from src.analysis.rate_limiting import (LeakyBucketLimiter, RateLimitExceeded,
+                                        RateLimitPool, SlidingWindowLimiter,
+                                        TokenBucketLimiter, rate_limit)
 
 
 class TestCachingWithRateLimiting:

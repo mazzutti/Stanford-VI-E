@@ -16,6 +16,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, TypeVar, cast
+
 import numpy as np
 
 from src.io.backends import CacheStore
@@ -34,7 +35,7 @@ def _hash_for_obj(obj: dict[str, str | int | float | bool] | bytes | bytearray) 
     else:
         try:
             data = json.dumps(obj, sort_keys=True, default=str).encode("utf8")
-        except Exception:
+        except (TypeError, ValueError):
             data = str(obj).encode("utf8")
     return hashlib.sha1(data).hexdigest()
 
@@ -60,12 +61,12 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     ):
         """Initialize disk cache store.
 
-                Parameters
-                ----------
-                cache_dir : str | Path
-                    Directory for cache files.
-                logger_obj : logging.Logger | None
-                    Logger instance.
+        Parameters
+        ----------
+        cache_dir : str | Path
+            Directory for cache files.
+        logger_obj : logging.Logger | None
+            Logger instance.
 
         """
         self.cache_dir = Path(cache_dir)
@@ -93,15 +94,15 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     def get_path_for_key(self, key: str) -> Path | None:
         """Find cache file path for a given key.
 
-                Parameters
-                ----------
-                key : str
-                    Cache key prefix to search for.
+        Parameters
+        ----------
+        key : str
+            Cache key prefix to search for.
 
-                Returns
-                -------
-                Path | None
-                    Path to cache file if found, None otherwise.
+        Returns
+        -------
+        Path | None
+            Path to cache file if found, None otherwise.
 
         """
         if not self.cache_dir.exists():
@@ -116,15 +117,15 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     def get(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve item from cache.
 
-                Parameters
-                ----------
-                key : str
-                    Cache key.
+        Parameters
+        ----------
+        key : str
+            Cache key.
 
-                Returns
-                -------
-                dict[str, str | int | float | bool] | bytes | None
-                    Cached value or None if not found.
+        Returns
+        -------
+        dict[str, str | int | float | bool] | bytes | None
+            Cached value or None if not found.
 
         """
         path = self.get_path_for_key(key)
@@ -133,8 +134,8 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         try:
             with np.load(path, allow_pickle=True) as npz:
                 return dict(npz)
-        except Exception as e:
-            self.logger.debug(f"Error loading cache from {path}: {e}")
+        except (OSError, ValueError, KeyError) as e:
+            self.logger.debug("Error loading cache from %s: %s", path, e)
             return None
 
     def set(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
@@ -155,9 +156,9 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         try:
             # Some numpy stubs interpret kwargs strictly; cast to Any to satisfy type checkers
             np.savez_compressed(file=str(path), **cast(dict[str, Any], value))
-            self.logger.debug(f"Saved cache to {path}")
-        except Exception as e:
-            self.logger.debug(f"Error storing key '{key}': {e}")
+            self.logger.debug("Saved cache to %s", path)
+        except (OSError, ValueError, TypeError) as e:
+            self.logger.debug("Error storing key '%s': %s", key, e)
 
     def has(self, key: str) -> bool:
         """Check if key exists in cache.
@@ -175,8 +176,8 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         try:
             path = self.get_path_for_key(key)
             return path is not None and path.exists()
-        except Exception as e:
-            self.logger.debug(f"Error checking key '{key}': {e}")
+        except (OSError, ValueError) as e:
+            self.logger.debug("Error checking key '%s': %s", key, e)
             return False
 
     def total_size_bytes(self) -> int:
@@ -192,8 +193,8 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
 
         try:
             return sum(f.stat().st_size for f in self.cache_dir.glob("*.npz"))
-        except Exception as e:
-            self.logger.debug(f"Error calculating cache size: {e}")
+        except OSError as e:
+            self.logger.debug("Error calculating cache size: %s", e)
             return 0
 
     def entry_count(self) -> int:
@@ -209,8 +210,8 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
 
         try:
             return len(list(self.cache_dir.glob("*.npz")))
-        except Exception as e:
-            self.logger.debug(f"Error counting cache entries: {e}")
+        except OSError as e:
+            self.logger.debug("Error counting cache entries: %s", e)
             return 0
 
     def list_entries(self) -> list[dict[str, str | int | float]]:
@@ -235,10 +236,10 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
                         "mtime": stat.st_mtime,
                     }
                     entries.append(entry)
-                except Exception as e:
-                    self.logger.debug(f"Error stat'ing {path}: {e}")
-        except Exception as e:
-            self.logger.debug(f"Error listing cache entries: {e}")
+                except OSError as e:
+                    self.logger.debug("Error stat'ing %s: %s", path, e)
+        except OSError as e:
+            self.logger.debug("Error listing cache entries: %s", e)
 
         return entries
 
@@ -260,10 +261,10 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             return False
         try:
             path.unlink()
-            self.logger.debug(f"Deleted cache file: {path.name}")
+            self.logger.debug("Deleted cache file: %s", path.name)
             return True
-        except Exception as e:
-            self.logger.debug(f"Error deleting cache file {path}: {e}")
+        except OSError as e:
+            self.logger.debug("Error deleting cache file %s: %s", path, e)
             return False
 
     def clear(self) -> None:
@@ -274,11 +275,11 @@ class DiskStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             for path in self.cache_dir.glob("*.npz"):
                 try:
                     path.unlink()
-                except Exception as e:
-                    self.logger.debug(f"Error deleting {path}: {e}")
-            self.logger.debug(f"Cleared cache directory: {self.cache_dir}")
-        except Exception as e:
-            self.logger.debug(f"Error clearing cache directory: {e}")
+                except OSError as e:
+                    self.logger.debug("Error deleting %s: %s", path, e)
+            self.logger.debug("Cleared cache directory: %s", self.cache_dir)
+        except OSError as e:
+            self.logger.debug("Error clearing cache directory: %s", e)
 
 
 class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
@@ -298,54 +299,52 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
     def __init__(self, logger_obj: logging.Logger | None = None):
         """Initialize in-memory cache store.
 
-                Parameters
-                ----------
-                logger_obj : logging.Logger | None
-                    Logger instance.
+        Parameters
+        ----------
+        logger_obj : logging.Logger | None
+            Logger instance.
 
         """
         self.logger = logger_obj or logger
         self._store: dict[str, dict[str, str | int | float | bool] | bytes] = {}
 
-    def _get_impl(
-        self, key: str
-    ) -> dict[str, str | int | float | bool] | bytes | None:
+    def _get_impl(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve object from memory.
 
-                Parameters
-                ----------
-                key : str
-                    Cache key.
+        Parameters
+        ----------
+        key : str
+            Cache key.
 
-                Returns
-                -------
-                dict[str, str | int | float | bool] | bytes | None
-                    Cached value or None if not found.
+        Returns
+        -------
+        dict[str, str | int | float | bool] | bytes | None
+            Cached value or None if not found.
 
         """
         result = self._store.get(key)
         if result is not None:
-            self.logger.debug(f"Memory cache hit: {key}")
+            self.logger.debug("Memory cache hit: %s", key)
         return result
 
     def get(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
         """Retrieve item from cache.
 
-                Parameters
-                ----------
-                key : str
-                    Cache key.
+        Parameters
+        ----------
+        key : str
+            Cache key.
 
-                Returns
-                -------
-                dict[str, str | int | float | bool] | bytes | None
-                    Cached value or None if not found.
+        Returns
+        -------
+        dict[str, str | int | float | bool] | bytes | None
+            Cached value or None if not found.
 
         """
         try:
             return self._get_impl(key)
-        except Exception as e:
-            self.logger.debug(f"Error retrieving key '{key}': {e}")
+        except (RuntimeError, TypeError, KeyError) as e:
+            self.logger.debug("Error retrieving key '%s': %s", key, e)
             return None
 
     def _set_impl(
@@ -361,7 +360,7 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
             Value to cache.
         """
         self._store[key] = value
-        self.logger.debug(f"Memory cache set: {key}")
+        self.logger.debug("Memory cache set: %s", key)
 
     def set(self, key: str, value: dict[str, str | int | float | bool] | bytes) -> None:
         """Store item in cache.
@@ -375,8 +374,8 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         """
         try:
             self._set_impl(key, value)
-        except Exception as e:
-            self.logger.debug(f"Error storing key '{key}': {e}")
+        except (TypeError, RuntimeError) as e:
+            self.logger.debug("Error storing key '%s': %s", key, e)
 
     def _has_impl(self, key: str) -> bool:
         """Check if key exists in memory.
@@ -408,8 +407,8 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         """
         try:
             return self._has_impl(key)
-        except Exception as e:
-            self.logger.debug(f"Error checking key '{key}': {e}")
+        except (RuntimeError, TypeError) as e:
+            self.logger.debug("Error checking key '%s': %s", key, e)
             return False
 
     def _delete_impl(self, key: str) -> bool:
@@ -427,7 +426,7 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         """
         if key in self._store:
             del self._store[key]
-            self.logger.debug(f"Memory cache delete: {key}")
+            self.logger.debug("Memory cache delete: %s", key)
             return True
         return False
 
@@ -446,8 +445,8 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         """
         try:
             return self._delete_impl(key)
-        except Exception as e:
-            self.logger.debug(f"Error deleting key '{key}': {e}")
+        except (KeyError, RuntimeError) as e:
+            self.logger.debug("Error deleting key '%s': %s", key, e)
             return False
 
     def _clear_impl(self) -> None:
@@ -459,8 +458,8 @@ class MemoryStore(CacheStore[dict[str, str | int | float | bool] | bytes]):
         """Clear all cache entries."""
         try:
             self._clear_impl()
-        except Exception as e:
-            self.logger.debug(f"Error clearing cache: {e}")
+        except (RuntimeError, OSError) as e:
+            self.logger.debug("Error clearing cache: %s", e)
 
     def size(self) -> int:
         """Get number of entries in memory cache.

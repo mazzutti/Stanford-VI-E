@@ -9,11 +9,15 @@ Functions are compiled once and cached by numba for subsequent calls.
 """
 
 from typing import Any
-from numpy.typing import NDArray
 
 from numba import njit, prange
+from numpy.typing import NDArray
 
 from src.processing.resampling._interpolation import linear_interpolate_value
+
+# These numba-compiled kernel functions are performance-critical and often
+# use a number of local temporaries and loop variables for clarity and
+# speed. Silence the local-variable warning for this module's kernels.
 
 
 # ============================================================================

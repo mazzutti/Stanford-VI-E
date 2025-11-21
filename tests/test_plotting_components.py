@@ -3,16 +3,12 @@
 Tests verify component functionality for rendering, normalization, and data extraction.
 """
 
-import pytest
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pytest
 
-from src.plotting.helpers.components import (
-    SliceExtractor,
-    DataNormalizer,
-    AxisStyler,
-    ImageRenderer,
-)
+from src.plotting.helpers.components import (AxisStyler, DataNormalizer,
+                                             ImageRenderer, SliceExtractor)
 from src.plotting.helpers.config import PlotConfig
 
 

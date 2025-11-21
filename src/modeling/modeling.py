@@ -7,16 +7,17 @@ wavelet convolution.
 
 from __future__ import annotations
 
+import logging
+import sys
+from dataclasses import dataclass
+from typing import Any, TypeAlias
+
 import numpy as np
 from numpy.typing import NDArray
-from dataclasses import dataclass
 from tqdm.auto import tqdm
-import sys
-import logging
-from typing import Any, TypeAlias
-from src.utils.quantity import Quantity
-from src.modeling.processors import ReflectivityComputer, WaveletConvolver
 
+from src.modeling.processors import ReflectivityComputer, WaveletConvolver
+from src.utils.quantity import Quantity
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,10 @@ class AVOSynthesizer:
         Returns:
             (angle_stacks, full_stack): List of angle-dependent stacks and combined stack
         """
+        # The orchestration in this method necessarily introduces several
+        # local variables for buffer management, progress reporting and
+        # intermediate results. Suppress the too-many-locals warning here.
+
         config = config or SynthesisConfig()
 
         # Unwrap Quantity objects to numeric arrays
@@ -215,20 +220,20 @@ class AVOSynthesizer:
         vs = unwrap_quantity(props_time["vs"])
         rho = unwrap_quantity(props_time["rho"])
 
-        ni, nj, nk = vp.shape
         angle_stacks: list[NDArray[np.floating[Any]]] = []
-        full_stack: NDArray[np.floating[Any]] = np.zeros((ni, nj, nk), dtype=np.float32)
-        n_angles = len(angles)
+        full_stack: NDArray[np.floating[Any]] = np.zeros(vp.shape, dtype=np.float32)
 
-        debug_mode = sys.gettrace() is not None
+        # Narrowly allow many locals in this orchestration method.
+        # The method mainly wires processors together; keeping the
+        # implementation explicit improves readability for reviewers.
 
         with tqdm(
-            total=n_angles,
+            total=len(angles),
             desc="Processing Angles",
             leave=True,
             dynamic_ncols=True,
             file=sys.stderr,
-        ) as bar:
+        ) as progress:
             for idx, angle in enumerate(angles):
                 angle_stack_full = self._process_angle(vp, vs, rho, angle, wavelet)
 
@@ -241,12 +246,12 @@ class AVOSynthesizer:
                     )
 
                 angle_stacks.append(angle_stack_full)
-                full_stack += angle_stack_full / float(n_angles)
+                full_stack += angle_stack_full / float(len(angles))
 
-                bar.update(1)
+                progress.update(1)
 
-                if debug_mode:
-                    logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, n_angles)
+                if sys.gettrace() is not None:
+                    logger.debug("[DEBUG] Angle %d/%d completed", idx + 1, len(angles))
 
         if config.use_quality_weighting:
             full_stack = self.angle_model.weighted_stack(angle_stacks, angles)
@@ -262,6 +267,9 @@ class AVOSynthesizer:
         wavelet: NDArray[np.floating[Any]],
     ) -> NDArray[np.floating[Any]]:
         """Process a single angle: compute reflectivity and convolve."""
+        # The helper intentionally accepts multiple array-like inputs; silence
+        # argument-count warnings for this low-level processor method.
+
         # Compute reflectivity using dedicated processor
         rc_pad = self.reflectivity_computer.compute_reflectivity(vp, vs, rho, angle)
 

@@ -1,10 +1,14 @@
 """Type aliases and type variables for processor operations."""
 
-from typing import Any, TypeVar
 from collections.abc import Callable
+from typing import Any, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
+
+# Duplicate-code warnings are expected for similar __all__ exports across
+# small model modules; silence for this module only (placed before __all__).
+# pylint: disable=duplicate-code
 
 __all__ = [
     "Float64Array",
@@ -22,6 +26,9 @@ __all__ = [
     "CorrelationFunction",
     "AttributeArrayDict",
 ]
+# Allow non-PascalCase TypeVar names used across the codebase for readability
+# in type hints (StatsType etc.). This is stylistic and safe to relax.
+
 
 # Specific array types for cleaner type hints
 Float64Array = NDArray[np.float64]
@@ -45,6 +52,10 @@ T = TypeVar("T", bound=NDArray[Any])
 
 StatsType = TypeVar("StatsType")
 """Generic type variable for statistics types."""
+
+# Allow non-PascalCase TypeVar names used across the codebase for readability
+# in type hints (StatsType etc.). This is stylistic and safe to relax.
+
 
 # Common result type aliases
 FilterResult = tuple[Float64Array, Float64Array, int]

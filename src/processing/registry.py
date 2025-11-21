@@ -25,22 +25,25 @@ Example:
     >>> result = service.resample(data, plan)
 """
 
+# This module intentionally uses lazy, call-time imports within service
+# accessor methods to avoid heavy import-time dependencies and circular
+# references. Add a per-file pylint disable for these import patterns.
+# pylint: disable=import-outside-toplevel
+
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING
-from collections.abc import Callable
 import logging
-
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.io.grid import GridSpec
-    from src.processing.resampling.service import ResamplerService
+    from src.processing.avo.validator import AVOValidator
+    from src.processing.managers import ManagerHub
+    from src.processing.metrics import BackendMetrics
     from src.processing.resampling._cache import ResamplePlanCache
     from src.processing.resampling.backends._manager import BackendManager
-    from src.processing.metrics import BackendMetrics
-    from src.processing.managers import ManagerHub
-    from src.processing.avo.validator import AVOValidator
+    from src.processing.resampling.service import ResamplerService
 
 
 __all__ = ["ServiceRegistry", "get_registry", "reset_registry"]
@@ -125,7 +128,7 @@ class ServiceRegistry:
         """
         if key not in self._instances:
             self._instances[key] = factory()
-            self._logger.debug(f"Created service: {key}")
+            self._logger.debug("Created service: %s", key)
         return self._instances[key]
 
     def get_resampler_service(
@@ -145,8 +148,12 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
-        from src.processing.resampling.service import ResamplerService
+        # Lazy imports to avoid heavy import-time dependencies
+
         from src.io.grid import GridSpec as GridSpecClass
+        from src.processing.resampling.service import ResamplerService
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> ResamplerService:
             grid = grid_spec or GridSpecClass((512, 512, 512))
@@ -168,7 +175,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.resampling.backends._manager import BackendManager
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> BackendManager:
             return BackendManager()
@@ -189,7 +199,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.resampling._cache import ResamplePlanCache
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> ResamplePlanCache:
             # Import here to avoid circular dependencies
@@ -211,7 +224,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.metrics import BackendMetrics
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> BackendMetrics:
             return BackendMetrics()
@@ -231,7 +247,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.managers import ManagerHub
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> ManagerHub:
             return ManagerHub()
@@ -255,7 +274,10 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.avo.validator import AVOValidator
+
+        # (previously disabled import-outside-toplevel here; now removed as redundant)
 
         def factory() -> AVOValidator:
             return AVOValidator(max_angle=max_angle)
@@ -275,6 +297,7 @@ class ServiceRegistry:
         Raises:
             ImportError: If required dependencies are not available
         """
+
         from src.processing.rock_physics.model import RockPhysicsModel
 
         return RockPhysicsModel
@@ -288,29 +311,22 @@ class ServiceRegistry:
         self._logger.info("Cleared all service instances")
 
 
-# Global registry instance (lazy initialization)
-_global_registry: ServiceRegistry | None = None
-
-
 def get_registry() -> ServiceRegistry:
     """Get the global service registry singleton.
 
-    Lazily initializes the registry on first call.
-
-    Returns:
-        Global ServiceRegistry singleton
-
-    Example:
-        >>> registry = get_registry()
-        >>> resampler = registry.get_resampler_service()
+    Lazily initializes the registry on first call. Stored as a function
+    attribute to avoid using the ``global`` statement while preserving
+    module-level singleton semantics.
     """
-    global _global_registry
-    if _global_registry is None:
-        _global_registry = ServiceRegistry()
-    return _global_registry
+    inst = getattr(get_registry, "_instance", None)
+    if inst is None:
+        inst = ServiceRegistry()
+        setattr(get_registry, "_instance", inst)
+    return inst
 
 
 def reset_registry() -> None:
     """Reset the global registry (mainly for testing)."""
-    if _global_registry is not None:
-        _global_registry.clear()
+    inst = getattr(get_registry, "_instance", None)
+    if inst is not None:
+        inst.clear()

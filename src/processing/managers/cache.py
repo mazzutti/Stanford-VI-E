@@ -1,13 +1,16 @@
 """Cache management utilities."""
 
-from pathlib import Path
-import os
 import logging
+import os
+from pathlib import Path
 
 from src.processing.managers.resource_manager import ResourceManager
 
-
 __all__ = ["CacheManager", "CacheClearStrategy", "CacheSummarizeStrategy"]
+
+# Small strategy/helper classes in this module intentionally expose a
+# compact public surface. Silence too-few-public-methods to reduce noise
+# for these simple DSL-like helper types.
 
 
 class CacheClearStrategy:
@@ -37,7 +40,7 @@ class CacheClearStrategy:
             for file_path in resource_dir.glob(pattern):
                 if self._safe_remove(file_path):
                     removed += 1
-        except Exception:
+        except OSError:
             pass
         return removed
 
@@ -47,18 +50,21 @@ class CacheClearStrategy:
         try:
             os.remove(file_path)
             return True
-        except Exception:
+        except OSError:
             return False
 
     def _clear_by_size(self, resource_dir: Path) -> int:
         """Clear cache using size-based pruning strategy."""
         try:
-            from src.io.pruning import Pruner, PruneStrategy
+            from src.io.pruning import (
+                Pruner,
+                PruneStrategy,
+            )
 
             strategy = PruneStrategy.by_size_only(max_cache_bytes=10 * 1024**3)
             result = Pruner(strategy).prune(resource_dir)
             return result.count
-        except Exception:
+        except (ImportError, RuntimeError, OSError):
             return 0
 
 
@@ -72,10 +78,10 @@ class CacheSummarizeStrategy:
     def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Print a summary of cache files in the directory."""
         if not resource_dir.exists():
-            self.logger.info(f"Cache directory not found: {resource_dir}")
+            self.logger.info("Cache directory not found: %s", resource_dir)
             return
 
-        self.logger.info(f"Cache summary ({resource_dir}):")
+        self.logger.info("Cache summary (%s):", resource_dir)
 
         # List all .npz files in the cache directory
         npz_files = sorted(
@@ -103,9 +109,9 @@ class CacheSummarizeStrategy:
             if candidates:
                 latest = candidates[0]
                 size_mb = latest.stat().st_size / (1024**2)
-                self.logger.info(f"  {k}: {latest.name} ({size_mb:.1f} MB)")
+                self.logger.info("  %s: %s (%.1f MB)", k, latest.name, size_mb)
             else:
-                self.logger.info(f"  {k}: <none>")
+                self.logger.info("  %s: <none>", k)
 
 
 class CacheManager(ResourceManager[Path]):

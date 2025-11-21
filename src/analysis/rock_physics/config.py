@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from collections.abc import Mapping, Sequence
 
 from src.analysis.base import AnalysisConfig
 from src.analysis.config_mixins import ValidatableConfigMixin
-from src.analysis.validators_registry import ValidatorRegistry
-from src.analysis.rock_physics.constants import RockPhysicsConstants
 from src.analysis.rock_physics.computers import (
     DEFAULT_AVO_ANGLES_DEG,
     DEFAULT_FLUID_FACTOR_K,
 )
+from src.analysis.rock_physics.constants import RockPhysicsConstants
+from src.analysis.validators_registry import ValidatorRegistry
+
+# This configuration dataclass intentionally aggregates many tuning
+# parameters; disable the instance-attribute lint for this data holder.
 
 
 @dataclass
@@ -50,7 +53,7 @@ class RockPhysicsAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
     cache_dir: str = ".cache"
     data_path: str = RockPhysicsConstants.DEFAULT_DATA_PATH
     file_map: dict[str, str] = field(
-        default_factory=lambda: RockPhysicsConstants.DEFAULT_FILE_MAP.copy()
+        default_factory=RockPhysicsConstants.DEFAULT_FILE_MAP.copy
     )
     grid_shape: tuple[int, int, int] = RockPhysicsConstants.DEFAULT_GRID_SHAPE
     dz: float = RockPhysicsConstants.DEFAULT_DZ

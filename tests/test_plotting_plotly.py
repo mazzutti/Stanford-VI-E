@@ -3,9 +3,9 @@
 Tests verify PlotlyPlotter 3D volume creation functionality.
 """
 
-import pytest
 import numpy as np
 import plotly.graph_objects as go
+import pytest
 
 from src.plotting.plotly_plotter import PlotlyPlotter
 

@@ -15,13 +15,13 @@ Example:
     ... )
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import NamedTuple, Protocol
-from collections.abc import Callable, Generator
-from types import TracebackType
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
+from types import TracebackType
+from typing import NamedTuple, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -111,7 +111,7 @@ class CubeProcessor(Protocol):
     @property
     def domain(self) -> Domain:
         """The domain this processor manages."""
-        ...
+        raise NotImplementedError()
 
     def prepare_display_cubes(
         self,
@@ -121,7 +121,7 @@ class CubeProcessor(Protocol):
         grid_spec: GridSpec,
     ) -> DisplayCubes:
         """Prepare AVO and facies cubes for display in this domain."""
-        ...
+        raise NotImplementedError()
 
 
 @dataclass(frozen=True)
@@ -189,7 +189,6 @@ class DomainHandler(ABC):
         DisplayCubes
             Named tuple with avo and facies cubes prepared for this domain.
         """
-        pass
 
     def initialize(self) -> None:
         """Initialize handler resources if needed.
@@ -199,7 +198,7 @@ class DomainHandler(ABC):
         marks the handler as initialized.
         """
         object.__setattr__(self, "_is_initialized", True)
-        logger.debug(f"Handler for {self.domain.name} initialized")
+        logger.debug("Handler for %s initialized", self.domain.name)
 
     def cleanup(self) -> None:
         """Clean up handler resources if needed.
@@ -207,7 +206,7 @@ class DomainHandler(ABC):
         Override this method to perform teardown tasks such as
         releasing cached data or closing connections.
         """
-        logger.debug(f"Handler for {self.domain.name} cleaned up")
+        logger.debug("Handler for %s cleaned up", self.domain.name)
 
     @property
     def is_initialized(self) -> bool:
@@ -278,8 +277,10 @@ class DomainHandler(ABC):
         """
         try:
             self.cleanup()
-        except Exception as e:
-            logger.exception(f"Error during cleanup of {self.domain.name} handler: {e}")
+        except (RuntimeError, OSError) as e:
+            logger.exception(
+                "Error during cleanup of %s handler: %s", self.domain.name, e
+            )
 
 
 class DepthDomainHandler(DomainHandler):
@@ -287,11 +288,7 @@ class DepthDomainHandler(DomainHandler):
 
     def __init__(self) -> None:
         """Initialize the depth domain handler."""
-        object.__setattr__(self, "domain", Domain.DEPTH)
-
-    def __repr__(self) -> str:
-        """Return detailed representation."""
-        return super().__repr__()
+        super().__init__(Domain.DEPTH)
 
     def prepare_display_cubes(
         self,
@@ -327,11 +324,7 @@ class TimeDomainHandler(DomainHandler):
 
     def __init__(self) -> None:
         """Initialize the time domain handler."""
-        object.__setattr__(self, "domain", Domain.TIME)
-
-    def __repr__(self) -> str:
-        """Return detailed representation."""
-        return super().__repr__()
+        super().__init__(Domain.TIME)
 
     def prepare_display_cubes(
         self,
@@ -434,13 +427,12 @@ class DomainHandlerRegistry:
             self._handlers[domain] = handler
             self._initialized.add(domain)
             logger.debug(
-                f"Lazy-initialized handler for domain {domain.name} "
-                f"({handler.__class__.__name__})"
+                "Lazy-initialized handler for domain %s (%s)",
+                domain.name,
+                handler.__class__.__name__,
             )
-        except Exception as e:
-            logger.exception(
-                f"Failed to initialize handler for domain {domain.name}: {e}"
-            )
+        except (RuntimeError, OSError, ValueError) as e:
+            logger.exception("Failed to initialize handler for %s: %s", domain.name, e)
             raise RuntimeError(f"Cannot initialize handler for {domain.name}") from e
 
     def register(self, domain: Domain, handler: DomainHandler) -> None:
@@ -460,15 +452,16 @@ class DomainHandlerRegistry:
         """
         if domain in self._initialized and domain in self._handlers:
             logger.warning(
-                f"Overwriting initialized handler for domain {domain.name}. "
-                f"Consider calling cleanup() first."
+                "Overwriting initialized handler for domain %s. Consider calling cleanup() first.",
+                domain.name,
             )
         self._handlers[domain] = handler
         self._handler_factories.pop(domain, None)
         self._initialized.add(domain)
         logger.debug(
-            f"Registered handler for domain {domain.name} "
-            f"({handler.__class__.__name__})"
+            "Registered handler for domain %s (%s)",
+            domain.name,
+            handler.__class__.__name__,
         )
 
     def get_handler(self, domain: Domain) -> DomainHandler:
@@ -572,8 +565,8 @@ class DomainHandlerRegistry:
         for domain, handler in self._handlers.items():
             try:
                 handler.cleanup()
-                logger.debug(f"Cleaned up handler for domain {domain.name}")
-            except Exception as e:
+                logger.debug("Cleaned up handler for domain %s", domain.name)
+            except (RuntimeError, OSError) as e:
                 logger.exception(
                     "Error during cleanup of %s handler", domain.name, exc_info=e
                 )
@@ -680,8 +673,8 @@ class DomainHandlerFactory:
         finally:
             try:
                 handler.cleanup()
-            except Exception as e:
-                logger.exception(f"Error in handler cleanup for {domain.name}: {e}")
+            except (RuntimeError, OSError) as e:
+                logger.exception("Error in handler cleanup for %s: %s", domain.name, e)
 
     @classmethod
     def register_handler(cls, domain: Domain, handler: DomainHandler) -> None:
@@ -698,8 +691,9 @@ class DomainHandlerFactory:
         """
         _default_registry.register(domain, handler)
         logger.info(
-            f"Custom handler registered for domain {domain.name}: "
-            f"{handler.__class__.__name__}"
+            "Custom handler registered for domain %s: %s",
+            domain.name,
+            handler.__class__.__name__,
         )
 
     @classmethod
@@ -790,6 +784,6 @@ class DomainHandlerFactory:
             logger.info("No handler statistics available yet")
             return
 
-        logger.info(f"Handler Statistics ({len(stats_list)} handlers):")
+        logger.info("Handler Statistics (%s handlers):", len(stats_list))
         for stats in stats_list:
-            logger.info(f"  {stats}")
+            logger.info("  %s", stats)

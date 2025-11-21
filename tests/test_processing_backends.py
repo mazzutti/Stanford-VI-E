@@ -5,19 +5,19 @@ and time-to-depth resampling operations. Includes comprehensive tests for
 backend method implementations, manager selection logic, and service layer.
 """
 
-import pytest
-import numpy as np
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-from src.processing.resampling.backends._implementations import (
-    VectorizedBackend,
-    BatchedInterpolatorBackend,
-)
-from src.processing.resampling.backends._manager import BackendManager
-from src.processing.resampling.backends._base import BackendResult, BackendError
-from src.processing.resampling._plan import ResamplePlan
-from src.processing.resampling.service import ResamplerService
+import numpy as np
+import pytest
+
 from src.io.grid import GridSpec
+from src.processing.resampling._plan import ResamplePlan
+from src.processing.resampling.backends._base import (BackendError,
+                                                      BackendResult)
+from src.processing.resampling.backends._implementations import (
+    BatchedInterpolatorBackend, VectorizedBackend)
+from src.processing.resampling.backends._manager import BackendManager
+from src.processing.resampling.service import ResamplerService
 
 
 class TestVectorizedBackendInitialization:
@@ -653,14 +653,16 @@ class TestBackendImplementationsRegistration:
     def test_default_backends_registered(self):
         """Test that default backends are automatically registered."""
         # This tests the _register_default_backends() call at module load
-        from src.processing.resampling.backends._implementations import BackendManager
+        from src.processing.resampling.backends._implementations import \
+            BackendManager
 
         manager = BackendManager()
 
         # At module load time, _register_default_backends() should have been called
         # Try importing to ensure registration
         try:
-            from src.processing.resampling.backends import _manager as mgr_module
+            from src.processing.resampling.backends import \
+                _manager as mgr_module
 
             # If we got here, module loaded successfully
             assert True

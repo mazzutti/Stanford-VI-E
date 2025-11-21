@@ -4,17 +4,14 @@ Tests verify text formatting functions for logging and display.
 """
 
 import logging
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-from src.plotting.helpers.formatting import (
-    print_header,
-    print_angle_summary,
-    print_selected_angles,
-    print_cache_info,
-    FormattingHelper,
-    get_formatting_helper,
-)
+from src.plotting.helpers.formatting import (FormattingHelper,
+                                             get_formatting_helper,
+                                             print_angle_summary,
+                                             print_cache_info, print_header,
+                                             print_selected_angles)
 
 
 class TestPrintHeader:

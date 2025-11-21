@@ -12,23 +12,22 @@ plans when over capacity.
 
 from __future__ import annotations
 
-
+import hashlib
+import logging
 from collections import OrderedDict
 from dataclasses import dataclass
-import hashlib
 from typing import Any
-from numpy.typing import NDArray
-
 
 import numpy as np
-import logging
+from numpy.typing import NDArray
 
-
-from src.processing.resampling._plan import ResamplePlan
 from src.io.grid import GridSpec
-
+from src.processing.resampling._plan import ResamplePlan
 
 logger = logging.getLogger(__name__)
+
+# Small LRU cache helper with a compact public surface; silence the
+# too-few-public-methods warning for this utility type.
 
 
 @dataclass(frozen=True)
@@ -125,23 +124,17 @@ class ResamplePlanCache:
 __all__ = ["ResamplePlanCache", "get_resample_plan_cache", "set_resample_plan_cache"]
 
 
-# Module-level default cache (singleton). Consumers may override it by
-# calling `set_resample_plan_cache(...)` prior to first use.
-_default_cache: ResamplePlanCache | None = None
-
-
 def get_resample_plan_cache(maxsize: int = 16) -> ResamplePlanCache:
     """Return the module-level ResamplePlanCache singleton, creating it
-    if necessary. If a different maxsize is required, call this with
-    the desired maxsize before other modules import the cache.
+    if necessary. Stored as a function attribute to avoid `global`.
     """
-    global _default_cache
-    if _default_cache is None:
-        _default_cache = ResamplePlanCache(maxsize=maxsize)
-    return _default_cache
+    inst = getattr(get_resample_plan_cache, "_cache", None)
+    if inst is None:
+        inst = ResamplePlanCache(maxsize=maxsize)
+        setattr(get_resample_plan_cache, "_cache", inst)
+    return inst
 
 
 def set_resample_plan_cache(cache: ResamplePlanCache) -> None:
     """Replace the module-level default cache with a caller-provided one."""
-    global _default_cache
-    _default_cache = cache
+    setattr(get_resample_plan_cache, "_cache", cache)

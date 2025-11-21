@@ -13,11 +13,13 @@ Tests focus on:
 # mypy: ignore-errors
 
 
-import pytest
-import numpy as np
-from pathlib import Path
-from unittest.mock import Mock
 import tempfile
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from unittest.mock import Mock
+
+import numpy as np
+import pytest
 
 from src.analysis.facies.pipeline import AnalysisPipeline
 

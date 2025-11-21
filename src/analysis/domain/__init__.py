@@ -21,14 +21,14 @@ Example:
 
 from .enum import Domain
 from .handlers import (
-    DomainHandler,
+    CubeProcessor,
     DepthDomainHandler,
-    TimeDomainHandler,
+    DisplayCubes,
+    DomainHandler,
     DomainHandlerFactory,
     DomainHandlerRegistry,
-    DisplayCubes,
     HandlerStatistics,
-    CubeProcessor,
+    TimeDomainHandler,
 )
 
 __all__ = [

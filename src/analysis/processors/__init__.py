@@ -46,66 +46,55 @@ from numpy.typing import NDArray
 >>> seismic_aligned, facies_aligned = aligner.align(seismic, facies_cube)
 """
 
+from src.core.processors import BaseProcessor, Processor  # noqa: F401
+
+from .amplitude import BoundaryAmplitudeExtractor  # noqa: F401
+
+# Phase 3 modules (processor implementations)
+from .boundary import NeighborDirection  # noqa: F401
+from .boundary import BoundaryDetector, CubeAligner  # noqa: F401
+
 # Phase 2 modules (utilities and helpers)
 from .decorators import ProcessorDecorators  # noqa: F401
-from .management import (  # noqa: F401
-    ProcessorRegistry,
+from .discrimination import FaciesDiscriminationCalculator  # noqa: F401
+from .exceptions import ProcessorError  # noqa: F401
+from .exceptions import CorrelationError, ReshapeError, ValidationError
+from .gradient import GradientCorrelationCalculator  # noqa: F401
+from .interface import InterfaceReflectionAnalyzer  # noqa: F401
+from .management import BoundaryComputationConfig  # noqa: F401
+from .management import (
+    DilationConfig,
+    PadConfig,
+    ProcessorConfig,
     ProcessorMetadata,
-    get_default_processor_registry,
-    register_processor,
-    create_processor,
-    convert_numpy_scalars_to_float,
+    ProcessorRegistry,
+    ValidationResult,
+    align_and_reshape,
+    compute_amplitude_stats,
     compute_quartiles,
+    compute_vertical_gradient,
+    convert_numpy_scalars_to_float,
+    create_processor,
+    extract_amplitude_subset,
     filter_finite_values,
     flatten_and_filter_finite,
-    reshape_3d_to_2d,
-    align_and_reshape,
-    compute_vertical_gradient,
-    extract_amplitude_subset,
-    compute_amplitude_stats,
-    set_default_statistics_strategy,
+    get_default_processor_registry,
     get_default_statistics_strategy,
-    PadConfig,
-    DilationConfig,
-    ValidationResult,
-    ProcessorConfig,
-    BoundaryComputationConfig,
+    register_processor,
+    reshape_3d_to_2d,
+    set_default_statistics_strategy,
 )
-from .exceptions import (  # noqa: F401
-    CorrelationError,
-    ProcessorError,
-    ReshapeError,
-    ValidationError,
-)
-from .validators import (  # noqa: F401
-    ArrayValidator,
-    ValidationHelpers,
-    Validatable,
-)
-from .types import (  # noqa: F401
+from .operations import AlignmentOps, ExtractionOps, ReshapeOps, StatsOps  # noqa: F401
+from .types import CorrelationFunction  # noqa: F401
+from .types import (
     BoolArray,
-    CorrelationFunction,
     CorrelationResult,
     FilterResult,
     Float64Array,
     Int64Array,
     OptionalArrayPair,
 )
-from .boundary import NeighborDirection  # noqa: F401
-from src.core import BaseProcessor, Processor  # noqa: F401
-from .operations import (  # noqa: F401
-    AlignmentOps,
-    ReshapeOps,
-    ExtractionOps,
-    StatsOps,
-)
-
-# Phase 3 modules (processor implementations)
-from .boundary import BoundaryDetector, CubeAligner  # noqa: F401
-from .amplitude import BoundaryAmplitudeExtractor  # noqa: F401
-from .gradient import GradientCorrelationCalculator  # noqa: F401
-from .interface import InterfaceReflectionAnalyzer  # noqa: F401
-from .discrimination import FaciesDiscriminationCalculator  # noqa: F401
+from .validators import ArrayValidator, Validatable, ValidationHelpers  # noqa: F401
 
 __all__ = [
     # Processor classes

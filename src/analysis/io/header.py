@@ -20,8 +20,8 @@ For convenience, a module-level instance is available:
     >>> printer("Title", ["Line 1", "Line 2"])
 """
 
-from collections.abc import Sequence, Iterator
 import logging
+from collections.abc import Iterator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,8 @@ class HeaderPrinter:
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
-        exc_val: BaseException | None, _exc_tb: object,
+        exc_val: BaseException | None,
+        _exc_tb: object,
     ) -> None:
         """Exit context manager gracefully.
 
@@ -133,9 +134,7 @@ class HeaderPrinter:
         # No cleanup needed, but allows use as context manager
 
     @classmethod
-    def error_header(
-        cls, logger_obj: logging.Logger | None = None
-    ) -> "HeaderPrinter":
+    def error_header(cls, logger_obj: logging.Logger | None = None) -> "HeaderPrinter":
         """Create a HeaderPrinter for error messages.
 
         Uses WARNING level and '!' separator character.
@@ -175,9 +174,7 @@ class HeaderPrinter:
         )
 
     @classmethod
-    def info_header(
-        cls, logger_obj: logging.Logger | None = None
-    ) -> "HeaderPrinter":
+    def info_header(cls, logger_obj: logging.Logger | None = None) -> "HeaderPrinter":
         """Create a HeaderPrinter for info messages.
 
         Uses INFO level and '*' separator character.
@@ -196,9 +193,7 @@ class HeaderPrinter:
         )
 
     @classmethod
-    def debug_header(
-        cls, logger_obj: logging.Logger | None = None
-    ) -> "HeaderPrinter":
+    def debug_header(cls, logger_obj: logging.Logger | None = None) -> "HeaderPrinter":
         """Create a HeaderPrinter for debug messages.
 
         Uses DEBUG level and '~' separator character.

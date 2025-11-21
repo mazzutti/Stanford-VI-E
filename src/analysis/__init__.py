@@ -10,13 +10,8 @@ from __future__ import annotations
 
 import logging
 
-from .exceptions import (
-    AnalysisException,
-    ValidationError,
-)
-
-
 from .common import AnalysisCommon
+from .exceptions import AnalysisException, ValidationError
 
 logger = logging.getLogger(__name__)
 

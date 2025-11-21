@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 import os
+
 import numpy as np
 
 from src.plotting.facies_plotter import FaciesPlotter

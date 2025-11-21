@@ -14,8 +14,8 @@ from unittest import mock
 
 import pytest
 
-from src.analysis.factories.validators import TypeValidator
 from src.analysis.exceptions import BuilderFrozenError, BuilderValidationError
+from src.analysis.factories.validators import TypeValidator
 
 
 class TestValidateTypeBasic:

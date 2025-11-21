@@ -24,10 +24,10 @@ Example:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any
 import logging
+from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,6 @@ class AnalysisCommand(ABC):
         Raises:
             RuntimeError: If command execution fails
         """
-        pass
 
     @abstractmethod
     def undo(self) -> bool:
@@ -70,7 +69,6 @@ class AnalysisCommand(ABC):
         Returns:
             True if undo successful, False if not undoable
         """
-        pass
 
     @abstractmethod
     def redo(self) -> Any:
@@ -79,7 +77,6 @@ class AnalysisCommand(ABC):
         Returns:
             Command result
         """
-        pass
 
     @property
     @abstractmethod
@@ -89,7 +86,6 @@ class AnalysisCommand(ABC):
         Returns:
             Description string
         """
-        pass
 
     @property
     def is_undoable(self) -> bool:
@@ -134,7 +130,7 @@ class RunAnalysisCommand(AnalysisCommand):
         Returns:
             Analysis result
         """
-        logger.info(f"Executing {self.description}")
+        logger.info("%s", self.description)
 
         try:
             # Save cache state for undo
@@ -145,11 +141,12 @@ class RunAnalysisCommand(AnalysisCommand):
             self.result = self.analyzer.run(self.data)
             self.executed = True
 
-            logger.debug(f"Successfully executed: {self.description}")
+            logger.debug("Successfully executed: %s", self.description)
             return self.result
 
         except Exception as e:
-            logger.error(f"Failed to execute: {self.description}: {e}")
+            # Framework boundary: log unexpected command errors and re-raise.
+            logger.error("Failed to execute: %s: %s", self.description, e)
             raise
 
     def undo(self) -> bool:
@@ -162,7 +159,7 @@ class RunAnalysisCommand(AnalysisCommand):
             logger.warning("Cannot undo command that hasn't been executed")
             return False
 
-        logger.info(f"Undoing {self.description}")
+        logger.info("%s", self.description)
 
         try:
             # Restore cache if available
@@ -174,11 +171,12 @@ class RunAnalysisCommand(AnalysisCommand):
             self.result = None
             self.executed = False
 
-            logger.debug(f"Successfully undone: {self.description}")
+            logger.debug("Successfully undone: %s", self.description)
             return True
 
         except Exception as e:
-            logger.error(f"Failed to undo: {self.description}: {e}")
+            # Framework boundary: catch undo-time errors to avoid bubbling.
+            logger.error("Failed to undo: %s: %s", self.description, e)
             return False
 
     def redo(self) -> Any:
@@ -187,7 +185,7 @@ class RunAnalysisCommand(AnalysisCommand):
         Returns:
             Analysis result
         """
-        logger.info(f"Redoing {self.description}")
+        logger.info("%s", self.description)
         return self.execute()
 
     @property
@@ -227,7 +225,7 @@ class MacroCommand(AnalysisCommand):
             Self for chaining
         """
         self.commands.append(command)
-        logger.debug(f"Added command to macro '{self.name}': {command.description}")
+        logger.debug("Added command to macro '%s': %s", self.name, command.description)
         return self
 
     def execute(self) -> Any:
@@ -236,14 +234,14 @@ class MacroCommand(AnalysisCommand):
         Returns:
             Result of last command
         """
-        logger.info(f"Executing macro: {self.description}")
+        logger.info("Executing macro: %s", self.description)
 
         result = None
         for command in self.commands:
             try:
                 result = command.execute()
             except Exception as e:
-                logger.error(f"Error executing command in macro: {e}")
+                logger.error("Error executing command in macro: %s", e)
                 raise
 
         self.executed = True
@@ -255,7 +253,7 @@ class MacroCommand(AnalysisCommand):
         Returns:
             True if all undos successful
         """
-        logger.info(f"Undoing macro: {self.description}")
+        logger.info("Undoing macro: %s", self.description)
 
         success = True
         # Undo in reverse order
@@ -263,9 +261,9 @@ class MacroCommand(AnalysisCommand):
             try:
                 if not command.undo():
                     success = False
-                    logger.warning(f"Failed to undo: {command.description}")
+                    logger.warning("Failed to undo: %s", command.description)
             except Exception as e:
-                logger.error(f"Error undoing command in macro: {e}")
+                logger.error("Error undoing command in macro: %s", e)
                 success = False
 
         self.executed = False
@@ -277,7 +275,7 @@ class MacroCommand(AnalysisCommand):
         Returns:
             Result of last command
         """
-        logger.info(f"Redoing macro: {self.description}")
+        logger.info("Redoing macro: %s", self.description)
 
         result = None
         for command in self.commands:
@@ -318,7 +316,7 @@ class CommandQueue:
         Returns:
             Command result
         """
-        logger.info(f"Executing command: {command.description}")
+        logger.info("Executing command: %s", command.description)
 
         try:
             result = command.execute()
@@ -337,14 +335,15 @@ class CommandQueue:
                 self.current_index = len(self.history) - 1
 
             logger.debug(
-                f"Command executed. History position: "
-                f"{self.current_index + 1}/{len(self.history)}"
+                "Command executed. History position: %d/%d",
+                self.current_index + 1,
+                len(self.history),
             )
 
             return result
 
         except Exception as e:
-            logger.error(f"Command execution failed: {e}")
+            logger.error("Command execution failed: %s", e)
             raise
 
     def undo(self) -> bool:
@@ -358,16 +357,18 @@ class CommandQueue:
             return False
 
         command = self.history[self.current_index]
-        logger.info(f"Undoing: {command.description}")
+        logger.info("Undoing: %s", command.description)
 
         if command.undo():
             self.current_index -= 1
             logger.debug(
-                f"Undo successful. Position: {self.current_index + 1}/{len(self.history)}"
+                "Undo successful. Position: %d/%d",
+                self.current_index + 1,
+                len(self.history),
             )
             return True
         else:
-            logger.error(f"Undo failed for: {command.description}")
+            logger.error("Undo failed for: %s", command.description)
             return False
 
     def redo(self) -> bool:
@@ -382,17 +383,19 @@ class CommandQueue:
 
         next_index = self.current_index + 1
         command = self.history[next_index]
-        logger.info(f"Redoing: {command.description}")
+        logger.info("Redoing: %s", command.description)
 
         try:
             command.redo()
             self.current_index = next_index
             logger.debug(
-                f"Redo successful. Position: {self.current_index + 1}/{len(self.history)}"
+                "Redo successful. Position: %d/%d",
+                self.current_index + 1,
+                len(self.history),
             )
             return True
         except Exception as e:
-            logger.error(f"Redo failed: {e}")
+            logger.error("Redo failed: %s", e)
             return False
 
     def clear(self) -> None:

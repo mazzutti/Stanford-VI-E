@@ -1,11 +1,13 @@
 """Tests for RockPhysicsModel in src.processing.rock_physics.model."""
 
-import pytest
-import numpy as np
-from unittest.mock import Mock, MagicMock, patch
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from unittest.mock import MagicMock, Mock, patch
 
-from src.processing.rock_physics.model import RockPhysicsModel
+import numpy as np
+import pytest
+
 from src.io.grid import GridSpec
+from src.processing.rock_physics.model import RockPhysicsModel
 from src.utils.quantity import Quantity
 
 

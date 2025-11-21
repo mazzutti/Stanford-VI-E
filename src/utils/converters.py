@@ -37,7 +37,6 @@ class UnitConverter(ABC):
         bool
             True if array appears to be in target unit
         """
-        pass
 
     @abstractmethod
     def convert_if_needed(
@@ -57,7 +56,6 @@ class UnitConverter(ABC):
         Tuple[NDArray, bool]
             Tuple of (converted_array, was_converted)
         """
-        pass
 
     def _nanmax_abs(self, a: NDArray[Any]) -> float:
         """Helper to safely get max absolute value, handling NaNs.
@@ -74,7 +72,7 @@ class UnitConverter(ABC):
         """
         try:
             return float(np.nanmax(np.abs(a)))
-        except Exception:
+        except (ValueError, TypeError, FloatingPointError):
             return float("inf")
 
     def _ensure_numeric(self, arr: NDArray[Any]) -> NDArray[Any]:
@@ -165,9 +163,8 @@ class VelocityConverter(UnitConverter):
         if maxabs < self.threshold:  # Likely km/s, convert to m/s
             if copy_on_convert:
                 return arr.astype(float) * self.conversion_factor, True
-            else:
-                arr[...] = arr * self.conversion_factor
-                return arr, True
+            arr[...] = arr * self.conversion_factor
+            return arr, True
 
         return arr, False
 
@@ -242,8 +239,7 @@ class DensityConverter(UnitConverter):
         if maxabs < self.threshold:  # Likely g/cc, convert to kg/m³
             if copy_on_convert:
                 return arr.astype(float) * self.conversion_factor, True
-            else:
-                arr[...] = arr * self.conversion_factor
-                return arr, True
+            arr[...] = arr * self.conversion_factor
+            return arr, True
 
         return arr, False

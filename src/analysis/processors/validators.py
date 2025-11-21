@@ -2,7 +2,8 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Protocol, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+
 from numpy.typing import NDArray
 
 from .exceptions import ValidationError
@@ -12,6 +13,12 @@ if TYPE_CHECKING:
     from src.analysis.domain.enum import Domain
 
 logger = logging.getLogger(__name__)
+
+# Certain domain-specific imports are intentionally performed at runtime
+# (inside methods) to avoid circular imports and heavy top-level cost.
+# These late imports are deliberate; disable import-order warnings here
+# so pylint focuses on real problems.
+
 
 __all__ = [
     "Validatable",
@@ -34,11 +41,11 @@ class Validatable(Protocol):
 
     def validate(self) -> bool:
         """Validate the object's state. Returns True if valid, False otherwise."""
-        ...
+        raise NotImplementedError()
 
     def assert_valid(self) -> None:
         """Assert object is valid, raise ValidationError if not."""
-        ...
+        raise NotImplementedError()
 
 
 class ValidationHelpers:
@@ -237,6 +244,10 @@ class DomainValidator:
     eliminates duplication across modules.
     """
 
+    # This validator is a small utility holder (static methods only).
+    # Keeping it as a class groups related helpers; silence the warning
+    # about having few public methods.
+
     VALID_DOMAINS: frozenset[str] = frozenset(["depth", "time"])
     """Set of valid domain string values."""
 
@@ -278,7 +289,9 @@ class DomainValidator:
         TypeError: Expected Domain enum, got str...
         """
         # Import here to avoid circular dependencies and perform runtime checks
-        from src.analysis.domain.enum import Domain
+        from src.analysis.domain.enum import (
+            Domain,
+        )
 
         if valid_domains is None:
             valid_domains = {Domain.DEPTH, Domain.TIME}
@@ -298,6 +311,8 @@ class PathValidator:
     Provides consistent path validation across the analysis module,
     consolidating repeated path validation logic.
     """
+
+    # Small utility class with only static helpers; intentionally compact.
 
     @staticmethod
     def validate_cache_dir(cache_dir: str) -> Path:

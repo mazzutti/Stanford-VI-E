@@ -4,10 +4,11 @@ Provides concise logging and header helpers for plotting and analysis
 commands.
 """
 
-from typing import Any
+import logging
 from collections.abc import Sequence
 from pathlib import Path
-import logging
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -71,6 +72,7 @@ __all__.append("get_formatting_helper")
 
 
 def print_header(title: str) -> None:
+    """Log a standardized header block for console output."""
     logger.info("%s", "\n" + "=" * 70)
     logger.info("%s", title)
     logger.info("%s", "=" * 70)
@@ -113,16 +115,19 @@ def print_angle_summary(
 def print_selected_angles(
     selected_angles: NDArray[np.floating[Any]], weights: NDArray[np.floating[Any]]
 ) -> None:
+    """Log selected angles and their associated weights."""
     logger.info("  Selected angles: %s", selected_angles)
     logger.info("  Weights: %s", weights)
 
 
 def print_cache_info(cache_file: str | None) -> None:
+    """Log information about the saved cache file when present."""
     if not cache_file:
         return
     logger.info("\n✓ Saved multi-angle results to: %s", cache_file)
     try:
         size_mb = Path(cache_file).stat().st_size / 1024**2
         logger.info("  File size: %.1f MB", size_mb)
-    except Exception:
+    except OSError:
+        # Could not stat the file (missing, permission); ignore non-fatal
         pass

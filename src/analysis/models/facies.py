@@ -6,10 +6,17 @@ Validation: Uses validators from src.analysis.validators for improved
 error handling and reduced code duplication.
 """
 
+# Some helper imports may be deferred to reduce import-time cost or avoid
+# circular dependencies (validator helpers imported on-demand). These
+# are intentional; disable import-outside-toplevel warnings with a small
+# justification so pylint focuses on actionable issues.
+
+
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import cast
 from functools import total_ordering
+from typing import cast
 
 import numpy as np
 
@@ -25,6 +32,10 @@ __all__ = [
 
 @total_ordering
 @dataclass(slots=True)
+# FaciesStats stores several statistical fields (count, quantiles, moments)
+# which are naturally represented as individual attributes on the dataclass.
+# This increases the attribute count but is the correct data model; disable
+# the instance-attribute lint for clarity.
 class FaciesStats(FormattableModel):
     """Per-facies amplitude statistics with computed properties and validation.
 
@@ -44,7 +55,11 @@ class FaciesStats(FormattableModel):
     def __post_init__(self) -> None:
         """Validate statistical consistency."""
         # Local import to break circular import between models and validators
-        from ..validators import CountValidator, QuantileValidator, ValidationError
+        from ..validators import (
+            CountValidator,
+            QuantileValidator,
+            ValidationError,
+        )
 
         try:
             CountValidator.validate_count(self.count, "count", allow_zero=True)

@@ -16,19 +16,16 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import TypeVar, Any, cast
 from collections.abc import Callable
-from src.analysis.patterns.dependency_injection import ServiceProvider
+from typing import Any, TypeVar, cast
 
-from src.analysis.service_container import (
-    ServiceContainerBuilder,
-)
-from src.analysis.patterns.dependency_injection import Container
-from src.analysis.patterns.event_bus import EventBus
-from src.analysis.patterns.circuit_breaker import circuit_breaker
-from src.analysis.patterns.retry import retry, ExponentialBackoffStrategy
-from src.analysis.integrated_analyzer import IntegratedAnalyzer
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
+from src.analysis.integrated_analyzer import IntegratedAnalyzer
+from src.analysis.patterns.circuit_breaker import circuit_breaker
+from src.analysis.patterns.dependency_injection import Container, ServiceProvider
+from src.analysis.patterns.event_bus import EventBus
+from src.analysis.patterns.retry import ExponentialBackoffStrategy, retry
+from src.analysis.service_container import ServiceContainerBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +55,8 @@ def create_analyzer_with_patterns(
         IntegratedAnalyzer with patterns configured
     """
     logger.info("Creating analyzer with all patterns integrated")
+    # Accept the flag for API compatibility (not used internally).
+    _ = enable_circuit_breaker
 
     # Use default container if not provided
     if container is None:
@@ -112,20 +111,26 @@ def _attach_event_bus_to_analyzer(
             """Publish result event."""
             # This will be called by observer pattern
             # Publish to event bus for decoupled handling
-            logger.debug(f"Publishing result event: {result_type}")
+            logger.debug("Publishing result event: %s", result_type)
+            # Keep `result` available for potential future use and to
+            # silence unused-argument linters.
+            _ = result
 
         def on_data_changed(self, data_type: str, _new_data: Any) -> None:
             """Publish data changed event."""
-            logger.debug(f"Publishing data changed event: {data_type}")
+            logger.debug("Publishing data changed event: %s", data_type)
 
         def on_error(self, error: Exception, context: str) -> None:
             """Publish error event."""
-            logger.warning(f"Publishing error event from {context}: {error}")
+            logger.warning("Publishing error event from %s: %s", context, error)
 
     # Instantiate and attach the adapter so the class is used and available for the analyzer.
     adapter = EventBusAdapter(event_bus)
     # Keep a reference on the analyzer for lifecycle and debugging.
-    cast(Any, analyzer)._event_bus_adapter = adapter
+    # Prefer a public attribute to avoid writing protected members.
+    # Use `event_bus_adapter` so callers can inspect lifecycle state
+    # without relying on protected attributes.
+    setattr(analyzer, "event_bus_adapter", adapter)
 
     # If the analyzer exposes an observer registration API, try to register the adapter.
     try:
@@ -137,7 +142,7 @@ def _attach_event_bus_to_analyzer(
             _register(adapter)
         elif callable(_add):
             _add(adapter)
-    except Exception:
+    except (AttributeError, RuntimeError, TypeError):
         # Don't fail analyzer creation if registration is not supported or raises.
         logger.debug(
             "Failed to register EventBusAdapter with analyzer (registration not supported)",
@@ -164,7 +169,7 @@ def create_event_handler(
     Returns:
         Instantiated event handler with dependencies injected
     """
-    logger.info(f"Creating event handler: {handler_class.__name__}")
+    logger.info("Creating event handler: %s", handler_class.__name__)
 
     if container is None:
         container = ServiceContainerBuilder().build()
@@ -172,7 +177,7 @@ def create_event_handler(
     # Instantiate handler with dependencies
     handler = handler_class(**kwargs)
 
-    logger.debug(f"Event handler created: {handler_class.__name__}")
+    logger.debug("Event handler created: %s", handler_class.__name__)
     return handler
 
 
@@ -195,7 +200,7 @@ def create_resilient_processor(
     Returns:
         Wrapped function with resilience patterns
     """
-    logger.info(f"Creating resilient processor: {processor_func.__name__}")
+    logger.info("Creating resilient processor: %s", processor_func.__name__)
 
     # Apply circuit breaker
     breaker_name = f"{processor_func.__module__}.{processor_func.__name__}"
@@ -214,7 +219,7 @@ def create_resilient_processor(
         """Resilient processor with circuit breaker and retry."""
         return processor_func(*args, **kwargs)
 
-    logger.debug(f"Resilient processor created: {processor_func.__name__}")
+    logger.debug("Resilient processor created: %s", processor_func.__name__)
     return resilient_processor
 
 
@@ -248,8 +253,12 @@ class ComponentFactory:
         if service_provider is None:
             # Try a getter method if present
             get_sp = getattr(self.container, "get_service_provider", None)
-            if callable(get_sp):
-                service_provider = get_sp()
+            if get_sp is not None:
+                # Support both callable getter methods and attributes/property
+                if callable(get_sp):
+                    service_provider = get_sp()
+                else:
+                    service_provider = get_sp
         if service_provider is None:
             # Fallback to protected attribute only as a last resort and warn
             service_provider = getattr(self.container, "_service_provider", None)
@@ -295,7 +304,7 @@ class ComponentFactory:
         Returns:
             Service instance
         """
-        logger.debug(f"Resolving service: {service_name}")
+        logger.debug("Resolving service: %s", service_name)
         return self.service_provider.resolve(service_name)
 
     def try_get_service(self, service_name: str, default: Any = None) -> Any:

@@ -4,8 +4,9 @@ This module provides common interpolation functions used across different
 resampling implementations to avoid code duplication.
 """
 
-from numba import njit
 from typing import Any
+
+from numba import njit
 from numpy.typing import NDArray
 
 
@@ -63,14 +64,13 @@ def interpolate_trace_at_time(
 
     if k == 0:
         return trace[0], k
-    elif k >= nz:
+    if k >= nz:
         return trace[nz - 1], k
-    else:
-        # Linear interpolation between k-1 and k
-        t0 = twt[k - 1]
-        t1 = twt[k]
-        v0 = trace[k - 1]
-        v1 = trace[k]
+    # Linear interpolation between k-1 and k
+    t0 = twt[k - 1]
+    t1 = twt[k]
+    v0 = trace[k - 1]
+    v1 = trace[k]
 
-        value = linear_interpolate_value(t, t0, t1, v0, v1)
-        return value, k
+    value = linear_interpolate_value(t, t0, t1, v0, v1)
+    return value, k

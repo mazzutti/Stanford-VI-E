@@ -4,9 +4,9 @@ Provides clean, maintainable context preparation instead of long
 conditional chains.
 """
 
-from typing import Any
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

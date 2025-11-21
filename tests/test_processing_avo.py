@@ -2,14 +2,13 @@
 
 import logging
 from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 
 from src.processing.avo.validator import AVOValidator, AVOValidityReport
-from src.processing.core.constants import (
-    DEFAULT_MAX_AVO_ANGLE,
-    DEFAULT_CONTRAST_THRESHOLD,
-)
+from src.processing.core.constants import (DEFAULT_CONTRAST_THRESHOLD,
+                                           DEFAULT_MAX_AVO_ANGLE)
 
 
 class TestAVOValidityReportCreation:

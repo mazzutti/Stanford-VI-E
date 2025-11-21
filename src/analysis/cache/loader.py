@@ -24,24 +24,24 @@ Example Usage:
     >>> data = loader.load_full_stack("/path/to/cache", mmap_mode="r")
 """
 
-from pathlib import Path
-from typing import Any, NamedTuple, cast
+import logging
 from collections.abc import Callable
-from types import TracebackType
 from os import PathLike
-from numpy.typing import NDArray
-from numpy.lib.npyio import NpzFile
+from pathlib import Path
+from types import TracebackType
+from typing import Any, NamedTuple, cast
 
 import numpy as np
-import logging
+from numpy.lib.npyio import NpzFile
+from numpy.typing import NDArray
 
 from src.analysis.types.protocols import (
+    ArchiveExtractorProtocol,
     CacheProtocol,
     SelectorProtocol,
-    ArchiveExtractorProtocol,
 )
-from src.utils.lru import LRUCache, ShardedLRUCache
 from src.core.generic_factory import GenericFactory
+from src.utils.lru import LRUCache, ShardedLRUCache
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +193,7 @@ class CacheLoader:
             files = getattr(archive, "files", [])
             if files:
                 return np.asarray(archive[files[0]])
-        except Exception:
+        except (KeyError, IndexError, TypeError, ValueError, OSError):
             logger.exception("Failed to extract array from NPZ archive")
         return None
 
@@ -343,7 +343,7 @@ class CacheLoader:
 
         cache_path = Path(cache_dir)
         logger.debug(
-            f"Searching for cache file: domain={domain}, cache_dir={cache_path}"
+            "Searching for cache file: domain=%s, cache_dir=%s", domain, cache_path
         )
 
         # Chain of responsibility pattern for file selection
@@ -354,7 +354,7 @@ class CacheLoader:
             if result:
                 return result
 
-        logger.warning(f"No cache file found for domain '{domain}' in {cache_path}")
+        logger.warning("No cache file found for domain '%s' in %s", domain, cache_path)
         return None
 
     def _get_selection_strategies(
@@ -378,9 +378,9 @@ class CacheLoader:
         try:
             result = self._selector(str(cache_path), domain)
             if result:
-                logger.debug(f"Custom selector found cache file: {result}")
+                logger.debug("Custom selector found cache file: %s", result)
             return result
-        except Exception:
+        except (RuntimeError, TypeError, ValueError, OSError):
             logger.exception("Injected selector raised an exception")
             return None
 
@@ -391,7 +391,7 @@ class CacheLoader:
         for ext in [_NPZ_EXTENSION] + ([_NPY_EXTENSION] if allow_npy else []):
             candidate = cache_path / self._build_cache_filename(domain, ext)
             if candidate.exists():
-                logger.debug(f"Found {ext.upper()} cache file: {candidate}")
+                logger.debug("Found %s cache file: %s", ext.upper(), candidate)
                 return str(candidate)
         return None
 
@@ -404,7 +404,7 @@ class CacheLoader:
         matches = self._find_matching_cache_files(cache_path, domain, allow_npy)
         if matches:
             newest = max(matches, key=lambda p: p.stat().st_mtime)
-            logger.debug(f"Found latest matching cache file: {newest}")
+            logger.debug("Found latest matching cache file: %s", newest)
             return str(newest)
         return None
 
@@ -423,7 +423,7 @@ class CacheLoader:
             If True, also search for .npy files."""
         try:
             return self._glob_and_filter(cache_path, domain, allow_npy)
-        except Exception:
+        except OSError:
             logger.debug("Error globbing cache directory %s", cache_path, exc_info=True)
             return []
 
@@ -447,7 +447,7 @@ class CacheLoader:
         mmap_str = (
             f"with mmap_mode='{mmap_mode}'" if mmap_mode else "without memory mapping"
         )
-        logger.debug(f"Loading file {path.name} {mmap_str}")
+        logger.debug("Loading file %s %s", path.name, mmap_str)
         if mmap_mode is not None:
             return self._np_load(str(path), mmap_mode=mmap_mode, allow_pickle=False)
         return self._np_load(str(path), allow_pickle=False)
@@ -491,7 +491,7 @@ class CacheLoader:
         if isinstance(loaded, NpzFile):
             return self._extract_from_npz(loaded, p)
 
-        logger.debug(f"Loaded and converted array from {p.name} to float64")
+        logger.debug("Loaded and converted array from %s to float64", p.name)
         return np.asarray(loaded)
 
     def _extract_from_npz(self, npz_file: Any, p: Path) -> NDArray[np.float64] | None:
@@ -506,7 +506,7 @@ class CacheLoader:
             # Fall back to default extraction
             result = self._extract_array_from_archive(archive)
             if result is not None:
-                logger.debug(f"Extracted array from NPZ {p.name}")
+                logger.debug("Extracted array from NPZ %s", p.name)
             return result
 
     def _try_custom_extractor(
@@ -517,12 +517,12 @@ class CacheLoader:
             result = extractor(archive)
             if result is not None:
                 logger.debug(
-                    f"Extracted array from NPZ {p.name} using custom extractor"
+                    "Extracted array from NPZ %s using custom extractor", p.name
                 )
             return result
-        except Exception as e:
+        except (RuntimeError, TypeError, ValueError) as e:
             logger.exception(
-                f"Custom archive_extractor failed for {p.name}: {type(e).__name__}"
+                "Custom archive_extractor failed for %s: %s", p.name, type(e).__name__
             )
             return None
 
@@ -580,17 +580,23 @@ class CacheLoader:
             loaded = self._call_loader(p, mmap_mode=mmap_mode)
             return self._process_loaded_data(loaded, p)
         except OSError as e:
-            logger.error(f"File access error loading {p.name}: {e}")
+            logger.error("File access error loading %s: %s", p.name, e)
             if raise_on_error:
                 raise
             return None
         except (ValueError, TypeError) as e:
-            logger.error(f"Data format error in {p.name}: {e}")
+            logger.error("Data format error in %s: %s", p.name, e)
             if raise_on_error:
                 raise
             return None
-        except Exception as e:
-            logger.exception(f"Unexpected error loading {p.name}: {type(e).__name__}")
+        except RuntimeError as e:
+            # RuntimeError indicates an unexpected runtime condition during
+            # loading that isn't captured by the more specific handlers
+            # above (OSError, ValueError, TypeError). Handle it explicitly
+            # rather than catching all Exception subclasses.
+            logger.exception(
+                "Unexpected runtime error loading %s: %s", p.name, type(e).__name__
+            )
             if raise_on_error:
                 raise
             return None
@@ -794,13 +800,13 @@ class CacheLoader:
                             cache_key,
                             self._as_float64(cast(NDArray[np.floating[Any]], arr)),
                         )
-                except Exception:
+                except (RuntimeError, TypeError, ValueError):
                     logger.warning(
                         "Failed to cache loaded array for %s", path, exc_info=True
                     )
 
             return arr
-        except Exception:
+        except (RuntimeError, OSError, ValueError, TypeError):
             logger.exception("Failed to load cache file: %s", path)
             if raise_on_error:
                 raise

@@ -1,6 +1,7 @@
 """Utility functions for data loading and property management."""
 
 from typing import Any
+
 from numpy.typing import NDArray
 
 from src.io.loader import DatasetManager

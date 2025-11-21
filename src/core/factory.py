@@ -27,19 +27,18 @@ Example:
     >>> analyzer = factory.create("FaciesAnalyzer", config=config)
 """
 
+# This module uses intentional call-time (local) imports in factory methods
+# to avoid heavy import-time side-effects and circular dependencies.
+# These are intentional; disable related pylint checks for this file.
+# pylint: disable=import-outside-toplevel
+
 from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    TypeVar,
-    cast,
-)
 from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 if TYPE_CHECKING:
     from src.analysis.models.config import FaciesCorrelationConfig
@@ -82,7 +81,10 @@ class Buildable(ABC, Generic[T]):
         ValueError
             If required configuration is missing
         """
-        ...
+        raise NotImplementedError()
+
+    # Small factory helpers are intentionally compact; this keeps the
+    # public API concise while avoiding noisy lint warnings.
 
 
 # ============================================================================
@@ -124,7 +126,7 @@ class FluentBuilder(Generic[T]):
             Self for chaining
         """
         self._config["main"] = config
-        logger.debug(f"{self.name}: Set configuration")
+        logger.debug("%s: Set configuration", self.name)
         return self
 
     def with_component(self, name: str, component: Any) -> FluentBuilder[T]:
@@ -140,7 +142,7 @@ class FluentBuilder(Generic[T]):
         if not component:
             raise ValueError(f"Component '{name}' cannot be None")
         self._components[name] = component
-        logger.debug(f"{self.name}: Added component '{name}'")
+        logger.debug("%s: Added component '%s'", self.name, name)
         return self
 
     def with_dependencies(self, **deps: Any) -> FluentBuilder[T]:
@@ -192,7 +194,7 @@ class FluentBuilder(Generic[T]):
         """
         self._components.clear()
         self._config.clear()
-        logger.debug(f"{self.name}: Reset")
+        logger.debug("%s: Reset", self.name)
         return self
 
     @abstractmethod
@@ -229,7 +231,7 @@ class BuildableFactory(ABC, Generic[T]):
             builder_class: Builder class to register
         """
         self._builders[name] = builder_class
-        logger.debug(f"Registered builder: {name}")
+        logger.debug("Registered builder: %s", name)
 
     def register_creator(
         self,
@@ -243,7 +245,7 @@ class BuildableFactory(ABC, Generic[T]):
             creator: Creation function
         """
         self._creators[name] = creator
-        logger.debug(f"Registered creator: {name}")
+        logger.debug("Registered creator: %s", name)
 
     def create_with_builder(
         self,
@@ -320,7 +322,7 @@ class ServiceFactory:
         self._services[name] = creator
         if singleton:
             self._singletons.add(name)
-        logger.debug(f"Registered service: {name} (singleton={singleton})")
+        logger.debug("Registered service: %s (singleton=%s)", name, singleton)
 
     def create(self, name: str, **kwargs: Any) -> Any:
         """Create or retrieve a service.
@@ -361,7 +363,6 @@ class AnalyzerFactory(BuildableFactory[Any]):
     def create_facies_analyzer(
         self,
         config: FaciesCorrelationConfig | None = None,
-        **kwargs: Any,
     ) -> Any:
         """Create facies correlation analyzer.
 
@@ -372,20 +373,25 @@ class AnalyzerFactory(BuildableFactory[Any]):
         Returns:
             FaciesCorrelationAnalyzer instance
         """
+        # Lazy imports to avoid import-time cycles and heavy imports.
+
         from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 
         if config is None:
+
             from src.analysis.facies.config import FaciesAnalysisConfig
 
+            # pylint: enable=import-outside-toplevel
             # FaciesAnalysisConfig and FaciesCorrelationConfig types differ; cast to Any
             config = cast(Any, FaciesAnalysisConfig())
 
+        # Re-enable after local import
+        # pylint: enable=import-outside-toplevel
         return FaciesCorrelationAnalyzer(config=config)
 
     def create_rock_physics_analyzer(
         self,
         config: Any | None = None,
-        **kwargs: Any,
     ) -> Any:
         """Create rock physics analyzer.
 
@@ -396,7 +402,11 @@ class AnalyzerFactory(BuildableFactory[Any]):
         Returns:
             RockPhysicsAnalyzer instance
         """
+        # Lazy import to avoid heavy import-time dependencies
+
         from src.analysis.rock_physics.analyzer import RockPhysicsAnalyzer
+
+        # pylint: enable=import-outside-toplevel
 
         return RockPhysicsAnalyzer(config=config) if config else RockPhysicsAnalyzer()
 
@@ -409,7 +419,6 @@ class AnalyzerFactory(BuildableFactory[Any]):
 def create_analyzer(
     analyzer_type: str = "facies",
     config: Any | None = None,
-    **kwargs: Any,
 ) -> Any:
     """Convenience function to create analyzer with minimal setup.
 
@@ -427,11 +436,10 @@ def create_analyzer(
     factory = AnalyzerFactory()
 
     if analyzer_type == "facies":
-        return factory.create_facies_analyzer(config=config, **kwargs)
-    elif analyzer_type == "rock_physics":
-        return factory.create_rock_physics_analyzer(config=config, **kwargs)
-    else:
-        raise ValueError(f"Unknown analyzer type: {analyzer_type}")
+        return factory.create_facies_analyzer(config=config)
+    if analyzer_type == "rock_physics":
+        return factory.create_rock_physics_analyzer(config=config)
+    raise ValueError(f"Unknown analyzer type: {analyzer_type}")
 
 
 # ============================================================================
@@ -458,12 +466,10 @@ class ComponentBuilder(Buildable[T], ABC):
     @abstractmethod
     def _validate_config(self) -> None:
         """Validate configuration is complete. Override in subclasses."""
-        pass
 
     @abstractmethod
     def _create_component(self) -> T:
         """Create the component. Override in subclasses."""
-        pass
 
     def build(self) -> T:
         """Template method for building component.
@@ -478,5 +484,5 @@ class ComponentBuilder(Buildable[T], ABC):
         """
         self._validate_config()
         component = self._create_component()
-        logger.debug(f"Built component: {self.name}")
+        logger.debug("Built component: %s", self.name)
         return component

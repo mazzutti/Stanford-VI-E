@@ -15,8 +15,8 @@ Stages handle:
 import logging
 from typing import Any, cast
 
-from src.analysis.pipelines.orchestrator import PipelineStage
 from src.analysis.domain.enum import Domain
+from src.analysis.pipelines.orchestrator import PipelineStage
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class ValidateInputsStage(PipelineStage[Any, Any]):
         if not analyzer.validate_inputs(cache_dir=cache_dir, domain=domain):
             raise ValueError("Input validation failed")
 
-        logger.debug(f"Inputs validated: cache_dir={cache_dir}, domain={domain}")
+        logger.debug("Inputs validated: cache_dir=%s, domain=%s", cache_dir, domain)
         return input_data
 
 

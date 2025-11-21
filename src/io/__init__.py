@@ -18,40 +18,40 @@ Clean architecture with clear separation of concerns:
 import logging
 
 # Core abstractions
-from src.io.backends import CacheStore, FileSystemOps, DefaultFileSystemOps
-
-# Storage implementations
-from src.io.storage import DiskStore, MemoryStore
-
-# Pruning utilities
-from src.io.pruning import (
-    PruneStrategy,
-    Pruner,
-    PruneResult,
-    should_expire_by_ttl,
-    should_expire_by_size,
-)
-
-# Data loading
-from src.io.loader import DatasetManager, GslibLoader
-from src.io.gslib_reader import GSLibReader, GSLibConfig
-from src.io.file_locator import FileLocator
-
-# Grid and configuration
-from src.io.grid import GridSpec
+from src.io.backends import CacheStore, DefaultFileSystemOps, FileSystemOps
 from src.io.config import CachePolicy
 
 # Exceptions
 from src.io.exceptions import (
-    IOError,
     CacheError,
-    CacheValidationError,
     CachePruneError,
+    CacheValidationError,
     DataLoaderError,
-    GSLibError,
-    GridError,
     FileLocatorError,
+    GridError,
+    GSLibError,
+    IOBaseError,
 )
+from src.io.file_locator import FileLocator
+
+# Grid and configuration
+from src.io.grid import GridSpec
+from src.io.gslib_reader import GSLibConfig, GSLibReader
+
+# Data loading
+from src.io.loader import DatasetManager, GslibLoader
+
+# Pruning utilities
+from src.io.pruning import (
+    Pruner,
+    PruneResult,
+    PruneStrategy,
+    should_expire_by_size,
+    should_expire_by_ttl,
+)
+
+# Storage implementations
+from src.io.storage import DiskStore, MemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ __all__ = [
     "GridSpec",
     "CachePolicy",
     # Exceptions
-    "IOError",
+    "IOBaseError",
     "CacheError",
     "CacheValidationError",
     "CachePruneError",

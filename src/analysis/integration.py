@@ -17,25 +17,17 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
 from collections.abc import Callable
 from types import TracebackType
+from typing import Any
 
-from src.analysis.patterns.event_bus import Event, EventHandler
-
-from src.analysis.service_container import (
-    ServiceContainerBuilder,
-)
+from src.analysis import events
 from src.analysis.factory import ComponentFactory, create_analyzer_with_patterns
 from src.analysis.integrated_analyzer import IntegratedAnalyzer
-from src.analysis.patterns.event_bus import (
-    EventBus,
-)
+from src.analysis.patterns.circuit_breaker import reset_all_circuit_breakers
 from src.analysis.patterns.dependency_injection import Container
-from src.analysis.patterns.circuit_breaker import (
-    reset_all_circuit_breakers,
-)
-from src.analysis import events
+from src.analysis.patterns.event_bus import Event, EventBus, EventHandler
+from src.analysis.service_container import ServiceContainerBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +61,9 @@ class EventSubscriber:
                 self._f(event)
 
         return _FuncHandler(fn)
+
+    # Integration glue — the module composes many patterns; small helper classes
+    # are concise by design to avoid unnecessary indirection.
 
     def on_analysis_started(
         self, handler: Callable[[events.AnalysisStartedEvent], None]
@@ -187,6 +182,10 @@ class SystemConfiguration:
     Controls behavior of all integrated patterns.
     """
 
+    # This class is intentionally a compact data holder for configuration
+    # values used across the integrated analysis system. It is acceptable
+    # to have several instance attributes and few public methods here.
+
     def __init__(self) -> None:
         """Initialize configuration."""
         self.max_retries: int = 3
@@ -245,7 +244,7 @@ class AnalysisSystem:
         )
         self._event_subscriber = EventSubscriber(self._factory.event_bus)
 
-        logger.info(f"AnalysisSystem initialized: {self.config}")
+        logger.info("AnalysisSystem initialized: %s", self.config)
 
     def _create_container(self) -> Container:
         """Create DI container with configured settings.
@@ -308,7 +307,7 @@ class AnalysisSystem:
         if enable_retry is not None:
             self.config.enable_retry = enable_retry
 
-        logger.info(f"System configured: {self.config}")
+        logger.info("System configured: %s", self.config)
         return self
 
     def create_analyzer(self) -> IntegratedAnalyzer:
@@ -385,7 +384,9 @@ class AnalysisSystem:
         """Exit context manager."""
         logger.debug("Exiting AnalysisSystem context")
         if exc_type is not None:
-            logger.error(f"Context exit with exception: {exc_type.__name__}: {exc_val}")
+            logger.error(
+                "Context exit with exception: %s: %s", exc_type.__name__, exc_val
+            )
 
     def __repr__(self) -> str:
         return f"AnalysisSystem({self.config})"

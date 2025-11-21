@@ -34,26 +34,26 @@ Or use components directly:
 
 import logging
 
-# Initialize matplotlib and numpy
-from src.plotting.helpers.config import init_plotting
+from src.plotting.facies_plotter import FaciesPlotter
 
 # Import helper components
 from src.plotting.helpers.base import BasePlotter
-from src.plotting.helpers.config import PlotConfig
 from src.plotting.helpers.components import (
-    SliceExtractor,
-    DataNormalizer,
     AxisStyler,
+    DataNormalizer,
     ImageRenderer,
+    SliceExtractor,
 )
+
+# Initialize matplotlib and numpy
+from src.plotting.helpers.config import PlotConfig, init_plotting
+from src.plotting.overlay_plotter import OverlayPlotter
+from src.plotting.plotly_plotter import PlotlyPlotter
+from src.plotting.rock_physics_plotter import RockPhysicsPlotter
+from src.plotting.seismic_plotter import SeismicPlotter
 
 # Import main plotter classes
 from src.plotting.slice_plotter import SlicePlotter
-from src.plotting.overlay_plotter import OverlayPlotter
-from src.plotting.facies_plotter import FaciesPlotter
-from src.plotting.rock_physics_plotter import RockPhysicsPlotter
-from src.plotting.seismic_plotter import SeismicPlotter
-from src.plotting.plotly_plotter import PlotlyPlotter
 
 plt, np = init_plotting(backend="Agg")
 

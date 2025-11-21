@@ -6,14 +6,15 @@ providing a simple key-value interface backed by NPZ files.
 
 from __future__ import annotations
 
-from pathlib import Path
-import os
 import hashlib
+import logging
+import os
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, cast
-from collections.abc import Callable
-import logging
 
 from src.modeling.modeling import SynthesisConfig, unwrap_quantity
 from src.utils.quantity import Quantity
@@ -28,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 class _CacheHasher:
-    """Internal hash computation for cache keys."""
+    """Internal hash computation for cache keys.
+
+    This internal helper is small by design; the pylint warning about
+    "too-few-public-methods" is intentional and safe to ignore here.
+    """
 
     @staticmethod
     def hash_properties(
@@ -155,6 +160,8 @@ class CacheManager:
         Returns:
             Cache key string
         """
+        # High-arity signature is intentional: cache keys depend on many params.
+
         extra_params: list[str | float | int | bool | NDArray[np.floating[Any]]] = [
             str(angles),
             wavelet,
@@ -193,6 +200,10 @@ class CacheManager:
         Returns:
             (angle_stacks, full_stack)
         """
+        # This facade coordinates multiple responsibilities; suppress
+        # high-arity/local-variable warnings as they are noise for this
+        # high-level orchestration function.
+
         config = config or SynthesisConfig()
 
         # Unwrap properties

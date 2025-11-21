@@ -3,10 +3,11 @@
 Provides a clean OOP interface for creating and working with seismic wavelets.
 """
 
+import logging
 from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
-import logging
 
 __all__ = [
     "Wavelet",

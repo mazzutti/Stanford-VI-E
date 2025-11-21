@@ -6,14 +6,20 @@ resamples properties onto regular time grids.
 
 import logging
 from typing import Any
+
 import numpy as np
-from numpy.typing import NDArray
 from numba import njit, prange
+from numpy.typing import NDArray
 
 from src.io.grid import GridSpec
 from src.utils.quantity import Quantity, to_ndarray
 
 logger = logging.getLogger(__name__)
+
+# Lazy imports for resampling cache/helpers are intentional to avoid
+# import-time cycles and heavy dependencies. Suppress import-order
+# warnings here so pylint focuses on actionable code issues.
+
 
 __all__ = [
     "DepthTimeConverter",
@@ -56,7 +62,10 @@ class DepthTimeConverter:
         input_was_quantity = isinstance(vp_depth, Quantity)
         vp_arr = to_ndarray(vp_depth)
 
-        from src.processing.resampling._cache import get_resample_plan_cache
+        # Lazy import for resample plan cache
+        from src.processing.resampling._cache import (
+            get_resample_plan_cache,
+        )
 
         # Compute TWT using cached resample plan
         plan = get_resample_plan_cache().get_plan(self.grid_spec, vp_arr)

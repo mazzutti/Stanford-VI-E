@@ -1,8 +1,8 @@
 """Generic resource manager with strategy pattern for operations."""
 
-from pathlib import Path
-from typing import Generic, TypeVar, Protocol, Any
 import logging
+from pathlib import Path
+from typing import Any, Generic, Protocol, TypeVar
 
 from src.processing.managers.base import BaseManager
 
@@ -18,7 +18,12 @@ T = TypeVar("T")
 
 
 class ClearStrategy(Protocol):
-    """Strategy for clearing resources."""
+    """Strategy for clearing resources.
+
+    Protocol used to define the interface for clear strategies. This
+    intentionally contains a single method and is exempt from the
+    "too-few-public-methods" check.
+    """
 
     def clear(self, resource_dir: Path, patterns: list[str] | None = None) -> int:
         """Clear resources matching criteria.
@@ -30,11 +35,15 @@ class ClearStrategy(Protocol):
         Returns:
             Number of resources cleared
         """
-        ...
+        raise NotImplementedError()
 
 
 class SummarizeStrategy(Protocol):
-    """Strategy for summarizing resources."""
+    """Strategy for summarizing resources.
+
+    Protocol used to define summarization strategies and intentionally
+    contains a single method.
+    """
 
     def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Print summary of resources.
@@ -43,23 +52,32 @@ class SummarizeStrategy(Protocol):
             resource_dir: Directory containing resources
             keys: Optional keys to filter by
         """
-        ...
+        raise NotImplementedError()
 
 
 class NoOpClearStrategy:
-    """No-operation clear strategy."""
+    """No-operation clear strategy.
+
+    Lightweight implementation used as a default strategy when none is
+    provided by callers; intentionally minimal.
+    """
 
     def clear(self, resource_dir: Path, patterns: list[str] | None = None) -> int:
         """Do nothing."""
+        _ = (resource_dir, patterns)
         return 0
 
 
 class NoOpSummarizeStrategy:
-    """No-operation summarize strategy."""
+    """No-operation summarize strategy.
+
+    Lightweight implementation used as a default strategy when none is
+    provided by callers; intentionally minimal.
+    """
 
     def summarize(self, resource_dir: Path, keys: list[str] | None = None) -> None:
         """Do nothing."""
-        pass
+        _ = (resource_dir, keys)
 
 
 class ResourceManager(BaseManager, Generic[T]):
@@ -107,7 +125,7 @@ class ResourceManager(BaseManager, Generic[T]):
         """
         target = cache_dir or self.resource_dir
         removed = self._clear_strategy.clear(target, patterns)
-        self.logger.info(f"{prefix}Removed {removed} resources from {target}")
+        self.logger.info("%sRemoved %s resources from %s", prefix, removed, target)
         return removed
 
     def summarize(

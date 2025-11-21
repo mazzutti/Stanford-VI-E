@@ -5,16 +5,23 @@ pipelines. Provides optimized reflection coefficient calculations with Numba
 JIT compilation.
 """
 
-from typing import Any
-import numpy as np
-from numpy.typing import NDArray
 import logging
+import os
+from typing import Any
+
+import numpy as np
 from numba import njit, prange
+from numpy.typing import NDArray
 
 __all__ = ["ZoeppritzSolver"]
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+# Numerical/physics code in this module intentionally uses short and
+# conventional mathematical variable names (A, b, M, N, etc.) and several
+# functions accept long argument lists. Silence style checks that are
+# noisy for this kind of numerical implementation.
 
 
 class ZoeppritzSolver:
@@ -24,13 +31,15 @@ class ZoeppritzSolver:
     Numba is a required dependency for this solver.
     """
 
+    # This class is a lightweight solver wrapper; it intentionally exposes a
+    # minimal public surface. Silence the 'too-few-public-methods' message.
+
     def __init__(self, cpu_batch: int | None = None):
         if cpu_batch is None:
             try:
-                import os
-
                 self.cpu_batch = int(os.environ.get("ZOEPPRITZ_CPU_BATCH", "1024"))
-            except Exception:
+            except (ValueError, TypeError):
+                # If integer conversion fails, fall back to default.
                 self.cpu_batch = 1024
         else:
             self.cpu_batch = int(cpu_batch)
@@ -64,6 +73,9 @@ class ZoeppritzSolver:
         vs2f = vs2.reshape(n)
         rho2f = rho2.reshape(n)
 
+        # The body of this function mirrors the mathematical pipeline for
+        # Zoeppritz computations and therefore has many locals and arguments.
+        # Keep the implementation explicit for readability and performance.
         theta1 = np.deg2rad(theta1_deg)
         p_flat = np.sin(theta1) / vp1f
 

@@ -4,9 +4,10 @@ This module contains models for AVO technique analysis and comparison.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING, cast
 from functools import cached_property
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,6 +19,12 @@ from .formatters import FormattableModel
 
 if TYPE_CHECKING:
     from .statistics import BoundaryAmpsResult, GradientCorrelationResult
+
+# Some imports in this module occur in local scopes to avoid import cycles
+# and heavier dependencies at import time (statistics-related helpers may
+# be optional). These late imports are intentional; silence pylint's
+# import-outside-toplevel warnings here with a brief justification.
+
 
 # Type aliases for common patterns
 TransitionStatsMap = dict[Transition, FaciesStats | None]
@@ -50,6 +57,8 @@ class TechniqueComparison:
     winner: str
     difference: float
     # Common metric name constants for comparisons (class-level)
+    # Use UPPER_CASE names for public constants; exempt from naming-style
+    # checks in this class where constants improve readability.
     GRADIENT_CORRELATION: str = "gradient_correlation"
     BOUNDARY_AMPLITUDE: str = "boundary_amplitude"
     FACIES_DISCRIMINATION: str = "facies_discrimination"
@@ -300,7 +309,7 @@ class AvoResults:
             self.boundary_amps is not None
             and self.gradient_correlation is not None
             and self.separation_matrix is not None
-            and len(self.facies_amplitudes) > 0
+            and bool(self.facies_amplitudes)
         )
 
     def __contains__(self, transition: Transition) -> bool:
@@ -339,7 +348,7 @@ class AvoResults:
         """
         return [
             t
-            for t in self.interface_stats_summary.keys()
+            for t in self.interface_stats_summary
             if facies in (t.from_facies, t.to_facies)
         ]
 
@@ -385,13 +394,18 @@ class AvoResults:
     def from_dict(cls, data: dict[str, Any]) -> AvoResults:
         """Create results from dictionary representation.
 
-        Args:
-            data: Dictionary with optional keys:
-                - boundary_amps: Serialized BoundaryAmpsResult (reconstructed if present)
-                - gradient_correlation: Serialized GradientCorrelationResult (reconstructed if present)
-                - separation_matrix: 2D array data (reconstructed as ndarray if present)
-                - facies_amplitudes: Dictionary mapping facies IDs to amplitude arrays
-                - interface_stats_summary: Dictionary mapping transitions to facies statistics
+                Args:
+                        data: Dictionary with optional keys:
+                                - boundary_amps: Serialized BoundaryAmpsResult
+                                    (reconstructed if present)
+                                - gradient_correlation: Serialized GradientCorrelationResult
+                                    (reconstructed if present)
+                                - separation_matrix: 2D array data (reconstructed as ndarray
+                                    if present)
+                                - facies_amplitudes: Dictionary mapping facies IDs to amplitude
+                                    arrays
+                                - interface_stats_summary: Dictionary mapping transitions to
+                                    facies statistics
 
         Returns:
             AvoResults instance with reconstructed data from dictionary.
@@ -400,7 +414,10 @@ class AvoResults:
             ValueError: If nested results cannot be reconstructed from dictionary format.
             TypeError: If array data is in invalid format.
         """
-        from .statistics import BoundaryAmpsResult, GradientCorrelationResult
+        from .statistics import (
+            BoundaryAmpsResult,
+            GradientCorrelationResult,
+        )
 
         boundary_amps = None
         if data.get("boundary_amps"):

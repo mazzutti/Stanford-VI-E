@@ -73,10 +73,10 @@ Example with Mixins (advanced singleton):
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import asdict, is_dataclass
 from typing import Any, Generic, TypeVar
-import logging
 
 __all__ = [
     "AnalyzerInterface",
@@ -84,6 +84,9 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+# Small interface types use compact TypeVar names intentionally.
+
 
 T_Config = TypeVar("T_Config")  # Analyzer-specific configuration type
 T_Result = TypeVar("T_Result")  # Analyzer-specific result type
@@ -157,7 +160,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         str
             Unique, lowercase identifier for this analyzer domain.
         """
-        pass
 
     @abstractmethod
     def validate_inputs(self, **kwargs: Any) -> bool:
@@ -183,7 +185,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         - Return False for invalid inputs, don't raise
         - Only raise exceptions for unexpected/fatal errors
         """
-        pass
 
     @abstractmethod
     def analyze(self, **kwargs: Any) -> T_Result:
@@ -210,7 +211,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         RuntimeError
             If analysis fails during execution.
         """
-        pass
 
     @abstractmethod
     def configure(self, config: T_Config) -> None:
@@ -228,7 +228,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         TypeError
             If config is not the expected type.
         """
-        pass
 
     @abstractmethod
     def get_configuration(self) -> T_Config:
@@ -239,7 +238,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         T_Config
             Current configuration object for this analyzer.
         """
-        pass
 
     @abstractmethod
     def is_ready(self) -> bool:
@@ -253,7 +251,6 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
         bool
             True if analyzer has all required state, False otherwise.
         """
-        pass
 
     def run(self, **kwargs: Any) -> T_Result:
         """Template method orchestrating analyzer lifecycle.
@@ -299,11 +296,11 @@ class AnalyzerInterface(ABC, Generic[T_Config, T_Result]):
             )
 
         # Step 3: Execute analysis
-        logger.debug(f"{self.name}: Starting analysis")
+        logger.debug("%s: Starting analysis", self.name)
         try:
             result = self.analyze(**kwargs)
-            logger.debug(f"{self.name}: Analysis completed successfully")
+            logger.debug("%s: Analysis completed successfully", self.name)
             return result
-        except Exception as e:
-            logger.error(f"{self.name}: Analysis failed: {e}", exc_info=True)
+        except (RuntimeError, ValueError, TypeError, OSError) as e:
+            logger.error("%s: Analysis failed: %s", self.name, e, exc_info=True)
             raise RuntimeError(f"{self.name}: Analysis failed: {e}") from e

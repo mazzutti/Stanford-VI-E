@@ -16,18 +16,8 @@ Main Components:
     - BackendManager: Manages backend registration and selection
 """
 
-
-from ._base import (
-    ResamplerBackend,
-    BackendResult,
-    BackendError,
-)
-
-
-from ._manager import (
-    BackendManager,
-)
-
+from ._base import BackendError, BackendResult, ResamplerBackend
+from ._manager import BackendManager
 
 __all__ = [
     # Base classes and types

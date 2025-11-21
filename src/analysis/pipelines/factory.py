@@ -3,15 +3,17 @@
 Eliminates boilerplate in stage creation and provides consistent configuration.
 """
 
-from typing import Any, TypeVar
-from collections.abc import Callable
-from abc import abstractmethod
 import logging
+from abc import abstractmethod
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from src.analysis.pipelines.orchestrator import PipelineStage
 
 logger = logging.getLogger(__name__)
 
+# TypeVar names include an underscore for readability across pipeline modules.
+# Keep conventional TypeVar naming; disable the style warning here.
 T_In = TypeVar("T_In")
 T_Out = TypeVar("T_Out")
 
@@ -19,6 +21,9 @@ __all__ = [
     "StageFactory",
     "StageBuilder",
 ]
+
+# Lightweight pipeline stage builders and factories; intentionally concise
+# to keep pipeline wiring straightforward.
 
 
 class StageBuilder(PipelineStage[Any, Any]):
@@ -39,13 +44,13 @@ class StageBuilder(PipelineStage[Any, Any]):
         try:
             return self._precondition(input_data)
         except Exception as e:
-            logger.warning(f"Precondition check failed for {self.name}: {e}")
+            # Precondition predicates may raise; treat as False and log.
+            logger.warning("Precondition check failed for %s: %s", self.name, e)
             return False
 
     @abstractmethod
     def execute(self, input_data: Any) -> Any:
         """Execute stage (implemented by subclass)."""
-        pass
 
     def with_precondition(self, predicate: Callable[[Any], bool]) -> "StageBuilder":
         """Add a precondition for execution."""
@@ -80,6 +85,8 @@ class StageFactory:
         """
 
         class SimpleStage(PipelineStage[Any, Any]):
+            """A simple pipeline stage wrapper around provided functions."""
+
             @property
             def name(self) -> str:
                 return name
@@ -90,7 +97,8 @@ class StageFactory:
                 try:
                     return can_execute_fn(input_data)
                 except Exception as e:
-                    logger.warning(f"Precondition failed for {name}: {e}")
+                    # Predicate may raise at runtime; swallow and treat as False.
+                    logger.warning("Precondition failed for %s: %s", name, e)
                     return False
 
             def execute(self, input_data: Any) -> Any:
@@ -122,6 +130,8 @@ class StageFactory:
         """
 
         class ValidatorStage(PipelineStage[Any, Any]):
+            """A pipeline stage that validates input using `validator_fn`."""
+
             @property
             def name(self) -> str:
                 return name
@@ -157,6 +167,8 @@ class StageFactory:
         """
 
         class TransformerStage(PipelineStage[Any, Any]):
+            """A pipeline stage that applies `transform_fn` to input data."""
+
             @property
             def name(self) -> str:
                 return name

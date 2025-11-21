@@ -14,11 +14,11 @@ try:
     # Importing within try/except to avoid hard failure if package layout
     # changes; tests that rely on these patches will still import this
     # module and the errors will surface naturally.
-    from src.plotting.helpers.config import PlotConfig
-    from src.io.grid import GridSpec
     from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
     from src.analysis.facies.pipeline import AnalysisPipeline
     from src.analysis.models import AvoResults
+    from src.io.grid import GridSpec
+    from src.plotting.helpers.config import PlotConfig
 except Exception:  # pragma: no cover - allow test discovery to proceed
     PlotConfig = None
     GridSpec = None

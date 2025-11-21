@@ -3,9 +3,12 @@
 Tests for ServiceRegistry dependency injection and singleton management.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from src.processing.registry import ServiceRegistry, get_registry, reset_registry
+
+from src.processing.registry import (ServiceRegistry, get_registry,
+                                     reset_registry)
 
 
 class TestServiceRegistryGetDefault:

@@ -8,9 +8,8 @@ dependency injection when needed.
 
 from __future__ import annotations
 
-
-from src.processing.resampling.backends._base import ResamplerBackend
 from src.processing.resampling._plan import ResamplePlan
+from src.processing.resampling.backends._base import ResamplerBackend
 
 
 class BackendManager:
@@ -25,30 +24,36 @@ class BackendManager:
         self._verbose = False
 
     def register(self, name: str, backend: ResamplerBackend) -> None:
+        """Register a backend instance under `name`.
+
+        Raises KeyError if `name` is already registered.
+        """
         if name in self._registry:
             raise KeyError(f"backend '{name}' already registered")
         self._registry[name] = backend
 
     def list_backends(self) -> list[str]:
+        """Return a list of registered backend names in registration order."""
         return list(self._registry.keys())
 
     def get(self, name: str) -> ResamplerBackend | None:
+        """Return a registered backend by name or `None` if not present."""
         return self._registry.get(name)
 
     def get_best(self, plan: ResamplePlan) -> ResamplerBackend | None:
         """Select the best backend for the given plan.
 
-                Returns the first backend that supports the plan, in registration order.
+        Returns the first backend that supports the plan, in registration order.
 
-                Parameters
-                ----------
-                plan : ResamplePlan
-                    The resampling plan to find a backend for.
+        Parameters
+        ----------
+        plan : ResamplePlan
+            The resampling plan to find a backend for.
 
-                Returns
-                -------
-                ResamplerBackend | None
-                    The best available backend, or None if no backend supports the plan.
+        Returns
+        -------
+        ResamplerBackend | None
+            The best available backend, or None if no backend supports the plan.
 
         """
         candidates: list[tuple[str, ResamplerBackend]] = []
@@ -56,7 +61,7 @@ class BackendManager:
             try:
                 if backend.supports(plan):
                     candidates.append((name, backend))
-            except Exception:
+            except (TypeError, ValueError, AttributeError, RuntimeError):
                 # backend misbehaved; skip
                 continue
 
@@ -70,9 +75,11 @@ class BackendManager:
         return backend
 
     def set_verbose(self, on: bool) -> None:
+        """Enable or disable verbose selection logging for debugging."""
         self._verbose = bool(on)
 
     def is_verbose(self) -> bool:
+        """Return whether verbose selection logging is enabled."""
         return self._verbose
 
 

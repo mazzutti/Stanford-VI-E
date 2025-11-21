@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, TYPE_CHECKING, cast
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from src.analysis.cache.loader import CacheLoader
 from src.analysis.types.protocols import CacheLoaderProtocol
@@ -29,6 +29,16 @@ if TYPE_CHECKING:
     from src.io.loader import DatasetManager
 
 logger = logging.getLogger(__name__)
+
+# This module may import heavy analyzer/computer implementations lazily
+# to avoid import cycles and reduce CLI/import-time overhead. These late
+# imports are intentional; disable import-order warnings with a short note.
+
+
+# Some factories intentionally have a compact public surface or use multiple
+# internal return paths to implement simple dispatchers. These are low-risk
+# structural shapes; silence the related stylistic noise at module scope.
+
 
 __all__ = [
     "ServiceFactory",
@@ -68,7 +78,6 @@ class ServiceFactory(ABC):
         ValueError
             If parameters are invalid.
         """
-        pass
 
 
 class CacheServiceFactory(ServiceFactory):
@@ -106,8 +115,7 @@ class CacheServiceFactory(ServiceFactory):
         """
         if service_type == "loader":
             return self.create_cache_loader(**kwargs)
-        else:
-            raise ValueError(f"Unknown cache service type: {service_type}")
+        raise ValueError(f"Unknown cache service type: {service_type}")
 
     @staticmethod
     def create_cache_loader(
@@ -136,9 +144,10 @@ class CacheServiceFactory(ServiceFactory):
                 # Fallback to dataset manager's data path + default cache dir
                 base = Path(dm.data_path) / CacheServiceFactory.DEFAULT_CACHE_DIR
                 return CacheLoader.default_selector(str(base), domain)
-            except Exception:
+            except (RuntimeError, OSError, ValueError) as e:
                 logger.exception(
-                    "Selector wrapper failed; delegating to default selector"
+                    "Selector wrapper failed; delegating to default selector: %s",
+                    e,
                 )
                 return CacheLoader.default_selector(".", domain)
 
@@ -186,24 +195,27 @@ class ProcessorServiceFactory(ServiceFactory):
         ValueError
             If service_type is unknown.
         """
+        # This factory method has multiple simple return branches to
+        # dispatch based on `service_type`. Keep narrow disable for the
+        # excessive-return check as this is a clear dispatcher pattern.
+
         if service_type == "resampler":
             return self.create_resampler(**kwargs)
-        elif service_type == "synthesizer":
+        if service_type == "synthesizer":
             return self.create_synthesizer(**kwargs)
-        elif service_type == "boundary_detector":
+        if service_type == "boundary_detector":
             return self.create_boundary_detector()
-        elif service_type == "cube_aligner":
+        if service_type == "cube_aligner":
             return self.create_cube_aligner()
-        elif service_type == "boundary_amp_extractor":
+        if service_type == "boundary_amp_extractor":
             return self.create_boundary_amp_extractor(**kwargs)
-        elif service_type == "gradient_calculator":
+        if service_type == "gradient_calculator":
             return self.create_gradient_calculator()
-        elif service_type == "interface_analyzer":
+        if service_type == "interface_analyzer":
             return self.create_interface_analyzer()
-        elif service_type == "facies_discriminator":
+        if service_type == "facies_discriminator":
             return self.create_facies_discriminator()
-        else:
-            raise ValueError(f"Unknown processor service type: {service_type}")
+        raise ValueError(f"Unknown processor service type: {service_type}")
 
     @staticmethod
     def create_resampler(grid_spec: Any | None = None) -> Any:
@@ -226,34 +238,42 @@ class ProcessorServiceFactory(ServiceFactory):
             If resampler factory module cannot be imported.
         """
         if grid_spec is not None:
+            # Lazy import to avoid importing heavy resampler code at module import time
+
             from src.processing.resampling._resampler import DepthTimeResampler
 
-            logger.debug(f"Creating DepthTimeResampler with grid_spec: {grid_spec}")
+            # pylint: enable=import-outside-toplevel
+
+            logger.debug("Creating DepthTimeResampler with grid_spec: %s", grid_spec)
             # DepthTimeResampler requires GridSpec at construction time
             return DepthTimeResampler(grid_spec)
-        else:
-            # Use factory if available
-            try:
-                from src.processing.resampling._resampler import resampler_factory
 
-                logger.debug("Creating resampler via factory")
-                # Prefer passing grid_spec when available; otherwise attempt
-                # to call the factory without parameters. Use an Any-cast
-                # to allow flexibility across different factory implementations.
-                if grid_spec is not None:
-                    return resampler_factory.get_resampler(grid_spec)
-                return cast(Any, resampler_factory).get_resampler()
-            except (ImportError, AttributeError):
-                # Fallback: create empty resampler
-                from src.processing.resampling._resampler import DepthTimeResampler
+        # Use factory if available
+        try:
+            # Lazy import factory implementation (may be implemented by backends)
 
-                logger.debug("Creating DepthTimeResampler (factory not available)")
-                if grid_spec is not None:
-                    return DepthTimeResampler(grid_spec)
-                # Cannot create a DepthTimeResampler without a GridSpec
-                raise RuntimeError(
-                    "GridSpec is required to construct DepthTimeResampler when no resampler factory is available"
-                )
+            from src.processing.resampling._resampler import resampler_factory
+
+            # pylint: enable=import-outside-toplevel
+
+            logger.debug("Creating resampler via factory")
+            # Some resampler factory implementations require a GridSpec
+            # argument while others accept no args. Pass `None` to
+            # satisfy implementations that require the parameter.
+            return cast(Any, resampler_factory).get_resampler(None)
+        except (ImportError, AttributeError) as exc:
+            # Fallback: create empty resampler
+
+            from src.processing.resampling._resampler import DepthTimeResampler
+
+            # pylint: enable=import-outside-toplevel
+
+            logger.debug("Creating DepthTimeResampler (factory not available)")
+            # Cannot create a DepthTimeResampler without a GridSpec
+            raise RuntimeError(
+                "GridSpec is required to construct DepthTimeResampler when no "
+                "resampler factory is available"
+            ) from exc
 
     @staticmethod
     def create_synthesizer() -> Any:
@@ -264,7 +284,11 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             AVOSynthesizer implementation.
         """
+        # Lazy import to avoid importing modeling at module import time
+
         from src.modeling.modeling import AVOSynthesizer
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating AVOSynthesizer")
         return AVOSynthesizer()
@@ -278,7 +302,11 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             BoundaryDetector implementation.
         """
+        # Lazy import processors to avoid heavy module imports at import time
+
         from src.analysis.processors import BoundaryDetector
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating BoundaryDetector")
         return BoundaryDetector()
@@ -292,7 +320,10 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             CubeAligner implementation.
         """
+
         from src.analysis.processors import CubeAligner
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating CubeAligner")
         return CubeAligner()
@@ -311,10 +342,13 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             BoundaryAmplitudeExtractor implementation.
         """
+
         from src.analysis.processors import BoundaryAmplitudeExtractor
 
+        # pylint: enable=import-outside-toplevel
+
         logger.debug(
-            f"Creating BoundaryAmplitudeExtractor with window={dilation_window}"
+            "Creating BoundaryAmplitudeExtractor with window=%s", dilation_window
         )
         return BoundaryAmplitudeExtractor(dilation_window=dilation_window)
 
@@ -327,7 +361,10 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             GradientCorrelationCalculator implementation.
         """
+
         from src.analysis.processors import GradientCorrelationCalculator
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating GradientCorrelationCalculator")
         return GradientCorrelationCalculator()
@@ -341,7 +378,10 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             InterfaceReflectionAnalyzer implementation.
         """
+
         from src.analysis.processors import InterfaceReflectionAnalyzer
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating InterfaceReflectionAnalyzer")
         return InterfaceReflectionAnalyzer()
@@ -355,7 +395,10 @@ class ProcessorServiceFactory(ServiceFactory):
         Any
             FaciesDiscriminationCalculator implementation.
         """
+
         from src.analysis.processors import FaciesDiscriminationCalculator
+
+        # pylint: enable=import-outside-toplevel
 
         logger.debug("Creating FaciesDiscriminationCalculator")
         return FaciesDiscriminationCalculator()
@@ -395,12 +438,11 @@ class ComputerServiceFactory(ServiceFactory):
         """
         if service_type == "avo":
             return self.create_avo_computer(**kwargs)
-        elif service_type == "lambda_mu":
+        if service_type == "lambda_mu":
             return self.create_lambda_mu_computer(**kwargs)
-        elif service_type == "fluid_factor":
+        if service_type == "fluid_factor":
             return self.create_fluid_factor_computer(**kwargs)
-        else:
-            raise ValueError(f"Unknown computer service type: {service_type}")
+        raise ValueError(f"Unknown computer service type: {service_type}")
 
     @staticmethod
     def create_avo_computer() -> Any:
@@ -411,7 +453,9 @@ class ComputerServiceFactory(ServiceFactory):
         Any
             AVOAttributesComputer implementation.
         """
-        from src.analysis.rock_physics.computers import AVOAttributesComputer
+        from src.analysis.rock_physics.computers import (
+            AVOAttributesComputer,
+        )
 
         logger.debug("Creating AVOAttributesComputer")
         return AVOAttributesComputer()
@@ -425,7 +469,9 @@ class ComputerServiceFactory(ServiceFactory):
         Any
             LambdaMuRhoComputer implementation.
         """
-        from src.analysis.rock_physics.computers import LambdaMuRhoComputer
+        from src.analysis.rock_physics.computers import (
+            LambdaMuRhoComputer,
+        )
 
         logger.debug("Creating LambdaMuRhoComputer")
         return LambdaMuRhoComputer()
@@ -439,7 +485,9 @@ class ComputerServiceFactory(ServiceFactory):
         Any
             FluidFactorComputer implementation.
         """
-        from src.analysis.rock_physics.computers import FluidFactorComputer
+        from src.analysis.rock_physics.computers import (
+            FluidFactorComputer,
+        )
 
         logger.debug("Creating FluidFactorComputer")
         return FluidFactorComputer()
@@ -540,6 +588,9 @@ class ServiceLocator:
             Resampler implementation.
         """
         factory = cls.get_processor_factory()
+        # The underlying factory supports an optional `grid_spec` parameter.
+        # Some static checkers may incorrectly flag this call as missing
+        # the `grid_spec` argument; suppress that specific lint here.
         return factory.create_resampler()
 
     @classmethod

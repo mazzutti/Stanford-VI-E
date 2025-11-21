@@ -3,18 +3,23 @@
 import logging
 
 import numpy as np
-from scipy.stats import pearsonr, spearmanr
 from numpy.typing import NDArray
+from scipy.stats import pearsonr, spearmanr
+
+from typing import cast
 
 from src.analysis.models import GradientCorrelationResult
+from src.core.processors import BaseProcessor
 
-from src.core import BaseProcessor
 from .boundary import BoundaryDetector
-from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
+from .management import (
+    ProcessorConfig,
+    compute_vertical_gradient,
+    flatten_and_filter_finite,
+)
 from .operations import AlignmentOps
 from .types import CorrelationFunction, CorrelationResult
-from .management import compute_vertical_gradient, flatten_and_filter_finite
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +133,10 @@ class GradientCorrelationCalculator(BaseProcessor):
 
         # Calculate correlation
         pearson_corr, pearson_pval = self._compute_correlation(
-            seismic_grad_abs, boundaries, pearsonr
+            seismic_grad_abs, boundaries, cast(CorrelationFunction, pearsonr)
         )
         spearman_corr, spearman_pval = self._compute_correlation(
-            seismic_grad_abs, boundaries, spearmanr
+            seismic_grad_abs, boundaries, cast(CorrelationFunction, spearmanr)
         )
 
         return GradientCorrelationResult(

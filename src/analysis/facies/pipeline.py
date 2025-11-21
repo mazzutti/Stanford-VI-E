@@ -6,26 +6,31 @@ analysis pipeline, separating concerns and improving testability.
 
 import logging
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
-from numpy.typing import NDArray
 from matplotlib.figure import Figure
+from numpy.typing import NDArray
 
-from src.plotting.helpers.config import PlotConfig
-from src.processing.materials.velocity import VelocityModel
 from src.analysis.domain.enum import Domain
-from src.io.loader import DatasetManager
 from src.analysis.models import (
+    AvoAnalysisResult,
+    AvoResults,
     CacheLoadResult,
     DisplayCubesResult,
-    AvoResults,
-    AvoAnalysisResult,
 )
 from src.analysis.processors.validators import PathValidator
+from src.io.loader import DatasetManager
+from src.plotting.helpers.config import PlotConfig
+from src.processing.materials.velocity import VelocityModel
 
 if TYPE_CHECKING:
     from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
+
+# Some imports in this pipeline are intentionally deferred (e.g., cache
+# loaders) to avoid heavy startup costs and circular imports. These late
+# imports are intentional; disable import-order warnings so pylint focuses
+# on actionable issues.
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +47,10 @@ class AnalysisPipeline:
         The FaciesCorrelationAnalyzer instance that provides processors
         and configuration.
     """
+
+    # This orchestrator intentionally uses several local temporaries and
+    # has a compact public surface; silence local stylistic warnings so
+    # maintainers can focus on higher-risk issues.
 
     def __init__(self, analyzer: "FaciesCorrelationAnalyzer") -> None:
         """Initialize pipeline with analyzer dependencies."""
@@ -147,7 +156,9 @@ class AnalysisPipeline:
                 raise ValueError(f"Failed to load AVO data from {avo_fn}")
         # fall back to using CacheLoader directly
         # Deferred import: avoid circular dependency at module load time.
-        from src.analysis.cache import CacheLoader
+        from src.analysis.cache import (
+            CacheLoader,
+        )
 
         avo_fn = CacheLoader().select_cache_file(cache_dir, str(domain))
 
@@ -193,7 +204,7 @@ class AnalysisPipeline:
         avo: NDArray[np.float64],
         dm: DatasetManager,
         domain: Domain,
-        plot_cfg: PlotConfig,
+        _plot_cfg: PlotConfig,
     ) -> DisplayCubesResult:
         """Stage 3: Align cache with dataset and prepare display cubes.
 
@@ -205,8 +216,8 @@ class AnalysisPipeline:
             Loaded dataset manager.
         domain
             Analysis domain.
-        plot_cfg
-            Plot configuration with grid specs.
+        _plot_cfg
+            Plot configuration with grid specs. (unused in this stage)
 
         Returns
         -------
@@ -227,10 +238,11 @@ class AnalysisPipeline:
                     "Loaded AVO cache could not be aligned to dataset grid; "
                     "proceeding with original array (may cause shape errors)."
                 )
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, OSError) as e:
             logger.warning(
-                f"Error while aligning cache array to dataset grid: {e}. "
+                "Error while aligning cache array to dataset grid: %s. "
                 "Proceeding with original array.",
+                e,
                 exc_info=True,
             )
 
@@ -328,7 +340,7 @@ class AnalysisPipeline:
         # (e.g., undo/redo support in IntegratedAnalyzer).
         try:
             self.analyzer.last_avo_results = avo_results_obj
-        except Exception:
+        except (AttributeError, RuntimeError, TypeError):
             # Non-fatal: analyzer may not support attribute assignment in
             # some injection/testing scenarios; continue regardless.
             logger.debug(

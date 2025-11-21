@@ -8,13 +8,9 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from src.signal import (
-    RickerWavelet,
-    SeismicSignalProcessor,
-    ZoeppritzSolver,
-    DepthTimeConverter,
-)
 from src.io.grid import GridSpec
+from src.signal import (DepthTimeConverter, RickerWavelet,
+                        SeismicSignalProcessor, ZoeppritzSolver)
 from src.utils.quantity import Quantity
 
 

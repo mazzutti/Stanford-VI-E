@@ -16,12 +16,13 @@ Patterns Demonstrated:
 from __future__ import annotations
 
 import logging
-import pytest
 from typing import Any
 
+import pytest
+
+from src.analysis import events
 from src.analysis.integration import AnalysisSystem, SystemConfiguration
 from src.analysis.patterns.event_bus import EventBus
-from src.analysis import events
 
 
 class TestAnalysisEventLogger:

@@ -7,9 +7,10 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core import BaseProcessor
-from .management import ProcessorConfig
+from src.core.processors import BaseProcessor
+
 from .decorators import ProcessorDecorators
+from .management import ProcessorConfig
 from .validators import ArrayValidator
 
 logger = logging.getLogger(__name__)

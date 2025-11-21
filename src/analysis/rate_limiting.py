@@ -30,15 +30,19 @@ Usage:
         process_request()
 """
 
+# Rate limiting implementations are intentionally explicit for correctness
+# and observability; minor style warnings (long functions/args) reflect
+# design choices made for API clarity.
+
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from threading import RLock
-from collections import deque
 from enum import Enum
 from functools import wraps
+from threading import RLock
+from typing import Any
 
 
 class RateLimitExceeded(Exception):
@@ -104,12 +108,10 @@ class RateLimiter(ABC):
         Returns:
             True if request allowed, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_stats(self) -> RateLimitStats:
         """Get limiter statistics."""
-        pass
 
 
 class TokenBucketLimiter(RateLimiter):
@@ -174,9 +176,8 @@ class TokenBucketLimiter(RateLimiter):
                 self.tokens -= tokens
                 self._stats.allowed_requests += 1
                 return True
-            else:
-                self._stats.rejected_requests += 1
-                return False
+            self._stats.rejected_requests += 1
+            return False
 
     def try_consume(self, tokens: int = 1) -> bool:
         """Alias for allow_request for consistency."""
@@ -198,7 +199,10 @@ class TokenBucketLimiter(RateLimiter):
             self._stats.reset()
 
     def __repr__(self) -> str:
-        return f"TokenBucketLimiter(name={self.name}, capacity={self.capacity}, refill_rate={self.refill_rate})"
+        return (
+            f"TokenBucketLimiter(name={self.name}, "
+            f"capacity={self.capacity}, refill_rate={self.refill_rate})"
+        )
 
 
 class SlidingWindowLimiter(RateLimiter):
@@ -266,9 +270,8 @@ class SlidingWindowLimiter(RateLimiter):
                     self.request_times.append(now)
                 self._stats.allowed_requests += 1
                 return True
-            else:
-                self._stats.rejected_requests += 1
-                return False
+            self._stats.rejected_requests += 1
+            return False
 
     def get_current_count(self) -> int:
         """Get current request count in window."""
@@ -360,9 +363,8 @@ class LeakyBucketLimiter(RateLimiter):
                 self.water_level += tokens
                 self._stats.allowed_requests += 1
                 return True
-            else:
-                self._stats.rejected_requests += 1
-                return False
+            self._stats.rejected_requests += 1
+            return False
 
     def get_queue_size(self) -> float:
         """Get current queue size (water level)."""
@@ -386,7 +388,10 @@ class LeakyBucketLimiter(RateLimiter):
             self._stats.reset()
 
     def __repr__(self) -> str:
-        return f"LeakyBucketLimiter(name={self.name}, capacity={self.capacity}, leak_rate={self.leak_rate})"
+        return (
+            f"LeakyBucketLimiter(name={self.name}, "
+            f"capacity={self.capacity}, leak_rate={self.leak_rate})"
+        )
 
 
 class RateLimitPolicy:
@@ -433,16 +438,15 @@ class RateLimitPolicy:
                 raise ValueError("Token bucket requires capacity and rate")
             return TokenBucketLimiter(self.capacity, self.rate, name)
 
-        elif self.strategy == RateLimitStrategy.SLIDING_WINDOW:
+        if self.strategy == RateLimitStrategy.SLIDING_WINDOW:
             return SlidingWindowLimiter(self.max_requests, self.window_size, name)
 
-        elif self.strategy == RateLimitStrategy.LEAKY_BUCKET:
+        if self.strategy == RateLimitStrategy.LEAKY_BUCKET:
             if self.capacity is None or self.rate is None:
                 raise ValueError("Leaky bucket requires capacity and rate")
             return LeakyBucketLimiter(self.capacity, self.rate, name)
 
-        else:
-            raise ValueError(f"Unknown strategy: {self.strategy}")
+        raise ValueError(f"Unknown strategy: {self.strategy}")
 
 
 class RateLimitPool:
@@ -563,10 +567,9 @@ def rate_limit(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if limiter.allow_request(tokens):
                 return func(*args, **kwargs)
-            elif raise_on_limit:
+            if raise_on_limit:
                 raise RateLimitExceeded(f"Rate limit exceeded for {func.__name__}")
-            else:
-                return None
+            return None
 
         return wrapper
 

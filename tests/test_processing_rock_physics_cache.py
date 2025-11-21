@@ -3,9 +3,10 @@
 Tests for ModelCache class for managing rock physics model derived attributes.
 """
 
-import pytest
+from unittest.mock import MagicMock, Mock
+
 import numpy as np
-from unittest.mock import Mock, MagicMock
+import pytest
 
 from src.processing.rock_physics.cache import ModelCache
 

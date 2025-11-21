@@ -1,18 +1,18 @@
 """Boundary amplitude extraction processor."""
 
 import logging
-from typing import cast
 
 import numpy as np
-from scipy.ndimage import binary_dilation
+from typing import Any, cast
 from numpy.typing import NDArray
+from scipy.ndimage import binary_dilation
 
 from src.analysis.models import BoundaryAmpsResult
+from src.core.processors import BaseProcessor
 
-from src.core import BaseProcessor
-from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
-from .operations import AlignmentOps, ExtractionOps
+from .management import ProcessorConfig
+from .operations import ExtractionOps
 from .validators import ArrayValidator
 
 logger = logging.getLogger(__name__)
@@ -102,15 +102,18 @@ class BoundaryAmplitudeExtractor(BaseProcessor):
             ArrayValidator.validate_positive_parameter(window, "window")
 
         # Align to common shape using composed CubeAligner
-        seismic_aligned, boundaries_aligned = AlignmentOps.align_cubes(
-            self._aligner, seismic_cube, boundaries.astype(np.int64)
-        )
-        boundaries_aligned = boundaries_aligned.astype(np.bool_)
+        # Ensure the boundaries mask is boolean before alignment so downstream
+        # operations keep a consistent dtype expected by type-checkers.
+        # Call the underlying aligner directly and cast each element to the
+        # expected static type. This avoids union inference from helper
+        # wrappers and makes types explicit for static checkers.
+        aligned = self._aligner.align(seismic_cube, boundaries.astype(np.bool_))
+        seismic_aligned = cast(NDArray[Any], aligned[0])
+        boundaries_aligned = cast(NDArray[np.bool_], aligned[1].astype(np.bool_))
 
-        # Dilate boundaries to create a window
-        boundary_zone = cast(
-            NDArray[np.bool_], binary_dilation(boundaries_aligned, iterations=window)
-        )
+        # Dilate boundaries to create a window. Cast the result to the
+        # expected boolean NDArray so static checkers understand the dtype.
+        boundary_zone = binary_dilation(boundaries_aligned, iterations=window)
 
         # Extract amplitudes using boundary mask
         at_boundaries = ExtractionOps.extract_by_mask(

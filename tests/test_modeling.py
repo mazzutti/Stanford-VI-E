@@ -8,24 +8,21 @@ Targets low-coverage areas:
 - resampler.py: Resampling implementation
 """
 
-import pytest
-import numpy as np
-from unittest.mock import patch, MagicMock
 import tempfile
+from unittest.mock import MagicMock, patch
 
-from src.modeling.modeling import (
-    AngleModel,
-    AVOSynthesizer,
-    SynthesisConfig,
-    unwrap_quantity,
-)
-from src.modeling.processors import ReflectivityComputer, WaveletConvolver
-from src.modeling.model_cache import CacheManager
-from src.modeling.resampler import ResamplingService
-from src.modeling.pipeline import ModelingPipeline
-from src.modeling.config import ModelingConfig, ModelingDefaults
-from src.utils.quantity import Quantity
+import numpy as np
+import pytest
+
 from src.io.grid import GridSpec
+from src.modeling.config import ModelingConfig, ModelingDefaults
+from src.modeling.model_cache import CacheManager
+from src.modeling.modeling import (AngleModel, AVOSynthesizer, SynthesisConfig,
+                                   unwrap_quantity)
+from src.modeling.pipeline import ModelingPipeline
+from src.modeling.processors import ReflectivityComputer, WaveletConvolver
+from src.modeling.resampler import ResamplingService
+from src.utils.quantity import Quantity
 
 
 class TestAngleModelCoverage:

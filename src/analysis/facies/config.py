@@ -7,6 +7,7 @@ serialization.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from src.analysis.base import AnalysisConfig
@@ -112,23 +113,9 @@ class FaciesAnalysisConfig(AnalysisConfig, ValidatableConfigMixin):
         ValueError
             If validation fails.
         """
-        from pathlib import Path
-
         cache_path = Path(self.cache_dir)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         return True
-
-    def is_valid(self) -> bool:
-        """Check if configuration is valid.
-
-        Returns
-        -------
-        bool
-            True if all parameters pass validation, False otherwise.
-
-        Note: Inherited from ValidatableConfigMixin
-        """
-        return super().is_valid()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary.

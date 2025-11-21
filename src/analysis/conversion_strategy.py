@@ -21,17 +21,13 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import cast
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "ConversionStrategy",
     "VelocityConversionStrategy",
-    "TimeConversionStrategy",
-    "DepthConversionStrategy",
-    "AmplitudeConversionStrategy",
-    "ConversionStrategyFactory",
 ]
 
 
@@ -70,7 +66,6 @@ class ConversionStrategy(ABC):
         ValueError
             If value is invalid for the conversion.
         """
-        pass
 
     @abstractmethod
     def reverse_convert(self, value: float) -> float:
@@ -93,19 +88,16 @@ class ConversionStrategy(ABC):
         ValueError
             If value is invalid for the conversion.
         """
-        pass
 
     @property
     @abstractmethod
     def from_unit(self) -> str:
         """Source unit name."""
-        pass
 
     @property
     @abstractmethod
     def to_unit(self) -> str:
         """Target unit name."""
-        pass
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -161,7 +153,7 @@ class VelocityConversionStrategy(ConversionStrategy):
             )
         self._from_unit = from_unit
         self._to_unit = to_unit
-        logger.debug(f"Created VelocityConversionStrategy: {from_unit} → {to_unit}")
+        logger.debug("Created VelocityConversionStrategy: %s → %s", from_unit, to_unit)
 
     def convert(self, value: float) -> float:
         """Convert velocity from source to target unit."""
@@ -239,7 +231,7 @@ class TimeConversionStrategy(ConversionStrategy):
             )
         self._from_unit = from_unit
         self._to_unit = to_unit
-        logger.debug(f"Created TimeConversionStrategy: {from_unit} → {to_unit}")
+        logger.debug("Created TimeConversionStrategy: %s → %s", from_unit, to_unit)
 
     def convert(self, value: float) -> float:
         """Convert time from source to target unit."""
@@ -317,7 +309,7 @@ class DepthConversionStrategy(ConversionStrategy):
             )
         self._from_unit = from_unit
         self._to_unit = to_unit
-        logger.debug(f"Created DepthConversionStrategy: {from_unit} → {to_unit}")
+        logger.debug("Created DepthConversionStrategy: %s → %s", from_unit, to_unit)
 
     def convert(self, value: float) -> float:
         """Convert depth from source to target unit."""
@@ -385,7 +377,7 @@ class AmplitudeConversionStrategy(ConversionStrategy):
             )
         self._from_unit = from_unit
         self._to_unit = to_unit
-        logger.debug(f"Created AmplitudeConversionStrategy: {from_unit} → {to_unit}")
+        logger.debug("Created AmplitudeConversionStrategy: %s → %s", from_unit, to_unit)
 
     def convert(self, value: float) -> float:
         """Convert amplitude from source to target unit."""
@@ -401,10 +393,9 @@ class AmplitudeConversionStrategy(ConversionStrategy):
         # Then convert to target unit
         if self._to_unit == "normalized":
             return normalized
-        elif self._to_unit == "percent":
+        if self._to_unit == "percent":
             return normalized * 100.0
-        else:  # raw
-            return normalized
+        return normalized
 
     def reverse_convert(self, value: float) -> float:
         """Convert amplitude from target back to source unit."""
@@ -419,10 +410,9 @@ class AmplitudeConversionStrategy(ConversionStrategy):
         # Then convert to source unit
         if self._from_unit == "normalized":
             return normalized
-        elif self._from_unit == "percent":
+        if self._from_unit == "percent":
             return normalized * 100.0
-        else:  # raw
-            return normalized
+        return normalized
 
     @property
     def from_unit(self) -> str:
@@ -481,21 +471,21 @@ class ConversionStrategyFactory:
         """
         try:
             unit_enum = UnitType(unit_type)
-        except ValueError:
+        except ValueError as exc:
             raise ValueError(
                 f"Unsupported unit type: {unit_type}. "
                 f"Supported: {[t.value for t in UnitType]}"
-            )
+            ) from exc
 
-        converter_class = ConversionStrategyFactory._CONVERTERS.get(unit_enum)
+        converter_class: Any | None = ConversionStrategyFactory._CONVERTERS.get(
+            unit_enum
+        )
         if converter_class is None:
             raise ValueError(f"No converter for unit type: {unit_type}")
-
-        # Use an Any-cast when calling the class object to satisfy the type
-        # checker across different concrete constructor signatures.
-        from typing import Any as _Any
-
-        return cast(ConversionStrategy, cast(_Any, converter_class)(from_unit, to_unit))
+        # converter_class is a class object that constructs a ConversionStrategy
+        # subclasses accept (from_unit, to_unit) but the base abstract class
+        # doesn't define __init__ with those args; cast to suppress mypy
+        return cast(ConversionStrategy, converter_class(from_unit, to_unit))
 
     @staticmethod
     def create_velocity(from_unit: str, to_unit: str) -> VelocityConversionStrategy:

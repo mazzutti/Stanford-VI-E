@@ -10,13 +10,20 @@ Components:
 
 from __future__ import annotations
 
+import argparse
+import inspect
 import logging
-from typing import TYPE_CHECKING, Any
+import warnings as _warnings
+from pathlib import Path
+from typing import Any
 
-if TYPE_CHECKING:
-    import argparse
+from src.io.grid import GridSpec
 
 logger = logging.getLogger(__name__)
+
+# Some CLI helper functions perform imports at call-time to avoid heavy
+# imports and import cycles during module import. Keep lazy imports and
+# prefer per-import suppression (added where imports are performed).
 
 __all__ = ["ParserFactory", "tool"]
 
@@ -33,8 +40,6 @@ class ParserFactory:
         This mirrors the original common_parser contract used elsewhere in the
         project and provides a small set of options used by many scripts.
         """
-        import argparse
-
         parser = argparse.ArgumentParser(add_help=add_help)
         parser.add_argument(
             "--domain",
@@ -53,15 +58,13 @@ class ParserFactory:
     @staticmethod
     def modeling_parser() -> argparse.ArgumentParser:
         """Return the parser for the main modeling workflow."""
-        import argparse
-
-        parser = argparse.ArgumentParser(
-            description="Complete seismic forward modeling (AVO)"
-        )
-        # Add common args
+        # Use argparse `parents` to inherit the common arguments via the
+        # public API instead of accessing argparse internals.
         common = ParserFactory.common_parser(add_help=False)
-        for action in common._actions:
-            parser._add_action(action)
+        parser = argparse.ArgumentParser(
+            description="Complete seismic forward modeling (AVO)",
+            parents=[common],
+        )
 
         parser.add_argument(
             "--add-avo-noise",
@@ -75,7 +78,7 @@ class ParserFactory:
         )
         try:
             run_tool_choices = ParserFactory.available_tools()
-        except Exception:
+        except (RuntimeError, OSError):
             run_tool_choices = None
 
         parser.add_argument(
@@ -109,7 +112,10 @@ class ParserFactory:
             "--plot-type",
             choices=["2d", "3d"],
             default="2d",
-            help="Type of plot for visualization tools: '2d' for PNG (matplotlib) or '3d' for HTML (Plotly)",
+            help=(
+                "Type of plot for visualization tools: '2d' for PNG (matplotlib) "
+                "or '3d' for HTML (Plotly)"
+            ),
         )
         parser.add_argument(
             "--output-dir",
@@ -128,22 +134,39 @@ class ParserFactory:
     @staticmethod
     def attach_common_args(parser: argparse.ArgumentParser) -> None:
         """Attach the canonical common-args to an existing parser."""
-        common = ParserFactory.common_parser(add_help=False)
-        for action in common._actions:
-            parser._add_action(action)
+        # Add the small set of common arguments explicitly via the public
+        # `add_argument` API instead of touching argparse internals.
+        parser.add_argument(
+            "--domain",
+            choices=["depth", "time"],
+            default="depth",
+            help="Domain for processing/visualization (default: depth)",
+        )
+        parser.add_argument(
+            "--cache-dir",
+            default=".cache",
+            help="Directory for cache files",
+        )
+        parser.add_argument(
+            "--backend",
+            default=None,
+            help="Optional matplotlib backend override",
+        )
 
     @staticmethod
     def get_plot_config(
         args: argparse.Namespace,
     ) -> tuple[str, dict[str, str], Any]:
-        """Get plotting configuration - returns (DATA_PATH, FILE_MAP, grid_spec)."""
-        from src.io.grid import GridSpec
+        # `args` parameter exists for compatibility with higher-level callers
+        # and future extensions; silence unused-argument lint here.
 
-        DATA_PATH = "."
-        FILE_MAP = {"vp": "P-wave Velocity", "facies": "Facies"}
+        """Get plotting configuration - returns (data_path, file_map, grid_spec)."""
+
+        data_path = "."
+        file_map = {"vp": "P-wave Velocity", "facies": "Facies"}
         grid_spec = GridSpec((150, 200, 200), dz=1.0, dt=0.001)
 
-        return DATA_PATH, FILE_MAP, grid_spec
+        return data_path, file_map, grid_spec
 
     @staticmethod
     def start_plot_main(
@@ -151,22 +174,20 @@ class ParserFactory:
     ) -> tuple[argparse.Namespace, str, dict[str, str], Any]:
         """Common startup for plotting scripts.
 
-        Returns: (args, DATA_PATH, FILE_MAP, grid_spec)
+        Returns: (args, data_path, file_map, grid_spec)
         """
-        import argparse
-
         parser = argparse.ArgumentParser(description=description)
         ParserFactory.attach_common_args(parser)
         args = parser.parse_args()
 
         try:
             ParserFactory.configure_logging(getattr(args, "verbose", False))
-        except Exception:
+        except (RuntimeError, OSError):
             pass
 
-        DATA_PATH, FILE_MAP, grid_spec = ParserFactory.get_plot_config(args)
+        data_path, file_map, grid_spec = ParserFactory.get_plot_config(args)
 
-        return args, DATA_PATH, FILE_MAP, grid_spec
+        return args, data_path, file_map, grid_spec
 
     @staticmethod
     def parse_common_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -177,20 +198,19 @@ class ParserFactory:
     @staticmethod
     def configure_logging(verbose: bool = False) -> None:
         """Configure Python logging for the process based on verbose flag."""
-        import logging as _logging
 
-        level = _logging.DEBUG if verbose else _logging.INFO
+        level = logging.DEBUG if verbose else logging.INFO
 
-        root = _logging.getLogger()
+        root = logging.getLogger()
         root.setLevel(level)
 
         if not root.handlers:
-            _logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
+            logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
         else:
             for h in root.handlers:
                 try:
                     h.setLevel(level)
-                except Exception:
+                except (AttributeError, TypeError):
                     pass
 
         # Reduce verbosity of noisy loggers when not verbose
@@ -202,8 +222,8 @@ class ParserFactory:
                 "matplotlib.pyplot",
             ):
                 try:
-                    _logging.getLogger(name).setLevel(_logging.WARNING)
-                except Exception:
+                    logging.getLogger(name).setLevel(logging.WARNING)
+                except (AttributeError, TypeError):
                     pass
 
     @staticmethod
@@ -216,8 +236,10 @@ class ParserFactory:
         logger.info("%s", "\n" + "=" * 70)
         logger.info("PRUNING CACHE FILES")
         logger.info("%s", "=" * 70)
-        from pathlib import Path
-        from src.io.pruning import Pruner, PruneStrategy
+        from src.io.pruning import (
+            Pruner,
+            PruneStrategy,
+        )
 
         cache_path = Path(cache_dir)
         if cache_path.exists():
@@ -249,7 +271,6 @@ class ParserFactory:
             @ParserFactory.tool(name='alias')
             def my_tool(): ...
         """
-        import warnings as _warnings
 
         def _register(f: Any) -> Any:
             try:
@@ -262,10 +283,12 @@ class ParserFactory:
                     else:
                         try:
                             cli_names = list(name)
-                        except Exception:
+                        except (TypeError, ValueError):
                             cli_names = [str(name)]
-            except Exception:
-                raise TypeError("@ParserFactory.tool must be applied to a function")
+            except (TypeError, ValueError) as exc:
+                raise TypeError(
+                    "@ParserFactory.tool must be applied to a function"
+                ) from exc
 
             # Normalize names
             norm_names: list[str] = []
@@ -323,8 +346,6 @@ class ParserFactory:
 
             full_kwargs = kwargs or {}
 
-            import inspect
-
             try:
                 sig = inspect.signature(fn)
                 parameters = sig.parameters
@@ -336,16 +357,13 @@ class ParserFactory:
                 else:
                     allowed = set(parameters.keys())
                     call_kwargs = {k: v for k, v in full_kwargs.items() if k in allowed}
-            except Exception:
+            except (TypeError, ValueError):
                 call_kwargs = full_kwargs
 
             if call_kwargs:
                 return fn(**call_kwargs)
-            else:
-                return fn()
-        except SystemExit:
-            raise
-        except Exception as exc:
+            return fn()
+        except (RuntimeError, TypeError, ValueError, OSError) as exc:
             raise SystemExit(f"Error running tool '{tool_name}': {exc}") from exc
 
 

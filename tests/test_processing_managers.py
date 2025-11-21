@@ -5,8 +5,11 @@ and processor managers.
 """
 
 import logging
-import pytest
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from src.processing.managers.base import BaseManager
 from src.processing.managers.cache import CacheManager
 

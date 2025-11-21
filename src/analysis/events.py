@@ -15,9 +15,9 @@ Event Categories:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, cast
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any, cast
 
 from src.analysis.patterns.event_bus import Event
 
@@ -39,6 +39,8 @@ __all__ = [
     "ConfigurationChangedEvent",
     "ErrorOccurredEvent",
 ]
+
+# Events are small dataclasses used by the EventBus; keep them compact
 
 
 class AnalysisEventType(Enum):
@@ -119,7 +121,11 @@ class AnalysisCompletedEvent(Event):
 
 @dataclass
 class AnalysisFailedEvent(Event):
-    """Event fired when analysis fails."""
+    """Event fired when analysis fails.
+
+    This dataclass intentionally contains several fields used by the
+    event-bus framework; suppress the instance-attribute count warning.
+    """
 
     analysis_type: str = ""
     domain: str = ""
@@ -242,6 +248,9 @@ class ConfigurationChangedEvent(Event):
 
 @dataclass
 class ErrorOccurredEvent(Event):
+    # This dataclass intentionally contains several fields used by the
+    # event-bus framework; suppress the instance-attribute count warning.
+
     """Event fired when an error occurs."""
 
     error_message: str = ""

@@ -1,43 +1,68 @@
-# Rock physics analyzer
+"""Rock physics analyzer pipeline and helpers.
+
+Provides the :class:`RockPhysicsAnalyzer` pipeline used to compute AVO
+and rock-physics attributes, analyze discrimination against facies and
+persist results. This module keeps imports local where needed to avoid
+heavy circular imports.
+"""
 
 from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, cast
-from collections.abc import Sequence
 
 import numpy as np
-
-from src.io.grid import GridSpec
-from src.io.loader import DatasetManager
 
 from src.analysis.processors.types import (
     AttributeArrayDict,
     FloatingArray,
     IntegerArray,
 )
-from src.analysis.rock_physics.config import RockPhysicsAnalysisConfig
-from src.analysis.rock_physics.constants import RockPhysicsConstants
 from src.analysis.rock_physics.computers import (
     AVOAttributesComputer,
     FluidFactorComputer,
     LambdaMuRhoComputer,
 )
+from src.analysis.rock_physics.config import RockPhysicsAnalysisConfig
+from src.analysis.rock_physics.constants import RockPhysicsConstants
 from src.analysis.rock_physics.discrimination import (
     AttributeDiscriminationAnalyzer,
     DiscriminationResult,
 )
-from src.core import CompositeMixin, PipelineAnalyzer
+from src.core.analyzers import CompositeMixin, PipelineAnalyzer
+from src.io.grid import GridSpec
+from src.io.loader import DatasetManager
 
 logger = logging.getLogger(__name__)
+
+# This module may perform some imports in local scopes in order to avoid
+# circular imports with heavy plotting or builder modules. These deferred
+# imports are intentional — suppress import-order warnings with a short
+# justification so pylint focuses on real issues.
+# Many functions in this module are pipeline wiring and accept several
+# arguments; allow the complexity checks locally for readability.
+
 
 # Local generics not required in this module
 
 
 @dataclass
 class RockPhysicsPipelineResult:
+    """Result container returned by :meth:`RockPhysicsAnalyzer.analyze`.
+
+    Attributes
+    ----------
+    attributes: dict[str, FloatingArray]
+        Mapping of attribute names to arrays.
+    discrimination: dict[str, DiscriminationResult]
+        Mapping of attribute names to discrimination results.
+    output_path: str | None
+        Path to written NPZ file when running in pipeline mode.
+    """
+
     attributes: dict[str, FloatingArray]
     discrimination: dict[str, DiscriminationResult]
     output_path: str | None = None
@@ -50,6 +75,14 @@ class RockPhysicsAnalyzer(
     CompositeMixin,
     PipelineAnalyzer[RockPhysicsAnalysisConfig, RockPhysicsPipelineResult],
 ):
+    """Analyzer that builds and runs the rock-physics computation pipeline.
+
+    This class orchestrates loading datasets, computing AVO and
+    Lambda/Mu/Rho attributes, optional fluid-factor computation, running
+    discrimination analysis and persisting results when used in
+    pipeline mode.
+    """
+
     def __init__(self, config: RockPhysicsAnalysisConfig | None = None) -> None:
         super().__init__(
             config=config or RockPhysicsAnalysisConfig(), name="rock_physics"
@@ -91,6 +124,13 @@ class RockPhysicsAnalyzer(
         ]
 
     def analyze(self, data: Any) -> RockPhysicsPipelineResult:
+        """Run analyzer pipeline with given input mapping and return result.
+
+        Parameters
+        ----------
+        data: Any
+            Mapping of input parameters for the pipeline (or None).
+        """
         context: PipelineContext
         if data is None:
             context = {}
@@ -115,6 +155,11 @@ class RockPhysicsAnalyzer(
         angles_list: Sequence[float] | None = None,
         verbose: bool = False,
     ) -> bool | str:
+        """Run analyzer in pipeline mode and optionally persist results.
+
+        Returns either the output path (when written) or boolean indicating
+        whether attributes were produced.
+        """
         payload: PipelineContext = {
             "mode": "pipeline",
             "cache_dir": cache_dir,
@@ -140,7 +185,13 @@ class RockPhysicsAnalyzer(
 
     @classmethod
     def from_builder(cls, builder_func: Any | None = None) -> RockPhysicsAnalyzer:
-        from src.analysis.builder import build_rock_physics_analyzer
+        """Construct an analyzer using the project builder helper.
+
+        When `builder_func` is omitted the default builder is used.
+        """
+        from src.analysis.builder import (
+            build_rock_physics_analyzer,
+        )
 
         if builder_func is None:
             return build_rock_physics_analyzer()
@@ -148,10 +199,19 @@ class RockPhysicsAnalyzer(
         return cast(RockPhysicsAnalyzer, builder_func())
 
     def _ensure_initialized(self) -> None:
+        """Initialize the analyzer if not already initialized.
+
+        This is a small helper used by public compute methods to lazily
+        initialize dependent sub-analyzers.
+        """
         if not self.is_initialized:
             self.initialize()
 
     def _stage_prepare_context(self, context: PipelineContext) -> PipelineContext:
+        """Prepare and normalize pipeline context with defaults from config.
+
+        Ensures grid configuration, angles, and other runtime defaults are set.
+        """
         cfg = self.config
 
         data_path_default, file_map_default, grid_spec_default = (
@@ -194,16 +254,19 @@ class RockPhysicsAnalyzer(
 
     def _stage_configure_logging(self, context: PipelineContext) -> PipelineContext:
         if context.get("verbose"):
-            import logging as logging_module
-
-            logging_module.basicConfig(
-                level=logging_module.DEBUG, format="[%(levelname)s] %(message)s"
+            logging.basicConfig(
+                level=logging.DEBUG, format="[%(levelname)s] %(message)s"
             )
         return context
 
     def _stage_load_dataset_if_needed(
         self, context: PipelineContext
     ) -> PipelineContext:
+        """Ensure vp/vs/rho arrays are present in the pipeline context.
+
+        If missing, a DatasetManager is created and properties are loaded
+        and unwrapped into the context.
+        """
         if all(context.get(key) is not None for key in ("vp", "vs", "rho")):
             return context
 
@@ -233,6 +296,10 @@ class RockPhysicsAnalyzer(
         return context
 
     def _stage_compute_attributes(self, context: PipelineContext) -> PipelineContext:
+        """Compute AVO, lambda/mu/rho and optional fluid-factor attributes.
+
+        The computed attribute mappings are placed into the context.
+        """
         vp = context.get("vp")
         vs = context.get("vs")
         rho = context.get("rho")
@@ -260,6 +327,10 @@ class RockPhysicsAnalyzer(
         return context
 
     def _stage_consolidate_results(self, context: PipelineContext) -> PipelineContext:
+        """Consolidate individual computation results into attribute mapping.
+
+        Validates required keys and returns a flat mapping of attributes.
+        """
         attribute_results = self._build_attribute_results(
             cast(dict[str, FloatingArray], context["avo_results"]),
             cast(dict[str, FloatingArray], context["lambda_mu_results"]),
@@ -271,6 +342,10 @@ class RockPhysicsAnalyzer(
     def _stage_analyze_discrimination(
         self, context: PipelineContext
     ) -> PipelineContext:
+        """Run discrimination analysis against facies when available.
+
+        Stores an empty mapping on failure to keep pipeline non-fatal.
+        """
         facies = context.get("facies")
         if facies is not None:
             try:
@@ -278,7 +353,7 @@ class RockPhysicsAnalyzer(
                     cast(AttributeArrayDict, context["attribute_results"]),
                     cast(IntegerArray, facies),
                 )
-            except Exception as exc:  # noqa: BLE001
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 logger.warning("Discrimination analysis failed (non-fatal): %s", exc)
                 context["discrimination"] = {}
         else:
@@ -286,6 +361,10 @@ class RockPhysicsAnalyzer(
         return context
 
     def _stage_persist_results(self, context: PipelineContext) -> PipelineContext:
+        """Persist computed attributes and discrimination to a compressed NPZ.
+
+        Only runs when pipeline `mode` equals "pipeline".
+        """
         if context.get("mode") != "pipeline":
             return context
 
@@ -299,7 +378,7 @@ class RockPhysicsAnalyzer(
                     dict[str, DiscriminationResult], context.get("discrimination", {})
                 ),
             )
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, ValueError) as exc:
             logger.exception("Failed saving rock physics cache: %s", exc)
             output_path = None
         context["output_path"] = output_path
@@ -313,11 +392,13 @@ class RockPhysicsAnalyzer(
         ):
             return context
         try:
-            from src.plotting import RockPhysicsPlotter
+            from src.plotting import (
+                RockPhysicsPlotter,
+            )
 
             RockPhysicsPlotter()
             logger.debug("Rock physics plotter instantiated")
-        except Exception as exc:  # noqa: BLE001
+        except (ImportError, RuntimeError, ValueError, OSError) as exc:
             logger.exception("Rock physics plotting failed: %s", exc)
         return context
 
@@ -339,6 +420,10 @@ class RockPhysicsAnalyzer(
         rho: FloatingArray,
         angles_deg: Sequence[float] | None = None,
     ) -> dict[str, FloatingArray]:
+        """Compute AVO attributes using the configured AVOAttributesComputer.
+
+        Returns a mapping of attribute name to array.
+        """
         self._ensure_initialized()
         assert self._avo_computer is not None
         if angles_deg is None:
@@ -348,6 +433,10 @@ class RockPhysicsAnalyzer(
     def compute_lambda_mu_rho(
         self, vp: FloatingArray, vs: FloatingArray, rho: FloatingArray
     ) -> dict[str, FloatingArray]:
+        """Compute lambda/mu/rho derived attributes.
+
+        Returns a mapping of attribute name to array.
+        """
         self._ensure_initialized()
         assert self._lambda_mu_computer is not None
         return self._lambda_mu_computer.compute(vp, vs, rho)
@@ -358,6 +447,10 @@ class RockPhysicsAnalyzer(
         mu_rho: FloatingArray,
         k: float | None = None,
     ) -> FloatingArray:
+        """Compute the fluid-factor attribute from lambda_rho and mu_rho.
+
+        The optional `k` parameter overrides config fluid_factor_k.
+        """
         self._ensure_initialized()
         assert self._fluid_computer is not None
         if k is None:
@@ -367,6 +460,10 @@ class RockPhysicsAnalyzer(
     def analyze_attribute_discrimination(
         self, attribute: FloatingArray, facies: IntegerArray, name: str = "Attribute"
     ) -> DiscriminationResult:
+        """Analyze discrimination for a single attribute against facies.
+
+        Returns a :class:`DiscriminationResult`.
+        """
         self._ensure_initialized()
         assert self._discrimination_analyzer is not None
         return self._discrimination_analyzer.analyze_single(
@@ -376,6 +473,10 @@ class RockPhysicsAnalyzer(
     def compare_all_attributes(
         self, attribute_results: AttributeArrayDict, facies: IntegerArray
     ) -> dict[str, DiscriminationResult]:
+        """Analyze discrimination for multiple attributes and return results.
+
+        The returned mapping contains per-attribute discrimination results.
+        """
         self._ensure_initialized()
         assert self._discrimination_analyzer is not None
         return self._discrimination_analyzer.analyze_multiple(attribute_results, facies)
@@ -449,6 +550,12 @@ class RockPhysicsAnalyzer(
         dict[str, FloatingArray],
         FloatingArray | None,
     ]:
+        """Compute all derived attributes (AVO, lambda/mu/rho and fluid).
+
+        This method orchestrates the lower-level compute calls and handles
+        optional fluid-factor computation. Kept intentionally as a single
+        entrypoint to simplify the pipeline wiring.
+        """
         if angles_deg is None:
             angles_deg = self.config.angles_sequence()
         if fluid_factor_k is None:
@@ -477,11 +584,12 @@ class RockPhysicsAnalyzer(
                 logger.warning(
                     "Cannot compute fluid factor: lambda_rho or mu_rho not available"
                 )
-            except Exception as exc:  # noqa: BLE001
+            except (RuntimeError, ValueError, TypeError) as exc:
                 logger.warning("Failed computing fluid factor (non-fatal): %s", exc)
         else:
             logger.debug(
-                "Skipping fluid factor computation; required keys missing (avo_ok=%s, lambda_ok=%s)",
+                "Skipping fluid factor computation; required keys missing "
+                "(avo_ok=%s, lambda_ok=%s)",
                 has_required_avo,
                 has_required_lambda,
             )
@@ -498,9 +606,7 @@ class RockPhysicsAnalyzer(
         os.makedirs(cache_dir, exist_ok=True)
         out_fn = os.path.join(cache_dir, RockPhysicsConstants.OUTPUT_FILENAME)
 
-        save_kwargs: dict[str, Any] = {
-            key: value for key, value in attribute_results.items()
-        }
+        save_kwargs: dict[str, Any] = dict(attribute_results)
         save_kwargs["discrimination"] = np.array([discrimination], dtype=object)
         np.savez_compressed(out_fn, **save_kwargs)
         logger.info("Saved rock physics attributes to %s", out_fn)

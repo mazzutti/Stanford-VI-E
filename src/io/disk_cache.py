@@ -9,14 +9,15 @@ Provides a high-level cache interface with:
 
 from __future__ import annotations
 
+import atexit
+import logging
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
-from concurrent.futures import ThreadPoolExecutor, Future
-import threading
-import logging
-import atexit
+from src.io.pruning import Pruner, PruneStrategy
 from src.io.storage import DiskStore
-from src.io.pruning import PruneStrategy, Pruner
 
 __all__ = [
     "DiskCache",
@@ -26,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 
 class DiskCache:
+    """Disk-backed cache manager.
+
+    Provides a thin, safe wrapper around `DiskStore` with optional
+    asynchronous background saves and periodic pruning. Changes here are
+    intentionally conservative to avoid altering runtime behavior.
+    """
+
     def __init__(
         self,
         cache_dir: str = ".cache",
@@ -82,7 +90,7 @@ class DiskCache:
         # non-blocking shutdown to avoid delaying interpreter exit.
         try:
             atexit.register(self.shutdown, False)
-        except Exception:
+        except RuntimeError:
             # best-effort; never raise from __init__
             pass
 
@@ -104,13 +112,12 @@ class DiskCache:
         return self.store.make_key(prefix, meta)
 
     def get_path_for_key(self, key: str) -> str | None:
-        # look for files under cache_dir starting with key
+        """Return the filesystem path for `key` if present, else None."""
         path = self.store.get_path_for_key(key)
         return str(path) if path else None
 
-    def load_npz(
-        self, key: str
-    ) -> dict[str, str | int | float | bool] | bytes | None:
+    def load_npz(self, key: str) -> dict[str, str | int | float | bool] | bytes | None:
+        """Load a cached NPZ entry by `key`. Returns stored payload or None."""
         return self.store.get(key)
 
     def _prune_cache_if_needed(self) -> None:
@@ -144,8 +151,8 @@ class DiskCache:
         def _do_save(payload: dict[str, str | int | float | bool] | bytes) -> None:
             try:
                 self.store.set(key, payload)
-            except Exception:
-                # best-effort; do not raise
+            except (OSError, ValueError, TypeError):
+                # best-effort; do not raise for IO/type errors
                 pass
 
         # synchronous (blocking) path for critical saves
@@ -169,7 +176,7 @@ class DiskCache:
                 with self._lock:
                     try:
                         self._futures.pop(key_inner, None)
-                    except Exception:
+                    except KeyError:
                         pass
 
         with self._lock:
@@ -196,7 +203,7 @@ class DiskCache:
         try:
             with self._lock:
                 return len(self._futures)
-        except Exception:
+        except RuntimeError:
             return 0
 
     def pending_save_keys(self) -> list[str]:
@@ -204,7 +211,7 @@ class DiskCache:
         try:
             with self._lock:
                 return list(self._futures.keys())
-        except Exception:
+        except RuntimeError:
             return []
 
     def _periodic_prune_loop(self) -> None:
@@ -218,8 +225,8 @@ class DiskCache:
         while not self._prune_event.wait(interval):
             try:
                 self._prune_cache_if_needed()
-            except Exception:
-                # ignore errors and continue
+            except (OSError, RuntimeError):
+                # ignore expected filesystem/runtime errors and continue
                 pass
 
     def shutdown(self, wait: bool = True) -> None:
@@ -231,10 +238,10 @@ class DiskCache:
                 if wait:
                     try:
                         self._prune_thread.join(timeout=5)
-                    except Exception:
+                    except RuntimeError:
                         pass
                 self._prune_thread = None
-        except Exception:
+        except RuntimeError:
             pass
 
         if wait:
@@ -242,7 +249,7 @@ class DiskCache:
                 for _, f in list(self._futures.items()):
                     try:
                         f.result(timeout=30)
-                    except Exception:
+                    except (FuturesTimeoutError, RuntimeError):
                         pass
                 self._futures.clear()
         self._executor.shutdown(wait=wait)
@@ -254,6 +261,11 @@ def make_disk_cache(
     ttl_seconds: int | None = None,
     periodic_prune_interval_seconds: int | None = None,
 ) -> DiskCache:
+    """Factory helper that constructs a `DiskCache` with sane defaults.
+
+    This helper preserves the module-level `default_disk_cache` usage
+    pattern while providing an explicit construction API for callers.
+    """
     return DiskCache(
         cache_dir=cache_dir,
         max_cache_bytes=max_cache_bytes,

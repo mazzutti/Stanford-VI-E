@@ -6,17 +6,12 @@ from typing import cast
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.models import (
-    FaciesStats,
-    InterfaceReflectionResult,
-    Transition,
-)
+from src.analysis.models import FaciesStats, InterfaceReflectionResult, Transition
+from src.core.processors import BaseProcessor
 
-from src.core import BaseProcessor
-from .management import ProcessorConfig
 from .decorators import ProcessorDecorators
-from .operations import AlignmentOps, ReshapeOps, ExtractionOps
-from .management import compute_amplitude_stats
+from .management import ProcessorConfig, compute_amplitude_stats
+from .operations import AlignmentOps, ExtractionOps, ReshapeOps
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +20,6 @@ __all__ = ["InterfaceReflectionAnalyzer"]
 
 class InterfaceReflectionAnalyzer(BaseProcessor):
     """Analyzes reflection amplitudes at facies interfaces."""
-
-    def __init__(self) -> None:
-        """Initialize the analyzer."""
-        super().__init__()
 
     def __repr__(self) -> str:
         """Return string representation of InterfaceReflectionAnalyzer instance.
@@ -58,6 +49,9 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
         InterfaceReflectionResult
             Summary and raw statistics grouped by transition pairs.
         """
+        # This method performs several array operations and uses several
+        # local temporaries for performance; silence the locals warning here.
+
         # Align cubes and reshape to (n_traces, nk) for trace-wise analysis
         seismic_aligned, facies_aligned = AlignmentOps.align_cubes(
             self._aligner, seismic_cube, facies_cube
@@ -113,6 +107,10 @@ class InterfaceReflectionAnalyzer(BaseProcessor):
             Aggregated summary and raw data by transition.
         """
         # Encode transition pairs to enable efficient NumPy aggregation
+        # This routine uses a number of local temporaries for efficient
+        # NumPy grouping operations; silence the local-variable warning
+        # for this specific helper.
+
         max_label = max(int(fac_from.max()), int(fac_to.max()))
         base = int(max_label) + 1
         codes = fac_from.astype(np.int64) * base + fac_to.astype(np.int64)

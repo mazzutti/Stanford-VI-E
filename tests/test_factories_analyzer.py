@@ -21,17 +21,11 @@ from unittest.mock import Mock
 import pytest
 
 from src.analysis.base import AnalysisConfig
-from src.analysis.factories import (
-    AnalyzerBuilder,
-    AnalyzerFactory,
-)
 from src.analysis.exceptions import BuilderFrozenError, BuilderValidationError
+from src.analysis.factories import AnalyzerBuilder, AnalyzerFactory
 from src.analysis.models import FaciesCorrelationConfig
-from src.analysis.processors import (
-    BoundaryDetector,
-    CubeAligner,
-    GradientCorrelationCalculator,
-)
+from src.analysis.processors import (BoundaryDetector, CubeAligner,
+                                     GradientCorrelationCalculator)
 
 
 class TestAnalyzerBuilder:

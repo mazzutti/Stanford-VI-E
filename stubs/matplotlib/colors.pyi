@@ -1,5 +1,40 @@
-from typing import Protocol, Any
+"""Type stubs for parts of `matplotlib.colors` used by this project.
+
+Only a minimal `Normalize` class is provided to satisfy static
+type-checkers (mypy, Pyright) when `from matplotlib.colors import
+Normalize` is used.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Iterable
+
+import numpy as np
+
+class Normalize:
+    """Simplified type stub for ``matplotlib.colors.Normalize``.
+
+    This stub includes the initializer signature and the commonly-used
+    methods/attributes accessed by user code in this repository.
+    """
+
+    vmin: float | None
+    vmax: float | None
+    clip: bool
+
+    def __init__(
+        self,
+        vmin: float | None = None,
+        vmax: float | None = None,
+        clip: bool = False,
+    ) -> None: ...
+    def __call__(self, value: Any) -> np.ndarray: ...
+    def autoscale(self, A: Iterable[float]) -> None: ...
+    def autoscale_None(self, A: Iterable[float] | None) -> None: ...
+    def inverse(self, value: Any) -> np.ndarray: ...
+
 from collections.abc import Sequence
+from typing import Any, Protocol
 
 class Colormap(Protocol):
     """Minimal Colormap protocol for typing in this repo."""

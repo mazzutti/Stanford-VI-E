@@ -11,21 +11,17 @@ Tests cover:
 - Edge cases and failures
 """
 
-import pytest
 import time
+
+import pytest
 from freezegun import freeze_time
-from src.analysis.patterns.retry import (
-    RetryStrategy,
-    ExponentialBackoffStrategy,
-    LinearBackoffStrategy,
-    FibonacciBackoffStrategy,
-    ConstantBackoffStrategy,
-    RetryPolicy,
-    RetryStats,
-    TimeoutError,
-    retry,
-    timeout,
-)
+
+from src.analysis.patterns.retry import (ConstantBackoffStrategy,
+                                         ExponentialBackoffStrategy,
+                                         FibonacciBackoffStrategy,
+                                         LinearBackoffStrategy, RetryPolicy,
+                                         RetryStats, RetryStrategy,
+                                         TimeoutError, retry, timeout)
 
 
 class TestExponentialBackoffStrategy:

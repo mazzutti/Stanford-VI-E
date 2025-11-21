@@ -12,10 +12,17 @@ This file is intentionally small and dependency-free except for NumPy.
 
 from __future__ import annotations
 
-from typing import Protocol, Any, cast
+from pathlib import Path
+from typing import Any, Protocol, cast
+
 import numpy as np
 from numpy.typing import NDArray
+
 from src.utils.quantity import Quantity
+
+# This module performs a runtime conversion that may import resampling
+# helpers at call-time in factory methods; keep the lazy imports and
+# silence pylint's import-outside-toplevel for this module.
 
 
 class SeismogramTopLayersExtractor:
@@ -31,41 +38,6 @@ class SeismogramTopLayersExtractor:
         if cube.ndim != 3:
             raise ValueError("`cube` must be a 3D array with shape (ni, nj, nk)")
         self.cube = cube
-
-    def extract_top_layers(self, n_layers: int = 2) -> NDArray[Any]:
-        """Return the top `n_layers` along the last axis.
-
-        Returns an array with shape (ni, nj, n_layers).
-        """
-        if n_layers < 1:
-            raise ValueError("n_layers must be >= 1")
-        nk = self.cube.shape[2]
-        if n_layers > nk:
-            raise ValueError(
-                f"n_layers cannot be larger than number of samples (nk={nk})"
-            )
-        return self.cube[:, :, :n_layers].copy()
-
-    def extract_top_layer(self, index: int = 0) -> NDArray[Any]:
-        """Return a single top layer (2D array) at the requested index.
-
-        `index` is 0-based (0 is the very top sample).
-        """
-        nk = self.cube.shape[2]
-        if index < 0 or index >= nk:
-            raise IndexError("layer index out of range")
-        return self.cube[:, :, index].copy()
-
-    def top_layers_mean(self, n_layers: int = 2) -> NDArray[Any]:
-        """Return the mean across the top `n_layers` for each (i, j).
-
-        Result shape: (ni, nj)
-        """
-        layers = self.extract_top_layers(n_layers)
-        if layers.size == 0:
-            ni, nj = self.cube.shape[0], self.cube.shape[1]
-            return np.zeros((ni, nj), dtype=np.float64)
-        return cast(NDArray[Any], np.mean(layers, axis=2))
 
     def extract_top_two_geological_layers(
         self, thicknesses: tuple[int, int] = (80, 40)
@@ -137,7 +109,7 @@ class SeismogramTopLayersExtractor:
         cache_dir: str = ".cache",
         prefer_latest: bool = True,
         generate_if_missing: bool = True,
-        force_generate: bool = False,
+        force_regeneration: bool = False,
     ) -> SeismogramTopLayersExtractor:
         """Load the newest depth-domain AVO cache if present, otherwise generate it.
 
@@ -161,7 +133,7 @@ class SeismogramTopLayersExtractor:
 
         # If missing, optionally generate
         if generate_if_missing:
-            arr = cache_provider.generate_depth(force=force_generate)
+            arr = cache_provider.generate_depth(force_regeneration=force_regeneration)
             return cls(np.asarray(arr))
 
         raise FileNotFoundError("No avo_depth cache found and generation not allowed")
@@ -199,9 +171,22 @@ __all__ = ["SeismogramTopLayersExtractor", "CacheProvider", "DefaultCacheProvide
 class CacheProvider(Protocol):
     """Protocol describing an injectable cache provider for depth-domain AVO caches."""
 
-    def load_latest_depth(self) -> NDArray[Any] | None: ...
+    def load_latest_depth(self) -> NDArray[Any] | None:
+        """Return the newest depth-domain ndarray, or ``None`` if unavailable.
 
-    def generate_depth(self, force: bool = False) -> NDArray[Any] | None: ...
+        Implementations should return a NumPy array when a suitable cache
+        file exists, or ``None`` when no cache is present.
+        """
+
+    def generate_depth(self, force_regeneration: bool = False) -> NDArray[Any] | None:
+        """Generate or return an existing depth-domain ndarray.
+
+        Args:
+            force_regeneration: If True, force re-generation even if a cache exists.
+
+        Returns:
+            The generated ndarray or ``None`` on failure.
+        """
 
 
 class DefaultCacheProvider:
@@ -221,8 +206,11 @@ class DefaultCacheProvider:
         self._pipeline = pipeline
 
     def _find_latest(self) -> str | None:
-        from pathlib import Path
+        """Return the filesystem path to the newest cache file, or None.
 
+        This helper inspects `self.cache_dir` for known cache filename
+        patterns and returns the newest match or ``None`` when none exists.
+        """
         d = Path(self.cache_dir)
         if not d.exists():
             return None
@@ -232,22 +220,22 @@ class DefaultCacheProvider:
         return str(files[0]) if files else None
 
     def load_latest_depth(self) -> NDArray[Any] | None:
+        """Load the newest depth-domain cache, if any.
+
+        Returns the ndarray if present, otherwise ``None``.
+        """
         path = self._find_latest()
         if path is None:
             return None
-        # lazy import
-        from pathlib import Path
-        import numpy as _np
-
         p = Path(path)
         name = p.name
         # If this is a top_layers file produced by the extractor, load the 'top' array
         if name.startswith("top_layers_"):
             try:
-                data = _np.load(str(p), allow_pickle=True)
+                data = np.load(str(p), allow_pickle=True)
                 if "top" in data:
                     return cast(NDArray[Any], data["top"])
-            except Exception:
+            except (OSError, KeyError, ValueError):
                 pass
 
         # Fallback to CacheManager's AVO loader for full_stack_depth-style caches
@@ -257,12 +245,17 @@ class DefaultCacheProvider:
             cm = self._cache_manager or CacheManager(cache_dir=str(p.parent))
             _, full_stack_depth = cm.load_avo_synthetics(name)
             return cast(NDArray[Any] | None, full_stack_depth)
-        except Exception:
+        except (ImportError, RuntimeError, OSError, ValueError):
             return None
 
-    def generate_depth(self, force: bool = False) -> NDArray[Any] | None:
+    def generate_depth(self, force_regeneration: bool = False) -> NDArray[Any] | None:
+        """Generate a depth-domain AVO cache via the modeling pipeline.
+
+        If ``force_regeneration`` is False, an existing cache (if found)
+        will be returned instead of invoking the pipeline.
+        """
         # If not forced and a cache exists, return it
-        if not force:
+        if not force_regeneration:
             path = self._find_latest()
             if path:
                 return self.load_latest_depth()

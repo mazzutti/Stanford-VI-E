@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING, cast
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from src.analysis.processors.boundary import CubeAligner
@@ -36,6 +36,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = ["Processor", "BaseProcessor", "AutoLoggingMixin"]
+
+# The processor module defines a few small base classes and mixins that
+# intentionally expose a compact public API. Suppress the simple
+# too-few-public-methods warning to focus lint on real issues.
 
 
 class AutoLoggingMixin:
@@ -58,13 +62,24 @@ class AutoLoggingMixin:
 
     def log_operation(self, operation: str, level: int = logging.DEBUG) -> None:
         """Log an operation with automatic context."""
-        self.logger.log(level, f"{self.__class__.__name__}: {operation}")
+        self.logger.log(level, "%s: %s", self.__class__.__name__, operation)
 
     def log_error_with_context(self, error: Exception, context: str = "") -> None:
         """Log error with class context."""
         self.logger.error(
-            f"{self.__class__.__name__} error in {context}: {error}", exc_info=True
+            "%s error in %s: %s",
+            self.__class__.__name__,
+            context,
+            error,
+            exc_info=True,
         )
+
+
+# Module note: processor base classes are intentionally compact wrappers
+# used across the codebase to provide consistent interfaces.
+# Some methods intentionally perform imports inside properties to avoid
+# circular imports; silence import-outside-toplevel so pylint focuses
+# on actionable problems in the implementations.
 
 
 class Processor(ABC):
@@ -103,7 +118,6 @@ class Processor(ABC):
         Any
             Result of the processor operation (type varies by processor).
         """
-        pass
 
 
 class BaseProcessor(Processor, AutoLoggingMixin):
@@ -134,7 +148,7 @@ class BaseProcessor(Processor, AutoLoggingMixin):
         """Initialize base processor with shared dependencies."""
         # Use lazy initialization to avoid circular imports and infinite recursion
         self._aligner_instance: CubeAligner | None = None
-        self.logger.debug(f"Initialized {self.__class__.__name__}")
+        self.logger.debug("Initialized %s", self.__class__.__name__)
 
     @property
     def _aligner(self) -> CubeAligner:
@@ -150,7 +164,9 @@ class BaseProcessor(Processor, AutoLoggingMixin):
         """
         if self._aligner_instance is None:
             # Import here to avoid circular imports
-            from src.analysis.processors.boundary import CubeAligner
+            from src.analysis.processors.boundary import (
+                CubeAligner,
+            )
 
             self._aligner_instance = CubeAligner()
         return self._aligner_instance

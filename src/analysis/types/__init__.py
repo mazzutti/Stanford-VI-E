@@ -9,32 +9,32 @@ throughout the analysis system, including:
 - Domain enumeration (from domain.enum)
 """
 
-# Import protocols from canonical module
-from src.analysis.types.protocols import (
-    T,
-    ResamplePlan,
-    Resampler,
-    ResamplerFactory,
-    TimeResampler,
-    CacheLoaderProtocol,
-    CacheProtocol,
-    SelectorProtocol,
-    ArchiveExtractorProtocol,
-    DatasetManagerFactory,
-    PlotterProtocol,
-)
+# Import domain from canonical location
+from src.analysis.domain.enum import Domain
 
 # Import computational abstractions from canonical module
 from src.analysis.types.base import (
-    T_In,
-    T_Out,
-    Computer,
     AnalysisSchema,
     ComputationResult,
+    Computer,
+    T_In,
+    T_Out,
 )
 
-# Import domain from canonical location
-from src.analysis.domain.enum import Domain
+# Import protocols from canonical module
+from src.analysis.types.protocols import (
+    ArchiveExtractorProtocol,
+    CacheLoaderProtocol,
+    CacheProtocol,
+    DatasetManagerFactory,
+    PlotterProtocol,
+    ResamplePlan,
+    Resampler,
+    ResamplerFactory,
+    SelectorProtocol,
+    T,
+    TimeResampler,
+)
 
 __all__ = [
     "T",

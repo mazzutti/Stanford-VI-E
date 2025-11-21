@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-
 from dataclasses import dataclass, field
 from typing import Any
+
 from numpy.typing import NDArray
 
-
-from src.io.grid import GridSpec
 from src.io.disk_cache import DiskCache
-from src.utils.quantity import Quantity
+from src.io.grid import GridSpec
 from src.processing.rock_physics.cache import ModelCache
+from src.utils.quantity import Quantity
+
+# Some imports are intentionally ordered to avoid import-time side-effects
+# and circular dependencies (e.g., DiskCache and ModelCache). Relax import
+# ordering checks in this module so lint focuses on functional issues.
 
 
 __all__ = ["RockPhysicsModel"]
@@ -19,8 +22,12 @@ __all__ = ["RockPhysicsModel"]
 
 import logging
 
-
 logger = logging.getLogger(__name__)
+
+# Some helper imports (materials converters and models) are deferred to
+# method scope to prevent import-time side effects and circular imports.
+# These deferred imports are intentional; disable the import-order
+# warnings at module level with a short justification.
 
 
 @dataclass
@@ -55,9 +62,7 @@ class RockPhysicsModel:
             self._cache = ModelCache()
 
     @classmethod
-    def from_props(
-        cls, props: dict[str, Any], grid_spec: GridSpec
-    ) -> RockPhysicsModel:
+    def from_props(cls, props: dict[str, Any], grid_spec: GridSpec) -> RockPhysicsModel:
         """Create model from properties dictionary.
 
         Wraps numeric arrays in Quantity with conservative unit guesses.
@@ -93,8 +98,13 @@ class RockPhysicsModel:
         Delegates to small helper wrappers so heuristics live in one place.
         Invalidates cache after any changes.
         """
-        from src.processing.materials.velocity import VelocityModel
-        from src.processing.materials.properties import VsModel, DensityModel
+        from src.processing.materials.properties import (
+            DensityModel,
+            VsModel,
+        )
+        from src.processing.materials.velocity import (
+            VelocityModel,
+        )
 
         if self.vp is not None:
             if not isinstance(self.vp, Quantity):

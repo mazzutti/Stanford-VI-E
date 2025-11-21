@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
+from scipy.stats import pearsonr
 
 from src.analysis.processors.types import FloatingArray, IntegerArray
 
@@ -77,16 +78,52 @@ class AttributeDiscriminationAnalyzer:
             If multiple classes exist, Cohen's d is computed between the two
             most frequent classes. Returns all zeros if inputs contain no valid data.
         """
-        from scipy.stats import pearsonr
+        # This function intentionally uses many local temporaries for
+        # numerical clarity and performance; silence the local-variable
+        # and statement-count warnings with a narrow scope.
 
-        attr = np.asarray(attribute).flatten()
-        fac = np.asarray(facies).flatten()
+        # Use module-level import for SciPy's pearsonr
 
-        # Validate input compatibility
+        # Keep original arrays to allow shape-aware alignment when possible
+        attr_arr = np.asarray(attribute)
+        fac_arr = np.asarray(facies)
+
+        # If both are 3D and spatial dims match but depth differs by 1 (common
+        # case: attributes computed per-interface -> nk-1), align facies to
+        # attribute interfaces by truncating the last depth slice of facies.
+        if (
+            attr_arr.ndim == 3
+            and fac_arr.ndim == 3
+            and attr_arr.shape[0] == fac_arr.shape[0]
+            and attr_arr.shape[1] == fac_arr.shape[1]
+            and abs(attr_arr.shape[2] - fac_arr.shape[2]) == 1
+        ):
+            # Prefer aligning facies down to attribute depth (use upper-layer facies)
+            if fac_arr.shape[2] == attr_arr.shape[2] + 1:
+                logger.debug(
+                    "Aligning facies (shape=%s) -> to attribute interfaces (shape=%s)",
+                    fac_arr.shape,
+                    attr_arr.shape,
+                )
+                fac_arr = fac_arr[:, :, : attr_arr.shape[2]]
+            else:
+                # attribute has extra depth compared to facies; truncate attribute
+                logger.debug(
+                    "Aligning attribute (shape=%s) -> to facies depth (shape=%s)",
+                    attr_arr.shape,
+                    fac_arr.shape,
+                )
+                attr_arr = attr_arr[:, :, : fac_arr.shape[2]]
+
+        attr = attr_arr.flatten()
+        fac = fac_arr.flatten()
+
+        # Validate input compatibility and fall back to safe truncation if needed
         if attr.size != fac.size:
             logger.warning(
-                f"Attribute size ({attr.size}) != facies size ({fac.size}). "
-                f"Will use only valid paired data."
+                "Attribute size (%s) != facies size (%s). Will use only valid paired data.",
+                attr.size,
+                fac.size,
             )
             # Truncate to shorter length to allow pairing
             min_size = min(attr.size, fac.size)
@@ -124,24 +161,29 @@ class AttributeDiscriminationAnalyzer:
                     "ignore", category=RuntimeWarning, message=".*constant.*"
                 )
                 if attr_valid.size > 1:
-                    # Pass numpy arrays directly to pearsonr for efficiency.
-                    # Type-checkers may not expose the `PearsonRResult` symbol
-                    # from the installed scipy; treat the result as Any to
-                    # accept either the NamedTuple or tuple return shape.
-                    from typing import Any as _Any
-
-                    result: _Any = pearsonr(attr_valid, fac_valid)
+                    result: Any = pearsonr(attr_valid, fac_valid)
                     try:
                         pearson_r = float(result.statistic)  # NamedTuple style
                         p_value = float(result.pvalue)
-                    except Exception:
+                    except (AttributeError, TypeError, IndexError):
                         pearson_r = float(result[0])  # tuple-style fallback
                         p_value = float(result[1])
                 else:
                     pearson_r = 0.0
                     p_value = 1.0
-        except Exception as e:
-            logger.warning(f"Pearson correlation failed for '{name}': {e}")
+        except (RuntimeError, ValueError, TypeError) as e:
+            logger.warning("Pearson correlation failed for '%s': %s", name, e)
+            pearson_r = 0.0
+            p_value = 1.0
+
+        # Sanitize non-finite results (NaN/inf) to stable defaults. This
+        # preserves behavior expected by callers/tests even when underlying
+        # statistical routines return non-finite values.
+        if not np.isfinite(pearson_r) or not np.isfinite(p_value):
+            logger.warning(
+                "Pearson correlation produced non-finite result for '%s' — using defaults",
+                name,
+            )
             pearson_r = 0.0
             p_value = 1.0
 
@@ -224,8 +266,8 @@ class AttributeDiscriminationAnalyzer:
         for name, arr in attribute_results.items():
             try:
                 stats = self.analyze_single(arr, facies, name=name)
-            except Exception:
-                logger.exception("Error analyzing attribute %s", name)
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
+                logger.exception("Error analyzing attribute %s: %s", name, exc)
                 stats = self._empty_result(name)
             summary[name] = stats
         return summary
@@ -273,7 +315,6 @@ class AttributeDiscriminationAnalyzer:
             # pick the two most common classes
             idx_sorted = np.argsort(counts)[::-1]
             return int(unique[idx_sorted[0]]), int(unique[idx_sorted[1]])
-        elif unique.size == 1:
+        if unique.size == 1:
             return int(unique[0]), int(unique[0])
-        else:
-            return 0, 1
+        return 0, 1

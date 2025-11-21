@@ -8,44 +8,27 @@ Tests for:
 Run with: pytest tests/test_phase_4_architecture.py -v
 """
 
-import pytest
 import json
 import tempfile
-from pathlib import Path
-from unittest.mock import patch
-from threading import Thread, Lock
 import time
+from pathlib import Path
+from threading import Lock, Thread
+from unittest.mock import patch
 
-from src.analysis.patterns.dependency_injection import (
-    Lifecycle,
-    ServiceDescriptor,
-    LifecycleManager,
-    Container,
-    ContainerBuilder,
-    ResolutionError,
-)
+import pytest
 
-from src.analysis.patterns.event_bus import (
-    EventPriority,
-    Event,
-    EventHandler,
-    EventFilter,
-    EventBus,
-    AsyncEventBus,
-    EventDispatcher,
-)
-
-from src.core import (
-    ConfigProfile,
-    ConfigRule,
-    ConfigValidator,
-)
-from src.analysis.config_manager import (
-    EnvironmentSource,
-    JsonSource,
-    ConfigManager,
-)
-
+from src.analysis.config_manager import (ConfigManager, EnvironmentSource,
+                                         JsonSource)
+from src.analysis.patterns.dependency_injection import (Container,
+                                                        ContainerBuilder,
+                                                        Lifecycle,
+                                                        LifecycleManager,
+                                                        ResolutionError,
+                                                        ServiceDescriptor)
+from src.analysis.patterns.event_bus import (AsyncEventBus, Event, EventBus,
+                                             EventDispatcher, EventFilter,
+                                             EventHandler, EventPriority)
+from src.core import ConfigProfile, ConfigRule, ConfigValidator
 
 # ============================================================================
 # DEPENDENCY INJECTION TESTS

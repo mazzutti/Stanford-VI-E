@@ -1,6 +1,14 @@
+"""Validation result helpers for processor-level validations.
+
+This module provides a compact `ValidationResult` dataclass used by
+processor-level validators to return structured results without importing
+heavy analysis modules.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import NDArray
 

@@ -47,8 +47,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from src.analysis.validation_result import ValidationResult
 from src.analysis.exceptions import ValidationError
+from src.analysis.validation_result import ValidationResult
+from src.core import validation as core_validation
 
 logger = logging.getLogger(__name__)
 
@@ -118,12 +119,16 @@ class Validator(ABC):
         """
         return f"Invalid {name}: {actual} (requirement: {requirement})"
 
+    # This module focuses on clear validation primitives; small helper classes
+    # are intentionally compact to reduce boilerplate across analyzers.
+
 
 class RangeValidator(Validator):
     """Validates numeric values fall within expected ranges.
 
-    Provides common range validation methods for correlation values,
-    p-values, and generic numeric ranges.
+    This implementation delegates to ``src.core.validation.RangeValidator``
+    to avoid duplicating logic. Any ``core_validation.ValidationError`` is
+    translated into the analysis-level ``ValidationError``.
     """
 
     def validate(
@@ -133,52 +138,15 @@ class RangeValidator(Validator):
         min_val: float | None = None,
         max_val: float | None = None,
     ) -> None:
-        """Validate a numeric value is within specified range.
-
-        Parameters
-        ----------
-        value : float
-            The numeric value to validate.
-        name : str, default="value"
-            Name for error messages.
-        min_val : float | None
-            Minimum allowed value (inclusive). None means no minimum.
-        max_val : float | None
-            Maximum allowed value (inclusive). None means no maximum.
-
-        Raises
-        ------
-        ValidationError
-            If value is outside the specified range.
-        """
-        # Handle None values by using unbounded defaults
+        """Validate a numeric value is within specified range (delegate)."""
         actual_min = min_val if min_val is not None else float("-inf")
         actual_max = max_val if max_val is not None else float("inf")
-        self.validate_range(float(value), actual_min, actual_max, name)
-
-    @staticmethod
-    def _validate_with_nan_handling(
-        value: float,
-        min_val: float,
-        max_val: float,
-        name: str,
-        allow_nan: bool,
-        context: str,
-    ) -> None:
-        """Helper to validate range with NaN handling."""
-        import math
-
-        if math.isnan(value):
-            if not allow_nan:
-                raise ValidationError(f"{name} is NaN, which is not allowed.")
-            logger.debug(f"{name} is NaN (allowed)")
-            return
-
-        if not (min_val <= value <= max_val):
-            raise ValidationError(
-                f"{name}={value} is outside valid range [{min_val}, {max_val}]. {context}"
+        try:
+            core_validation.RangeValidator.validate_range(
+                float(value), actual_min, actual_max, name
             )
-        logger.debug(f"{name}={value} is valid")
+        except core_validation.ValidationError as exc:  # pragma: no cover - translation
+            raise ValidationError(str(exc)) from exc
 
     @staticmethod
     def validate_correlation(
@@ -187,68 +155,25 @@ class RangeValidator(Validator):
         *,
         allow_nan: bool = False,
     ) -> None:
-        """Validate correlation coefficient is in [-1, 1].
-
-        Parameters
-        ----------
-        value : float
-            The correlation value to validate.
-        name : str, default="correlation"
-            Name for error messages (e.g., "pearson_correlation").
-        allow_nan : bool, default=False
-            If True, NaN values are accepted. Otherwise raises error.
-
-        Raises
-        ------
-        ValidationError
-            If value is outside [-1, 1] or NaN when not allowed.
-
-        Examples
-        --------
-        >>> RangeValidator.validate_correlation(0.95)
-        >>> RangeValidator.validate_correlation(0.95, name="spearman_r")
-        >>> RangeValidator.validate_correlation(float('nan'), allow_nan=True)
-        """
-        RangeValidator._validate_with_nan_handling(
-            value,
-            -1.0,
-            1.0,
-            name,
-            allow_nan,
-            "Correlation coefficients must be between -1 and 1.",
-        )
+        """Validate a correlation coefficient is within [-1, 1]."""
+        try:
+            core_validation.RangeValidator.validate_correlation(
+                value, name=name, allow_nan=allow_nan
+            )
+        except core_validation.ValidationError as exc:  # pragma: no cover
+            raise ValidationError(str(exc)) from exc
 
     @staticmethod
     def validate_pvalue(
-        value: float,
-        name: str = "p_value",
-        *,
-        allow_nan: bool = False,
+        value: float, name: str = "p_value", *, allow_nan: bool = False
     ) -> None:
-        """Validate p-value is in [0, 1].
-
-        Parameters
-        ----------
-        value : float
-            The p-value to validate.
-        name : str, default="p_value"
-            Name for error messages (e.g., "pearson_pvalue").
-        allow_nan : bool, default=False
-            If True, NaN values are accepted.
-
-        Raises
-        ------
-        ValidationError
-            If value is outside [0, 1] or NaN when not allowed.
-
-        Examples
-        --------
-        >>> RangeValidator.validate_pvalue(0.05)
-        >>> RangeValidator.validate_pvalue(0.05, name="spearman_pvalue")
-        """
-        RangeValidator._validate_with_nan_handling(
-            value, 0.0, 1.0, name, allow_nan, "P-values must be between 0 and 1."
-        )
+        """Validate a p-value is within [0, 1]."""
+        try:
+            core_validation.RangeValidator.validate_pvalue(
+                value, name=name, allow_nan=allow_nan
+            )
+        except core_validation.ValidationError as exc:  # pragma: no cover
+            raise ValidationError(str(exc)) from exc
 
     @staticmethod
     def validate_range(
@@ -260,88 +185,40 @@ class RangeValidator(Validator):
         allow_nan: bool = False,
         include_endpoints: bool = True,
     ) -> None:
-        """Validate numeric value is within specified range.
+        # This helper intentionally accepts multiple configuration flags
+        # (allow_nan, include_endpoints). Keep the explicit signature for
+        # clarity and silence pylint's argument-count warning for this
+        # delegating adaptor.
 
-        Parameters
-        ----------
-        value : float
-            The value to validate.
-        min_val : float
-            Minimum acceptable value.
-        max_val : float
-            Maximum acceptable value.
-        name : str
-            Name for error messages (e.g., "threshold").
-        allow_nan : bool, default=False
-            If True, NaN values are accepted.
-        include_endpoints : bool, default=True
-            If True, range is [min, max]. If False, range is (min, max).
+        """Validate a numeric value falls between ``min_val`` and ``max_val``.
 
-        Raises
-        ------
-        ValidationError
-            If value is outside the specified range.
-
-        Examples
-        --------
-        >>> # Percentage validation
-        >>> RangeValidator.validate_range(
-        ...     value=50, min_val=0, max_val=100, name="percentage"
-        ... )
-
-        >>> # Open interval (0, 100) - not including endpoints
-        >>> RangeValidator.validate_range(
-        ...     value=50,
-        ...     min_val=0,
-        ...     max_val=100,
-        ...     name="ratio",
-        ...     include_endpoints=False
-        ... )
+        This delegates to the core validation implementation and translates
+        any core-level ValidationError into the analysis-level
+        ``ValidationError``.
         """
-        import math
-
-        if math.isnan(value):
-            if not allow_nan:
-                raise ValidationError(f"{name} is NaN, which is not allowed.")
-            logger.debug(f"{name} is NaN (allowed)")
-            return
-
-        if include_endpoints:
-            valid = min_val <= value <= max_val
-            range_str = f"[{min_val}, {max_val}]"
-        else:
-            valid = min_val < value < max_val
-            range_str = f"({min_val}, {max_val})"
-
-        if not valid:
-            raise ValidationError(f"{name}={value} is outside valid range {range_str}.")
-        logger.debug(f"{name}={value} is valid")
+        try:
+            core_validation.RangeValidator.validate_range(
+                value,
+                min_val,
+                max_val,
+                name,
+                allow_nan=allow_nan,
+                include_endpoints=include_endpoints,
+            )
+        except core_validation.ValidationError as exc:  # pragma: no cover
+            raise ValidationError(str(exc)) from exc
 
     @staticmethod
     def validate_probability(
-        value: float,
-        name: str = "probability",
-        *,
-        allow_nan: bool = False,
+        value: float, name: str = "probability", *, allow_nan: bool = False
     ) -> None:
-        """Validate value is valid probability [0, 1].
-
-        Alias for validate_pvalue() with a different default name.
-
-        Parameters
-        ----------
-        value : float
-            Probability value to validate.
-        name : str, default="probability"
-            Name for error messages.
-        allow_nan : bool, default=False
-            If True, NaN values are accepted.
-
-        Examples
-        --------
-        >>> RangeValidator.validate_probability(0.75)
-        """
-        RangeValidator.validate_pvalue(value, name=name, allow_nan=allow_nan)
+        """Validate a probability value is within [0, 1]."""
+        try:
+            core_validation.RangeValidator.validate_probability(
+                value, name=name, allow_nan=allow_nan
+            )
+        except core_validation.ValidationError as exc:  # pragma: no cover
+            raise ValidationError(str(exc)) from exc
 
 
 class CountValidator(Validator):
@@ -407,7 +284,7 @@ class CountValidator(Validator):
         if value == 0 and not allow_zero:
             raise ValidationError(f"{name} must be greater than 0, got {value}")
 
-        logger.debug(f"{name}={value} is valid")
+        logger.debug("%s=%s is valid", name, value)
 
     @staticmethod
     def validate_positive_count(value: int, name: str = "count") -> None:
@@ -526,19 +403,19 @@ class QuantileValidator(Validator):
         ... )  # Error: must be strictly increasing
         """
         if allow_equal:
-            if not (q25 <= q50 <= q75):
+            if not q25 <= q50 <= q75:
                 raise ValidationError(
                     f"Quantiles not in order: q25={q25} <= q50={q50} <= q75={q75}. "
                     "Expected q25 <= q50 <= q75."
                 )
         else:
-            if not (q25 < q50 < q75):
+            if not q25 < q50 < q75:
                 raise ValidationError(
                     f"Quantiles not strictly increasing: q25={q25}, q50={q50}, q75={q75}. "
                     "Expected q25 < q50 < q75."
                 )
 
-        logger.debug(f"Quantile order valid: {q25} <= {q50} <= {q75}")
+        logger.debug("Quantile order valid: %s <= %s <= %s", q25, q50, q75)
 
 
 # ============================================================================
@@ -584,7 +461,6 @@ class ValidatorStrategy(ABC):
         ValidationResult
             Validation result with success status and error message.
         """
-        pass
 
     @abstractmethod
     def describe(self) -> str:
@@ -595,7 +471,6 @@ class ValidatorStrategy(ABC):
         str
             Description suitable for logging or documentation.
         """
-        pass
 
 
 class CompositeValidator(ValidatorStrategy):
@@ -681,8 +556,7 @@ class CompositeValidator(ValidatorStrategy):
 
         if self.mode == "all":
             return self._combine_all(results)
-        else:
-            return self._combine_any(results)
+        return self._combine_any(results)
 
     def _combine_all(self, results: Any) -> Any:
         """Combine results with AND logic (all must pass).

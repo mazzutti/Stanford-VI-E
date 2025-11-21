@@ -13,7 +13,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar, cast
 
-
 __all__ = [
     "Computer",
     "AnalysisSchema",
@@ -23,6 +22,10 @@ __all__ = [
     "T_In",
     "T_Out",
 ]
+
+# Type variable short names (T, T_In, T_Out) are conventional here; suppress
+# naming warnings to avoid noise across many small protocol modules.
+
 
 # Type variables for generic constraints
 T_In = TypeVar("T_In")  # Input type
@@ -130,7 +133,6 @@ class Computer(ABC, Generic[T_In, T_Out]):
         Implementation should not modify inputs. If validation fails,
         the compute() method should raise an exception with details.
         """
-        pass
 
     @abstractmethod
     def compute(self, *inputs: Any, **kwargs: Any) -> T_Out:
@@ -160,7 +162,6 @@ class Computer(ABC, Generic[T_In, T_Out]):
         ValueError
             If computation fails or inputs are invalid.
         """
-        pass
 
     @abstractmethod
     def get_schema(self) -> AnalysisSchema:
@@ -171,4 +172,3 @@ class Computer(ABC, Generic[T_In, T_Out]):
         AnalysisSchema
             Self-documenting schema of computation contract.
         """
-        pass

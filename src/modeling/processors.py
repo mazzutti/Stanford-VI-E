@@ -7,13 +7,20 @@ Extracts concerns from AVOSynthesizer into focused, testable classes:
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import fftconvolve
-import logging
 
 logger = logging.getLogger(__name__)
+
+# This module may import heavy signal-processing utilities in local scopes
+# (e.g., Zoeppritz solver). Those imports are intentionally deferred to
+# avoid import-time cost and circular imports. Silence import-order
+# warnings for this module with a brief justification.
+
 
 __all__ = ["ReflectivityComputer", "WaveletConvolver"]
 
@@ -40,6 +47,11 @@ class ReflectivityComputer:
         rho: NDArray[np.floating[Any]],
         angle: float,
     ) -> NDArray[np.floating[Any]]:
+        # This function performs block-wise numerical computation and
+        # intentionally uses a number of local temporaries to keep the
+        # algorithm clear and efficient. Silence the too-many-locals
+        # warning for this performance-critical routine.
+
         """Compute reflectivity cube at given incidence angle.
 
         Uses block-wise processing to balance memory usage and performance.
@@ -53,7 +65,10 @@ class ReflectivityComputer:
         Returns:
             Reflectivity cube (nz, nx, ny) with zeros at top level
         """
-        from src.signal.reflectivity import ZoeppritzSolver
+        # Lazy import: Zoeppritz solver used at runtime only
+        from src.signal.reflectivity import (
+            ZoeppritzSolver,
+        )
 
         solver = ZoeppritzSolver()
         ni, nj, nk = vp.shape

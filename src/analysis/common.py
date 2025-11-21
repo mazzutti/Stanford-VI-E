@@ -43,17 +43,13 @@ Usage Examples:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import TYPE_CHECKING, cast, Any, ClassVar
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any, ClassVar, cast
 
-
-from src.utils.types import ProcessManagerProtocol
-from src.utils.constants import CACHE_DIR_DEFAULT
 from src.analysis.mixins import SingletonMixin, ValidatableMixin
-
-if TYPE_CHECKING:
-    pass
+from src.utils.constants import CACHE_DIR_DEFAULT
+from src.utils.types import ProcessManagerProtocol
 
 __all__ = ["AnalysisCommon"]
 
@@ -152,7 +148,10 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             if cls._instance is None:
                 if proc_manager is None:
                     # Lazy import to avoid cycles
+
                     from src.processing import get_registry
+
+                    # pylint: enable=import-outside-toplevel
 
                     proc: ProcessManagerProtocol = cast(
                         ProcessManagerProtocol,
@@ -164,15 +163,15 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
                 return inst
 
             inst = cast(AnalysisCommon, cls._instance)
+            # Internal access to protected attributes is intentional here
+            # because this method manages the singleton lifecycle and
+            # needs to update internal state. Silence pylint locally.
+
             # Allow reconfiguration with new manager
             if proc_manager is not None:
-                inst.validate_protocol(
-                    proc_manager,
-                    inst._REQUIRED_METHODS,
-                    obj_name="proc_manager",
-                    protocol_name="ProcessManagerProtocol",
-                )
-                inst._proc_manager = proc_manager
+                # Use the public `configure` method which handles
+                # validation and internal state updates safely.
+                inst.configure(proc_manager)
                 logger.info(
                     "AnalysisCommon configured with new ProcessManager: %s",
                     type(proc_manager).__name__,
@@ -303,9 +302,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
             patterns=patterns, cache_dir=cache_dir, prefix=prefix
         )
 
-    def open_file(
-        self, filepath: str, description: str | None = None, prefix: str = ""
-    ) -> bool:
+    def open_file(self, filepath: str, prefix: str = "") -> bool:
         """Open a file using the configured process manager helper.
 
         Args:
@@ -316,9 +313,7 @@ class AnalysisCommon(SingletonMixin, ValidatableMixin):
         Returns:
             True if file was successfully opened, False otherwise.
         """
-        return self._proc_manager.open_file(
-            filepath=filepath, description=description, prefix=prefix
-        )
+        return self._proc_manager.open_file(filepath=filepath, prefix=prefix)
 
     def summarize_cache_files(
         self,

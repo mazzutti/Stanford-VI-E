@@ -3,26 +3,19 @@ Tests for Phase 5.4: Logging & Monitoring
 """
 
 import json
-import time
 import logging
-import pytest
 import threading
-from threading import Thread
+import time
 from datetime import datetime
+from threading import Thread
 
-from src.analysis.monitoring import (
-    LogLevel,
-    MetricType,
-    LogEvent,
-    MetricValue,
-    PerformanceMetrics,
-    StructuredLogger,
-    MetricsCollector,
-    PerformanceMonitor,
-    SimpleHealthCheck,
-    HealthCheckRegistry,
-    monitor,
-)
+import pytest
+
+from src.analysis.monitoring import (HealthCheckRegistry, LogEvent, LogLevel,
+                                     MetricsCollector, MetricType, MetricValue,
+                                     PerformanceMetrics, PerformanceMonitor,
+                                     SimpleHealthCheck, StructuredLogger,
+                                     monitor)
 
 
 class TestLogLevel:

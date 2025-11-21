@@ -16,6 +16,10 @@ Tests cover:
 
 from __future__ import annotations
 
+# Ensure modeling API submodule is imported before patch decorators that
+# reference `src.modeling.api.run_full_modeling` so patch() resolves the
+# target at import time without relying on `src` package attributes.
+import importlib
 import logging
 import subprocess
 import tempfile
@@ -26,12 +30,10 @@ import pytest
 
 from src.analysis.common import AnalysisCommon
 from src.analysis.pipelines import SeismogramAnalyzer
-from src.analysis.pipelines.orchestrator import (
-    Pipeline,
-    PipelineStage,
-    StageResult,
-    ConditionalStage,
-)
+from src.analysis.pipelines.orchestrator import (ConditionalStage, Pipeline,
+                                                 PipelineStage, StageResult)
+
+importlib.import_module("src.modeling.api")
 
 
 @pytest.fixture
@@ -303,21 +305,19 @@ class TestOpenFile:
         """Test open_file delegates to AnalysisCommon."""
         mock_analysis.open_file.return_value = True
 
-        result = analyzer.open_file("/path/to/file", "Test file")
+        result = analyzer.open_file("/path/to/file")
 
         assert result is True
-        mock_analysis.open_file.assert_called_once_with(
-            "/path/to/file", description="Test file", prefix=""
-        )
+        mock_analysis.open_file.assert_called_once_with("/path/to/file", prefix="")
 
     def test_open_file_with_prefix(self, analyzer, mock_analysis):
         """Test open_file includes prefix."""
         mock_analysis.open_file.return_value = True
 
-        analyzer.open_file("/path/to/file", "Test file", prefix="[TEST]")
+        analyzer.open_file("/path/to/file", prefix="[TEST]")
 
         mock_analysis.open_file.assert_called_once_with(
-            "/path/to/file", description="Test file", prefix="[TEST]"
+            "/path/to/file", prefix="[TEST]"
         )
 
     @patch("src.analysis.pipelines.seismograms.time.sleep")
@@ -325,7 +325,7 @@ class TestOpenFile:
         """Test open_file sleeps after successful open."""
         mock_analysis.open_file.return_value = True
 
-        analyzer.open_file("/path/to/file", "Test file")
+        analyzer.open_file("/path/to/file")
 
         mock_sleep.assert_called_once_with(1)
 
@@ -334,7 +334,7 @@ class TestOpenFile:
         """Test open_file doesn't sleep if file open fails."""
         mock_analysis.open_file.return_value = False
 
-        analyzer.open_file("/path/to/file", "Test file")
+        analyzer.open_file("/path/to/file")
 
         mock_sleep.assert_not_called()
 
@@ -348,7 +348,7 @@ class TestOpenFile:
         mock_analysis.open_file.return_value = True
 
         with caplog.at_level(logging.WARNING):
-            result = analyzer.open_file("/path/to/file", "Test file")
+            result = analyzer.open_file("/path/to/file")
 
         assert result is True
         assert "interrupted" in caplog.text.lower()

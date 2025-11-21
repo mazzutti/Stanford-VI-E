@@ -30,18 +30,12 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, is_dataclass
-from typing import (
-    Generic,
-    TypeVar,
-    Any,
-    Protocol,
-    cast,
-)
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field, fields, is_dataclass
+from typing import Any, Generic, Protocol, TypeVar, cast
 
-from src.core import ConfigValidator, ConfigRule
+from src.core.configuration import ConfigRule, ConfigValidator
 
 __all__ = [
     "ConfigBuilder",
@@ -67,7 +61,7 @@ class Configurable(Protocol):
         config : Any
             Configuration object
         """
-        ...
+        raise NotImplementedError()
 
 
 @dataclass
@@ -136,8 +130,10 @@ class ConfigBuilder(Generic[T]):
         >>> builder.set("timeout", 60.0)
         """
         self.values[key] = value
-        logger.debug(f"Set {key}={value}")
+        logger.debug("Set %s=%s", key, value)
         return self
+
+    # ConfigBuilder is intentionally terse; small helper functions are preferred
 
     def set_multiple(self, **kwargs: Any) -> ConfigBuilder[T]:
         """Set multiple configuration values at once.
@@ -294,13 +290,14 @@ class ConfigBuilder(Generic[T]):
                 instance = self.config_class(**final_values)
 
             logger.info(
-                f"Built {self.config_class.__name__} with "
-                f"{len(final_values)} configuration values"
+                "Built %s with %d configuration values",
+                self.config_class.__name__,
+                len(final_values),
             )
             return instance
 
         except TypeError as e:
-            logger.error(f"Failed to build {self.config_class.__name__}: {e}")
+            logger.error("Failed to build %s: %s", self.config_class.__name__, e)
             raise ValueError(
                 f"Cannot build {self.config_class.__name__}: Missing required fields? "
                 f"Configured: {list(final_values.keys())}. Error: {e}"
@@ -326,10 +323,17 @@ class ConfigBuilder(Generic[T]):
             values=self.values.copy(),
             defaults=self.defaults.copy(),
         )
-        # Copy validator rules
+        # Copy validator rules. Accessing the `_validator` internals is
+        # intentional here to duplicate rule objects into the cloned
+        # builder. Keep this narrow and justified to avoid exposing the
+        # ConfigValidator internals more widely.
+
+        # Temporarily allow protected-access for the narrow copy operation.
+        # pylint: disable=protected-access
         new_builder._validator = ConfigValidator()
         for rule in self._validator.rules.values():
             new_builder._validator.add_rule(rule)
+        # pylint: enable=protected-access
         return new_builder
 
     def to_dict(self) -> dict[str, Any]:

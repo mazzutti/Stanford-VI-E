@@ -9,37 +9,37 @@ for flexible discovery and filtering.
 
 import logging
 
-from src.analysis.processors.management import (
-    get_default_processor_registry,
-    ProcessorRegistry,
-)
 from src.analysis.processors import (
+    BoundaryAmplitudeExtractor,
     BoundaryDetector,
     CubeAligner,
-    BoundaryAmplitudeExtractor,
+    FaciesDiscriminationCalculator,
     GradientCorrelationCalculator,
     InterfaceReflectionAnalyzer,
-    FaciesDiscriminationCalculator,
+)
+from src.analysis.processors.management import (
+    ProcessorRegistry,
+    get_default_processor_registry,
 )
 
 logger = logging.getLogger(__name__)
 
-# Registry instance
-_registry: ProcessorRegistry | None = None
-
 
 def get_facies_processor_registry() -> ProcessorRegistry:
     """Get or initialize the facies processor registry.
+
+    Lazily stored as a function attribute to avoid `global` usage.
 
     Returns
     -------
     ProcessorRegistry
         Shared registry instance for facies processors.
     """
-    global _registry
-    if _registry is None:
-        _registry = get_default_processor_registry()
-    return _registry
+    inst = getattr(get_facies_processor_registry, "_registry", None)
+    if inst is None:
+        inst = get_default_processor_registry()
+        setattr(get_facies_processor_registry, "_registry", inst)
+    return inst
 
 
 def _create_boundary_detector() -> BoundaryDetector:
@@ -167,9 +167,14 @@ def register_facies_processors() -> None:
 
         logger.debug("Successfully registered all facies processors")
 
-    except Exception as e:
-        logger.error(f"Failed to register facies processors: {e}")
-        raise RuntimeError(f"Facies processor registration failed: {e}") from e
+    except Exception as exc:
+        # Catching broad exceptions here because registration may fail for many
+        # reasons (user-provided processors, plugins, or unexpected runtime
+        # errors). We wrap and re-raise as a RuntimeError to provide a
+        # consistent failure mode to callers while still logging the original
+        # exception for diagnostics.
+        logger.error("Failed to register facies processors: %s", exc)
+        raise RuntimeError(f"Facies processor registration failed: {exc}") from exc
 
 
 def verify_facies_processors_registered() -> bool:
@@ -201,16 +206,15 @@ def verify_facies_processors_registered() -> bool:
     registered_names = set(registered)
 
     if registered_names == expected_processors:
-        logger.info(f"✓ All {len(expected_processors)} facies processors verified")
+        logger.info("✓ All %s facies processors verified", len(expected_processors))
         return True
-    else:
-        missing = expected_processors - registered_names
-        extra = registered_names - expected_processors
-        if missing:
-            logger.warning(f"Missing processors: {missing}")
-        if extra:
-            logger.warning(f"Extra processors: {extra}")
-        return False
+    missing = expected_processors - registered_names
+    extra = registered_names - expected_processors
+    if missing:
+        logger.warning("Missing processors: %s", missing)
+    if extra:
+        logger.warning("Extra processors: %s", extra)
+    return False
 
 
 def list_facies_processors() -> list[str]:

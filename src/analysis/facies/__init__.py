@@ -18,14 +18,19 @@ Quick Start
 >>> fig = analyzer.run(cache_dir=".cache", domain=Domain.DEPTH)
 """
 
+from src.analysis.domain.enum import Domain
 from src.analysis.facies.analyzer import FaciesCorrelationAnalyzer
 from src.analysis.facies.config import FaciesAnalysisConfig
 from src.analysis.facies.processor_setup import register_facies_processors
-from src.analysis.domain.enum import Domain
 from src.analysis.models import FaciesCorrelationConfig
 
-# Register processors when module is imported
-register_facies_processors()
+# NOTE: Do not register processors at import time. Calling
+# `register_facies_processors()` here introduced import-time side-effects
+# that create import cycles (package-level registration-on-import).
+#
+# Callers (application bootstrap or CLIs) should invoke
+# `src.analysis.facies.processor_setup.register_facies_processors()`
+# explicitly during startup if they need the processors registered.
 
 __all__ = [
     "FaciesCorrelationAnalyzer",

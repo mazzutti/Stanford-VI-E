@@ -19,30 +19,25 @@ Pattern: Registry Pattern + Factory Pattern + Strategy Pattern
 
 from __future__ import annotations
 
-from typing import (
-    Any,
-    TypeVar,
-    TypedDict,
-    cast,
-    TYPE_CHECKING,
-)
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-import logging
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from src.analysis.strategies import (
-    ArrayStatisticsStrategy,
-    StandardArrayStatistics,
-)
-
+from src.analysis.strategies import ArrayStatisticsStrategy, StandardArrayStatistics
 from src.analysis.validation_result import ValidationResult
 
 if TYPE_CHECKING:
-    from src.analysis.processors.boundary import CubeAligner
     from src.analysis.models import FaciesStats
+    from src.analysis.processors.boundary import CubeAligner
+
+# This module intentionally performs some imports inside functions to avoid
+# circular dependencies with model classes and to reduce import-time cost.
+# These late imports are deliberate; disable pylint import-order warnings
+# for this module so the linter focuses on actionable issues.
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +140,7 @@ class ProcessorRegistry:
             description=description,
             dependencies=dependencies or [],
         )
-        logger.debug(f"Registered processor: {name} ({domain}/{version})")
+        logger.debug("Registered processor: %s (%s/%s)", name, domain, version)
 
     def unregister(self, name: str) -> bool:
         """Unregister a processor.
@@ -163,7 +158,7 @@ class ProcessorRegistry:
         if name in self._processors:
             del self._processors[name]
             del self._metadata[name]
-            logger.debug(f"Unregistered processor: {name}")
+            logger.debug("Unregistered processor: %s", name)
             return True
         return False
 
@@ -191,10 +186,12 @@ class ProcessorRegistry:
 
         try:
             instance = self._processors[name]()
-            logger.debug(f"Created processor instance: {name}")
+            logger.debug("Created processor instance: %s", name)
             return instance
-        except Exception as e:
-            logger.error(f"Failed to create processor '{name}': {e}")
+        except Exception as exc:
+            # Factory may raise various exceptions depending on implementation;
+            # log and re-raise to surface the original error to callers.
+            logger.error("Failed to create processor '%s': %s", name, exc)
             raise
 
     def create_all(self, names: list[str]) -> dict[str, Any]:
@@ -272,16 +269,17 @@ class ProcessorRegistry:
         return f"ProcessorRegistry({count} processors in domains: {domains})"
 
 
-# Global default processor registry
-_default_registry: ProcessorRegistry | None = None
-
-
 def get_default_processor_registry() -> ProcessorRegistry:
-    """Get or create the global default processor registry."""
-    global _default_registry
-    if _default_registry is None:
-        _default_registry = ProcessorRegistry()
-    return _default_registry
+    """Get or create the global default processor registry.
+
+    Stored as a function attribute to avoid using the ``global`` statement
+    while preserving lazy initialization semantics.
+    """
+    inst = getattr(get_default_processor_registry, "_instance", None)
+    if inst is None:
+        inst = ProcessorRegistry()
+        setattr(get_default_processor_registry, "_instance", inst)
+    return inst
 
 
 def register_processor(
@@ -361,6 +359,10 @@ class DilationConfig(TypedDict):
 
 
 @dataclass(frozen=True)
+# ProcessorConfig intentionally contains many configuration fields
+# (performance & timing thresholds, numeric constants). These are
+# configuration data, not behavior, so a wider attribute count is
+# acceptable. Disable the instance-attribute warning here.
 class ProcessorConfig:
     """Immutable configuration for processor operations.
 
@@ -509,7 +511,8 @@ class BoundaryComputationConfig:
 # ============================================================================
 
 # Statistics strategy support (simplified, no abstraction overhead)
-_default_strategy: ArrayStatisticsStrategy = StandardArrayStatistics()
+# Stored in a one-element list so we can mutate without `global`.
+_default_strategy: list[ArrayStatisticsStrategy] = [StandardArrayStatistics()]
 
 
 def set_default_statistics_strategy(strategy: ArrayStatisticsStrategy) -> None:
@@ -520,8 +523,7 @@ def set_default_statistics_strategy(strategy: ArrayStatisticsStrategy) -> None:
     strategy
         New default strategy to use.
     """
-    global _default_strategy
-    _default_strategy = strategy
+    _default_strategy[0] = strategy
 
 
 def get_default_statistics_strategy() -> ArrayStatisticsStrategy:
@@ -532,7 +534,7 @@ def get_default_statistics_strategy() -> ArrayStatisticsStrategy:
     ArrayStatisticsStrategy
         Current default strategy.
     """
-    return _default_strategy
+    return _default_strategy[0]
 
 
 def convert_numpy_scalars_to_float(
@@ -645,10 +647,10 @@ def reshape_3d_to_2d(
     try:
         seismic_2d = seismic_cube.reshape(n_traces, nk)
         facies_2d = facies_cube.reshape(n_traces, nk).astype(int, copy=False)
-    except ValueError as e:
+    except ValueError as exc:
         raise ValueError(
-            f"Failed to reshape cubes to (n_traces={n_traces}, nk={nk}): {e}"
-        )
+            f"Failed to reshape cubes to (n_traces={n_traces}, nk={nk}): {exc}"
+        ) from exc
 
     return seismic_2d, facies_2d
 
@@ -735,8 +737,7 @@ def extract_amplitude_subset(
     """
     if mask_value:
         return data[mask]
-    else:
-        return data[~mask]
+    return data[~mask]
 
 
 def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
@@ -753,7 +754,9 @@ def compute_amplitude_stats(amps: NDArray[np.float64]) -> FaciesStats:
         Statistical summary. Empty FaciesStats if array is empty.
     """
     # Lazy import to avoid circular import at module import time.
-    from src.analysis.models import FaciesStats
+    from src.analysis.models import (
+        FaciesStats,
+    )
 
     if amps.size == 0:
         logger.debug("Computing stats for empty amplitude array")

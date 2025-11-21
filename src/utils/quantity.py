@@ -6,11 +6,11 @@ offers safe conversions to common geophysical units via converter strategies.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, overload
-from numpy.typing import NDArray, ArrayLike
 
 import numpy as np
-import logging
+from numpy.typing import ArrayLike, NDArray
 
 from src.utils.units import UnitRegistry, get_unit_registry
 
@@ -92,7 +92,7 @@ class Quantity:
         """Length of first dimension."""
         try:
             return len(self._array)
-        except Exception:
+        except (TypeError, AttributeError):
             return 0
 
     def __repr__(self) -> str:

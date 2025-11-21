@@ -8,15 +8,15 @@ other modules that delegate to the process manager.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
 from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from src.utils.constants import CACHE_DIR_DEFAULT
 
 # Aliases for the ProcessManager helper signatures
 ClearCacheType = Callable[[list[str] | None, Path | None, str], int]
-OpenFileType = Callable[[str, str | None, str], bool]
+OpenFileType = Callable[[str, str], bool]
 SummarizeType = Callable[[str, list[str] | None, str], None]
 
 
@@ -34,18 +34,25 @@ class ProcessManagerProtocol(Protocol):
         patterns: list[str] | None = None,
         cache_dir: Path | None = None,
         prefix: str = "",
-    ) -> int: ...
+    ) -> int:
+        """Clear cached files matching `patterns` under `cache_dir`.
 
-    def open_file(
-        self, filepath: str, description: str | None = None, prefix: str = ""
-    ) -> bool: ...
+        Implementations should return the number of removed entries.
+        """
+        raise NotImplementedError()
+
+    def open_file(self, filepath: str, prefix: str = "") -> bool:
+        """Open a file for inspection or viewing; return True when successful."""
+        raise NotImplementedError()
 
     def summarize_cache_files(
         self,
         cache_dir: str = CACHE_DIR_DEFAULT,
         keys: list[str] | None = None,
         prefix: str = "",
-    ) -> None: ...
+    ) -> None:
+        """Summarize cache contents (side-effect logging); no return value."""
+        raise NotImplementedError()
 
 
 __all__ = ["ClearCacheType", "OpenFileType", "SummarizeType", "ProcessManagerProtocol"]
