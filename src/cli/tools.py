@@ -260,7 +260,12 @@ def generate_facies_xz_layers(
     n_layers: int = 120,
     out_dir: str | None = None,
     dpi: int = 300,
-    cmap: str | list[str] | tuple[str, ...] = ("#e41a1c", "#377eb8", "#4daf4a", "#984ea3"),
+    cmap: str | list[str] | tuple[str, ...] = (
+        "#e41a1c",
+        "#377eb8",
+        "#4daf4a",
+        "#984ea3",
+    ),
 ) -> dict[str, Any]:
     """Generate all X-Z (inline x depth) PNG layers from cached facies.
 
@@ -313,7 +318,7 @@ def generate_facies_xz_layers(
             xz.T,
             aspect="auto",
             origin="lower",
-            interpolation="nearest",
+            interpolation="bilinear",
             cmap=cmap_obj,
         )
         ax.set_title(f"XZ facies, crossline={j}")
