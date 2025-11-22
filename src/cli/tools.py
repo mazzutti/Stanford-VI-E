@@ -129,18 +129,21 @@ def export_top_facies_layers(
     top = _get_top_layers(cache_dir, force_regeneration=force_regeneration)
 
     result: dict[str, str | tuple[int, int, int]] = {"shape": top.shape}
-    if out:
-        result["saved"] = str(save_npz(Path(out), facies=top))
 
-    # Always save a cached copy of the extracted top layers into the cache
-    try:
-        cache_path = Path(cache_dir)
-        cache_file = cache_path / f"facies_top_layers_{n_layers}.npz"
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        saved_cache = save_npz(cache_file, facies=top)
-        result["cached"] = str(saved_cache)
-    except (OSError, RuntimeError, ValueError) as e:
-        logger.warning("Failed to save facies top layers to cache: %s", e)
+    if out:
+        # If the caller asked for a specific output path, save there.
+        result["saved"] = str(save_npz(Path(out), facies=top))
+    else:
+        # If no explicit output was provided, persist a canonical copy
+        # in the cache so downstream tools can find it reliably.
+        try:
+            cache_path = Path(cache_dir)
+            cache_file = cache_path / f"facies_top_layers_{n_layers}.npz"
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            saved_cache = save_npz(cache_file, facies=top)
+            result["cached"] = str(saved_cache)
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.warning("Failed to save facies top layers to cache: %s", e)
 
     # Plotting behavior now delegates to FaciesTopLayersExtractor helpers
     if plot:
@@ -248,7 +251,6 @@ def _get_top_layers(cache_dir: str, force_regeneration: bool) -> np.ndarray:
     )
 
     return np.asarray(extractor.extract_top_two_geological_layers())
-
 
 
 @tool
