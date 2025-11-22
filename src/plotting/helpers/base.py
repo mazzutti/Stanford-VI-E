@@ -11,6 +11,7 @@ from src.plotting.helpers.config import setup_matplotlib
 
 logger = logging.getLogger(__name__)
 
+
 class BasePlotter(ABC):
     """Abstract base class for all plotting implementations.
 
@@ -22,11 +23,11 @@ class BasePlotter(ABC):
         backend: Matplotlib backend name
     """
 
-    def __init__(self, backend: str | None = "Agg"):
+    def __init__(self, backend: str | None = "qtagg"):
         """Initialize the plotter.
 
         Args:
-            backend: Matplotlib backend to use (default: "Agg")
+            backend: Matplotlib backend to use (default: "qtagg")
         """
         self.logger = logging.getLogger(self.__class__.__module__)
         self.backend = backend

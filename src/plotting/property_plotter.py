@@ -443,7 +443,7 @@ class RockPhysicsPropertyPlotter(ImshowWithColorbarMixin, PropertyPlotter):
             }
 
             # Use RockPhysicsPlotter for the grid layout
-            plotter = RockPhysicsPlotter(backend="Agg")
+            plotter = RockPhysicsPlotter(backend="qtagg")
             plotter.plot_multiple_attributes(
                 fig,
                 attr_data_dict_with_units,

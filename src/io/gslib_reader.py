@@ -14,6 +14,8 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from src.debug.plot3d import plot_volume
+
 __all__ = ["GSLibConfig", "GSLibReader"]
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 # This module contains small helper classes (config + reader) intended as
 # thin data holders and I/O helpers. Silence the too-few-public-methods
 # warning to reduce noise for these simple types.
+
 
 class GSLibConfig:
     """Configuration for GSLIB file reading.
@@ -51,6 +54,7 @@ class GSLibConfig:
         "s-wave": "Svelocity.dat",
     }
     """Mapping of velocity folder name patterns to special filename conventions."""
+
 
 class GSLibReader:
     """Reader for GSLIB format files.

@@ -16,6 +16,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 @dataclass
 class PlotConfig:
     """Central configuration for all plotting operations.
@@ -119,6 +120,7 @@ class PlotConfig:
             f"is_categorical={self.is_categorical}, title='{self.title}')"
         )
 
+
 # ============================================================================
 # Matplotlib Initialization Utilities
 # ============================================================================
@@ -129,11 +131,12 @@ __all__ = [
     "init_plotting",
 ]
 
-def setup_matplotlib(backend: str | None = "Agg") -> None:
+
+def setup_matplotlib(backend: str | None = "qtagg") -> None:
     """Setup matplotlib with backend and default configuration.
 
     Args:
-        backend: Matplotlib backend to use (default: "Agg")
+        backend: Matplotlib backend to use (default: "qtagg")
     """
     if backend:
         try:
@@ -155,17 +158,19 @@ def setup_matplotlib(backend: str | None = "Agg") -> None:
     plt.rcParams["image.resample"] = True
     plt.rcParams["image.composite_image"] = True
 
-def init_plotting(backend: str | None = "Agg") -> tuple[ModuleType, ModuleType]:
+
+def init_plotting(backend: str | None = "qtagg") -> tuple[ModuleType, ModuleType]:
     """Initialize matplotlib and return (plt, np) for convenience.
 
     Args:
-        backend: Matplotlib backend to use (default: "Agg")
+        backend: Matplotlib backend to use (default: "qtagg")
 
     Returns:
         Tuple of (matplotlib.pyplot, numpy)
     """
     setup_matplotlib(backend)
     return plt, np
+
 
 # Module logger
 logger = logging.getLogger(__name__)

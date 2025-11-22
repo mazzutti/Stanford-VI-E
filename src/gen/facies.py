@@ -18,6 +18,7 @@ from typing import Any, Protocol, cast
 import numpy as np
 from numpy.typing import NDArray
 
+
 class FaciesTopLayersExtractor:
     """Extract top N layers from a 3D facies cube.
 
@@ -53,7 +54,8 @@ class FaciesTopLayersExtractor:
             raise ValueError(
                 f"requested total layers {total} exceeds available samples nk={nk}"
             )
-        return self.cube[:, :, :total]
+
+        return self.cube[:, :, (nk - total) :]
 
     @classmethod
     def from_npz(cls, path: str, key: str | None = None) -> FaciesTopLayersExtractor:
@@ -107,6 +109,7 @@ class FaciesTopLayersExtractor:
 
         raise FileNotFoundError("No facies cache found and generation not allowed")
 
+
 class CacheProvider(Protocol):
     """Protocol for a facies cache provider.
 
@@ -123,6 +126,7 @@ class CacheProvider(Protocol):
     def generate_depth(
         self, force_regeneration: bool = False
     ) -> NDArray[Any] | None: ...
+
 
 class DefaultCacheProvider:
     """Default provider that looks for facies caches and can call a pipeline."""
@@ -221,5 +225,6 @@ class DefaultCacheProvider:
             return self.load_latest_depth()
 
         raise RuntimeError("Failed to generate or locate facies depth cache")
+
 
 __all__ = ["FaciesTopLayersExtractor", "CacheProvider", "DefaultCacheProvider"]

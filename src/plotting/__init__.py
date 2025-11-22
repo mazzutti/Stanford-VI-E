@@ -55,7 +55,7 @@ from src.plotting.seismic_plotter import SeismicPlotter
 # Import main plotter classes
 from src.plotting.slice_plotter import SlicePlotter
 
-plt, np = init_plotting(backend="Agg")
+plt, np = init_plotting(backend="qtagg")
 
 # Public API
 __all__ = [

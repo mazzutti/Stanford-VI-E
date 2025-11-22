@@ -37,6 +37,7 @@ _COLORBAR_DEFAULT_LEN = 0.7
 _RESIZE_THROTTLE_MS = 300
 _RETRY_ATTEMPTS = 5
 
+
 class PlotlyPlotter(BasePlotter):
     """Small wrapper to build Plotly 3D figures for volume data.
 
@@ -180,24 +181,71 @@ class PlotlyPlotter(BasePlotter):
     def create_figure(self, traces: list[go.Surface], title: str = "") -> go.Figure:
         """Build a Plotly Figure from traces and apply sane layout defaults."""
         fig: go.Figure = go.Figure(data=traces)
+        # Compute z-axis range and tick labels from traces so we can
+        # display reversed tick labels while keeping the data orientation.
+        zmin: float | None = None
+        zmax: float | None = None
+        for tr in traces:
+            z = getattr(tr, "z", None)
+            if z is None:
+                continue
+            arr_z = np.asarray(z)
+            if arr_z.size == 0:
+                continue
+            vmin = float(np.nanmin(arr_z))
+            vmax = float(np.nanmax(arr_z))
+            if zmin is None or vmin < zmin:
+                zmin = vmin
+            if zmax is None or vmax > zmax:
+                zmax = vmax
+
+        if zmin is None or zmax is None or np.isclose(zmin, zmax):
+            # Fall back to the historical default if we couldn't infer a range.
+            zaxis_range = (120, 0)
+            zaxis_tickmode = None
+            zaxis_tickvals = None
+            zaxis_ticktext = None
+        else:
+            # Keep data orientation (range from min->max) but show reversed labels.
+            zaxis_range = (zmin, zmax)
+            nticks = 6
+            tickvals = np.linspace(zmin, zmax, nticks)
+
+            def _fmt(v: float) -> str:
+                if abs(v - round(v)) < 1e-8:
+                    return str(int(round(v)))
+                return f"{v:.2f}"
+
+            zaxis_tickvals = [float(x) for x in tickvals]
+            # Display reversed labels: label(v) = zmax + zmin - v
+            zaxis_ticktext = [_fmt(zmax + zmin - v) for v in tickvals]
+            zaxis_tickmode = "array"
         # Cast to Any for update_layout to avoid partial-member stub noise
+        scene = {
+            "xaxis": {
+                "title": {"text": "Inline (i)"},
+                # "autorange": "reversed",
+                "showgrid": True,
+            },
+            "yaxis": {"title": {"text": "Crossline (j)"}, "showgrid": True},
+            "zaxis": {
+                "title": {"text": "Depth (k)"},
+                "autorange": False,
+                "range": zaxis_range,
+                "showgrid": True,
+            },
+            "aspectmode": "data",
+            "camera": {"eye": {"x": 1.5, "y": 1.5, "z": 1.3}},
+        }
+
+        if zaxis_tickmode:
+            scene["zaxis"]["tickmode"] = zaxis_tickmode
+            scene["zaxis"]["tickvals"] = zaxis_tickvals
+            scene["zaxis"]["ticktext"] = zaxis_ticktext
+
         cast(Any, fig).update_layout(
             title={"text": title, "x": 0.5, "xanchor": "center"},
-            scene={
-                "xaxis": {
-                    "title": {"text": "Inline (i)"},
-                    "autorange": "reversed",
-                    "showgrid": True,
-                },
-                "yaxis": {"title": {"text": "Crossline (j)"}, "showgrid": True},
-                "zaxis": {
-                    "title": {"text": "Depth (k)"},
-                    "autorange": "reversed",
-                    "showgrid": True,
-                },
-                "aspectmode": "data",
-                "camera": {"eye": {"x": 1.5, "y": 1.5, "z": 1.3}},
-            },
+            scene=scene,
             autosize=True,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",

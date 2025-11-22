@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Note: call-site imports continue to use inline disables where needed.
 
+
 @tool
 def plot_3d_interactive(argv: list[str] | None = None) -> dict[str, str]:
     """Interactive 3D plotting using Plotly.
@@ -67,6 +68,7 @@ def plot_3d_interactive(argv: list[str] | None = None) -> dict[str, str]:
 
     return {"cache_file": avo_fn}
 
+
 @tool
 def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
     """3D orthogonal slice visualization.
@@ -104,6 +106,7 @@ def plot_3d_slices(argv: list[str] | None = None) -> dict[str, str]:
 
     return {"avo": avo_fn or ""}
 
+
 @tool
 def plot_seismic_full_stack(
     domain: str = "time", cache_dir: str = ".cache", out_dir: str = "docs/images"
@@ -134,6 +137,7 @@ def plot_seismic_full_stack(
     else:
         print(f"[INFO] No caches found for domain: {domain}")
 
+
 @tool
 def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -> None:
     """Generate PNG plots for rock physics attributes.
@@ -146,7 +150,7 @@ def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -
         RockPhysicsPropertyPlotter,
     )
 
-    matplotlib.use("Agg")  # Use non-interactive backend
+    matplotlib.use("qtagg")  # Use Qt Agg backend for interactive/GUI plots
 
     # Validate domain
     if domain not in ["depth", "time"]:
@@ -170,6 +174,7 @@ def plot_rock_physics_attributes(domain: str = "depth", verbose: bool = False) -
 
     print(f"[INFO] Successfully generated {len(generated_files)} plot(s)")
     print("[INFO] Rock physics attribute plotting complete!")
+
 
 @tool
 def plot_original_properties(
@@ -238,6 +243,7 @@ def plot_original_properties(
             "count": 0,
             "properties": [],
         }
+
 
 @tool
 def regenerate_all_3d_plots(

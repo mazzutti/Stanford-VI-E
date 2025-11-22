@@ -45,7 +45,7 @@ class SeismicPlotter(BasePlotter):
         self,
         cache_dir: str = ".cache",
         out_dir: str = "docs/images",
-        backend: str = "Agg",
+        backend: str = "qtagg",
         verbose: bool = False,
     ):
         # Initialize BasePlotter (may set Matplotlib backend)
