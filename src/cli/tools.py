@@ -48,6 +48,7 @@ __all__ = [
     "regenerate_all_3d_plots",
     "export_top_seismogram_layers",
     "export_top_facies_layers",
+    "generate_facies_yz_layers",
 ]
 
 # Re-export plotting-related tools from the dedicated module to keep this
@@ -251,6 +252,64 @@ def _get_top_layers(cache_dir: str, force_regeneration: bool) -> np.ndarray:
     )
 
     return np.asarray(extractor.extract_top_two_geological_layers())
+
+
+@tool
+def generate_facies_yz_layers(
+    cache_dir: str = ".cache",
+    n_layers: int = 120,
+    out_dir: str | None = None,
+    dpi: int = 300,
+) -> dict[str, Any]:
+    """Generate all Y-Z (crossline x depth) PNG layers from cached facies.
+
+    Loads `.cache/facies_top_layers_{n_layers}.npz` (key: "facies") unless an
+    explicit `out_dir` is provided. Writes one PNG per inline index into a
+    subdirectory and returns the output directory and number of files written.
+    """
+    ParserFactory.configure_logging(False)
+
+    cache_path = Path(cache_dir)
+    cache_file = cache_path / f"facies_top_layers_{n_layers}.npz"
+
+    if not cache_file.exists():
+        raise FileNotFoundError(f"Facies cache not found: {cache_file}")
+
+    # Load the saved NPZ (saved using save_npz(..., facies=top))
+    data = np.load(cache_file, allow_pickle=True)
+    if "facies" not in data:
+        raise KeyError(f"Expected 'facies' key in {cache_file}; found: {list(data.keys())}")
+
+    top = np.asarray(data["facies"])
+
+    # Destination folder
+    if out_dir:
+        dest = Path(out_dir)
+    else:
+        dest = cache_path / f"facies_top_layers_{n_layers}_pngs"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    ni = top.shape[0]
+
+    for i in range(ni):
+        # YZ slice for inline index i: shape (nj, nk)
+        yz = top[i, :, :]
+
+        fig, ax = _plt.subplots(figsize=(8, 6))
+        # Use nearest interpolation for categorical facies and a qualitative cmap
+        ax.imshow(yz.T, aspect="auto", origin="lower", interpolation="nearest", cmap="tab20")
+        ax.set_title(f"YZ facies, inline={i}")
+        ax.set_xlabel("Crossline (j)")
+        ax.set_ylabel("Depth (k)")
+
+        png_path = dest / f"facies_yz_inline_{i:03d}.png"
+        fig.savefig(str(png_path), dpi=dpi, bbox_inches="tight")
+        _plt.close(fig)
+
+        written += 1
+
+    return {"out_dir": str(dest), "written": written, "shape": top.shape}
 
 
 @tool
