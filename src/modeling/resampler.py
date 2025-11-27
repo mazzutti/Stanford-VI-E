@@ -33,6 +33,7 @@ __all__ = ["ResamplingService"]
 
 _CONVERSION_FACTORY = ConversionStrategyFactory()
 
+
 class ResamplingService:
     """Handles depth-to-time resampling of rock properties."""
 

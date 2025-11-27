@@ -27,6 +27,7 @@ __all__ = ["CacheManager"]
 
 logger = logging.getLogger(__name__)
 
+
 class _CacheHasher:
     """Internal hash computation for cache keys.
 
@@ -67,6 +68,7 @@ class _CacheHasher:
                     h.update(str(e).encode())
 
         return h.hexdigest()[:CACHE_HASH_LENGTH]
+
 
 class CacheManager:
     """Manages caching of AVO and other modeling results.
@@ -222,12 +224,12 @@ class CacheManager:
             noise_seed=config.noise_seed,
         )
         force = os.environ.get("FORCE_RECOMPUTE", "0") == "1"
-        filename = f"avo_time_{key}.npz"
+        filename = f"seismic_time_{key}.npz"
         filepath = Path(self.cache_dir) / filename
 
         # Return cached if available
         if (not force) and filepath.exists():
-            logger.info("Cache hit for AVO synthetics: %s", filename)
+            logger.info("Cache hit for seismic synthetics: %s", filename)
             return self.load_avo_synthetics(filename)
 
         logger.info("Cache miss for AVO synthetics; computing...")

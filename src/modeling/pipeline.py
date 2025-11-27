@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ModelingPipeline"]
 
+
 class ModelingPipeline:
     """Orchestrates the complete AVO modeling workflow.
 
@@ -184,7 +185,7 @@ class ModelingPipeline:
             snr_db=syn_cfg.snr_db,
             noise_seed=syn_cfg.noise_seed,
         )
-        depth_filename = f"avo_depth_{key}.npz"
+        depth_filename = f"seismic_depth_{key}.npz"
         self.cache_manager.save_avo_synthetics(
             depth_filename,
             (
@@ -199,17 +200,6 @@ class ModelingPipeline:
             ),
         )
         logger.info("Saved depth-domain seismograms to cache: %s", depth_filename)
-
-        # debug: interactive 3D view of the full-stack depth-domain volume
-        # Lazy debug import used only for optional interactive plotting
-        from src.debug import plot_volume
-
-        # choose a sensible isosurface level (None uses median inside the plot function)
-        plot_volume(
-            unwrap_quantity(cast(NDArray[Any], full_stack)),
-            cmap="seismic",
-            show=True,
-        )
 
         return {
             "avo_cached": True,

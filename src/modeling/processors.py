@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ReflectivityComputer", "WaveletConvolver"]
 
+
 class ReflectivityComputer:
     """Computes angle-dependent reflectivity using Zoeppritz approximation.
 
@@ -96,6 +97,7 @@ class ReflectivityComputer:
             rc_full[i0:i1] = rc_pad
 
         return rc_full
+
 
 class WaveletConvolver:
     """Performs efficient 3D wavelet convolution on seismic data.
