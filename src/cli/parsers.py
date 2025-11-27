@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["ParserFactory", "tool"]
 
+
 class ParserFactory:
     """Factory for creating and managing argument parsers."""
 
@@ -193,6 +194,62 @@ class ParserFactory:
         """Parse common arguments."""
         common = ParserFactory.common_parser(add_help=False)
         return common.parse_args(args=argv)
+
+    @staticmethod
+    def neural_smoother_parser(add_help: bool = True) -> argparse.ArgumentParser:
+        """Return an ArgumentParser configured for the neural_smoother tool.
+
+        This keeps argument definitions centralized while leaving execution in
+        the modeling module.
+        """
+        parent = ParserFactory.common_parser(add_help=False)
+        p = argparse.ArgumentParser(add_help=add_help, parents=[parent])
+        p.add_argument(
+            "--input-dir",
+            default=".cache/images/train/",
+        )
+        p.add_argument("--steps", type=int, default=2000)
+        p.add_argument("--scale", type=float, default=1.0)
+        p.add_argument("--upsample", type=int, default=4)
+        p.add_argument("--batch-size", type=int, default=8192)
+        p.add_argument(
+            "--num-workers",
+            type=int,
+            default=8,
+            help="Number of DataLoader worker processes (overrides IMPROVED_NUM_WORKERS env var)",
+        )
+        p.add_argument("--lr", type=float, default=5e-4, help="Initial learning rate")
+        p.add_argument(
+            "--scheduler",
+            type=str,
+            default="onecycle",
+            choices=["cosine", "step", "reduce", "onecycle", "none"],
+            help="Learning rate scheduler type",
+        )
+        p.add_argument("--step-size", type=int, default=100, help="StepLR step size")
+        p.add_argument(
+            "--gamma", type=float, default=0.1, help="Gamma / factor for schedulers"
+        )
+        p.add_argument(
+            "--patience", type=int, default=10, help="Patience for ReduceLROnPlateau"
+        )
+        p.add_argument(
+            "--max-lr", type=float, default=None, help="max_lr for OneCycleLR"
+        )
+        p.add_argument(
+            "--model-dir",
+            dest="model_dir",
+            type=str,
+            default=".cache/models/",
+            help="Path to model checkpoints to load/save",
+        )
+        p.add_argument(
+            "--force-retrain",
+            action="store_true",
+            help="If set, ignore checkpoint and retrain from scratch",
+        )
+
+        return p
 
     @staticmethod
     def configure_logging(verbose: bool = False) -> None:
@@ -363,7 +420,9 @@ class ParserFactory:
                 return fn(**call_kwargs)
             return fn()
         except (RuntimeError, TypeError, ValueError, OSError) as exc:
+
             raise SystemExit(f"Error running tool '{tool_name}': {exc}") from exc
+
 
 # Convenience alias
 tool = ParserFactory.tool

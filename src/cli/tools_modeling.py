@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
-from src.cli._tools_common import choose_html_path, save_npz, save_npz_with_timestamp
+from src.cli._tools_common import choose_html_path, save_npz
 from src.cli.parsers import ParserFactory, tool
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ __all__ = [
     "regenerate_seismograms",
     "export_top_seismogram_layers",
 ]
+
 
 @tool
 def analysis_rock_physics(
@@ -87,6 +88,7 @@ def analysis_rock_physics(
 
     return True
 
+
 @tool
 def analyze_facies_correlation(
     cache_dir: str = ".cache",
@@ -111,6 +113,7 @@ def analyze_facies_correlation(
         verbose=verbose,
     )
 
+
 @tool
 def seismograms(
     cache_dir: str = ".cache",
@@ -130,6 +133,7 @@ def seismograms(
         skip_cleanup=skip_cleanup,
         verbose=verbose,
     )
+
 
 @tool
 def analysis_seismograms() -> bool:
@@ -204,6 +208,7 @@ def analysis_seismograms() -> bool:
 
     return True
 
+
 @tool
 def regenerate_seismograms() -> bool:
     """Regenerate seismograms without interactive steps."""
@@ -235,15 +240,16 @@ def regenerate_seismograms() -> bool:
 
     return True
 
+
 @tool
 def export_top_seismogram_layers(
     cache_dir: str = ".cache",
-    n_layers: int = 2,
+    n_layers: int = 40 + 80,
     force_regeneration: bool = False,
     out: str | None = None,
     plot: bool = False,
     plot_out: str | None = None,
-    save_to_cache: bool = False,
+    save_to_cache: bool = True,
     matplotlib_only: bool = False,
 ) -> dict[str, str | tuple[int, int, int]]:
     """Extract the top N layers from the depth-domain seismogram cache.
@@ -269,19 +275,27 @@ def export_top_seismogram_layers(
     top = extractor.extract_top_two_geological_layers()
     top = np.asarray(top)
 
+    # Ensure the extracted top layers form a 3D volume (inline, crossline, depth)
+    if top.ndim != 3:
+        raise ValueError(
+            "Top layers extraction must result in a 3D volume (ni, nj, nk); got ndim=%d"
+            % (top.ndim,)
+        )
+
+    # shape is a fixed-length 3-tuple (ni, nj, nk) — enforce typing accordingly
     result: dict[str, str | tuple[int, int, int]] = {}
-    result["shape"] = top.shape
+    shape_3d = cast(tuple[int, int, int], tuple(top.shape))
+    result["shape"] = shape_3d
     if out:
         p = Path(out)
-        save_npz(p, top=top)
+        save_npz(p, seismic=top)
         result["saved"] = str(p)
 
     # Optionally save into cache directory for future reloads
     if save_to_cache:
         try:
-            cache_file = save_npz_with_timestamp(
-                cache_dir, "seismogram_depth_top_layers", top=top
-            )
+            cache_file_path = Path(cache_dir) / f"seismic_top_layers_{n_layers}.npz"
+            cache_file = save_npz(cache_file_path, seismic=top)
             result["cache"] = str(cache_file)
         except (OSError, ValueError, TypeError) as e:
             logger.warning("Failed to save top layers to cache: %s", e)
