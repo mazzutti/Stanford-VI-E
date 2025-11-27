@@ -19,6 +19,7 @@ import multiprocessing
 import os
 import signal
 import sys as _sys
+import threading
 import time
 import warnings
 from typing import Any
@@ -26,6 +27,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Entry point remains intentionally explicit; keep startup wiring clear
+
 
 def _terminate_children_on_exit(timeout: float = 1.0) -> None:
     """Attempt to terminate leftover multiprocessing children at exit."""
@@ -56,14 +58,47 @@ def _terminate_children_on_exit(timeout: float = 1.0) -> None:
         # Defensive: ignore OS/runtime errors while attempting cleanup
         pass
 
+
 # Register cleanup on exit
 atexit.register(_terminate_children_on_exit)
+
+
+def _join_non_daemon_threads(timeout: float = 0.2) -> None:
+    """Attempt a short, non-blocking join on non-daemon threads at exit.
+
+    This is defensive: joining only for a short timeout reduces the chance
+    that Thread objects are garbage-collected while interpreter globals are
+    torn down (which can trigger spurious ``__del__`` errors). We keep the
+    join timeout small to avoid delaying shutdown.
+    """
+    try:
+        main = threading.main_thread()
+        for t in threading.enumerate():
+            if t is main:
+                continue
+            # Skip threads that are already daemonized (they won't block exit)
+            if getattr(t, "daemon", False):
+                continue
+            try:
+                if t.is_alive():
+                    t.join(timeout=timeout)
+            except Exception:
+                # Best-effort: ignore any errors while joining
+                logger.debug("Exception while joining thread %s", getattr(t, "name", t))
+    except Exception:
+        # Defensive: swallow any error during interpreter teardown
+        pass
+
+
+# Try to join non-daemon threads to reduce spurious __del__ errors
+atexit.register(_join_non_daemon_threads)
 
 # Filter known resource tracker warnings
 warnings.filterwarnings(
     "ignore",
     message=r"resource_tracker: There appear to be .* leaked semaphore objects",
 )
+
 
 def main() -> bool:
     """Main entry point for the application.
@@ -177,6 +212,7 @@ def main() -> bool:
     modeling.save_results()
 
     return True
+
 
 if __name__ == "__main__":
     main()
