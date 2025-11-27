@@ -206,7 +206,7 @@ class ParserFactory:
         p = argparse.ArgumentParser(add_help=add_help, parents=[parent])
         p.add_argument(
             "--input-dir",
-            default=".cache/images/train/",
+            default=".cache/images/xz_slices/",
         )
         p.add_argument("--steps", type=int, default=2000)
         p.add_argument("--scale", type=float, default=1.0)

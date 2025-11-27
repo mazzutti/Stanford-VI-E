@@ -376,7 +376,7 @@ def export_top_well_layers(
 
 @tool
 def generate_faciesgan_dataset(
-    input_dir: str = ".cache/images/train/",
+    input_dir: str = ".cache/images/xz_slices/",
     output_dir: str = ".cache/images/dataset/",
     steps: int = 2000,
     scale: float = 1.0,
@@ -529,7 +529,7 @@ def _get_top_layers(cache_dir: str, force_regeneration: bool) -> NDArray[np.int_
 def generate_xz_layers(
     cache_dir: str = ".cache",
     n_layers: int = 120,
-    output_dir: str = "images/train/",
+    output_dir: str = "images/xz_slices/",
     dpi: int = 300,
     cmap: dict[str, str | list[str]] = {
         "facies": [
