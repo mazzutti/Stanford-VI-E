@@ -1,0 +1,77 @@
+
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "prepare-xz_slices",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m src --run-tool generate_xz_layers -- --cache-dir ${workspaceFolder}/.cache --n-layers 120 --output-dir ${workspaceFolder}/.cache/images/xz_slices/ --dpi 1000 --interpolation None --blur-sigma 0",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "prepare-rock-physics",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-m",
+        "src",
+        "--run-tool",
+        "rock_physics_attributes",
+        "--",
+        "--cache-dir",
+        "${workspaceFolder}/.cache",
+        "--save-npz-only",
+        "--verbose"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "PYTHONUNBUFFERED": "1",
+          "NUMBA_DISABLE_JIT": "1"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "verify-rock-physics",
+      "type": "process",
+      "dependsOn": ["prepare-rock-physics"],
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-c",
+        "import pathlib,sys; p=pathlib.Path(sys.argv[1]); print(\"verifying\", p); sys.exit(0 if p.exists() else 1)",
+        "${workspaceFolder}/.cache/rock_physics_attributes.npz"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+  ]
+}
+

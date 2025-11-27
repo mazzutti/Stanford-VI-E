@@ -227,4 +227,4 @@ pytest --cov=src --cov-report=html
 
 See repository for license details.
 
-**Updated**: November 2024
+**Updated**: November 2025

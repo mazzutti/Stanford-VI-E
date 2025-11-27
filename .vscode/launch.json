@@ -101,6 +101,7 @@
         "--dpi",
         "1000"
       ],
+      "preLaunchTask": "prepare-xz_slices",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": false,
@@ -157,6 +158,35 @@
         "--blur-sigma",
         "0"
       ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "LOGLEVEL": "DEBUG"
+      }
+    },
+    {
+      "name": "Debug: regenerate_all_3d_plots (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "regenerate_all_3d_plots",
+        "--",
+        "--data-dir",
+        "${workspaceFolder}",
+        "--cache-dir",
+        "${workspaceFolder}/.cache",
+        "--output-dir",
+        "${workspaceFolder}/docs/images",
+        "--verbose"
+      ],
+      "preLaunchTask": "verify-rock-physics",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": false,
