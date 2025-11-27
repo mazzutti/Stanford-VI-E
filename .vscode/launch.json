@@ -1,0 +1,171 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: export_top_facies_layers (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "export_top_facies_layers",
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "LOGLEVEL": "DEBUG"
+      }
+    },
+    {
+     "name": "Debug: regenerate_seismograms (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "regenerate_seismograms"
+
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    }
+    ,
+    {
+      "name": "Debug: rock_physics_attributes (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": ["--run-tool", "rock_physics_attributes"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+    ,
+    {
+      "name": "Debug: export_top_seismogram_layers (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "export_top_seismogram_layers",
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "LOGLEVEL": "DEBUG",
+        "RESAMPLE_USE_NUMBA": "0"
+      }
+    },
+    {
+      "name": "Debug: generate_faciesgan_dataset (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "generate_faciesgan_dataset",
+        "--",
+        "--input-dir",
+        "${workspaceFolder}/.cache/images/train/",
+        "--output-dir",
+        "${workspaceFolder}/.cache/images/dataset/",
+        "--steps",
+        "2000",
+        "--batch-size",
+        "8192",
+        "--num-workers",
+        "0",
+        "--model-dir",
+        "${workspaceFolder}/.cache/models/"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    {
+      "name": "Debug: export_top_well_layers (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "export_top_well_layers",
+        "--",
+        "--cache-dir",
+        "${workspaceFolder}/.cache",
+        "--n-layers",
+        "120",
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "LOGLEVEL": "DEBUG"
+      }
+    },
+    {
+      "name": "Debug: generate_xz_layers (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src",
+      "args": [
+        "--run-tool",
+        "generate_xz_layers",
+        "--",
+        "--cache-dir",
+        "${workspaceFolder}/.cache",
+        "--n-layers",
+        "120",
+        "--output-dir",
+        "${workspaceFolder}/.cache/images/train/",
+        "--dpi",
+        "1000",
+        "--interpolation",
+        "None",
+        "--blur-sigma",
+        "0"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true,
+      "stopOnEntry": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "LOGLEVEL": "DEBUG"
+      }
+    },
+   
+  ]
+}
