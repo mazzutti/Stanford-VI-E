@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # functions accept long argument lists. Silence style checks that are
 # noisy for this kind of numerical implementation.
 
+
 class ZoeppritzSolver:
     """Batched Zoeppritz equation solver for P-P reflection coefficients.
 
@@ -96,6 +97,7 @@ class ZoeppritzSolver:
         )
         return np.asarray(rp_flat.reshape(spatial_shape), dtype=np.complex128)
 
+
 @njit
 def _solve_4x4_numba(
     A: "NDArray[np.complex128]", b: "NDArray[np.complex128]"
@@ -138,6 +140,7 @@ def _solve_4x4_numba(
         else:
             x[ii] = s / M[ii, ii]
     return x
+
 
 @njit(parallel=True)
 def _numba_solve_zoeppritz(

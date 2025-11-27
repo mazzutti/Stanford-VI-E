@@ -24,6 +24,7 @@ __all__ = [
     "DepthTimeConverter",
 ]
 
+
 class DepthTimeConverter:
     """Converts depth-domain properties to two-way time (TWT) domain.
 
