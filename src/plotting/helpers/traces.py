@@ -14,6 +14,7 @@ code paths that trigger R0801 (duplicate-code) findings.
 from __future__ import annotations
 
 from typing import Any, cast
+from collections.abc import Sequence
 
 import numpy as np
 import plotly.graph_objects as go
@@ -23,9 +24,11 @@ from src.plotting.helpers.colorbar import make_plotly_colorbar
 from src.plotting.helpers.configs import TraceConfig
 
 def _build_mesh_ranges(
-    shape: tuple[int, int, int], k_scale_val: float
+    shape: Sequence[int], k_scale_val: float
 ) -> tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float64]]:
-    ni_val, nj_val, nk_val = shape
+    if len(shape) != 3:
+        raise ValueError("shape must be a 3-tuple representing a 3D array")
+    ni_val, nj_val, nk_val = int(shape[0]), int(shape[1]), int(shape[2])
     i_r: NDArray[np.int64] = np.arange(ni_val, dtype=np.int64)
     j_r: NDArray[np.int64] = np.arange(nj_val, dtype=np.int64)
     k_r: NDArray[np.float64] = np.arange(nk_val, dtype=np.float64) * float(k_scale_val)

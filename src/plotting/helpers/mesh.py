@@ -8,8 +8,10 @@ or creating import cycles.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 # Use short coordinate variable names across this module for clarity in
 # numerical code. These names are conventional in geometry/math code and
@@ -19,9 +21,9 @@ import numpy as np
 class Coords:
     """Simple container for 1D coords and separation value."""
 
-    x: np.ndarray
-    y: np.ndarray
-    z: np.ndarray
+    x: NDArray[Any]
+    y: NDArray[Any]
+    z: NDArray[Any]
     sep: float
 
 @dataclass(frozen=True)
@@ -102,25 +104,25 @@ def compute_plane_yz(coords: Coords, idxs: tuple[int, int, int]) -> "PlaneYZ":
 class PlaneXY:
     """Mesh arrays for the inline-crossline (XY) plane."""
 
-    x: np.ndarray
-    y: np.ndarray
-    z: np.ndarray
+    x: NDArray[Any]
+    y: NDArray[Any]
+    z: NDArray[Any]
 
 @dataclass(frozen=True)
 class PlaneXZ:
     """Mesh arrays for the inline-depth (XZ) plane."""
 
-    x: np.ndarray
-    y: np.ndarray
-    z: np.ndarray
+    x: NDArray[Any]
+    y: NDArray[Any]
+    z: NDArray[Any]
 
 @dataclass(frozen=True)
 class PlaneYZ:
     """Mesh arrays for the crossline-depth (YZ) plane."""
 
-    x: np.ndarray
-    y: np.ndarray
-    z: np.ndarray
+    x: NDArray[Any]
+    y: NDArray[Any]
+    z: NDArray[Any]
 
 def compute_mesh_grids(coords: Coords, idxs: tuple[int, int, int]) -> MeshGrids:
     """Compute the various mesh grids used to build quad faces."""
@@ -143,7 +145,7 @@ def add_quads_to_lists(
     faces: list[list[tuple[float, float, float]]],
     face_colors: list[tuple[float, float, float, float]],
     plane: PlaneXY | PlaneXZ | PlaneYZ,
-    face_color_array: np.ndarray,
+    face_color_array: NDArray[Any],
 ) -> None:
     """Append quad faces and their RGBA colors to the provided lists."""
     Xa = plane.x

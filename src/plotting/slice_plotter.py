@@ -465,7 +465,7 @@ class SlicePlotter(BasePlotter):
 
     def _build_3d_grids(
         self,
-        shape: tuple[int, int, int],
+        shape: Sequence[int],
         slice_indices: tuple[int, int, int],
         config: PlotConfig,
     ) -> tuple[
@@ -477,7 +477,9 @@ class SlicePlotter(BasePlotter):
 
         Returns three grid-tuples: (Xi, J, K), (Xj, Yj, K_j), (Xk, Yk, Zk)
         """
-        ni, nj, nk = shape
+        if len(shape) != 3:
+            raise ValueError("shape must be a 3-tuple (ni, nj, nk)")
+        ni, nj, nk = shape  # type: ignore[misc]
         idx_i, idx_j, idx_k = slice_indices
 
         J: NDArray[Any] = np.mgrid[0:nj, 0:nk][0]

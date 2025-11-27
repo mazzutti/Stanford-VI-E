@@ -239,9 +239,10 @@ class PlotlyPlotter(BasePlotter):
         }
 
         if zaxis_tickmode:
-            scene["zaxis"]["tickmode"] = zaxis_tickmode
-            scene["zaxis"]["tickvals"] = zaxis_tickvals
-            scene["zaxis"]["ticktext"] = zaxis_ticktext
+            zaxis_obj = cast(Any, scene["zaxis"])
+            zaxis_obj["tickmode"] = zaxis_tickmode
+            zaxis_obj["tickvals"] = zaxis_tickvals
+            zaxis_obj["ticktext"] = zaxis_ticktext
 
         cast(Any, fig).update_layout(
             title={"text": title, "x": 0.5, "xanchor": "center"},

@@ -66,11 +66,11 @@ class SeismicPlotter(BasePlotter):
         conventions and returns the first candidate or None when not found.
         """
 
-        pattern = "avo_time*.npz" if domain == "time" else "avo_depth*.npz"
+        pattern = "seismic_time*.npz" if domain == "time" else "seismic_depth*.npz"
         candidates = list(self.cache_dir.glob(pattern))
         if not candidates:
             logger.warning(
-                "No AVO cache found for pattern %s in %s", pattern, self.cache_dir
+                "No seismic cache found for pattern %s in %s", pattern, self.cache_dir
             )
             return None
         return candidates[0]
