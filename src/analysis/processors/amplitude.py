@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["BoundaryAmplitudeExtractor"]
 
+
 class BoundaryAmplitudeExtractor(BaseProcessor):
     """Extracts amplitudes at and away from facies boundaries."""
 
@@ -112,6 +113,7 @@ class BoundaryAmplitudeExtractor(BaseProcessor):
 
         # Dilate boundaries to create a window. Cast the result to the
         # expected boolean NDArray so static checkers understand the dtype.
+        # binary_dilation stubs may be imprecise; cast to a boolean NDArray
         boundary_zone = binary_dilation(boundaries_aligned, iterations=window)
 
         # Extract amplitudes using boundary mask

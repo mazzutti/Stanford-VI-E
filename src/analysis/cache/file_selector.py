@@ -13,10 +13,11 @@ __all__ = ["CacheFileSelector"]
 # Small selector helper with a compact public surface; silence the
 # too-few-public-methods warning for this simple utility class.
 
+
 class CacheFileSelector:
     """Select cache files with clear, simple logic."""
 
-    FILE_PREFIX = "avo_"
+    FILE_PREFIX = "seismic_"
     EXTENSIONS = [".npz", ".npy"]
 
     def __init__(self, prefer_npz: bool = True) -> None:

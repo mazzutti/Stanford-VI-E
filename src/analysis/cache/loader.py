@@ -49,10 +49,11 @@ logger = logging.getLogger(__name__)
 __all__ = ["CacheLoader", "CacheLoaderFactory", "CacheConfig"]
 
 # Constants for file naming and archive handling
-_FILE_PREFIX = "avo_"
+_FILE_PREFIX = "seimic_"
 _FULL_STACK_KEY = "full_stack"
 _NPZ_EXTENSION = ".npz"
 _NPY_EXTENSION = ".npy"
+
 
 class CacheConfig(NamedTuple):
     """Configuration for CacheLoader caching behavior.
@@ -76,6 +77,7 @@ class CacheConfig(NamedTuple):
     selector: SelectorProtocol | None = None
     cache: CacheProtocol[NDArray[np.float64]] | None = None
     np_load: Callable[..., NDArray[Any] | NpzFile] = np.load
+
 
 class CacheLoader:
     """Load and cache AVO data files with LRU caching and memory mapping support.
@@ -809,6 +811,7 @@ class CacheLoader:
             if raise_on_error:
                 raise
         return None
+
 
 class CacheLoaderFactory(GenericFactory["CacheLoader"]):
     """Factory for creating CacheLoader instances with various configurations.

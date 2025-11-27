@@ -24,6 +24,7 @@ __all__ = [
     "SeismogramAnalyzer",
 ]
 
+
 # Object-oriented facade for seismogram utilities
 class SeismogramAnalyzer:
     """Coordinates seismogram analysis and modeling tasks.
@@ -34,7 +35,7 @@ class SeismogramAnalyzer:
     """
 
     # Configuration constants
-    DEFAULT_CACHE_PATTERNS = ["avo_*.npz"]
+    DEFAULT_CACHE_PATTERNS = ["seismic_*.npz"]
     FILE_READY_DELAY_SECONDS = 1
     BYTES_PER_MB = 1024 * 1024
     INDENT_PREFIX = "  "

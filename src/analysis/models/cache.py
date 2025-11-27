@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,6 +18,7 @@ __all__ = [
     "CacheLoadResult",
     "DisplayCubesResult",
 ]
+
 
 @dataclass
 class CacheLoadResult:
@@ -36,7 +37,7 @@ class CacheLoadResult:
     @property
     def shape(self) -> tuple[int, ...]:
         """Return the shape of the AVO array."""
-        return cast(tuple[int, ...], self.avo.shape)
+        return self.avo.shape
 
     @property
     def size(self) -> int:
@@ -79,6 +80,7 @@ class CacheLoadResult:
         """Return string representation."""
         return f"CacheLoadResult(filename={self.filename}, shape={self.shape})"
 
+
 @dataclass
 class DisplayCubesResult:
     """Represents display cube data with shape validation."""
@@ -97,7 +99,7 @@ class DisplayCubesResult:
     @property
     def shape(self) -> tuple[int, ...]:
         """Return the 3D shape of the display cubes."""
-        return cast(tuple[int, ...], self.avo_display.shape)
+        return self.avo_display.shape
 
     @property
     def volume(self) -> int:
