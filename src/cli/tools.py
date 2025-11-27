@@ -391,6 +391,7 @@ def generate_faciesgan_dataset(
     max_lr: float = 0.01,
     model_dir: str = ".cache/models/",
     force_retrain: bool = False,
+    dpi: int = 300,
     verbose: bool = False,
 ) -> None:
     """Generate a FaciesGAN dataset by training/rendering with the improved model.
@@ -474,12 +475,17 @@ def generate_faciesgan_dataset(
                 losses,
                 loss_path,
                 title=f"Training Loss ({image_path.name})",
+                dpi=dpi,
             )
 
-            # Save the high-resolution image
+            # Save the high-resolution image (include DPI metadata)
             arr_to_save = (high_res_img * 255).astype("uint8")
             out_highres_path = out_path / img_type / f"{image_path.stem}_highres.png"
-            _Image.fromarray(arr_to_save).save(out_highres_path)
+            try:
+                _Image.fromarray(arr_to_save).save(out_highres_path, dpi=(dpi, dpi))
+            except Exception:
+                # Fallback without dpi if Pillow doesn't accept the argument
+                _Image.fromarray(arr_to_save).save(out_highres_path)
 
             for resolution, smooth_img in zip(resolutions, smooth_imgs):
                 res_str = f"{resolution[0]}x{resolution[1]}"
@@ -487,7 +493,11 @@ def generate_faciesgan_dataset(
                 out_res_path = out_res_dir / f"{image_path.stem}.png"
                 # Normalize img_smooth_list into a Python list
                 smooth_img = (smooth_img * 255).astype("uint8")
-                _Image.fromarray(smooth_img).save(out_res_path)
+                # Use the helper to respect DPI/resampling behavior
+                try:
+                    _save_image_with_resample(smooth_img, out_res_path, dpi, None)
+                except Exception:
+                    _Image.fromarray(smooth_img).save(out_res_path)
 
 
 def _get_top_layers(cache_dir: str, force_regeneration: bool) -> NDArray[np.int_]:
@@ -1116,7 +1126,9 @@ def _save_image_with_resample(
             logger.exception("Failed to save image to %s", png_path)
 
 
-def _save_losses_plot(losses: Any, loss_path: Path, title: str | None = None) -> None:
+def _save_losses_plot(
+    losses: Any, loss_path: Path, title: str | None = None, dpi: int = 200
+) -> None:
     """Save the training `losses` sequence as a PNG at `loss_path`.
 
     This helper centralizes matplotlib usage and error handling so callers
@@ -1129,7 +1141,7 @@ def _save_losses_plot(losses: Any, loss_path: Path, title: str | None = None) ->
             _plt.title(title)
         _plt.xlabel("Iteration")
         _plt.ylabel("Loss")
-        fig.savefig(str(loss_path), dpi=200, bbox_inches="tight")
+        fig.savefig(str(loss_path), dpi=int(dpi), bbox_inches="tight")
         _plt.close(fig)
     except Exception:
         logger.warning("Failed to save loss plot to %s", loss_path)
