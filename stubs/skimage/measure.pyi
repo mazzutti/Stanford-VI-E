@@ -4,10 +4,11 @@ This provides typing for the marching cubes functions used by
 `src.debug.plot3d` so the type checker recognizes their signatures.
 """
 
-import numpy as np
+from typing import Any
+from numpy.typing import NDArray
 
 def marching_cubes(
-    volume: np.ndarray,
+    volume: NDArray[Any],
     level: float | None = ...,
     *,
     spacing: tuple[float, float, float] = ...,
@@ -15,13 +16,13 @@ def marching_cubes(
     step_size: int = ...,
     allow_degenerate: bool = ...,
     method: str = ...,
-    mask: np.ndarray | None = ...,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: ...
+    mask: NDArray[Any] | None = ...,
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]: ...
 def marching_cubes_lewiner(
-    volume: np.ndarray,
+    volume: NDArray[Any],
     level: float | None = ...,
     *,
     spacing: tuple[float, float, float] = ...,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: ...
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]: ...
 
 __all__ = ["marching_cubes", "marching_cubes_lewiner"]

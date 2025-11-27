@@ -1,3 +1,8 @@
+from typing import Any
+
+# Minimal stubs to satisfy static type checkers for commonly used pyplot API
+# Only declare the functions the codebase expects (xlabel, ylabel, plot, etc.).
+
 from typing import Any, Callable
 
 from .colors import Colormap
@@ -23,12 +28,18 @@ def subplots(
     **kwargs: Any,
 ) -> tuple[Figure, Any]: ...
 def imshow(*args: Any, **kwargs: Any) -> Any: ...
+def imread(fname: Any, *args: Any, **kwargs: Any) -> Any: ...
+def imsave(fname: Any, arr: Any, *args: Any, **kwargs: Any) -> None: ...
+def plot(*args: Any, **kwargs: Any) -> Any: ...
+def title(*args: Any, **kwargs: Any) -> Any: ...
 def figure(*args: Any, **kwargs: Any) -> Any: ...
 def savefig(fname: Any, *args: Any, **kwargs: Any) -> None: ...
 def close(fig: Any = ...) -> None: ...
 def show(*args: Any, **kwargs: Any) -> None: ...
 def tight_layout(*args: Any, **kwargs: Any) -> None: ...
 def suptitle(*args: Any, **kwargs: Any) -> Any: ...
+def xlabel(xlabel: Any, *args: Any, **kwargs: Any) -> None: ...
+def ylabel(ylabel: Any, *args: Any, **kwargs: Any) -> None: ...
 
 # Lightweight module-like object used by some code patterns `import matplotlib.pyplot as plt`
 class _CM:
@@ -39,6 +50,10 @@ class _Plt:
     get_cmap: Callable[[str | None, int | None], Colormap]
     tight_layout: Any
     close: Any
+    imsave: Callable[[Any, Any], None]
+    imread: Callable[..., Any]
+    plot: Callable[..., Any]
+    title: Callable[..., Any]
     cm: _CM
 
 plt: _Plt
@@ -49,7 +64,11 @@ __all__ = [
     "subplots",
     "colorbar",
     "imshow",
+    "imsave",
+    "plot",
+    "title",
     "savefig",
     "close",
     "show",
+    "imread",
 ]
