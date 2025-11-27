@@ -249,6 +249,14 @@ class ParserFactory:
             help="If set, ignore checkpoint and retrain from scratch",
         )
 
+        # DPI for saved images/plots produced by training and dataset tools
+        p.add_argument(
+            "--dpi",
+            type=int,
+            default=300,
+            help="DPI (dots-per-inch) for saved images and plots (default: 300)",
+        )
+
         return p
 
     @staticmethod

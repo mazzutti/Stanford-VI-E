@@ -97,7 +97,9 @@
         "--num-workers",
         "0",
         "--model-dir",
-        "${workspaceFolder}/.cache/models/"
+        "${workspaceFolder}/.cache/models/",
+        "--dpi",
+        "1000"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",

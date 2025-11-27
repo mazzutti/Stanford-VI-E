@@ -405,7 +405,16 @@ def generate_faciesgan_dataset(
     losses_dirs: dict[str, Path] = {}
     out_res_dirs: dict[str, Path] = {}
 
-    resolutions = [(256, 256), (128, 128), (64, 64), (32, 32), (16, 16), (8, 8)]
+    resolutions = [
+        (1024, 1024),
+        (512, 512),
+        (256, 256),
+        (128, 128),
+        (64, 64),
+        (32, 32),
+        (16, 16),
+        (8, 8),
+    ]
     img_types: tuple[str, ...] = ("facies", "well", "seismic")
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
