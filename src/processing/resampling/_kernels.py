@@ -21,6 +21,7 @@ from src.processing.resampling._interpolation import linear_interpolate_value
 # Depth-to-Time Resampling Kernels
 # ============================================================================
 
+
 @njit(parallel=True)
 def resample_depth_to_time_nearest(
     twt_irregular: NDArray[Any],
@@ -64,6 +65,7 @@ def resample_depth_to_time_nearest(
                         out_array[ii, jj, ti] = prop[k - 1]
                     else:
                         out_array[ii, jj, ti] = prop[k]
+
 
 @njit(parallel=True)
 def resample_depth_to_time_linear(
@@ -110,9 +112,11 @@ def resample_depth_to_time_linear(
                     v1 = trace[k]
                     out_array[ii, jj, ti] = linear_interpolate_value(t, t0, t1, v0, v1)
 
+
 # ============================================================================
 # Time-to-Depth Resampling Kernels (Irregular Time-Domain Input)
 # ============================================================================
+
 
 @njit(parallel=True)
 def resample_depth_to_time_from_irregular_nearest(
@@ -154,6 +158,7 @@ def resample_depth_to_time_from_irregular_nearest(
                         out_array[ii, jj, ti] = prop[k - 1]
                     else:
                         out_array[ii, jj, ti] = prop[k]
+
 
 @njit(parallel=True)
 def resample_depth_to_time_from_irregular_linear(

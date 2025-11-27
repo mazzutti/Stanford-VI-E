@@ -9,6 +9,7 @@ from typing import Any
 from numba import njit
 from numpy.typing import NDArray
 
+
 @njit
 def linear_interpolate_value(
     t: float, t0: float, t1: float, v0: float, v1: float
@@ -32,6 +33,7 @@ def linear_interpolate_value(
         return v0
     frac = (t - t0) / (t1 - t0)
     return v0 * (1 - frac) + v1 * frac
+
 
 @njit
 def interpolate_trace_at_time(
