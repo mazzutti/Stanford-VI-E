@@ -24,6 +24,7 @@ from src.utils.quantity import Quantity
 # helpers at call-time in factory methods; keep the lazy imports and
 # silence pylint's import-outside-toplevel for this module.
 
+
 class SeismogramTopLayersExtractor:
     """Extract top N layers from a 3D seismogram cube.
 
@@ -63,7 +64,7 @@ class SeismogramTopLayersExtractor:
             raise ValueError(
                 f"requested total layers {total} exceeds available samples nk={nk}"
             )
-        return self.cube[:, :, :total].copy()
+        return self.cube[:, :, (nk - total) :].copy()
 
     @classmethod
     def from_time_domain(
@@ -163,7 +164,9 @@ class SeismogramTopLayersExtractor:
         assert arr is not None
         return cls(arr)
 
+
 __all__ = ["SeismogramTopLayersExtractor", "CacheProvider", "DefaultCacheProvider"]
+
 
 class CacheProvider(Protocol):
     """Protocol describing an injectable cache provider for depth-domain AVO caches."""
@@ -184,6 +187,7 @@ class CacheProvider(Protocol):
         Returns:
             The generated ndarray or ``None`` on failure.
         """
+
 
 class DefaultCacheProvider:
     """Default implementation that uses `CacheManager` and `ModelingPipeline`.
@@ -211,7 +215,9 @@ class DefaultCacheProvider:
         if not d.exists():
             return None
         # Prefer AVO depth caches but also accept top_layers NPZs created by this tool
-        files = list(d.glob("avo_depth_*.npz")) + list(d.glob("top_layers_*.npz"))
+        files = list(d.glob("seismic_depth_*.npz")) + list(
+            d.glob("seismic_top_layers_*.npz")
+        )
         files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
         return str(files[0]) if files else None
 
@@ -226,7 +232,7 @@ class DefaultCacheProvider:
         p = Path(path)
         name = p.name
         # If this is a top_layers file produced by the extractor, load the 'top' array
-        if name.startswith("top_layers_"):
+        if name.startswith("seismic_top_layers_"):
             try:
                 data = np.load(str(p), allow_pickle=True)
                 if "top" in data:

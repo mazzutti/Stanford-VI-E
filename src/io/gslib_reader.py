@@ -14,8 +14,6 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
-from src.debug.plot3d import plot_volume
-
 __all__ = ["GSLibConfig", "GSLibReader"]
 
 logger = logging.getLogger(__name__)

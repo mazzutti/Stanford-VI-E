@@ -48,7 +48,9 @@ CategoricalInfo = tuple[Any, Any, int] | None
 
 
 # map slice values to indices using mapping (fallback to 0)
-def map_slice_to_indices(arr: np.ndarray, mapping: dict[float, int]) -> np.ndarray:
+def map_slice_to_indices(
+    arr: np.ndarray[Any, Any], mapping: dict[float, int]
+) -> np.ndarray[Any, Any]:
     """Map values in arr to integer indices using mapping.
 
     This avoids use of np.vectorize which can trigger static
@@ -71,7 +73,7 @@ def project_and_sort_faces(
     """Project face centers using the axes projection and return sorted faces
     and colors from back to front for correct alpha compositing.
     """
-    proj_matrix = cast(np.ndarray, getattr(ax, "get_proj")())
+    proj_matrix = cast(np.ndarray[Any, Any], getattr(ax, "get_proj")())
     centers = [np.mean(np.asarray(f), axis=0) for f in faces]
     depths: list[float] = []
     for c in centers:
@@ -101,7 +103,7 @@ def make_and_add_poly_collection(
 def make_colorbar(
     fig: Figure,
     ax: Axes3D,
-    cmap_func: Callable[[np.ndarray], np.ndarray],
+    cmap_func: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     norm: Normalize | None,
     categorical_info: CategoricalInfo,
 ) -> None:
@@ -135,12 +137,12 @@ def make_colorbar(
 
 
 def compute_slice_facecolors(
-    slice_arr: np.ndarray,
-    cmap_func: Callable[[np.ndarray], np.ndarray],
+    slice_arr: np.ndarray[Any, Any],
+    cmap_func: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     norm: Normalize | None,
     alpha: float | None,
     categorical_info: CategoricalInfo,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """Compute per-texel RGBA `colors` and per-face averaged `fc` for a slice.
 
     Returns `(colors, fc)` where `colors` is the RGBA array matching
@@ -159,7 +161,7 @@ def compute_slice_facecolors(
 
 
 def set_reverse_crossline_ticks(
-    ax: Axes3D, y: np.ndarray, reverse_crossline: bool
+    ax: Axes3D, y: np.ndarray[Any, Any], reverse_crossline: bool
 ) -> None:
     """If requested, set Y-axis tick labels reversed to go max->min.
 
@@ -185,9 +187,9 @@ def set_reverse_crossline_ticks(
 def _build_and_add_face_collection(
     ax: Axes3D,
     coords: Any,
-    fc_xy: np.ndarray,
-    fc_xz: np.ndarray,
-    fc_yz: np.ndarray,
+    fc_xy: np.ndarray[Any, Any],
+    fc_xz: np.ndarray[Any, Any],
+    fc_yz: np.ndarray[Any, Any],
 ) -> None:
     """Collect quad faces from the mesh grids, compute per-face colors
     and add a Poly3DCollection to ``ax``.
@@ -219,7 +221,7 @@ def _prepare_coords_and_grids(
     shape: tuple[int, int, int],
     idxs: tuple[int, int, int],
     spacing: tuple[float, float, float],
-) -> tuple[Any, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[Any, np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """Compute and return coords/grids and primary 1D coordinate arrays.
 
     Kept as a small wrapper so `plot_volume` does not directly import the
@@ -247,14 +249,14 @@ def _prepare_figure_ax(
 
 
 def _compute_facecolors_for_slices(
-    slices: tuple[np.ndarray, np.ndarray, np.ndarray],
+    slices: tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]],
     cmap_args: tuple[
-        Callable[[np.ndarray], np.ndarray],
+        Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
         Normalize | None,
         float | None,
         CategoricalInfo,
     ],
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """Compute per-face averaged RGBA arrays for the three slices."""
     slice_xy, slice_xz, slice_yz = slices
     cmap_func, norm, alpha, categorical_info = cmap_args
@@ -271,11 +273,11 @@ def _compute_facecolors_for_slices(
 
 
 def select_slices_and_indices(
-    volume: np.ndarray, indices: tuple[int, int, int] | None = None
+    volume: np.ndarray[Any, Any], indices: tuple[int, int, int] | None = None
 ) -> tuple[
     tuple[int, int, int],
     tuple[int, int, int],
-    tuple[np.ndarray, np.ndarray, np.ndarray],
+    tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]],
 ]:
     """Return shape, selected indices and the three orthogonal slices.
 
@@ -304,9 +306,9 @@ def select_slices_and_indices(
 
 def axis_setup(
     ax: Axes3D,
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
+    x: np.ndarray[Any, Any],
+    y: np.ndarray[Any, Any],
+    z: np.ndarray[Any, Any],
     swap_xy: bool,
     reverse_crossline: bool,
 ) -> None:
@@ -347,7 +349,7 @@ def save_and_show(save_path: str | None, show: bool, created_fig: bool) -> None:
 
 
 def plot_volume(
-    volume: np.ndarray,
+    volume: np.ndarray[Any, Any],
     cmap: str = "viridis",
     alpha: float | None = 0.7,
     is_categorical: bool = False,
