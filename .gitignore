@@ -46,7 +46,6 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
-.cache/*
 .playwright-mcp/
 .test_cache
 nosetests.xml
@@ -224,8 +223,10 @@ __marimo__/
 .DS_Store
 **/.DS_Store
 
-
-# Disable Ignore for specific files
-!/.cache/images/**
-!/.cache/images/
+/.cache/*.npz
+!/.cache/wells_maping.npz
+/.cache/images/pyramids/
+/.cache/models/losses/
+/.cache/models/
+/.cache/images/xz_slices/
 

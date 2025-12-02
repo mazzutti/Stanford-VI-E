@@ -23,7 +23,7 @@
   "python.analysis.enableAsyncProgram": true,
   "python.analysis.enableSnippetExtraTelemetry": true,
   "python.analysis.reportExtraTelemetry": true,
-  "python.analysis.inlayHints.callArgumentNames": "all",
+  "python.analysis.inlayHints.callArgumentNames": "off",
   "python.analysis.inlayHints.functionReturnTypes": true,
   "python.analysis.regenerateStdLibIndices": true,
   "python.analysis.typeEvaluation.strictDictionaryInference": true,

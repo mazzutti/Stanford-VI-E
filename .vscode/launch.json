@@ -89,7 +89,7 @@
         "--input-dir",
         "${workspaceFolder}/.cache/images/xz_slices/",
         "--output-dir",
-        "${workspaceFolder}/.cache/images/dataset/",
+        "${workspaceFolder}/.cache/images/pyramids/",
         "--steps",
         "2000",
         "--batch-size",
