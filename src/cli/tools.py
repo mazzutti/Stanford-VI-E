@@ -7,6 +7,7 @@ including cache cleanup, plotting, analysis, and regeneration workflows.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any, cast
 
@@ -15,13 +16,17 @@ import matplotlib.pyplot as _plt
 from matplotlib.colors import Normalize
 import numpy as np
 from numpy.typing import NDArray
+from PIL import Image as _Image
 
 # First-party CLI helpers
 from scipy.ndimage import gaussian_filter as _gaussian_filter  # type: ignore
 from src.cli.parsers import ParserFactory, tool
-from src.modeling.neural_smoother import CustomDataset, CustomLoader, NeuralSmoother
+from src.modeling.interpolator import (
+    BaseInterpolator,
+    InterpolatorConfig,
+    ProcessImageConfig,
+)
 
-from PIL import Image as _Image
 
 # Many imports in CLI tools are intentionally performed at call-time to avoid
 # heavy imports or import cycles when the CLI module is imported. Prefer
@@ -38,25 +43,30 @@ logger = logging.getLogger(__name__)
 from ._tools_common import choose_html_path, save_npz  # noqa: E402
 
 __all__ = [
+    # Tools defined in this file
     "cleanup_cache",
-    "plot_3d_interactive",
-    "plot_3d_slices",
-    "plot_seismic_full_stack",
-    "plot_rock_physics_attributes",
-    "plot_original_properties",
-    "analysis_rock_physics",
-    "analyze_facies_correlation",
-    "seismograms",
-    "analysis_seismograms",
-    "regenerate_seismograms",
-    "regenerate_rock_physics",
-    "rock_physics_attributes",
-    "regenerate_all_3d_plots",
-    "export_top_seismogram_layers",
     "export_top_facies_layers",
     "export_top_well_layers",
-    "generate_xz_layers",
     "generate_faciesgan_dataset",
+    "generate_xz_layers",
+    "regenerate_rock_physics",
+    "rock_physics_attributes",
+    "resample_rock_physics_to_time",
+    "edit_wells_interactive",
+    # Re-exported from tools_plotting
+    "plot_3d_interactive",
+    "plot_3d_slices",
+    "plot_original_properties",
+    "plot_rock_physics_attributes",
+    "plot_seismic_full_stack",
+    "regenerate_all_3d_plots",
+    # Re-exported from tools_modeling
+    "analysis_rock_physics",
+    "analysis_seismograms",
+    "analyze_facies_correlation",
+    "export_top_seismogram_layers",
+    "regenerate_seismograms",
+    "seismograms",
 ]
 
 # Re-export plotting-related tools from the dedicated module to keep this
@@ -274,34 +284,116 @@ def _plot_facies_plotly(
     return html_path
 
 
-def _to_well_layers(top: NDArray[np.int_]) -> NDArray[np.int_]:
-    """Convert facies top layers to well top layers.
+# def _find_column_with_most_non_black_pixels(
+#     img: NDArray[np.float32],
+# ) -> tuple[int, int]:
+#     """Find the column index with the most non-black pixels.
 
-    For each X-Z slice (crossline index j) the corresponding slice
-    `top[:, j, :]` is replaced with all zeros except for a single
-    randomly chosen inline index which preserves the original facies
-    values along the vertical (depth) direction. This produces a
-    sparse "well" trace per crossline.
+#     Parameters
+#     ----------
+#     img : NDArray[np.float32]
+#         Input image array of shape (height, width, channels), values in [0, 1]
+
+#     Returns
+#     -------
+#     tuple[int, int]
+#         (column_index, non_black_pixel_count)
+#     """
+#     width = img.shape[1]
+#     non_black_counts = np.zeros(width, dtype=int)
+
+#     for col in range(width):
+#         # Count pixels where at least one channel is non-zero (non-black)
+#         non_black_counts[col] = np.sum(np.any(img[:, col, :] > 0, axis=1))
+
+#     # Get the column with maximum non-black pixels
+#     x_column = int(np.argmax(non_black_counts))
+#     max_count = int(non_black_counts[x_column])
+
+#     return x_column, max_count
+
+
+@lru_cache(maxsize=1)
+def _load_wells_mapping() -> dict[str, tuple[int, int]]:
+    """Load wells mapping from cache file.
+
+    Returns
+    -------
+    dict[str, tuple[int, int]]
+        Dictionary mapping image name to (column, non_black_pixels)
+    """
+    mapping_file = Path(".cache/wells_maping.npz")
+    if not mapping_file.exists():
+        logger.warning(f"Wells mapping file not found: {mapping_file}")
+        return {}
+
+    try:
+        data = np.load(mapping_file, allow_pickle=True)
+        columns = data["columns"]
+        counts = data["counts"]
+        image_names = data["image_names"]
+
+        # Build dictionary: image_name -> (column, count)
+        # Remove "_highres" suffix from image names for consistent lookup
+        mapping = {
+            str(name).replace("_highres", ""): (int(col), int(count))
+            for name, col, count in zip(image_names, columns, counts)
+        }
+        logger.info(f"Loaded wells mapping with {len(mapping)} entries")
+        return mapping
+    except Exception as e:
+        logger.error(f"Failed to load wells mapping: {e}")
+        return {}
+
+
+def _to_well_layer(
+    img: NDArray[np.float32],
+    image_name: str = "",
+    resolution: tuple[int, int] = (1024, 1024),
+) -> NDArray[np.float32]:
+    """Convert a 2D facies image to a sparse well trace image.
+
+    For a 2D X-Z crossline slice (shape: height x width x channels),
+    selects a specific horizontal position (column) from the wells mapping
+    and zeros out all other columns, creating a sparse vertical trace
+    similar to a well log.
+
+    Parameters
+    ----------
+    img : NDArray[np.float32]
+        Input image array of shape (height, width, channels), values in [0, 1]
+    image_name : str
+        Name of the image (without extension) to lookup in wells mapping
+
+    Returns
+    -------
+    NDArray[np.float32]
+        Output image with only one vertical trace preserved
     """
 
-    # Use a numpy Generator for modern RNG behaviour and better testability
-    rng = np.random.default_rng()
+    # Expect shape (height, width, channels)
+    if img.ndim != 3:
+        raise ValueError(f"Expected 3D image array (H, W, C), got shape={img.shape}")
 
-    # Create an output array of the same shape and dtype, filled with zeros
-    wells = np.zeros_like(top)
+    # Create output array filled with zeros
+    well_img = np.zeros_like(img)
 
-    # Expect shape (ni, nj, nk) -> inline, crossline, depth
-    if top.ndim != 3:
-        raise ValueError(f"Expected 3D facies array, got shape={top.shape}")
+    # # Find the column with the most non-black pixels
+    # x_column, pixel_count = _find_column_with_most_non_black_pixels(img)
 
-    ni, nj, _ = top.shape
+    # Load wells mapping and get the column for this image
+    wells_mapping = _load_wells_mapping()
+    x_column, pixel_count = wells_mapping.get(image_name, (0, 0))
 
-    for j in range(nj):
-        i_rand = int(rng.integers(0, ni))
-        # Preserve the entire vertical column at inline index i_rand
-        wells[i_rand, j, :] = top[i_rand, j, :]
+    logger.info(
+        f"Selected column {x_column} with {pixel_count} non-black pixels "
+        f"for image '{image_name}' at resolution {resolution}"
+    )
 
-    return wells
+    # Preserve the entire vertical column at x_column
+    well_img[:, x_column, :] = img[:, x_column, :]
+
+    return well_img
 
 
 @tool
@@ -322,8 +414,6 @@ def export_top_well_layers(
     ParserFactory.configure_logging(False)
 
     top = _get_top_layers(cache_dir, force_regeneration=force_regeneration)
-
-    top = _to_well_layers(top)
 
     # Ensure a statically-typed 3-tuple for callers and type checkers
     if top.ndim != 3:
@@ -396,14 +486,15 @@ def generate_faciesgan_dataset(
 ) -> None:
     """Generate a FaciesGAN dataset by training/rendering with the improved model.
 
-    This CLI wrapper trains the improved Residual MLP (neural smoother) and
-    writes output images (originals, rendered at multiple resolutions, loss
-    plot) into `output_dir`. Returns a dict with saved paths.
+    The interpolator is automatically selected based on image type:
+    - facies: uses NeuralSmoother for better quality
+    - wells, seismic: uses NearestInterpolator for speed
+
+    This CLI wrapper trains the improved Residual MLP (neural smoother) for facies
+    and uses nearest neighbor for wells/seismic, then writes output images
+    (originals, rendered at multiple resolutions, loss plot) into `output_dir`.
     """
     ParserFactory.configure_logging(verbose)
-
-    losses_dirs: dict[str, Path] = {}
-    out_res_dirs: dict[str, Path] = {}
 
     resolutions = [
         (1024, 1024),
@@ -415,26 +506,14 @@ def generate_faciesgan_dataset(
         (16, 16),
         (8, 8),
     ]
-    img_types: tuple[str, ...] = ("facies", "well", "seismic")
+    img_types: tuple[str, ...] = ("facies", "wells", "seismic")
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     model_dir_path = Path(model_dir)
     model_dir_path.mkdir(parents=True, exist_ok=True)
 
-    for img_type in img_types:
-        out_res_dir = out_path / img_type
-        out_res_dir.mkdir(parents=True, exist_ok=True)
-        out_res_dirs[img_type] = out_res_dir
-        for resolution in resolutions:
-            res_str = f"{resolution[0]}x{resolution[1]}"
-            res_dir = out_res_dir / res_str
-            res_dir.mkdir(parents=True, exist_ok=True)
-        losses_dir = model_dir_path / "losses" / img_type
-        losses_dir.mkdir(parents=True, exist_ok=True)
-        losses_dirs[img_type] = losses_dir
-
-    # Instantiate the NeuralSmoother with CLI-provided training params.
-    ns = NeuralSmoother(
+    # Create interpolator configuration
+    config = InterpolatorConfig(
         steps=steps,
         scale=scale,
         upsample=upsample,
@@ -450,63 +529,176 @@ def generate_faciesgan_dataset(
         force_retrain=force_retrain,
     )
 
-    for img_type in img_types:
-        image_list_path = Path(input_dir) / img_type
-        image_list = list(image_list_path.glob("*.png"))
-        for image_path in image_list:
+    # Process facies first (needed for wells/seismic interpolation)
+    logger.info("Processing facies images first...")
+    _process_image_type(
+        img_type="facies",
+        input_dir=input_dir,
+        out_path=out_path,
+        model_dir_path=model_dir_path,
+        config=config,
+        resolutions=resolutions,
+        dpi=dpi,
+    )
 
-            # Simplified CustomDataset expects a single image path: use the first image
-            dataset_train = CustomDataset(str(image_path), image_type=img_type)
-            loader_train = CustomLoader(
-                dataset_train, batch_size=batch_size, num_workers=num_workers
-            )
-
-            num_classes = len(dataset_train.get_class_weights())
-            ns.reset(num_classes=num_classes)
-            losses = ns.train(loader_train)
-
-            # For rendering we also use a single representative image (first in list)
-            dataset_render = CustomDataset(str(image_path), image_type=img_type)
-            loader_render = CustomLoader(
-                dataset_render,
-                batch_size=batch_size,
-                shuffle=False,
-                num_workers=num_workers,
-            )
-
-            smooth_imgs, high_res_img = ns.render(
-                loader_render, resolutions=resolutions
-            )
-
-            # Save the training losses
-            loss_path = losses_dirs[img_type] / f"{image_path.stem}_loss.png"
-            _save_losses_plot(
-                losses,
-                loss_path,
-                title=f"Training Loss ({image_path.name})",
+    # Then process wells and seismic (can use high-res facies if needed)
+    for img_type in ("wells", "seismic"):
+        if img_type in img_types:
+            logger.info(f"Processing {img_type} images...")
+            _process_image_type(
+                img_type=img_type,
+                input_dir=input_dir,
+                out_path=out_path,
+                model_dir_path=model_dir_path,
+                config=config,
+                resolutions=resolutions,
                 dpi=dpi,
             )
 
-            # Save the high-resolution image (include DPI metadata)
-            arr_to_save = (high_res_img * 255).astype("uint8")
+
+def _process_image_type(
+    img_type: str,
+    input_dir: str,
+    out_path: Path,
+    model_dir_path: Path,
+    config: InterpolatorConfig,
+    resolutions: list[tuple[int, int]],
+    dpi: int,
+) -> dict[str, dict[str, Any]]:
+    """Process all images of a specific type.
+
+    Parameters
+    ----------
+    img_type : str
+        Type of images to process ("facies", "wells", "seismic")
+    input_dir : str
+        Input directory containing image type subdirectories
+    out_path : Path
+        Output directory for processed images
+    model_dir_path : Path
+        Directory for model checkpoints
+    config : InterpolatorConfig
+        Interpolator configuration
+    resolutions : list[tuple[int, int]]
+        List of target resolutions
+    dpi : int
+        DPI for saved images
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary mapping image names to their data.
+        For wells, also includes 'paths_by_resolution' key with list of lists
+    """
+    results: dict[str, Any] = {}
+    image_list: list[Path] = []
+
+    # Special handling for 'wells' - use generated facies crossline images
+    if img_type == "wells":
+        facies_output_path = out_path / "facies"
+        if not facies_output_path.exists():
+            logger.warning(f"Facies output directory not found: {facies_output_path}")
+            return results
+
+        # Build image_list as a list of lists of paths from facies pyramid
+
+        resolution = resolutions[0]
+        res_str = f"{resolution[0]}x{resolution[1]}"
+        res_dir = facies_output_path / res_str
+        if res_dir.exists():
+            image_list.extend(sorted(res_dir.glob("xz_crossline_*.png")))
+            logger.info(f"Found {len(image_list)} images in {res_dir}")
+        else:
+            logger.warning(f"Resolution directory not found: {res_dir}")
+    else:
+        image_list_path = Path(input_dir) / img_type
+        if not image_list_path.exists():
+            logger.warning(f"Directory not found: {image_list_path}")
+            return results
+        image_list = list(image_list_path.glob("*.png"))
+
+    for image_path in image_list:
+
+        # Create appropriate interpolator based on image type
+        # facies -> NeuralSmoother, wells/seismic -> NearestInterpolator
+        interpolator = BaseInterpolator.create(
+            image_type=img_type,
+            config=config,
+        )
+
+        # Prepare transformers for wells (convert facies to sparse well traces)
+        # Create a partial function that pre-fills the image_name parameter
+        if img_type == "wells":
+            resolution = image_path.parent.name.split("x")
+            resolution = (int(resolution[0]), int(resolution[1]))
+            transformers = [
+                partial(
+                    _to_well_layer,
+                    image_name=image_path.stem,
+                    resolution=resolution,
+                )
+            ]
+        else:
+            transformers = None
+
+        # Create process image configuration
+        process_config = ProcessImageConfig(
+            image_path=str(image_path),
+            image_type=img_type,
+            resolutions=resolutions,
+            transformers=transformers,
+        )
+
+        # Process the image using the appropriate interpolator
+        smooth_imgs, high_res_img, losses = interpolator.process_image(process_config)
+
+        out_highres_path = ""
+        if img_type == "facies":
+            # Save high-resolution image
+            arr_to_save = (cast(NDArray[np.float32], high_res_img) * 255).astype(
+                "uint8"
+            )
             out_highres_path = out_path / img_type / f"{image_path.stem}_highres.png"
+            out_highres_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 _Image.fromarray(arr_to_save).save(out_highres_path, dpi=(dpi, dpi))
             except Exception:
-                # Fallback without dpi if Pillow doesn't accept the argument
                 _Image.fromarray(arr_to_save).save(out_highres_path)
+            logger.info(f"Processed {image_path.name}:")
+            logger.info(f"  High-res: {out_highres_path}")
 
-            for resolution, smooth_img in zip(resolutions, smooth_imgs):
-                res_str = f"{resolution[0]}x{resolution[1]}"
-                out_res_dir = out_res_dirs[img_type] / res_str
-                out_res_path = out_res_dir / f"{image_path.stem}.png"
-                # Normalize img_smooth_list into a Python list
-                smooth_img = (smooth_img * 255).astype("uint8")
-                # Use the helper to respect DPI/resampling behavior
-                try:
-                    _save_image_with_resample(smooth_img, out_res_path, dpi, None)
-                except Exception:
-                    _Image.fromarray(smooth_img).save(out_res_path)
+        # Save images at each resolution
+        for resolution, smooth_img in zip(resolutions, smooth_imgs):
+            res_str = f"{resolution[0]}x{resolution[1]}"
+            out_res_dir = out_path / img_type / res_str
+            out_res_dir.mkdir(parents=True, exist_ok=True)
+            out_res_path = out_res_dir / f"{image_path.stem}.png"
+
+            smooth_img_uint8 = (smooth_img * 255).astype("uint8")
+            _Image.fromarray(smooth_img_uint8).save(out_res_path)
+            logger.info(f"  {res_str}: {out_res_path}")
+
+        # Save loss plot if there are losses (only for facies)
+        if losses and img_type == "facies":
+            losses_dir = model_dir_path / "losses" / img_type
+            loss_path = losses_dir / f"{image_path.stem}_loss.png"
+            fig = _plt.figure()
+            _plt.plot(np.asarray(losses))
+            _plt.title(f"Training Loss ({image_path.name})")
+            _plt.xlabel("Iteration")
+            _plt.ylabel("Loss")
+            fig.savefig(str(loss_path), dpi=dpi, bbox_inches="tight")
+            _plt.close(fig)
+            logger.info(f"  Loss plot: {loss_path}")
+
+        # Store result for potential use by other image types
+        results[image_path.stem] = {
+            "high_res": high_res_img,
+            "smooth_imgs": smooth_imgs,
+            "path": out_highres_path,
+        }
+
+    return results
 
 
 def _get_top_layers(cache_dir: str, force_regeneration: bool) -> NDArray[np.int_]:
@@ -538,7 +730,7 @@ def generate_xz_layers(
             "#0000ff",
             "#00ff00",
         ],
-        "well": [
+        "wells": [
             "#000000",
             "#ff0000",
             "#0000ff",
@@ -576,7 +768,6 @@ def generate_xz_layers(
 
     cache_path = Path(cache_dir)
     facies_file = cache_path / f"facies_top_layers_{n_layers}.npz"
-    wells_file = cache_path / f"well_top_layers_{n_layers}.npz"
     seismic_file = cache_path / f"seismic_top_layers_{n_layers}.npz"
 
     output_path = cache_path / output_dir
@@ -584,7 +775,7 @@ def generate_xz_layers(
     written = 0
     shape = None
 
-    for file in [facies_file, wells_file, seismic_file]:
+    for file in [facies_file, seismic_file]:
         if not file.exists():
             raise FileNotFoundError(f"Cache not found: {file}")
 
@@ -1135,22 +1326,29 @@ def _save_image_with_resample(
             logger.exception("Failed to save image to %s", png_path)
 
 
-def _save_losses_plot(
-    losses: Any, loss_path: Path, title: str | None = None, dpi: int = 200
-) -> None:
-    """Save the training `losses` sequence as a PNG at `loss_path`.
+@tool
+def edit_wells_interactive(cache_dir: str = ".cache") -> bool:
+    """Interactive well editor for spatial distribution in XZ space.
 
-    This helper centralizes matplotlib usage and error handling so callers
-    can simply pass the losses and a destination path.
+    Opens an interactive matplotlib plot where you can:
+    - Click and drag wells to reposition them
+    - Delete wells with the 'd' key
+    - Save modified positions with the 's' key
+    - View help with the 'h' key
+
+    The wells are displayed on a geological heatmap background showing
+    pixel density across the XZ space.
+
+    Parameters
+    ----------
+    cache_dir : str
+        Directory containing well mapping and image data
+
+    Returns
+    -------
+    bool
+        True if successful, False otherwise
     """
-    try:
-        fig = _plt.figure()
-        _plt.plot(np.asarray(losses))
-        if title:
-            _plt.title(title)
-        _plt.xlabel("Iteration")
-        _plt.ylabel("Loss")
-        fig.savefig(str(loss_path), dpi=int(dpi), bbox_inches="tight")
-        _plt.close(fig)
-    except Exception:
-        logger.warning("Failed to save loss plot to %s", loss_path)
+    from src.cli.interactive_well_editor import run_interactive_well_editor
+
+    return run_interactive_well_editor(cache_dir=cache_dir)
