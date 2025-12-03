@@ -226,4 +226,6 @@ __marimo__/
 /.cache/*.npz
 !/.cache/wells_maping.npz
 /.cache/images/pyramids/
+/.cache/images/xz_slices/
 /.cache/models/losses/
+/.cache/models/
